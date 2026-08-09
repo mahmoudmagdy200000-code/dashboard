@@ -4,7 +4,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "../client";
+import { api, downloadBlob } from "../client";
 import type { Operation } from "../types";
 import type {
   OperationsListSummary,
@@ -49,6 +49,92 @@ export function usePurchasesList(filter: OperationsFilter = {}) {
   });
 }
 
+// ─── Grouped purchase CARDS (2026-08-09) — GET /company/me/purchases ─────────
+// Supplier/branch cards → invoices → lines, matching the accountant screen.
+// Shapes are deeply nested; kept loose (any) with a typed envelope.
+export interface AccPurchasesFilter {
+  groupBy?: "supplier" | "branch";
+  brandId?: string;
+  branchId?: string;
+  supplierId?: string;
+  status?: string;
+  match?: string;
+  documented?: boolean;
+  q?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  pageSize?: number;
+}
+export interface AccPurchasesResponse {
+  data: any[];
+  meta: {
+    groupBy: "supplier" | "branch";
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages?: number;
+    scannedOperations?: number;
+    truncated?: boolean;
+    maxOperations?: number;
+    kpis?: {
+      totalPurchasesHalalas?: number;
+      totalPurchasesSar?: number;
+      pendingInvoices?: number;
+      diffInvoices?: number;
+      activeSuppliers?: number;
+      invoices?: number;
+      period?: { from: string | null; to: string | null };
+    };
+  };
+}
+
+export function useAccountantPurchases(filter: AccPurchasesFilter = {}) {
+  const params = cleanFilter(filter);
+  return useQuery({
+    queryKey: ["accountant", "purchases", params] as const,
+    queryFn: async () => {
+      const res = await api.get<AccPurchasesResponse>("/company/me/purchases", {
+        params,
+      });
+      return res.data;
+    },
+  });
+}
+
+export function useBulkDocumentPurchases() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (operationIds: string[]) => {
+      const res = await api.post("/company/me/purchases/bulk-document", {
+        operationIds,
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["accountant", "purchases"] });
+      qc.invalidateQueries({ queryKey: ["operations"] });
+      toast.success("تم التوثيق الجماعي");
+    },
+    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+  });
+}
+
+export function useExportAccountantPurchases() {
+  return useMutation({
+    mutationFn: async (
+      filter: AccPurchasesFilter & { format?: "xlsx" | "csv" } = {},
+    ) => {
+      const fmt = filter.format ?? "xlsx";
+      await downloadBlob("/company/me/purchases/export", `purchases.${fmt}`, {
+        ...cleanFilter(filter),
+        format: fmt,
+      });
+    },
+    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+  });
+}
+
 // ─── Purchase detail (3-way match) rides on GET /operations/{id} → purchases ──
 export function usePurchaseDetail(operationId: string | null | undefined) {
   const query = useOperation(operationId);
@@ -90,7 +176,7 @@ export function usePatchPurchaseLine() {
     }: {
       operationId: string;
       rowId: string;
-      patch: { ordQty?: number; rcvQty?: number | null; unitPriceHalalas?: number };
+      patch: { ordQty?: number; rcvQty?: number | null; unitPriceHalalas?: number; unitPriceSar?: number; documented?: boolean };
     }) => {
       const res = await api.patch<PurchaseLineEditResponse>(
         `/company/me/operations/${operationId}/purchase-lines/${rowId}`,
@@ -103,6 +189,7 @@ export function usePatchPurchaseLine() {
       qc.invalidateQueries({ queryKey: queryKeys.operation(data.operationId) });
       qc.invalidateQueries({ queryKey: queryKeys.operationAudit(data.operationId) });
       qc.invalidateQueries({ queryKey: ["operations"] });
+      qc.invalidateQueries({ queryKey: ["accountant", "purchases"] });
       toast.success("تم تحديث السطر");
     },
     onError: (e) => toast.error(getErrorMessage(e, "ar")),

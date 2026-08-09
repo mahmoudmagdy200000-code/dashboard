@@ -118,7 +118,7 @@ export function useExportEmployeeStatement() {
     }: {
       employeeId: string;
       month?: string;
-      format?: "xlsx" | "csv";
+      format?: "xlsx" | "csv" | "pdf";
     }) => {
       await downloadBlob(
         `/company/me/employees/${employeeId}/statement/export`,

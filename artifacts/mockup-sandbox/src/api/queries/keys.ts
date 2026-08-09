@@ -385,6 +385,8 @@ export interface ShiftFilter {
 
 export interface EmployeeFilter {
   branchId?: string;
+  /** 2026-08-09 — resolves the brand's branches (incl. restaurant-linked). */
+  brandId?: string;
   empNumber?: string;
   /** Name search (T09-A1). */
   q?: string;
@@ -394,6 +396,10 @@ export interface EmployeeFilter {
 
 export interface CashFilter {
   branchId?: string;
+  /** 2026-08-09 — resolves the brand's branches (incl. restaurant-linked). */
+  brandId?: string;
+  /** 2026-08-09 — live status filter (derived from balance server-side). */
+  status?: "normal" | "low" | "critical" | string;
   /** Branch/custodian search (T09-B1). */
   q?: string;
   page?: number;

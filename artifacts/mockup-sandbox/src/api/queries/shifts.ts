@@ -45,17 +45,43 @@ export function useShiftsHistory(filter: ShiftFilter = {}) {
 }
 
 // ─── Config (T08 §1) ─────────────────────────────────────────────────────────
-export function useShiftConfigs() {
+export function useShiftConfigs(scope?: "brand" | "branch" | "all") {
   return useQuery({
-    queryKey: queryKeys.shiftConfigs,
+    queryKey: [...queryKeys.shiftConfigs, scope ?? "brand"] as const,
     queryFn: async () => {
       const res = await api.get<
         { data: ShiftConfig[] } | ShiftConfig[]
-      >("/company/me/shifts/configs");
+      >("/company/me/shifts/configs", { params: scope ? { scope } : undefined });
       const d = res.data;
       return Array.isArray(d) ? d : (d.data ?? []);
     },
     staleTime: 60_000,
+  });
+}
+
+// 2026-08-09 — assign a shift schedule at the BRANCH level (overrides the brand's).
+// Same body as the brand endpoint; a branch override wins over the brand schedule.
+export function useSaveBranchShiftConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      branchId,
+      config,
+    }: {
+      branchId: string;
+      config: ShiftConfigPayload;
+    }) => {
+      const res = await api.put<ShiftConfig>(
+        `/company/me/branches/${branchId}/shift-config`,
+        config,
+      );
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.shiftConfigs });
+      toast.success("تم حفظ إعدادات شفت الفرع");
+    },
+    onError: (e) => toast.error(getErrorMessage(e, "ar")),
   });
 }
 

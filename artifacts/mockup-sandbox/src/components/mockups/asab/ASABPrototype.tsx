@@ -140,6 +140,10 @@ import {
   useCreatePlatformAsset,
   useConfirmPlatformAsset,
   useCreateReminder,
+  useMissingDataReminders,
+  useSendAllReminders,
+  useSendMissingReminder,
+  useScanReminders,
   useCreateProcurementOrder,
   useUpdateOrder,
   useCreateSupplier,
@@ -236,6 +240,9 @@ import {
   // T06 — purchases (3-way match, company-surface handlers, shared)
   usePurchasesList,
   usePatchPurchaseLine,
+  useAccountantPurchases,
+  useBulkDocumentPurchases,
+  useExportAccountantPurchases,
   useSuppliers,
   usePurchaseReturns,
   // T07 — waste mutations + inventory export (company-surface handlers, shared)
@@ -250,6 +257,7 @@ import {
   useShiftsHistory,
   useShiftConfigs,
   useSaveShiftConfig,
+  useSaveBranchShiftConfig,
   useCloseShift,
   useExportShifts,
 } from "../../../api/queries";
@@ -2262,7 +2270,10 @@ function mapApiOpToOp(a: any): Op {
   };
   return {
     id: a.publicId ?? a.id ?? "",
-    branch: a.branchName ?? a.branchId ?? "—",
+    // Display the name only — the backend now always sends branchName ("" for a
+    // deleted branch). branchId is kept below for filtering/links, never shown as
+    // a label (it was the raw UUID leaking into «اسم الفرع»).
+    branch: a.branchName ?? "—",
     moduleKey: a.moduleKey,
     moduleLabel: OP_MODULE_LABELS[a.moduleKey] ?? a.moduleKey ?? "",
     // Money always arrives in halalas (amountHalalas, or amount as the halalas int) —
@@ -5044,33 +5055,43 @@ function PurItemsTable({ items, verifiedMap, onToggleVerify }: { items:PurItem[]
 function PurchaseLinesPanel({ rec, t, onAttach, demoRender }:{
   rec: any; t:(ar:string,en:string)=>string; onAttach:()=>void; demoRender:()=>ReactNode;
 }) {
-  const { data: detail, isLoading } = useOperation(rec.id);
   const patchMut = usePatchPurchaseLine();
-  const [editRow, setEditRow] = useState<string|null>(null);
-  const [form, setForm] = useState<{ordQty:string;rcvQty:string;price:string}>({ordQty:"",rcvQty:"",price:""});
+  // Lines from the grouped /company/me/purchases endpoint carry lastArrivalPrice
+  // + documented; only fetch the op detail when the card didn't provide them.
+  const linesFromCard: any[] = Array.isArray(rec.lines) ? rec.lines : [];
+  const { data: detail, isLoading } = useOperation(linesFromCard.length ? null : rec.id);
+  const [editing, setEditing]  = useState(false);
+  const [form, setForm] = useState<Record<string,{ordQty:string;rcvQty:string;price:string}>>({});
 
   const pur = (detail as any)?.purchases;
-  const realItems: any[] = Array.isArray(pur?.purchaseItems) ? pur.purchaseItems : [];
-  if (realItems.length === 0) {
+  const linesFromOp: any[] = Array.isArray(pur?.purchaseItems) ? pur.purchaseItems : [];
+  const lines = linesFromCard.length ? linesFromCard : linesFromOp;
+  if (lines.length === 0) {
     if (isLoading) return <div className="px-5 py-6 text-center text-sm text-gray-400">{t("جارٍ التحميل...","Loading...")}</div>;
     return <>{demoRender()}</>;
   }
 
   const supersedesId = (detail as any)?.payload?.supersedesOperationId;
   const supplierName = pur?.supplierName ?? rec.supplier;
-  const orderNumber  = (detail as any)?.payload?.orderNumber;
-  const submittedBy  = (detail as any)?.payload?.submittedBy;
-  const summary      = pur?.summary;
-  const sar = (h:any) => typeof h === "number" ? `${fmtAmt(h/100)} ${t("ر.س","SAR")}` : "—";
-
-  const startEdit = (row:any) => { setEditRow(row.rowId); setForm({ ordQty:String(row.ordQty ?? ""), rcvQty: row.rcvQty==null ? "" : String(row.rcvQty), price:String(row.unitPriceHalalas ?? "") }); };
-  const saveEdit = (rowId:string) => {
-    const patch: { ordQty?:number; rcvQty?:number|null; unitPriceHalalas?:number } = {};
-    if (form.ordQty.trim() !== "") patch.ordQty = Number(form.ordQty);
-    patch.rcvQty = form.rcvQty.trim() === "" ? null : Number(form.rcvQty);   // explicit null clears receipt
-    if (form.price.trim() !== "") patch.unitPriceHalalas = Math.round(Number(form.price));
-    patchMut.mutate({ operationId: rec.id, rowId, patch }, { onSuccess: ()=>setEditRow(null) });
+  // Prefer riyal fields; fall back to halalas÷100.
+  const money = (l:any, sarKey:string, halKey:string) => {
+    const s = l?.[sarKey]; if (typeof s === "number") return `${fmtAmt(s)} ${t("ر.س","SAR")}`;
+    const h = l?.[halKey]; return typeof h === "number" ? `${fmtAmt(h/100)} ${t("ر.س","SAR")}` : "—";
   };
+  const startEdit = () => { const f:Record<string,any>={}; lines.forEach((l:any)=>{ f[l.rowId]={ ordQty:String(l.ordQty ?? ""), rcvQty:l.rcvQty==null?"":String(l.rcvQty), price:String(l.unitPriceSar ?? (l.unitPriceHalalas!=null?l.unitPriceHalalas/100:"")) }; }); setForm(f); setEditing(true); };
+  const saveRow = (l:any) => {
+    const f = form[l.rowId]; if(!f) return;
+    const patch:{ordQty?:number;rcvQty?:number|null;unitPriceSar?:number} = {};
+    if (f.ordQty.trim()!=="") patch.ordQty = Number(f.ordQty);
+    patch.rcvQty = f.rcvQty.trim()==="" ? null : Number(f.rcvQty);
+    if (f.price.trim()!=="") patch.unitPriceSar = Number(f.price);
+    patchMut.mutate({ operationId: rec.id, rowId: l.rowId, patch });
+  };
+  const toggleDoc = (l:any) => patchMut.mutate({ operationId: rec.id, rowId: l.rowId, patch: { documented: !l.documented } });
+  const setF = (rowId:string, k:"ordQty"|"rcvQty"|"price", v:string) => setForm(p=>({ ...p, [rowId]:{ ...(p[rowId] ?? {ordQty:"",rcvQty:"",price:""}), [k]:v } }));
+  const arrowCls = (dir:string) => dir==="up"?"text-red-600":dir==="down"?"text-emerald-600":"text-gray-400";
+  const arrowIcon = (dir:string) => dir==="up"?"▲":dir==="down"?"▼":"";
+  const documentedCount = lines.filter((l:any)=>l.documented).length;
 
   return (
     <div className="px-5 pb-5 bg-gray-50/40 space-y-3">
@@ -5083,47 +5104,60 @@ function PurchaseLinesPanel({ rec, t, onAttach, demoRender }:{
         <div className="flex-1 min-w-0">
           <p className="text-xs font-bold text-gray-700">{t("المورد:","Supplier:")} <span className="text-blue-700">{supplierName ?? "—"}</span></p>
           <p className="text-xs text-gray-500 mt-0.5">
-            {orderNumber ? <>{t("رقم الطلب:","Order #:")} <span className="font-mono font-semibold text-purple-600">{orderNumber}</span> · </> : null}
-            {rec.date}{submittedBy ? ` · ${t("قدّمها","by")} ${submittedBy}` : ""}
+            {rec.invNum ? <>{t("رقم الفاتورة:","Invoice #:")} <span className="font-mono font-semibold text-purple-600">{rec.invNum}</span> · </> : null}
+            {t("الفرع:","Branch:")} {rec.branch} · {t("إجمالي الفاتورة:","Invoice Total:")} <span className="font-bold text-gray-700">{fmtAmt(rec.amount)} {t("ر.س","SAR")}</span>
           </p>
         </div>
-        <button onClick={onAttach} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-semibold transition-all">
-          <Paperclip size={11}/> {t("المرفقات","Attachments")}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={onAttach} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-semibold transition-all">
+            <Paperclip size={11}/> {t("المرفقات","Attachments")}{rec.attachmentsCount ? ` (${rec.attachmentsCount})` : ""}
+          </button>
+          <button onClick={()=>editing?setEditing(false):startEdit()} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${editing?"bg-gray-100 text-gray-600 hover:bg-gray-200":"bg-purple-50 text-purple-600 hover:bg-purple-100"}`}>
+            <Edit3 size={11}/> {editing?t("إنهاء التعديل","Done"):t("تعديل البنود","Edit Lines")}
+          </button>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border border-gray-100 rounded-xl overflow-hidden text-xs" dir="rtl">
           <thead className="bg-gray-100"><tr>
-            <th className="px-3 py-2 text-right font-semibold text-gray-600">{t("الصنف","Item")}</th>
+            <th className="px-3 py-2 text-right font-semibold text-gray-600">{t("اسم الصنف","Item")}</th>
             <th className="px-3 py-2 text-center font-semibold text-gray-600">{t("الوحدة","Unit")}</th>
-            <th className="px-3 py-2 text-center font-semibold text-gray-600">{t("المطلوب","Ordered")}</th>
-            <th className="px-3 py-2 text-center font-semibold text-emerald-700 bg-emerald-50/50">{t("المستلم","Received")}</th>
             <th className="px-3 py-2 text-center font-semibold text-gray-600">{t("سعر الوحدة","Unit Price")}</th>
-            <th className="px-3 py-2 text-center font-semibold text-gray-600">{t("قيمة المطلوب","Ordered Value")}</th>
-            <th className="px-3 py-2 text-center font-semibold text-gray-600">{t("المطابقة","Match")}</th>
-            <th className="px-3 py-2 text-center font-semibold text-purple-700">{t("تعديل","Edit")}</th>
+            <th className="px-3 py-2 text-center font-semibold text-blue-700">{t("آخر سعر وصول","Last Arrival")}</th>
+            <th className="px-3 py-2 text-center font-semibold text-gray-600">{t("الكمية","Qty")}</th>
+            <th className="px-3 py-2 text-center font-semibold text-gray-600">{t("الإجمالي","Total")}</th>
+            <th className="px-3 py-2 text-center font-semibold text-emerald-700">{t("توثيق","Documented")}</th>
           </tr></thead>
           <tbody className="divide-y divide-gray-100 bg-white">
-            {realItems.map((row:any)=>{
-              const editing = editRow===row.rowId;
-              const lm = row.lineMatch ?? {};
-              const mcls = lm.key==="matched"?"bg-emerald-50 text-emerald-700":lm.key==="diff"?"bg-red-50 text-red-700":"bg-amber-50 text-amber-700";
+            {lines.map((l:any)=>{
+              const f = form[l.rowId] ?? {ordQty:"",rcvQty:"",price:""};
+              const qty = l.rcvQty ?? l.qty ?? l.ordQty;
               return (
-                <tr key={row.rowId} className="hover:bg-gray-50">
-                  <td className="px-3 py-2.5 font-semibold text-gray-800">{row.item ?? "—"}</td>
-                  <td className="px-3 py-2.5 text-center text-gray-500">{row.unit ?? "—"}</td>
-                  <td className="px-3 py-2.5 text-center font-mono">{editing ? <input value={form.ordQty} onChange={e=>setForm(f=>({...f,ordQty:e.target.value}))} className="w-16 text-center border border-purple-200 rounded-lg px-1 py-0.5 outline-none focus:border-purple-400"/> : (row.ordQty ?? "—")}</td>
-                  <td className="px-3 py-2.5 text-center font-mono">{editing ? <input value={form.rcvQty} onChange={e=>setForm(f=>({...f,rcvQty:e.target.value}))} placeholder="—" className="w-16 text-center border border-purple-200 rounded-lg px-1 py-0.5 outline-none focus:border-purple-400"/> : (row.rcvQty==null ? "—" : row.rcvQty)}</td>
-                  <td className="px-3 py-2.5 text-center font-mono">{editing ? <input value={form.price} onChange={e=>setForm(f=>({...f,price:e.target.value}))} placeholder={t("هللة","halalas")} className="w-20 text-center border border-purple-200 rounded-lg px-1 py-0.5 outline-none focus:border-purple-400"/> : sar(row.unitPriceHalalas)}</td>
-                  <td className="px-3 py-2.5 text-center font-mono text-blue-700">{sar(row.totalHalalas)}</td>
-                  <td className="px-3 py-2.5 text-center"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${mcls}`}>{lm.icon ?? ""} {lm.labelAr ?? "—"}</span></td>
-                  <td className="px-3 py-2.5 text-center">
+                <tr key={l.rowId} className="hover:bg-gray-50">
+                  <td className="px-3 py-2.5 font-semibold text-gray-800">{l.item ?? "—"}</td>
+                  <td className="px-3 py-2.5 text-center text-gray-500">{l.unit ?? "—"}</td>
+                  <td className="px-3 py-2.5 text-center font-mono text-red-600 font-bold">
+                    {editing ? <input value={f.price} onChange={e=>setF(l.rowId,"price",e.target.value)} placeholder={t("ر.س","SAR")} className="w-16 text-center border border-purple-200 rounded-lg px-1 py-0.5 outline-none focus:border-purple-400"/> : money(l,"unitPriceSar","unitPriceHalalas")}
+                  </td>
+                  <td className="px-3 py-2.5 text-center font-mono">
+                    <div className="text-gray-600">{money(l,"lastArrivalPriceSar","lastArrivalPriceHalalas")}</div>
+                    {(l.priceDeltaSar!=null || l.priceDeltaHalalas!=null) && l.priceDirection && l.priceDirection!=="same" && l.priceDirection!=="unknown" && (
+                      <div className={`text-[10px] font-bold ${arrowCls(l.priceDirection)}`}>{arrowIcon(l.priceDirection)} {fmtAmt(l.priceDeltaSar ?? (l.priceDeltaHalalas/100))}</div>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5 text-center font-mono">
                     {editing
-                      ? <div className="flex gap-1 justify-center">
-                          <button onClick={()=>saveEdit(row.rowId)} disabled={patchMut.isPending} className="px-2 py-0.5 rounded bg-emerald-500 text-white text-[10px] font-bold disabled:opacity-50">{t("حفظ","Save")}</button>
-                          <button onClick={()=>setEditRow(null)} className="px-2 py-0.5 rounded bg-gray-100 text-gray-600 text-[10px]">✕</button>
+                      ? <div className="flex items-center justify-center gap-1">
+                          <input value={f.ordQty} onChange={e=>setF(l.rowId,"ordQty",e.target.value)} title={t("المطلوب","Ordered")} className="w-12 text-center border border-purple-200 rounded-lg px-1 py-0.5 outline-none focus:border-purple-400"/>
+                          <span className="text-gray-300">/</span>
+                          <input value={f.rcvQty} onChange={e=>setF(l.rowId,"rcvQty",e.target.value)} placeholder="—" title={t("المستلم","Received")} className="w-12 text-center border border-emerald-200 rounded-lg px-1 py-0.5 outline-none focus:border-emerald-400"/>
+                          <button onClick={()=>saveRow(l)} disabled={patchMut.isPending} className="px-1.5 py-0.5 rounded bg-emerald-500 text-white text-[10px] font-bold disabled:opacity-50">{t("حفظ","Save")}</button>
                         </div>
-                      : <button onClick={()=>startEdit(row)} className="text-purple-500 hover:text-purple-700"><Edit3 size={13}/></button>}
+                      : (qty ?? "—")}
+                  </td>
+                  <td className="px-3 py-2.5 text-center font-mono text-blue-700 font-bold">{money(l,"totalSar","totalHalalas")}</td>
+                  <td className="px-3 py-2.5 text-center">
+                    <input type="checkbox" checked={!!l.documented} disabled={patchMut.isPending} onChange={()=>toggleDoc(l)} className="w-4 h-4 accent-emerald-600 cursor-pointer"/>
                   </td>
                 </tr>
               );
@@ -5131,11 +5165,9 @@ function PurchaseLinesPanel({ rec, t, onAttach, demoRender }:{
           </tbody>
         </table>
       </div>
-      {summary && (
-        <p className="text-[10px] text-gray-500 text-left">
-          {t("قيمة المطلوب:","Ordered:")} {sar(summary.orderedValueHalalas)} · {t("المستلم:","Received:")} {sar(summary.receivedValueHalalas)} · {t("فروقات:","Discrepancies:")} {(summary.qtyDiscrepancyCount ?? 0)+(summary.priceDiscrepancyCount ?? 0)}
-        </p>
-      )}
+      <p className="text-[10px] text-gray-500 text-left">
+        {t("إجمالي الفاتورة:","Invoice Total:")} <span className="font-bold">{fmtAmt(rec.amount)} {t("ر.س","SAR")}</span> · {t("موثّق","Documented")} {documentedCount}/{lines.length}
+      </p>
     </div>
   );
 }
@@ -5147,7 +5179,8 @@ function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, rejectO
   const { t, lang, dir } = useLang();
   const en = lang === "en";
   const exportOpsMut = useExportOperations();
-  const { data: purchasesApi } = useAccountantOperationsPlatform({ moduleKey: "purchases" });
+  const exportPurMut = useExportAccountantPurchases();
+  const bulkDocMut   = useBulkDocumentPurchases();
   // T06 live surfaces (company-surface handlers, shared with the accountant platform).
   const { data: purchasesList } = usePurchasesList({ pageSize: 100 });
   const { data: suppliersLive = [] } = useSuppliers();
@@ -5166,22 +5199,29 @@ function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, rejectO
   const [editingRecId,    setEditingRecId]    = useState<string|null>(null);
   const [purAttachModal,  setPurAttachModal]  = useState<{recId:string; invNum:string; idx:number; total:number}|null>(null);
 
-  // Build the purchases list from the real operations feed (GET /accountant/operations
-  // ?moduleKey=purchases) — the rows carry names/amount/date/match; the line items load
-  // per-op in PurchaseLinesPanel. Fall back to the inline demo when the feed is empty.
-  const realPurRecords: any[] = Array.isArray(purchasesApi)
-    ? (purchasesApi as any[]).map(o => ({
-        id: o?.publicId ?? o?.id ?? "",
-        branch: o?.branchName ?? o?.branchId ?? "—",
-        supplier: o?.supplierName ?? "—",
-        invNum: o?.publicId ?? "—",
-        date: o?.date ?? (o?.operationDate ? String(o.operationDate).slice(0,10) : "—"),
-        status: o?.status ?? "pending",
-        match: o?.match ?? "exact",
-        amount: typeof o?.amount === "number" ? o.amount/100 : 0,   // halalas → SAR
-        items: [],
-      }))
-    : [];
+  // Grouped purchase cards (GET /company/me/purchases) — supplier/branch cards
+  // that already nest invoices WITH lines (lastArrivalPrice, documented, match).
+  // We flatten the invoices into the flat record shape the cards/panel expect;
+  // the id is the OPERATION id so line PATCH/توثيق target the right op.
+  const { data: purCards } = useAccountantPurchases({ groupBy: viewMode === "branch" ? "branch" : "supplier" });
+  const purKpis = (purCards as any)?.meta?.kpis;
+  const purGroupCards: any[] = Array.isArray((purCards as any)?.data) ? (purCards as any).data : [];
+  const realPurRecords: any[] = purGroupCards.flatMap((c:any) =>
+    (Array.isArray(c?.invoices) ? c.invoices : []).map((inv:any) => ({
+      id: inv?.id ?? inv?.publicId ?? "",
+      branch: inv?.branchName ?? "—",
+      supplier: inv?.supplierName ?? "—",
+      invNum: inv?.invoiceNumber ?? inv?.publicId ?? "—",
+      date: inv?.date ?? "—",
+      status: inv?.status ?? "pending",
+      match: inv?.match ?? "exact",
+      amount: typeof inv?.totalHalalas === "number" ? inv.totalHalalas/100 : (inv?.totalSar ?? 0),
+      attachmentsCount: inv?.attachmentsCount ?? 0,
+      documentedCaption: inv?.documentedCaption,
+      lines: Array.isArray(inv?.lines) ? inv.lines : [],
+      items: (Array.isArray(inv?.lines) ? inv.lines : []).map((l:any)=>({ name: l?.item ?? "" })),
+    })),
+  );
   const EFFECTIVE_PUR_RECORDS = (realPurRecords.length > 0 ? realPurRecords : PUR_RECORDS) as typeof PUR_RECORDS;
 
   const SUPPLIER_LIST = [...new Set(EFFECTIVE_PUR_RECORDS.map((r:any)=>r.supplier))];
@@ -5203,7 +5243,8 @@ function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, rejectO
   const hasFilters = filterSupplier!==ALL||filterBranch!==ALL||filterStatus!==ALL||filterMatch!==ALL||search;
 
   const approveRecord = (id:string) => setApprovedIds(p=>new Set([...p,id]));
-  const approveAll    = ()          => setApprovedIds(p=>new Set([...p,...pending.map(r=>r.id)]));
+  // «موافقة جماعية» = bulk-document the pending invoices (real POST) + optimistic flip.
+  const approveAll    = ()          => { const ids = pending.map(r=>r.id).filter(Boolean); if(ids.length) bulkDocMut.mutate(ids); setApprovedIds(p=>new Set([...p,...pending.map(r=>r.id)])); };
   const toggleVerify  = (recId:string, key:string) => setVerifiedRows(p=>({...p,[recId+"-"+key]:!p[recId+"-"+key]}));
 
   // Supplier groups for supplier-mode
@@ -5363,12 +5404,14 @@ function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, rejectO
         {pending.length>0 && <Btn variant="success" size="sm" onClick={approveAll}><CheckCircle2 size={12}/> {t("موافقة جماعية","Bulk Approve")} ({pending.length})</Btn>}
       </div>
 
-      {/* KPI cards — real GET /operations?moduleKey=purchases → meta.summary.purchases (T06 §1) */}
+      {/* KPI cards — real GET /company/me/purchases → meta.kpis (2026-08-09) */}
       <div className="grid grid-cols-4 gap-4">
-        <KpiCard label={t("مشتريات اليوم","Today's Purchases")} value={purSummary ? `${(purSummary.todayTotalHalalas/100000).toFixed(1)}K ${t("ر.س","SAR")}` : `${(totalVal/1000).toFixed(1)}K ${t("ر.س","SAR")}`} sub={t("كل الحالات","All statuses")} icon={<ShoppingCart size={18} className="text-blue-600"/>} accent="blue"/>
-        <KpiCard label={t("قيد المراجعة","Pending Review")} value={String(purSummary?.pendingReview ?? pending.length)} sub={t("تنتظر القرار","Awaiting decision")} icon={<Clock size={18} className="text-amber-600"/>} accent="amber"/>
-        <KpiCard label={t("فروق كميات","Qty Discrepancies")} value={String(purSummary?.qtyDiscrepancies ?? diffCount)} sub={t("طلبات مفتوحة بها فرق","Open orders w/ diff")} icon={<AlertTriangle size={18} className="text-red-600"/>} accent="red"/>
-        <KpiCard label={t("موردون معتمدون","Approved Suppliers")} value={String(suppliersLive.length || SUPPLIER_LIST.length)} sub={purSummary ? `${purSummary.approvedToday} ${t("اعتُمد اليوم","approved today")}` : t("هذه الفترة","This period")} icon={<Truck size={18} className="text-purple-600"/>} accent="purple"/>
+        <KpiCard label={t("إجمالي قيمة المشتريات","Total Purchases")}
+          value={purKpis?.totalPurchasesSar != null ? `${(purKpis.totalPurchasesSar/1000).toFixed(1)}K ${t("ر.س","SAR")}` : `${(totalVal/1000).toFixed(1)}K ${t("ر.س","SAR")}`}
+          sub={t("الفترة المحددة","Selected period")} icon={<ShoppingCart size={18} className="text-blue-600"/>} accent="blue"/>
+        <KpiCard label={t("فواتير معلقة","Pending Invoices")} value={String(purKpis?.pendingInvoices ?? pending.length)} sub={t("تنتظر المراجعة","Awaiting review")} icon={<Clock size={18} className="text-amber-600"/>} accent="amber"/>
+        <KpiCard label={t("فواتير بفروق","Invoices w/ Variance")} value={String(purKpis?.diffInvoices ?? diffCount)} sub={t("كمية أو سعر","Qty or price")} icon={<AlertTriangle size={18} className="text-red-600"/>} accent="red"/>
+        <KpiCard label={t("موردون نشطون","Active Suppliers")} value={String(purKpis?.activeSuppliers ?? suppliersLive.length ?? SUPPLIER_LIST.length)} sub={t("هذه الفترة","This period")} icon={<Truck size={18} className="text-purple-600"/>} accent="purple"/>
       </div>
 
       {/* View mode tabs */}
@@ -5443,7 +5486,7 @@ function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, rejectO
             <button onClick={()=>{ setFilterSupplier(ALL); setFilterBranch(ALL); setFilterStatus(ALL); setFilterMatch(ALL); setSearch(""); }}
               className="text-xs text-purple-600 hover:underline flex items-center gap-1"><RotateCcw size={10}/> {t("مسح الفلاتر","Clear Filters")}</button>
           )}
-          <button onClick={()=>exportOpsMut.mutate({moduleKey:"purchases", format:"xlsx"})}
+          <button onClick={()=>exportPurMut.mutate({ groupBy: viewMode==="branch"?"branch":"supplier", format:"xlsx" })}
             className="mr-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 transition-all">
             <FileText size={11}/> {t("تصدير Excel","Export Excel")}
           </button>
@@ -5771,7 +5814,7 @@ function AccInventory({ navigate, ops, approveOp, rejectOp, setModal, setDetailI
   // Derive the branch list + a name→items map + name→id map from the real array (the
   // module-level BRANCHES is empty, which is why the review used to show zero branches).
   const invBranchesArr: any[] = Array.isArray((inventoryApi as any)?.branches) ? (inventoryApi as any).branches : [];
-  const branchNames: string[] = invBranchesArr.length ? invBranchesArr.map(b=>String(b?.branchName ?? b?.branchId ?? "—")) : BRANCHES;
+  const branchNames: string[] = invBranchesArr.length ? invBranchesArr.map(b=>String(b?.branchName ?? "—")) : BRANCHES;
   const branchIdByName: Record<string,string> = Object.fromEntries(invBranchesArr.map(b=>[String(b?.branchName ?? ""), String(b?.branchId ?? "")]));
   const apiBranchInventory: Record<string,any[]> = Object.fromEntries(invBranchesArr.map(b=>[String(b?.branchName ?? ""), Array.isArray(b?.items)?b.items:[]]));
   const EFFECTIVE_INV_BRANCH_DATA = (invBranchesArr.length > 0 ? apiBranchInventory : INV_BRANCH_DATA) as typeof INV_BRANCH_DATA;
@@ -6463,7 +6506,10 @@ const sApiToBrand = (cfg:any): BrandShiftState => {
   const shifts:ShiftSlot[] = Array.isArray(cfg?.shifts) && cfg.shifts.length
     ? cfg.shifts.map((w:any,i:number)=>{ const st=String(w?.start ?? firstStart); const en=String(w?.end ?? ""); return { name:String(w?.name ?? SHIFT_NAMES_AR[i] ?? `شفت ${i+1}`), start:st, end:en, durH:sWinDurH(st,en)||durH }; })
     : sGenShifts(numShifts,durH,firstStart);
-  return { id:String(cfg?.brandId ?? ""), name:String(cfg?.brandName ?? cfg?.brandId ?? ""), color:"#7c3aed", numShifts, durH, firstStart, shifts, rests:[], saved:true };
+  // scope=branch rows key their identity on branch/owner fields; brand rows on brand.
+  const id = String(cfg?.branchId ?? cfg?.ownerId ?? cfg?.brandId ?? "");
+  const name = String(cfg?.branchName ?? cfg?.ownerName ?? cfg?.brandName ?? id);
+  return { id, name, color:"#7c3aed", numShifts, durH, firstStart, shifts, rests:[], saved:true };
 };
 const sInitBrand = (b:typeof BRANDS_CATALOG[0]): BrandShiftState => {
   const p:{[k:string]:{numShifts:number;durH:number;firstStart:string}} = {
@@ -6499,10 +6545,19 @@ function ShiftRowCmp({ slot,idx,editState,onEditOpen,onEditChange,onEditCommit,o
               </div>
               <div>
                 <label className="text-[9px] text-purple-500 font-semibold block mb-0.5">مدة (ساعة)</label>
-                <select value={editState!.tmpDurH} onChange={e=>onEditChange(editState!.tmpStart,+e.target.value)}
-                  className="text-xs border border-purple-200 rounded-lg px-2 py-1 bg-white">
-                  {S_DUR_OPTS.map(d=><option key={d} value={d}>{d} ساعة</option>)}
-                </select>
+                {/* Real dropdown + number input for any custom value. */}
+                <div className="flex items-center gap-1">
+                  <select
+                    value={S_DUR_OPTS.includes(editState!.tmpDurH) ? String(editState!.tmpDurH) : "__custom"}
+                    onChange={e=>{ if (e.target.value !== "__custom") onEditChange(editState!.tmpStart, Number(e.target.value)); }}
+                    className="text-xs border border-purple-200 rounded-lg px-2 py-1 bg-white">
+                    {S_DUR_OPTS.map(d=><option key={d} value={d}>{d} ساعة</option>)}
+                    {!S_DUR_OPTS.includes(editState!.tmpDurH) && <option value="__custom">{editState!.tmpDurH} ساعة</option>}
+                  </select>
+                  <input type="number" min={1} max={24} step={1} value={editState!.tmpDurH} title="كتابة يدوية"
+                    onChange={e=>onEditChange(editState!.tmpStart, Math.min(24, Math.max(0, Number(e.target.value) || 0)))}
+                    className="w-14 text-xs border border-purple-200 rounded-lg px-2 py-1 bg-white text-center font-mono"/>
+                </div>
               </div>
               <div className="flex gap-1 self-end pb-px">
                 <button onClick={onEditCommit} className="px-3 py-1 bg-purple-600 text-white text-[10px] rounded-lg font-bold hover:bg-purple-700">حفظ</button>
@@ -6548,10 +6603,20 @@ function ShiftSmartPanel({ cfg, onNum, onDur, onStart, onGen }:{
           </div>
         </div>
         <div>
-          <label className="text-[10px] font-bold text-gray-600 block mb-1.5">مدة كل شفت</label>
-          <select value={cfg.durH} onChange={e=>onDur(+e.target.value)} className="w-full text-xs border border-gray-200 bg-white rounded-lg px-2 py-2">
-            {S_DUR_OPTS.map(d=><option key={d} value={d}>{d} ساعة</option>)}
-          </select>
+          <label className="text-[10px] font-bold text-gray-600 block mb-1.5">مدة كل شفت (ساعة)</label>
+          {/* Real dropdown (opens reliably) + a number input for any custom value. */}
+          <div className="flex items-center gap-1.5">
+            <select
+              value={S_DUR_OPTS.includes(cfg.durH) ? String(cfg.durH) : "__custom"}
+              onChange={e=>{ if (e.target.value !== "__custom") onDur(Number(e.target.value)); }}
+              className="flex-1 min-w-0 text-xs border border-gray-200 bg-white rounded-lg px-2 py-2">
+              {S_DUR_OPTS.map(d=><option key={d} value={d}>{d} ساعة</option>)}
+              {!S_DUR_OPTS.includes(cfg.durH) && <option value="__custom">{cfg.durH} ساعة (مخصص)</option>}
+            </select>
+            <input type="number" min={1} max={24} step={1} value={cfg.durH} title="كتابة يدوية"
+              onChange={e=>onDur(Math.min(24, Math.max(0, Number(e.target.value) || 0)))}
+              className="w-14 text-xs border border-gray-200 bg-white rounded-lg px-2 py-2 text-center"/>
+          </div>
         </div>
         <div>
           <label className="text-[10px] font-bold text-gray-600 block mb-1.5">بداية الشفت الأول</label>
@@ -6583,8 +6648,11 @@ function ShiftSmartPanel({ cfg, onNum, onDur, onStart, onGen }:{
 function AccShifts({ navigate, setModal }:PageProps) {
   const { data: shiftsLive } = useShiftsLive();
   const { data: shiftsHistoryPage } = useShiftsHistory();
-  const { data: shiftConfigs } = useShiftConfigs();
+  // 2026-08-09 — assign shifts by BRAND or by BRANCH (a branch override wins).
+  const [shiftScope, setShiftScope] = useState<"brand"|"branch">("brand");
+  const { data: shiftConfigs } = useShiftConfigs(shiftScope);
   const saveShiftCfgMut = useSaveShiftConfig();
+  const saveBranchShiftCfgMut = useSaveBranchShiftConfig();
   const closeShiftMut = useCloseShift();
   const exportShiftsMut = useExportShifts();
   const [tab, setTab] = useState<"live"|"setup"|"close"|"history">("live");
@@ -6615,8 +6683,8 @@ function AccShifts({ navigate, setModal }:PageProps) {
   const updRest  = (brandId:string, restId:string, patch:Partial<RestShiftCfg>) =>
     setBrandCfgs(p=>p.map(b=>b.id===brandId?{...b,rests:b.rests.map(r=>r.restId===restId?{...r,...patch}:r)}:b));
 
-  const doAutoGen     = (bId:string) => { const b=brandCfgs.find(x=>x.id===bId)!; updBrand(bId,{shifts:sGenShifts(b.numShifts,b.durH,b.firstStart)}); setBrandEdit(null); };
-  const doRestAutoGen = (bId:string, rId:string) => { const r=brandCfgs.find(x=>x.id===bId)!.rests.find(x=>x.restId===rId)!; updRest(bId,rId,{shifts:sGenShifts(r.numShifts,r.durH,r.firstStart)}); setRestEdits(p=>({...p,[rId]:null})); };
+  const doAutoGen     = (bId:string) => { const b=brandCfgs.find(x=>x.id===bId)!; updBrand(bId,{shifts:sGenShifts(b.numShifts,b.durH,b.firstStart)}); setBrandEdit(null); toast.success(`تم إعادة توليد ${b.numShifts} شفت × ${b.durH} ساعة`); };
+  const doRestAutoGen = (bId:string, rId:string) => { const r=brandCfgs.find(x=>x.id===bId)!.rests.find(x=>x.restId===rId)!; updRest(bId,rId,{shifts:sGenShifts(r.numShifts,r.durH,r.firstStart)}); setRestEdits(p=>({...p,[rId]:null})); toast.success(`تم إعادة توليد ${r.numShifts} شفت × ${r.durH} ساعة`); };
   const doSave        = (bId:string) => {
     const b = brandCfgs.find(x=>x.id===bId); if(!b) return;
     // A schedule can't exceed a 24-hour day; the backend rejects it with
@@ -6626,10 +6694,11 @@ function AccShifts({ navigate, setModal }:PageProps) {
       toast.error(`عدد الورديات (${b.numShifts}) × مدة الوردية (${b.durH} ساعة) = ${b.numShifts*b.durH} ساعة، وهو أكبر من اليوم (24 ساعة).`);
       return;
     }
-    saveShiftCfgMut.mutate(
-      { brandId: bId, config: { numShifts: b.numShifts, durationHours: b.durH, firstShiftStart: b.firstStart } },
-      { onSuccess: () => { setBrandCfgs(p=>p.map(x=>x.id===bId?{...x,saved:true}:x)); setSavedBrand(bId); setTimeout(()=>setSavedBrand(null),2200); } },
-    );
+    const config = { numShifts: b.numShifts, durationHours: b.durH, firstShiftStart: b.firstStart };
+    const onSuccess = () => { setBrandCfgs(p=>p.map(x=>x.id===bId?{...x,saved:true}:x)); setSavedBrand(bId); setTimeout(()=>setSavedBrand(null),2200); };
+    // Route to the branch endpoint in branch scope; the brand endpoint otherwise.
+    if (shiftScope === "branch") saveBranchShiftCfgMut.mutate({ branchId: bId, config }, { onSuccess });
+    else saveShiftCfgMut.mutate({ brandId: bId, config }, { onSuccess });
   };
 
   // Brand-level shift edit handlers
@@ -6769,10 +6838,23 @@ function AccShifts({ navigate, setModal }:PageProps) {
       {/* ── TAB: SETUP ────────────────────────────────────────────────────────── */}
       {tab==="setup" && (
         <div className="space-y-4" dir="rtl">
-          {/* Brand selector pills */}
+          {/* Scope toggle: assign by brand or by branch (2026-08-09) */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-gray-500">التعيين حسب:</span>
+            <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
+              {([["brand","🏷️ العلامة التجارية"],["branch","🏪 الفرع"]] as const).map(([sc,label])=>(
+                <button key={sc} onClick={()=>{ setShiftScope(sc); setSelBrandId(""); setExpandedRest(null); setBrandEdit(null); setRestEdits({}); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${shiftScope===sc?"bg-white text-gray-800 shadow-sm":"text-gray-500 hover:text-gray-700"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {shiftScope==="branch" && <span className="text-[10px] text-gray-400">تخصيص الفرع يغلب جدول العلامة التجارية</span>}
+          </div>
+          {/* Brand / branch selector pills */}
           <div className="flex items-center gap-2 flex-wrap bg-white rounded-xl border border-gray-100 shadow-sm p-3">
-            <span className="text-xs font-bold text-gray-500 ml-1">العلامة التجارية:</span>
-            {brandCfgs.length===0 && <span className="text-xs text-gray-400">لا توجد علامات تجارية مخصّصة لك بعد</span>}
+            <span className="text-xs font-bold text-gray-500 ml-1">{shiftScope==="branch"?"الفرع:":"العلامة التجارية:"}</span>
+            {brandCfgs.length===0 && <span className="text-xs text-gray-400">{shiftScope==="branch"?"لا توجد فروع مخصّصة لك بعد":"لا توجد علامات تجارية مخصّصة لك بعد"}</span>}
             {brandCfgs.map(b=>(
               <button key={b.id} onClick={()=>{setSelBrandId(b.id);setExpandedRest(null);setBrandEdit(null);setRestEdits({});setRestSearch("");}}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${selBrandId===b.id?"text-white border-transparent shadow-sm":"bg-white text-gray-600 border-gray-200 hover:border-gray-300"}`}
@@ -7121,11 +7203,15 @@ function AsabEmpMovementModal({ employeeId, employeeName, onClose }:{ employeeId
 
 function AccEmployees({ setModal }:PageProps) {
   const [selectedId, setSelectedId] = useState<string|null>(null);
-  const [empFilter, setEmpFilter]   = useState({q:"", branchId:""});
+  const [empFilter, setEmpFilter]   = useState({q:"", branchId:"", brandId:""});
   const [month, setMonth]           = useState("");
   const [showAdd, setShowAdd]       = useState(false);
 
-  const { data: employeesPage } = useEmployees({ q: empFilter.q || undefined, branchId: empFilter.branchId || undefined });
+  const { data: employeesPage } = useEmployees({ q: empFilter.q || undefined, branchId: empFilter.branchId || undefined, brandId: empFilter.brandId || undefined });
+  // Brand options for the accountant (2026-08-09 request) — same source the
+  // inventory screen uses; the brandId filter resolves restaurant-linked branches too.
+  const { data: empBrandsApi } = useAccountantInventoryBrands();
+  const empBrandRows = (Array.isArray(empBrandsApi) ? empBrandsApi : []).map((b:any)=>({ id:String(b?.id ?? ""), name:String(b?.name ?? b?.id ?? "") })).filter((b:any)=>b.id);
   const { data: statement } = useEmployeeMovements(selectedId, month || undefined);
   const settleMut          = useSettleEmployeeBalance();
   const exportStatementMut = useExportEmployeeStatement();
@@ -7152,13 +7238,20 @@ function AccEmployees({ setModal }:PageProps) {
 
       {/* Filter bar */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir="rtl">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">اسم الموظف</label>
             <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2">
               <Search size={13} className="text-gray-400 flex-shrink-0"/>
               <input value={empFilter.q} onChange={e=>setEmpFilter(p=>({...p,q:e.target.value}))} placeholder="ابحث باسم الموظف..." className="flex-1 text-sm outline-none"/>
             </div>
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold text-gray-500 block mb-1">العلامة التجارية</label>
+            <select value={empFilter.brandId} onChange={e=>{ setEmpFilter(p=>({...p,brandId:e.target.value,branchId:""})); setSelectedId(null); }} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
+              <option value="">كل العلامات</option>
+              {empBrandRows.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
           </div>
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">الفرع</label>
@@ -7168,8 +7261,8 @@ function AccEmployees({ setModal }:PageProps) {
             </select>
           </div>
         </div>
-        {(empFilter.q||empFilter.branchId) && (
-          <button onClick={()=>setEmpFilter({q:"",branchId:""})} className="mt-2 text-xs text-purple-600 hover:underline flex items-center gap-1"><RotateCcw size={11}/> مسح الفلاتر</button>
+        {(empFilter.q||empFilter.branchId||empFilter.brandId) && (
+          <button onClick={()=>setEmpFilter({q:"",branchId:"",brandId:""})} className="mt-2 text-xs text-purple-600 hover:underline flex items-center gap-1"><RotateCcw size={11}/> مسح الفلاتر</button>
         )}
       </div>
 
@@ -7198,6 +7291,7 @@ function AccEmployees({ setModal }:PageProps) {
               <button onClick={()=>setShowAdd(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold hover:bg-purple-100"><Plus size={11}/> إضافة حركة</button>
               <button onClick={doSettle} disabled={settleMut.isPending||bal===0} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 disabled:opacity-40"><Check size={11}/> تسوية الرصيد</button>
               <button onClick={()=>selectedId&&exportStatementMut.mutate({ employeeId:selectedId, month:month||undefined })} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><FileText size={11}/> Excel</button>
+              <button onClick={()=>selectedId&&exportStatementMut.mutate({ employeeId:selectedId, month:month||undefined, format:"pdf" })} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 text-red-700 border border-red-200 text-xs font-semibold hover:bg-red-100"><FileText size={11}/> PDF</button>
               <button onClick={()=>setModal("contact")} className="text-xs px-2 py-1 rounded border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center gap-1"><Phone size={11}/> تواصل</button>
             </div>
           }>
@@ -7388,12 +7482,18 @@ function AsabCustodyCard({ custody }:{ custody:any }) {
 }
 
 function AccCash({}: PageProps) {
-  const { data: custodyPage } = useCashCustody();
-  const exportCashMut = useExportCash();
   const [searchTerm,   setSearchTerm]   = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [brandFilter,  setBrandFilter]  = useState("");
+  const [branchFilter, setBranchFilter] = useState("");
+  // Brand/branch filters go to the server (2026-08-09); search/status stay client-side.
+  const { data: custodyPage } = useCashCustody({ brandId: brandFilter || undefined, branchId: branchFilter || undefined });
+  const exportCashMut = useExportCash();
+  const { data: cashBrandsApi } = useAccountantInventoryBrands();
+  const cashBrandRows = (Array.isArray(cashBrandsApi) ? cashBrandsApi : []).map((b:any)=>({ id:String(b?.id ?? ""), name:String(b?.name ?? b?.id ?? "") })).filter((b:any)=>b.id);
 
   const custodies = custodyPage?.data ?? [];
+  const branchOpts = [...new Map(custodies.map((c:any)=>[String(c.branchId ?? c.branchName ?? ""), c.branchName ?? "—"])).entries()].filter(([id])=>id);
   const kpis = custodyPage?.meta.kpis;
   const overdueSettlement = custodies.filter(c=>c.daysSinceSettlement>=30);
 
@@ -7408,7 +7508,7 @@ function AccCash({}: PageProps) {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-800">إدارة العهد النقدية</h2>
-        <button onClick={()=>exportCashMut.mutate({})} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><FileText size={12}/> ملخص العهد Excel</button>
+        <button onClick={()=>exportCashMut.mutate({ brandId: brandFilter || undefined, branchId: branchFilter || undefined })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><FileText size={12}/> ملخص العهد Excel</button>
       </div>
 
       <div className="grid grid-cols-4 gap-4">
@@ -7429,7 +7529,7 @@ function AccCash({}: PageProps) {
 
       {/* Filter bar */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir="rtl">
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-4 gap-3 mb-3">
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">بحث — الفرع أو أمين الصندوق</label>
             <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2">
@@ -7438,14 +7538,28 @@ function AccCash({}: PageProps) {
             </div>
           </div>
           <div>
+            <label className="text-[11px] font-semibold text-gray-500 block mb-1">العلامة التجارية</label>
+            <select value={brandFilter} onChange={e=>{ setBrandFilter(e.target.value); setBranchFilter(""); }} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
+              <option value="">كل العلامات</option>
+              {cashBrandRows.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold text-gray-500 block mb-1">الفرع</label>
+            <select value={branchFilter} onChange={e=>setBranchFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
+              <option value="">كل الفروع</option>
+              {branchOpts.map(([id,name])=><option key={id} value={id}>{name}</option>)}
+            </select>
+          </div>
+          <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">حالة العهدة</label>
             <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
               {["الكل","قريبة من النفاد","حرجة"].map(s=><option key={s}>{s}</option>)}
             </select>
           </div>
         </div>
-        {(searchTerm||statusFilter) && (
-          <button onClick={()=>{ setSearchTerm(""); setStatusFilter(""); }} className="text-xs text-purple-600 hover:underline flex items-center gap-1"><RotateCcw size={11}/> مسح الفلاتر</button>
+        {(searchTerm||statusFilter||brandFilter||branchFilter) && (
+          <button onClick={()=>{ setSearchTerm(""); setStatusFilter(""); setBrandFilter(""); setBranchFilter(""); }} className="text-xs text-purple-600 hover:underline flex items-center gap-1"><RotateCcw size={11}/> مسح الفلاتر</button>
         )}
       </div>
 
@@ -8635,6 +8749,9 @@ function AccWaste({}: PageProps) {
     // total/display correct without touching the dozen call-sites.
     const mapped: WasteEntry[] = apiWasteList.map((e: any) => ({
       ...e,
+      // GET /accountant/waste now sends branchName (+ brandName); the row shape
+      // keys the label as `branch`, so map it — never fall back to a raw id.
+      branch: e?.branchName ?? e?.branch ?? "—",
       products: (e?.products ?? []).map((p: any) => {
         const valueSar = p?.value != null ? p.value / 100 : undefined;
         const qty = typeof p?.qty === "number" ? p.qty : Number(p?.qty) || 0;
@@ -8985,9 +9102,14 @@ function AccWaste({}: PageProps) {
 // ════════════════════════════════════════════════════════════
 function AccReminders({}: PageProps) {
   const { t, lang, dir } = useLang();
-  const { data: apiReminders } = usePlatformReminders();
+  // 2026-08-09: the «بيانات الفروع المفقودة» list is GET /company/me/reminders —
+  // NOT /reminders (the accountant's personal list, which is why it read 0/0/0/0).
+  const { data: missingRem } = useMissingDataReminders();
   const exportRemindersMut = useExportAccReminders();
   const createReminderMut = useCreateReminder();
+  const sendAllMut  = useSendAllReminders();
+  const sendOneMut  = useSendMissingReminder();
+  const scanMut     = useScanReminders();
   type ReminderStatus = "not_sent"|"sent"|"responded";
   type ResponseType = "سيرسل لاحقاً"|"لا مشتريات اليوم"|"تم الجرد — قيد الرفع"|"توضيح: لا يوجد هدر اليوم"|null;
   interface MissingReport { id:string; branch:string; reportType:string; moduleKey:string; requiredBy:string; daysMissing:number; urgency:"high"|"medium"|"low"; reminderStatus:ReminderStatus; response:ResponseType }
@@ -9008,15 +9130,30 @@ function AccReminders({}: PageProps) {
   const [broadcastModule, setBroadcastModule] = useState("");
   const [broadcastMsg,    setBroadcastMsg]    = useState("");
 
-  // Missing-report reminders come from the platform API; empty until the backend returns them.
-  const apiRemList = (apiReminders as any)?.data ?? (apiReminders as any);
+  // Map the branch missing-data rows into the screen shape.
+  const apiRemList = (missingRem as any)?.data;
+  const remSummary = (missingRem as any)?.meta?.summary;
   const [reminders, setReminders] = useState<MissingReport[]>([]);
-  useEffect(() => { if (Array.isArray(apiRemList)) setReminders(apiRemList as MissingReport[]); }, [apiRemList]);
+  useEffect(() => {
+    if (!Array.isArray(apiRemList)) return;
+    setReminders(apiRemList.map((r:any):MissingReport => ({
+      id: String(r?.id ?? ""),
+      branch: r?.branchName ?? "—",
+      reportType: r?.moduleLabelAr ?? MODULE_LABELS[r?.moduleKey] ?? r?.moduleKey ?? "—",
+      moduleKey: r?.moduleKey ?? "",
+      requiredBy: r?.requiredBy ?? "",
+      daysMissing: Number(r?.daysMissing ?? 0),
+      urgency: (r?.urgency ?? "medium") as MissingReport["urgency"],
+      reminderStatus: (r?.reminderStatus ?? "not_sent") as ReminderStatus,
+      response: null,
+    })));
+  }, [apiRemList]); // eslint-disable-line react-hooks/exhaustive-deps
   const [expandedId, setExpandedId] = useState<string|null>(null);
   const [responseOptions] = useState<ResponseType[]>(["سيرسل لاحقاً","لا مشتريات اليوم","تم الجرد — قيد الرفع","توضيح: لا يوجد هدر اليوم"]);
 
-  const sendReminder = (id:string) => setReminders(p=>p.map(r=>r.id===id?{...r,reminderStatus:"sent" as ReminderStatus}:r));
-  const sendAll = () => setReminders(p=>p.map(r=>r.reminderStatus==="not_sent"?{...r,reminderStatus:"sent" as ReminderStatus}:r));
+  // Real send (POST /company/me/reminders/{id}/send · /send-all) + optimistic flip.
+  const sendReminder = (id:string) => { sendOneMut.mutate(id); setReminders(p=>p.map(r=>r.id===id?{...r,reminderStatus:"sent" as ReminderStatus}:r)); };
+  const sendAll = () => { sendAllMut.mutate({ onlyUnsent: true }); setReminders(p=>p.map(r=>r.reminderStatus==="not_sent"?{...r,reminderStatus:"sent" as ReminderStatus}:r)); };
 
   const displayed = reminders.filter(r=>{
     if(filterModule!=="الكل" && r.moduleKey!==filterModule) return false;
@@ -9043,11 +9180,12 @@ function AccReminders({}: PageProps) {
           <p className="text-gray-400 text-sm mt-0.5">أرسل تذكيراً مخصصاً لفرع بعينه أو لجميع الفروع — يصل على تطبيق الموبايل</p>
         </div>
         <div className="flex gap-2">
-          {notSent.length>0 && (
-            <Btn variant="primary" size="sm" onClick={sendAll}>
-              <Send size={12}/> إرسال الكل ({notSent.length})
-            </Btn>
-          )}
+          <Btn size="sm" onClick={()=>scanMut.mutate()} disabled={scanMut.isPending}>
+            <RotateCcw size={12}/> {scanMut.isPending?"جارٍ التحديث…":"تحديث"}
+          </Btn>
+          <Btn variant="primary" size="sm" onClick={sendAll} disabled={notSent.length===0 || sendAllMut.isPending}>
+            <Send size={12}/> إرسال تذكير للكل{notSent.length>0?` (${notSent.length})`:""}
+          </Btn>
           <button onClick={()=>setBroadcastModal(true)}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold hover:bg-purple-100 transition-all">
             <Bell size={12}/> إرسال مخصص
@@ -9056,10 +9194,10 @@ function AccReminders({}: PageProps) {
       </div>
 
       <div className="grid grid-cols-4 gap-4">
-        <KpiCard label="لم تُرسَل بعد" value={String(notSent.length)} sub="تنتظر إجراءً منك" icon={<Bell size={18} className="text-red-600"/>} accent="red"/>
-        <KpiCard label="تم الإرسال" value={String(sent.length)} sub="ينتظر رد الفرع" icon={<Send size={18} className="text-amber-600"/>} accent="amber"/>
-        <KpiCard label="تم الرد" value={String(responded.length)} sub="استجاب مدير الفرع" icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
-        <KpiCard label="إجمالي المفقود" value={String(reminders.length)} sub="تقارير وبيانات" icon={<AlertTriangle size={18} className="text-purple-600"/>} accent="purple"/>
+        <KpiCard label="لم تُرسَل بعد" value={String(remSummary?.notSent ?? notSent.length)} sub="تنتظر إجراءً منك" icon={<Bell size={18} className="text-red-600"/>} accent="red"/>
+        <KpiCard label="تم الإرسال" value={String(remSummary?.sent ?? sent.length)} sub="ينتظر رد الفرع" icon={<Send size={18} className="text-amber-600"/>} accent="amber"/>
+        <KpiCard label="تم الرد" value={String(remSummary?.responded ?? responded.length)} sub="استجاب مدير الفرع" icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
+        <KpiCard label="إجمالي المفقود" value={String(remSummary?.totalMissing ?? reminders.length)} sub="تقارير وبيانات" icon={<AlertTriangle size={18} className="text-purple-600"/>} accent="purple"/>
       </div>
 
       {/* Filters: Module + Branch search + Brand + Excel */}
