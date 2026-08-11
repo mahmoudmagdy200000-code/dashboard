@@ -6490,7 +6490,7 @@ const sAddMins = (t:string, n:number) => { const tot=(sToMins(t)+n+1440)%1440; r
 const sFmtT    = (t:string) => { if(!t||!t.includes(":")) return t; const [h,m]=t.split(":").map(Number); const ap=h<12?"ص":"م"; const h12=h===0?12:h>12?h-12:h; return `${h12}:${String(m).padStart(2,"0")} ${ap}`; };
 type ShiftSlot      = { name:string; start:string; end:string; durH:number };
 type RestShiftCfg   = { restId:string; restName:string; useOverride:boolean; numShifts:number; durH:number; firstStart:string; shifts:ShiftSlot[] };
-type BrandShiftState= { id:string; name:string; color:string; numShifts:number; durH:number; firstStart:string; shifts:ShiftSlot[]; rests:RestShiftCfg[]; saved:boolean };
+type BrandShiftState= { id:string; name:string; color:string; numShifts:number; durH:number; firstStart:string; openingFloat:number; shifts:ShiftSlot[]; rests:RestShiftCfg[]; saved:boolean };
 type ShiftEditState = { idx:number; tmpStart:string; tmpDurH:number } | null;
 const sGenShifts = (num:number, dur:number, start:string): ShiftSlot[] =>
   Array.from({length:num},(_,i)=>{ const s=sAddMins(start,i*dur*60); return { name:SHIFT_NAMES_AR[i], start:s, end:sAddMins(s,dur*60), durH:dur }; });
@@ -6509,7 +6509,8 @@ const sApiToBrand = (cfg:any): BrandShiftState => {
   // scope=branch rows key their identity on branch/owner fields; brand rows on brand.
   const id = String(cfg?.branchId ?? cfg?.ownerId ?? cfg?.brandId ?? "");
   const name = String(cfg?.branchName ?? cfg?.ownerName ?? cfg?.brandName ?? id);
-  return { id, name, color:"#7c3aed", numShifts, durH, firstStart, shifts, rests:[], saved:true };
+  const openingFloat = Number(cfg?.openingFloatHalalas ?? 0) / 100;   // stored halalas → SAR input
+  return { id, name, color:"#7c3aed", numShifts, durH, firstStart, openingFloat, shifts, rests:[], saved:true };
 };
 const sInitBrand = (b:typeof BRANDS_CATALOG[0]): BrandShiftState => {
   const p:{[k:string]:{numShifts:number;durH:number;firstStart:string}} = {
@@ -6517,7 +6518,7 @@ const sInitBrand = (b:typeof BRANDS_CATALOG[0]): BrandShiftState => {
     mcd:{numShifts:4,durH:6,firstStart:"06:00"},  broasted:{numShifts:1,durH:8,firstStart:"09:00"},
   };
   const cfg=p[b.id]||{numShifts:2,durH:8,firstStart:"08:00"};
-  return { id:b.id, name:b.name, color:b.color, ...cfg, shifts:sGenShifts(cfg.numShifts,cfg.durH,cfg.firstStart),
+  return { id:b.id, name:b.name, color:b.color, ...cfg, openingFloat:0, shifts:sGenShifts(cfg.numShifts,cfg.durH,cfg.firstStart),
     rests:b.restaurants.map(r=>({restId:r.id,restName:r.name,useOverride:false,...cfg,shifts:sGenShifts(cfg.numShifts,cfg.durH,cfg.firstStart)})), saved:false };
 };
 
@@ -6694,7 +6695,7 @@ function AccShifts({ navigate, setModal }:PageProps) {
       toast.error(`عدد الورديات (${b.numShifts}) × مدة الوردية (${b.durH} ساعة) = ${b.numShifts*b.durH} ساعة، وهو أكبر من اليوم (24 ساعة).`);
       return;
     }
-    const config = { numShifts: b.numShifts, durationHours: b.durH, firstShiftStart: b.firstStart };
+    const config = { numShifts: b.numShifts, durationHours: b.durH, firstShiftStart: b.firstStart, openingFloatHalalas: Math.round((b.openingFloat || 0) * 100) };
     const onSuccess = () => { setBrandCfgs(p=>p.map(x=>x.id===bId?{...x,saved:true}:x)); setSavedBrand(bId); setTimeout(()=>setSavedBrand(null),2200); };
     // Route to the branch endpoint in branch scope; the brand endpoint otherwise.
     if (shiftScope === "branch") saveBranchShiftCfgMut.mutate({ branchId: bId, config }, { onSuccess });
@@ -6899,6 +6900,20 @@ function AccShifts({ navigate, setModal }:PageProps) {
                   onStart={s=>{ updBrand(selBrand.id,{firstStart:s, shifts:sGenShifts(selBrand.numShifts,selBrand.durH,s)}); setBrandEdit(null); }}
                   onGen={()=>doAutoGen(selBrand.id)}
                 />
+
+                {/* Opening cash float — bridged to every generated shift (T08 §2.1). */}
+                <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50/60">
+                  <div>
+                    <p className="text-xs font-bold text-gray-600">الرصيد الافتتاحي للدرج</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">المبلغ النقدي الابتدائي في درج كل شفت — يظهر للكاشير على الموبايل</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <input type="number" min={0} step="0.01" value={selBrand.openingFloat || 0}
+                      onChange={e=>updBrand(selBrand.id,{openingFloat: Math.max(0, parseFloat(e.target.value)||0)})}
+                      className="w-28 text-sm border border-gray-200 rounded-lg px-3 py-1.5 text-left font-mono outline-none focus:border-purple-400" dir="ltr"/>
+                    <span className="text-xs text-gray-500 font-semibold">ر.س</span>
+                  </div>
+                </div>
 
                 {/* Generated shifts list */}
                 {selBrand.shifts.length > 0 && (
