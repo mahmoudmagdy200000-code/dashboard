@@ -359,6 +359,10 @@ export function useSendInventoryConfirmation() {
   });
 }
 
+// 2026-08-11 — the PUT response now reports whether the list actually reached the
+// branch's app worksheet: { savedCount, appListCount, newMobileItems, appListError,
+// pushedAt }. Previously the save could "succeed" (200) while nothing reached the
+// branch. Only toast green when appListError === null AND appListCount === savedCount.
 export function useSavePlatformDailyInventoryList() {
   const qc = useQueryClient();
   return useMutation({
@@ -372,11 +376,24 @@ export function useSavePlatformDailyInventoryList() {
       );
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       qc.invalidateQueries({
         queryKey: ["platform", "accountant", "inventory"],
       });
-      toast.success("تم حفظ قائمة الجرد اليومي");
+      const savedCount = res?.savedCount;
+      const appListCount = res?.appListCount;
+      const appListError = res?.appListError ?? null;
+      const reachedBranch =
+        appListError === null &&
+        (appListCount === undefined || appListCount === savedCount);
+      if (reachedBranch) {
+        toast.success("تم حفظ قائمة الجرد اليومي وإرسالها للفرع");
+      } else {
+        toast.error(
+          appListError ??
+            `تم الحفظ لكن لم تصل كل الأصناف للفرع (${appListCount ?? "?"}/${savedCount ?? "?"})`,
+        );
+      }
     },
     onError: (e) => toast.error(getErrorMessage(e, "ar")),
   });

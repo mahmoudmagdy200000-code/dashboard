@@ -6244,9 +6244,19 @@ function AccInventoryItems({ navigate }:PageProps) {
     : []) as {id:string;name:string;cat:string;unit:string}[];
   const itemIdByName: Record<string,string> = Object.fromEntries(catalog.map(it=>[it.name,it.id]));
 
+  // 2026-08-11: catalog defaults to raw_material (أصناف المشتريات) — the branch
+  // counts raw materials, not menu items. Trust `counts` for the real total, and
+  // when rawMaterial===0 the empty screen is a data (upload) issue, not a bug.
+  const catCounts = (catalogApi as any)?.counts ?? null;
+  const rawMaterialCount = catCounts && typeof catCounts.rawMaterial === "number" ? catCounts.rawMaterial : catalog.length;
+  const catalogResponded = isApiBrands && catalogApi !== undefined;
+  const catalogNoRawMaterial = catalogResponded && rawMaterialCount === 0;
+
   const [catFilter, setCatFilter] = useState("الكل");
   const [savedBranch, setSavedBranch] = useState<string|null>(null);
   const [savedCount, setSavedCount] = useState<number|null>(null);
+  // 2026-08-11: null = list reached the branch (green); non-null = it didn't (warn).
+  const [saveWarn, setSaveWarn] = useState<string|null>(null);
 
   // ── Current daily list for selBranch (API-first) → seed selection once ───
   const { data: dailyApi } = usePlatformInventoryDailyList(selBranchReal ? selBranchId : undefined);
@@ -6282,11 +6292,19 @@ function AccInventoryItems({ navigate }:PageProps) {
       // Real persist: resolve selected item NAMES → catalogItemIds, then PUT.
       const ids = (dailyLists[selBranch]||[]).map(n=>itemIdByName[n]).filter(Boolean);
       savePut.mutate({ branchId: selBranchId, items: ids }, {
-        onSuccess: (res:any)=>{ setSavedBranch(selBranch); setSavedCount(typeof res?.savedCount==="number" ? res.savedCount : ids.length); },
+        onSuccess: (res:any)=>{
+          const sc = typeof res?.savedCount==="number" ? res.savedCount : ids.length;
+          const alc = typeof res?.appListCount==="number" ? res.appListCount : sc;
+          const err = res?.appListError ?? null;
+          setSavedBranch(selBranch);
+          setSavedCount(sc);
+          // Only claim success when the list actually reached the branch worksheet.
+          setSaveWarn(err !== null ? String(err) : (alc !== sc ? `تم حفظ ${sc} صنف لكن وصل ${alc} فقط إلى تطبيق الفرع — أعد المحاولة.` : null));
+        },
       });
     } else {
       // Demo branch (no real id): local-only confirmation.
-      setSavedBranch(selBranch); setSavedCount(dailyList.length);
+      setSavedBranch(selBranch); setSavedCount(dailyList.length); setSaveWarn(null);
     }
   };
 
@@ -6304,7 +6322,7 @@ function AccInventoryItems({ navigate }:PageProps) {
         </Btn>
       </div>
 
-      {savedBranch && (
+      {savedBranch && (saveWarn===null ? (
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-3">
           <CheckCircle2 size={16} className="text-emerald-600 flex-shrink-0"/>
           <div>
@@ -6313,7 +6331,16 @@ function AccInventoryItems({ navigate }:PageProps) {
           </div>
           <button onClick={()=>setSavedBranch(null)} className="mr-auto text-emerald-400 hover:text-emerald-600"><X size={14}/></button>
         </div>
-      )}
+      ) : (
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex items-center gap-3">
+          <AlertTriangle size={16} className="text-amber-600 flex-shrink-0"/>
+          <div>
+            <p className="text-amber-800 font-semibold text-sm">تم الحفظ لكن لم يصل للفرع بالكامل</p>
+            <p className="text-amber-600 text-xs">{saveWarn}</p>
+          </div>
+          <button onClick={()=>setSavedBranch(null)} className="mr-auto text-amber-400 hover:text-amber-600"><X size={14}/></button>
+        </div>
+      ))}
 
       {brands.length===0 ? (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-10">
@@ -6396,12 +6423,18 @@ function AccInventoryItems({ navigate }:PageProps) {
               </button>
             ))}
           </div>
-          <Card title={`كتالوج ${selBrand} — ${shown.length} صنف`} actions={
+          <Card title={`كتالوج ${selBrand} — ${catFilter==="الكل" ? rawMaterialCount : shown.length} صنف`} actions={
             <div className="flex gap-3">
               <button onClick={()=>{ setSavedBranch(null); setDailyLists(p=>({...p,[selBranch]:catalog.map(i=>i.name)})); }} className="text-xs text-purple-600 hover:underline">تحديد الكل</button>
               <button onClick={()=>{ setSavedBranch(null); setDailyLists(p=>({...p,[selBranch]:[]})); }} className="text-xs text-red-500 hover:underline">إلغاء الكل</button>
             </div>
           }>
+            {catalogNoRawMaterial ? (
+              <div className="p-6">
+                <EmptyState icon="📥" title="لم يُرفع ملف أصناف المشتريات لهذه العلامة"
+                  desc="أصناف الجرد اليومي مصدرها المواد الخام (أصناف المشتريات). ارفع ملف أصناف المشتريات لهذه العلامة أولاً لتظهر هنا."/>
+              </div>
+            ) : (
             <div className="p-4 grid grid-cols-2 gap-2.5">
               {shown.map(item=>{
                 const isSelected = dailyList.includes(item.name);
@@ -6424,6 +6457,7 @@ function AccInventoryItems({ navigate }:PageProps) {
                 );
               })}
             </div>
+            )}
           </Card>
         </div>
 
