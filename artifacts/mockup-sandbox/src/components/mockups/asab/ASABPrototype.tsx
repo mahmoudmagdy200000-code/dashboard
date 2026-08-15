@@ -262,6 +262,7 @@ import {
   useExportShifts,
 } from "../../../api/queries";
 import { isApiError } from "../../../api/errors";
+import { APP_BASE_URL } from "../../../api/client";
 import { NotificationBell } from "../../shared/NotificationBell";
 import { GlobalSearch } from "../../shared/GlobalSearch";
 import { ClarifyModal } from "../../shared/ClarifyModal";
@@ -4043,6 +4044,22 @@ function ConvertToAssetModal({
   );
 }
 
+// One real invoice attachment (GET /operations/{id}.expenses.invoices[].attachments).
+type AttFile = { id:string; filename:string; publicUrl:string; label?:string|null };
+const isImageFile = (name:string) => /\.(jpe?g|png|webp|gif|bmp|heic|heif|tiff?)$/i.test(name || "");
+// The backend may return a RELATIVE publicUrl (e.g. "/storage/…"). A bare <img>/<a>
+// resolves that against the frontend origin (the static host), not the API host, so
+// it 404s. Prefix APP_BASE_URL for anything that isn't already absolute.
+const resolveAssetUrl = (u?:string|null):string => {
+  const s = String(u ?? "");
+  if (!s) return "";
+  if (/^(data:|blob:)/i.test(s)) return s; // leave inline / object URLs untouched
+  const abs = /^https?:/i.test(s) ? s : `${APP_BASE_URL}${s.startsWith("/") ? "" : "/"}${s}`;
+  // Collapse accidental double slashes in the path (backend emits "host//storage/…")
+  // while preserving the "scheme://" separator.
+  return abs.replace(/(^https?:\/\/)|\/{2,}/gi, (_m, proto) => proto || "/");
+};
+
 function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveOp, rejectOp, bulkApprove }:PageProps) {
   const { t, dir, lang } = useLang();
   const en = lang === "en";
@@ -4058,7 +4075,7 @@ function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveOp, reje
   const [brand,            setBrand]            = useState("");
   const [selectedDay,      setSelectedDay]      = useState("all");
   const [verifiedInvoices, setVerifiedInvoices] = useState<Record<string,boolean>>({});
-  const [attachModal,      setAttachModal]      = useState<{opId:string; invNum:string; idx:number; total:number}|null>(null);
+  const [attachModal,      setAttachModal]      = useState<{opId:string; invNum:string; idx:number; files:AttFile[]}|null>(null);
   const [convertModal,     setConvertModal]     = useState<{opId:string; invNum:string; vendor:string; desc:string; amount:number; branch:string; date:string}|null>(null);
   const convertedInvNums = getConvertedInvNums();
 
@@ -4068,25 +4085,41 @@ function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveOp, reje
   // and use its enriched invoices (real supplier/vendor, exact halalas, verify
   // + conversion state) instead; fall back to the simulation when absent.
   const { data: expandedDetail } = useOperation(expandedId);
+  // Operation-level attachments (GET /operations/{id}/attachments) — used as a
+  // fallback when a specific invoice row carries no attachments[] of its own.
+  const { data: opAttachments = [] } = useOperationAttachments(expandedId);
+  const opFiles: AttFile[] = (opAttachments as any[])
+    .map(a=>({ id:String(a?.id ?? ""), filename:String(a?.filename ?? ""), publicUrl:String(a?.publicUrl ?? ""), label:a?.label ?? null }))
+    .filter(a=>a.publicUrl);
   const realExpandedInvoices = (expandedDetail as any)?.expenses?.invoices as
-    | Array<{ index:number; invNum:string; vendor:string; desc:string; date:string; preTaxHalalas:number; vat15Halalas:number; inclTaxHalalas:number; verified:boolean; convertedToAsset:boolean; attachmentCount:number }>
+    | Array<{ index:number; invNum:string; vendor:string; desc:string; date:string; preTaxHalalas:number; vat15Halalas:number; inclTaxHalalas:number; verified:boolean; convertedToAsset:boolean; attachmentCount:number; attachments?:Array<{id:string; filename:string; publicUrl:string; label?:string|null}> }>
     | undefined;
-  type ExpInvRow = { invNum:string; vendor:string; desc:string; amount:number; date:string; attachCount:number; _index?:number; _verified?:boolean; _preTax?:number; _vat?:number; _converted?:boolean };
+  type ExpInvRow = { invNum:string; vendor:string; desc:string; amount:number; date:string; attachCount:number; _index?:number; _verified?:boolean; _preTax?:number; _vat?:number; _converted?:boolean; _attachments?:AttFile[] };
   const invoicesFor = (opId: string): ExpInvRow[] => {
     if (opId === expandedId && realExpandedInvoices && realExpandedInvoices.length > 0) {
-      return realExpandedInvoices.map(r => ({
-        invNum: r.invNum,
-        vendor: r.vendor || "—",
-        desc: r.desc || "",
-        amount: (r.inclTaxHalalas ?? 0) / 100,
-        date: r.date || "",
-        attachCount: r.attachmentCount ?? 0,
-        _index: r.index,
-        _verified: r.verified,
-        _preTax: (r.preTaxHalalas ?? 0) / 100,
-        _vat: (r.vat15Halalas ?? 0) / 100,
-        _converted: r.convertedToAsset,
-      }));
+      return realExpandedInvoices.map(r => {
+        // Real invoice files (2026-08-14): each { id, filename, publicUrl, label }.
+        const files: AttFile[] = Array.isArray(r.attachments)
+          ? r.attachments.map(a => ({ id:String(a?.id ?? ""), filename:String(a?.filename ?? ""), publicUrl:String(a?.publicUrl ?? ""), label:a?.label ?? null })).filter(a=>a.publicUrl)
+          : [];
+        return {
+          invNum: r.invNum,
+          // Quick-cash expenses carry no invoice_details; the bridge synthesises a
+          // single row where the vendor = expense supplier → quick-cash supplier
+          // (2026-08-14). supplierName is the payload-root fallback for older rows.
+          vendor: r.vendor || (r as any).supplierName || "—",
+          desc: r.desc || "",
+          amount: (r.inclTaxHalalas ?? 0) / 100,
+          date: r.date || "",
+          attachCount: r.attachmentCount ?? files.length,
+          _index: r.index,
+          _verified: r.verified,
+          _preTax: (r.preTaxHalalas ?? 0) / 100,
+          _vat: (r.vat15Halalas ?? 0) / 100,
+          _converted: r.convertedToAsset,
+          _attachments: files,
+        };
+      });
     }
     return INVOICES[opId] || INVOICES["default"];
   };
@@ -4104,7 +4137,21 @@ function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveOp, reje
   const apiExpDayOptions = (expensesApi as any)?.dayOptions;
   const EXP_DAY_OPTIONS = (apiExpDayOptions?.length > 0 ? apiExpDayOptions : FALLBACK_EXP_DAY_OPTIONS) as any[];
 
-  const brandOpts = brandOptionsFromOps(ops);
+  // 2026-08-14: brand/branch filters come from the tenant-scoped lookups
+  // (GET /company/me/lookups/brands · …/branches?brandId=). Both are already
+  // narrowed to the caller's assignment server-side — do NOT re-filter client-side.
+  // Fall back to ops-derived options only until the lookup responds (never empty).
+  const { data: brandLookup } = useLookup("brands");
+  const { data: branchLookup } = useLookup("branches", brand ? { brandId: brand } : undefined);
+  const brandOpts = (Array.isArray(brandLookup) && brandLookup.length
+    ? brandLookup.map(b=>({ id:String(b.id), name:String(b.name || b.nameAr || "") }))
+    : brandOptionsFromOps(ops)).filter(b=>b.id && b.name);
+  // Use `name` (not nameAr): the branch filter matches by name against op.branch
+  // (= branchName from the same source), so the strings must be identical.
+  const branchFilterNames = (Array.isArray(branchLookup) && branchLookup.length
+    ? branchLookup.map(b=>String(b.name))
+    : [...new Set(ops.filter(o=>o.moduleKey==="expenses").map(o=>o.branch))]
+  ).filter(n=>n && n!=="—");
   const mOps    = ops.filter(o=>o.moduleKey==="expenses");
   const filtered = applyFilters(ops, filters, "expenses").filter(o=>!brand || o.brandId===brand);
   const pending  = mOps.filter(o=>o.status==="pending");
@@ -4121,10 +4168,6 @@ function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveOp, reje
   };
   const apiInvoices = (expensesApi as any)?.invoices;
   const INVOICES: Record<string, Array<{invNum:string; vendor:string; desc:string; amount:number; date:string; attachCount:number}>> = (apiInvoices && Object.keys(apiInvoices).length > 0 ? apiInvoices : FALLBACK_INVOICES) as Record<string, Array<{invNum:string; vendor:string; desc:string; amount:number; date:string; attachCount:number}>>;
-  // Simulated attachment images (represented as colored placeholder tiles)
-  const FALLBACK_ATTACH_LABELS = ["صورة الفاتورة الأمامية","صورة الباركود","صورة الختم والتوقيع","صورة المبلغ والإجمالي"];
-  const apiAttachLabels = (expensesApi as any)?.attachLabels;
-  const ATTACH_LABELS = (apiAttachLabels?.length > 0 ? apiAttachLabels : FALLBACK_ATTACH_LABELS) as any[];
 
   return (
     <div className="space-y-5" dir={dir}>
@@ -4158,7 +4201,7 @@ function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveOp, reje
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع","Branch")}</label>
             <select value={filters.branch} onChange={e=>setFilters(p=>({...p,branch:e.target.value===t("الكل","All")?"":e.target.value}))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
-              {[t("الكل","All"),...BRANCHES].map(b=><option key={b} value={b===t("الكل","All")?"":b}>{b}</option>)}
+              {[t("الكل","All"),...branchFilterNames].map(b=><option key={b} value={b===t("الكل","All")?"":b}>{b}</option>)}
             </select>
           </div>
           <div>
@@ -4173,7 +4216,7 @@ function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveOp, reje
           </div>
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("العلامة التجارية","Brand")}</label>
-            <select value={brand} onChange={e=>setBrand(e.target.value)} disabled={brandOpts.length===0} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-400">
+            <select value={brand} onChange={e=>{ setBrand(e.target.value); setFilters(p=>({...p,branch:""})); }} disabled={brandOpts.length===0} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 disabled:bg-gray-50 disabled:text-gray-400">
               <option value="">{t("الكل","All")}</option>
               {brandOpts.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
@@ -4342,9 +4385,9 @@ function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveOp, reje
                                 <td className="px-3 py-2 text-center font-mono text-amber-600 bg-amber-50/20">{fmtAmt(vatAmt)} {t("ر.س","SAR")}</td>
                                 <td className="px-3 py-2 text-center font-mono font-bold text-emerald-700 bg-emerald-50/20">{fmtAmt(inv.amount)} {t("ر.س","SAR")}</td>
                                 <td className="px-3 py-2 text-center">
-                                  <button onClick={()=>setAttachModal({opId:op.id, invNum:inv.invNum, idx:0, total:inv.attachCount})}
+                                  <button onClick={()=>setAttachModal({opId:op.id, invNum:inv.invNum, idx:0, files: (inv._attachments && inv._attachments.length ? inv._attachments : opFiles)})}
                                     className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all">
-                                    <Paperclip size={10}/><span className="font-semibold">{inv.attachCount}</span>
+                                    <Paperclip size={10}/><span className="font-semibold">{(inv._attachments && inv._attachments.length ? inv._attachments.length : (opFiles.length || inv.attachCount))}</span>
                                   </button>
                                 </td>
                                 <td className="px-3 py-2 text-center">
@@ -4415,47 +4458,75 @@ function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveOp, reje
       )}
 
       {/* Attachment Viewer Modal */}
-      {attachModal && (
+      {attachModal && (()=>{
+        const files = attachModal.files;
+        const total = files.length;
+        const cur = total>0 ? files[Math.min(attachModal.idx, total-1)] : null;
+        const curName = cur?.filename || "";
+        const img = cur ? isImageFile(curName) : false;
+        return (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6" onClick={()=>setAttachModal(null)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e=>e.stopPropagation()} dir="rtl">
             <div className="px-5 py-4 bg-gradient-to-l from-blue-600 to-blue-700 text-white flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-base">مرفقات الفاتورة — {attachModal.invNum}</h3>
-                <p className="text-blue-200 text-xs mt-0.5">مرفق {attachModal.idx+1} من {attachModal.total}</p>
+                <p className="text-blue-200 text-xs mt-0.5">{total>0 ? `مرفق ${attachModal.idx+1} من ${total}` : t("لا توجد مرفقات","No attachments")}</p>
               </div>
               <button onClick={()=>setAttachModal(null)} className="text-blue-200 hover:text-white"><X size={18}/></button>
             </div>
-            {/* Attachment preview area */}
+            {/* Attachment preview area — real file from the backend */}
             <div className="p-5">
-              <div className="bg-gray-100 rounded-xl h-52 flex flex-col items-center justify-center border-2 border-dashed border-gray-300">
-                <Paperclip size={36} className="text-gray-300 mb-3"/>
-                <p className="text-sm font-semibold text-gray-600">{ATTACH_LABELS[attachModal.idx % ATTACH_LABELS.length]}</p>
-                <p className="text-xs text-gray-400 mt-1">invoice_{attachModal.invNum}_p{attachModal.idx+1}.pdf</p>
-                <button className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-all">
-                  <Eye size={14}/> {t("عرض الملف الكامل","View Full File")}
-                </button>
-              </div>
-              <div className="flex items-center justify-between mt-4">
-                <button disabled={attachModal.idx===0}
-                  onClick={()=>setAttachModal(p=>p?{...p,idx:p.idx-1}:p)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                  <ChevronRight size={14}/> {t("السابق","Prev")}
-                </button>
-                <div className="flex gap-1.5">
-                  {Array.from({length:attachModal.total},(_,i)=>(
-                    <button key={i} onClick={()=>setAttachModal(p=>p?{...p,idx:i}:p)}
-                      className={`w-2.5 h-2.5 rounded-full transition-all ${i===attachModal.idx?"bg-blue-600":"bg-gray-300"}`}/>
-                  ))}
+              {!cur ? (
+                <div className="bg-gray-50 rounded-xl h-52 flex flex-col items-center justify-center border-2 border-dashed border-gray-200">
+                  <Paperclip size={36} className="text-gray-300 mb-3"/>
+                  <p className="text-sm font-semibold text-gray-500">{t("لا يوجد ملف مرفق لهذه الفاتورة","No file attached to this invoice")}</p>
                 </div>
-                <button disabled={attachModal.idx===attachModal.total-1}
-                  onClick={()=>setAttachModal(p=>p?{...p,idx:p.idx+1}:p)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                  {t("التالي","Next")} <ChevronLeft size={14}/>
-                </button>
-              </div>
+              ) : img ? (
+                <a href={resolveAssetUrl(cur.publicUrl)} target="_blank" rel="noopener noreferrer" className="block">
+                  <img src={resolveAssetUrl(cur.publicUrl)} alt={curName}
+                    onError={e=>{ e.currentTarget.style.display="none"; const n=e.currentTarget.nextElementSibling as HTMLElement|null; if(n) n.style.display="flex"; }}
+                    className="w-full h-52 object-contain rounded-xl bg-gray-100 border border-gray-200"/>
+                  <div style={{display:"none"}} className="w-full h-52 flex-col items-center justify-center rounded-xl bg-gray-100 border-2 border-dashed border-gray-300">
+                    <FileText size={36} className="text-gray-400 mb-2"/>
+                    <span className="text-sm text-blue-600 font-semibold">{t("عرض الملف الكامل","View Full File")}</span>
+                    <span className="text-[10px] text-gray-400 mt-1 truncate max-w-[80%]">{curName}</span>
+                  </div>
+                </a>
+              ) : (
+                <div className="bg-gray-100 rounded-xl h-52 flex flex-col items-center justify-center border-2 border-dashed border-gray-300">
+                  <FileText size={36} className="text-gray-400 mb-3"/>
+                  <p className="text-sm font-semibold text-gray-600">{cur.label || t("مستند الفاتورة","Invoice document")}</p>
+                  <p className="text-xs text-gray-400 mt-1 truncate max-w-[80%]">{curName}</p>
+                  <a href={resolveAssetUrl(cur.publicUrl)} target="_blank" rel="noopener noreferrer"
+                    className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-all">
+                    <Eye size={14}/> {t("عرض الملف الكامل","View Full File")}
+                  </a>
+                </div>
+              )}
+              {total>1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <button disabled={attachModal.idx===0}
+                    onClick={()=>setAttachModal(p=>p?{...p,idx:p.idx-1}:p)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                    <ChevronRight size={14}/> {t("السابق","Prev")}
+                  </button>
+                  <div className="flex gap-1.5">
+                    {Array.from({length:total},(_,i)=>(
+                      <button key={i} onClick={()=>setAttachModal(p=>p?{...p,idx:i}:p)}
+                        className={`w-2.5 h-2.5 rounded-full transition-all ${i===attachModal.idx?"bg-blue-600":"bg-gray-300"}`}/>
+                    ))}
+                  </div>
+                  <button disabled={attachModal.idx===total-1}
+                    onClick={()=>setAttachModal(p=>p?{...p,idx:p.idx+1}:p)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                    {t("التالي","Next")} <ChevronLeft size={14}/>
+                  </button>
+                </div>
+              )}
             </div>
             <div className="px-5 pb-4 flex gap-2 justify-end">
-              <Btn size="sm"><Download size={12}/> {t("تحميل","Download")}</Btn>
+              {cur && <a href={resolveAssetUrl(cur.publicUrl)} download={curName} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50"><Download size={12}/> {t("تحميل","Download")}</a>}
               <Btn size="sm" variant="success" onClick={()=>{
                 toggleInvoiceVerify(`${attachModal.opId}-${attachModal.invNum}`);
                 setAttachModal(null);
@@ -4463,7 +4534,8 @@ function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveOp, reje
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Convert to Asset Modal */}
       {convertModal && (
@@ -4951,8 +5023,8 @@ function AccAttachmentsCard({ operationId, t }:{ operationId:string; t:(ar:strin
                 <div><p className="text-xs font-medium text-gray-700">{att.filename}</p><p className="text-[10px] text-gray-400">{Math.round((att.size||0)/1024)} KB</p></div>
               </div>
               <div className="flex gap-1">
-                <a href={att.publicUrl} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded hover:bg-gray-200"><Eye size={11} className="text-gray-500"/></a>
-                <a href={att.publicUrl} download className="p-1.5 rounded hover:bg-gray-200"><Download size={11} className="text-gray-500"/></a>
+                <a href={resolveAssetUrl(att.publicUrl)} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded hover:bg-gray-200"><Eye size={11} className="text-gray-500"/></a>
+                <a href={resolveAssetUrl(att.publicUrl)} download className="p-1.5 rounded hover:bg-gray-200"><Download size={11} className="text-gray-500"/></a>
               </div>
             </div>
           );

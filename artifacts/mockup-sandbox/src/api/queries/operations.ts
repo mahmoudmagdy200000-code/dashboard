@@ -7,8 +7,23 @@ import { toast } from "sonner";
 import { api } from "../client";
 import type { AuditEvent, Operation, Page } from "../types";
 import type { OperationAttachment } from "../types/company";
-import { getErrorMessage } from "../errors";
+import { getErrorMessage, isApiError } from "../errors";
 import { queryKeys, type OperationsFilter } from "./keys";
+
+// 2026-08-14 — a brand owner may approve/reject a quick-cash expense on the mobile
+// app; the mirrored operation is then closed in the same transaction, so the
+// portal's approve/reject/final-approve answer 409 OP_NOT_PENDING / OP_ALREADY_FINAL.
+// Turn that into a clear message instead of a raw error.
+function decidedElsewhereMessage(e: unknown): string | null {
+  if (
+    isApiError(e) &&
+    e.status === 409 &&
+    (e.code === "OP_NOT_PENDING" || e.code === "OP_ALREADY_FINAL")
+  ) {
+    return "تم البتّ في هذه العملية بالفعل (اعتمدها أو رفضها مالك العلامة من تطبيق الموبايل).";
+  }
+  return null;
+}
 
 // ─── List operations ─────────────────────────────────────────────────────────
 // Canonical path per T03: bare `/operations` (the `/company/me/operations`
@@ -64,10 +79,20 @@ export function useApproveOperation() {
       qc.invalidateQueries({ queryKey: queryKeys.operationAudit(op.id) });
       toast.success("تم اعتماد العملية");
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e) => {
+      const decided = decidedElsewhereMessage(e);
+      if (decided) {
+        qc.invalidateQueries({ queryKey: ["operations"] });
+        toast.error(decided);
+      } else toast.error(getErrorMessage(e, "ar"));
+    },
   });
 }
 
+// 2026-08-14 — role-aware reject route (accountant + head). The portal previously
+// had no reject endpoint (approve only); the canonical bare path 404/403'd for the
+// accountant. This handler also implements: a head rejecting an already-approved
+// record returns it to the accountant (returned_to_accountant), not to the branch.
 export function useRejectOperation() {
   const qc = useQueryClient();
   return useMutation({
@@ -80,10 +105,10 @@ export function useRejectOperation() {
       reason: string;
       notes?: string;
     }) => {
-      const res = await api.post<Operation>(`/operations/${id}/reject`, {
-        reason,
-        notes,
-      });
+      const res = await api.post<Operation>(
+        `/company/me/operations/${id}/reject`,
+        { reason, notes },
+      );
       return res.data;
     },
     onSuccess: (op) => {
@@ -92,17 +117,24 @@ export function useRejectOperation() {
       qc.invalidateQueries({ queryKey: queryKeys.operationAudit(op.id) });
       toast.success("تم رفض العملية");
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e) => {
+      const decided = decidedElsewhereMessage(e);
+      if (decided) {
+        qc.invalidateQueries({ queryKey: ["operations"] });
+        toast.error(decided);
+      } else toast.error(getErrorMessage(e, "ar"));
+    },
   });
 }
 
 // ─── Request clarification (non-terminal — status is unchanged) ─────────────
+// 2026-08-14 — role-aware company-scoped route (accountant + head).
 export function useRequestClarification() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, message }: { id: string; message: string }) => {
       const res = await api.post<Operation>(
-        `/operations/${id}/request-clarification`,
+        `/company/me/operations/${id}/request-clarification`,
         { message },
       );
       return res.data;
@@ -174,7 +206,13 @@ export function useFinalApprove() {
       qc.invalidateQueries({ queryKey: queryKeys.operationAudit(op.id) });
       toast.success("تم الاعتماد النهائي");
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e) => {
+      const decided = decidedElsewhereMessage(e);
+      if (decided) {
+        qc.invalidateQueries({ queryKey: ["operations"] });
+        toast.error(decided);
+      } else toast.error(getErrorMessage(e, "ar"));
+    },
   });
 }
 

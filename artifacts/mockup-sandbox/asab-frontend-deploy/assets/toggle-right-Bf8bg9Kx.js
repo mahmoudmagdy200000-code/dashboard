@@ -1,1 +1,0 @@
-import{c as e}from"./index-DT_fWnQ1.js";const c=[["circle",{cx:"9",cy:"12",r:"3",key:"u3jwor"}],["rect",{width:"20",height:"14",x:"2",y:"5",rx:"7",key:"g7kal2"}]],r=e("toggle-left",c);const t=[["circle",{cx:"15",cy:"12",r:"3",key:"1afu0r"}],["rect",{width:"20",height:"14",x:"2",y:"5",rx:"7",key:"g7kal2"}]],g=e("toggle-right",t);export{g as T,r as a};
