@@ -9,7 +9,7 @@
 const REVIEW_ERROR_AR: Record<string, string> = {
   "REPORT_REVIEW_ACTOR_REQUIRED": "هذا الإجراء يتطلب صلاحية مراجعة التقرير",
   "NOT_AN_ACCOUNTANT": "هذا الإجراء متاح للمحاسب فقط",
-  "ACCOUNTANT_UNAUTHORIZED_FOR_BRANCH": "المحاسب غير مخوّل لهذه الفرع",
+  "ACCOUNTANT_UNAUTHORIZED_FOR_BRANCH": "المحاسب غير مخوّل لهذا الفرع",
   "ACCOUNTANT_INACTIVE": "حساب المحاسب غير نشط",
   "DAY_REPORT_NOT_SUBMITTED": "يجب إرسال تقرير اليوم أولًا",
   "DAY_MEMBER_NOT_FINAL_CURRENT": "يجب اعتماد جميع ورديات اليوم أولًا وبالحالة الحالية",
