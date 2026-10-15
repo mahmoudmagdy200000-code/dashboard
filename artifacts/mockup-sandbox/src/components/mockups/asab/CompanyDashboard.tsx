@@ -62,6 +62,7 @@ import {
   useSavedBuilderReports, useRunSavedBuilderReport,
 } from "../../../api/queries";
 import { apiOpToCOp, sumCOpAmounts, type COp, type COpStatus, type CMatch, type CModKey } from "./operationMapping";
+import { formatShiftHalalas, getShiftCountEvidence, getShiftStatusDisplay } from "./shiftCountEvidence";
 import type {
   Asset, ExpenseInvoiceRow,
   PurchaseLine, PurchasesBlock, Supplier, PurchaseReturn, PurchaseEnumsCatalogue,
@@ -4523,13 +4524,6 @@ function AccCompanyAssets() {
 // ═══════════════════════════════════════════════════
 /// ACCOUNTANT — SHIFTS MODULE (T08)
 // ═══════════════════════════════════════════════════
-const CSHIFT_STATUS: Record<string,{cls:string;label:string}> = {
-  active:         { cls:"bg-emerald-50 text-emerald-700 border border-emerald-200", label:"نشط" },
-  late:           { cls:"bg-red-50 text-red-700 border border-red-200",             label:"تأخير" },
-  pending_review: { cls:"bg-amber-50 text-amber-700 border border-amber-200",       label:"بانتظار المراجعة" },
-  closed:         { cls:"bg-gray-100 text-gray-600 border border-gray-200",         label:"مغلق" },
-};
-
 // One employee row for the cash-gap split (empNumber → name lookup).
 function ShiftSplitRow({ branchId, row, onField, onRemove, canRemove }:{
   branchId:string; row:{empNumber:string;amount:string};
@@ -4683,7 +4677,7 @@ function ShiftConfigCard({ cfg }:{ cfg:ShiftConfig }) {
 }
 
 function AccCompanyShifts({ ops }:{ ops:COp[] }) {
-  const { t, dir } = useCLang();
+  const { t, dir, lang } = useCLang();
   type ShiftTab = "live"|"setup"|"close"|"history";
   const [tab,          setTab]          = useState<ShiftTab>("live");
   const [contactShift, setContactShift] = useState<Shift|null>(null);
@@ -4716,7 +4710,7 @@ function AccCompanyShifts({ ops }:{ ops:COp[] }) {
       <div className="grid grid-cols-4 gap-4">
         <KpiCard label={t("مفتوح الآن","Open Now")} value={String(kpis?.openNow ?? allLive.length)} sub={t("شفت نشط","active shifts")} icon={<Activity size={18} className="text-amber-600"/>} accent="amber"/>
         <KpiCard label={t("مغلقة اليوم","Closed Today")} value={String(kpis?.closedToday ?? 0)} sub={t("شفت مغلق","closed")} icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
-        <KpiCard label={t("مبيعات اليوم","Today's Sales")} value={fmtH(kpis?.todaySalesHalalas ?? 0)} sub={t("ر.س","SAR")} icon={<Wallet size={18} className="text-purple-600"/>} accent="purple"/>
+        <KpiCard label={t("مبيعات اليوم","Today's Sales")} value={formatShiftHalalas(kpis?.todaySalesHalalas, lang)} sub={t("ر.س","SAR")} icon={<Wallet size={18} className="text-purple-600"/>} accent="purple"/>
         <KpiCard label={t("فروق كاش للمراجعة","Cash Gaps")} value={String(kpis?.cashGapsPendingReview ?? 0)} sub={t("تحتاج مراجعة","needs review")} icon={<AlertTriangle size={18} className="text-red-500"/>} accent="red"/>
       </div>
 
@@ -4742,7 +4736,8 @@ function AccCompanyShifts({ ops }:{ ops:COp[] }) {
           {liveLoading && <p className="text-center text-gray-400 text-sm py-8">{t("جارٍ التحميل…","Loading…")}</p>}
           {!liveLoading && allLive.length===0 && <p className="text-center text-gray-400 text-sm py-8">{t("لا توجد شفتات مفتوحة حالياً","No open shifts")}</p>}
           {allLive.map(s=>{
-            const sc = CSHIFT_STATUS[s.status] ?? CSHIFT_STATUS.active;
+            const sc = getShiftStatusDisplay(s.status, lang);
+            const evidence = getShiftCountEvidence(s, lang);
             const late = s.status==="late" || s.isLate;
             return (
               <div key={s.id} className={`bg-white rounded-xl border-2 shadow-sm overflow-hidden ${late?"border-red-200":"border-amber-200"}`}>
@@ -4760,12 +4755,16 @@ function AccCompanyShifts({ ops }:{ ops:COp[] }) {
                 <div className="grid grid-cols-4 gap-0 divide-x divide-x-reverse divide-gray-100 px-5 py-4">
                   <div className="pl-4"><p className="text-[10px] text-gray-400">{t("الكاشير","Cashier")}</p><p className="font-semibold text-gray-800 text-sm mt-0.5">{s.cashierName}</p></div>
                   <div className="px-4"><p className="text-[10px] text-gray-400">{t("البداية","Start")}</p><p className="font-semibold text-gray-800 text-sm mt-0.5">{new Date(s.startedAt).toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"})}</p></div>
-                  <div className="px-4"><p className="text-[10px] text-gray-400">{t("الطلبات","Orders")}</p><p className="font-bold text-amber-700 text-sm mt-0.5">{s.ordersCount}</p></div>
-                  <div className="pr-4"><p className="text-[10px] text-gray-400">{t("المبيعات","Sales")}</p><p className="font-bold text-purple-700 text-sm mt-0.5 font-mono">{fmtH(s.salesHalalas)}</p></div>
+                  <div className="px-4"><p className="text-[10px] text-gray-400">{t("الطلبات","Orders")}</p><p className="font-bold text-gray-400 text-sm mt-0.5" title={t("عدد الطلبات الفعلي غير متاح","Actual order count is unavailable")}>{evidence.ordersCount}</p></div>
+                  <div className="pr-4"><p className="text-[10px] text-gray-400">{t("المبيعات","Sales")}</p><p className="font-bold text-purple-700 text-sm mt-0.5 font-mono"><bdi>{evidence.sales}</bdi></p></div>
                 </div>
                 <div className="px-5 pb-4 flex items-center justify-between">
-                  <div><p className="text-[10px] text-gray-400">{t("النقد المتوقع","Expected cash")}</p><p className="font-black text-gray-800 text-base font-mono">{fmtH(s.cashExpectedHalalas)} {t("ر.س","SAR")}</p></div>
+                  <div><p className="text-[10px] text-gray-400">{t("النقد المتوقع","Expected cash")}</p><p className="font-black text-gray-800 text-base font-mono"><bdi>{evidence.expectedCash}</bdi> {t("ر.س","SAR")}</p></div>
                   <Btn size="sm" variant="primary" onClick={()=>setTab("close")}><Lock size={11}/> {t("إغلاق الشفت","Close shift")}</Btn>
+                </div>
+                <div className="px-5 pb-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <p>{t("الفرق","Variance")}: <span className={`font-mono font-bold ${evidence.variance.cls}`}><bdi>{evidence.variance.text}</bdi></span></p>
+                  <p className="text-gray-500">{t("نقد وارد معلق (خارج الفرق)","Pending incoming (excluded from variance)")}: <bdi className="font-mono">{evidence.pendingIncoming}</bdi> {t("ر.س","SAR")}</p>
                 </div>
               </div>
             );
@@ -4812,17 +4811,17 @@ function AccCompanyShifts({ ops }:{ ops:COp[] }) {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {history.map(s=>{
-                  const v = s.varianceHalalas ?? 0;
+                  const evidence = getShiftCountEvidence(s, lang);
                   return (
-                    <tr key={s.id} className={`hover:bg-gray-50 ${v!==0?"bg-red-50/30":""}`}>
+                    <tr key={s.id} className={`hover:bg-gray-50 ${evidence.variance.rowCls}`}>
                       <td className="px-4 py-3 font-semibold text-gray-800">{s.branchName}</td>
                       <td className="px-4 py-3 text-gray-700">{s.cashierName}</td>
                       <td className="px-4 py-3 text-center"><Badge className="bg-gray-100 text-gray-600 text-[10px]">{s.shiftType}</Badge></td>
                       <td className="px-4 py-3 text-center text-gray-500">{s.endedAt?new Date(s.endedAt).toLocaleDateString("ar-SA"):"—"}</td>
-                      <td className="px-4 py-3 text-center font-mono font-bold text-gray-800">{fmtH(s.salesHalalas)}</td>
+                      <td className="px-4 py-3 text-center font-mono font-bold text-gray-800"><bdi>{evidence.sales}</bdi></td>
                       <td className="px-4 py-3 text-center">
-                        {v===0 ? <span className="text-[10px] text-emerald-600 font-bold">✓ {t("متطابق","match")}</span>
-                               : <span className="text-[10px] text-red-600 font-bold flex items-center justify-center gap-1"><AlertTriangle size={10}/>{v>0?"+":""}{fmtH(v)}</span>}
+                        <span className={`text-[10px] font-mono font-bold ${evidence.variance.cls}`}><bdi>{evidence.variance.text}</bdi></span>
+                        <p className="text-[10px] text-gray-500 mt-1">{t("نقد وارد معلق (خارج الفرق)","Pending incoming (excluded from variance)")}: <bdi className="font-mono">{evidence.pendingIncoming}</bdi> {t("ر.س","SAR")}</p>
                       </td>
                     </tr>
                   );

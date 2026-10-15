@@ -262,6 +262,7 @@ import {
   useExportShifts,
 } from "../../../api/queries";
 import { isApiError } from "../../../api/errors";
+import { formatShiftHalalas, formatShiftSalesTotal, getShiftCountEvidence, getShiftStatusDisplay } from "./shiftCountEvidence";
 import { APP_BASE_URL } from "../../../api/client";
 import { NotificationBell } from "../../shared/NotificationBell";
 import { GlobalSearch } from "../../shared/GlobalSearch";
@@ -6871,7 +6872,7 @@ function AccShifts({ navigate, setModal }:PageProps) {
       <div className="grid grid-cols-4 gap-4">
         <KpiCard label="مفتوح الآن"          value={String(kpis?.openNow ?? liveShifts.length)}  sub="شفت نشط"          icon={<span className="w-2 h-2 rounded-full bg-emerald-500"/>} accent="emerald"/>
         <KpiCard label="مغلقة اليوم"          value={String(kpis?.closedToday ?? 0)}              sub="شفت مغلق"         icon={<CheckCircle2 size={18} className="text-blue-600"/>} accent="blue"/>
-        <KpiCard label="مبيعات اليوم"         value={fmtAmt((kpis?.todaySalesHalalas ?? 0)/100)}  sub="ر.س"              icon={<TrendingUp size={18} className="text-purple-600"/>} accent="purple"/>
+        <KpiCard label="مبيعات اليوم"         value={formatShiftHalalas(kpis?.todaySalesHalalas)} sub="ر.س"              icon={<TrendingUp size={18} className="text-purple-600"/>} accent="purple"/>
         <KpiCard label="فروق كاش للمراجعة"   value={String(kpis?.cashGapsPendingReview ?? 0)}    sub="تحتاج مراجعة"     icon={<AlertTriangle size={18} className="text-amber-600"/>} accent="amber"/>
       </div>
 
@@ -6908,6 +6909,8 @@ function AccShifts({ navigate, setModal }:PageProps) {
           {liveShifts.map(sh=>{
             const durHrs = shiftDurHrs(sh);
             const late = sh.status==="late" || sh.isLate;
+            const evidence = getShiftCountEvidence(sh);
+            const statusDisplay = getShiftStatusDisplay(sh.status);
             return (
             <div key={sh.id} className={`bg-white rounded-xl border shadow-sm p-4 ${durHrs>8?"border-red-300 bg-red-50/20":late?"border-amber-300 bg-amber-50/20":"border-gray-100"}`}>
               {durHrs>8 && <div className="flex items-center gap-2 text-red-700 text-xs font-semibold mb-3 bg-red-100 rounded-lg px-3 py-2"><AlertTriangle size={13}/> شفت متأخر — {durHrs.toFixed(0)} ساعة بدون إغلاق! يتجاوز الحد المسموح به</div>}
@@ -6918,16 +6921,28 @@ function AccShifts({ navigate, setModal }:PageProps) {
                   <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${late?"bg-amber-500":"bg-emerald-500"}`}/>
                 </div>
                 <div className="flex-1"><p className="font-bold text-gray-800 text-sm">{sh.cashierName}</p><p className="text-xs text-gray-500">{sh.shiftType} · {sh.branchName}</p></div>
-                <Badge className={late?"bg-amber-100 text-amber-700":"bg-emerald-100 text-emerald-700"}>{sh.statusLabelAr ?? (late?"تأخير":"نشط")}</Badge>
+                <Badge className={statusDisplay.cls}>{sh.statusLabelAr ?? statusDisplay.label}</Badge>
               </div>
               <div className="grid grid-cols-3 gap-2 mb-3 text-center">
-                {[{label:"بداية الشفت",val:fmtTime(sh.startedAt)},{label:"المدة",val:`${durHrs.toFixed(1)} ساعة`},{label:"الطلبات",val:String(sh.ordersCount??0)}].map((s,j)=>(
+                {[{label:"بداية الشفت",val:fmtTime(sh.startedAt)},{label:"المدة",val:`${durHrs.toFixed(1)} ساعة`},{label:"الطلبات",val:evidence.ordersCount}].map((s,j)=>(
                   <div key={j} className="bg-gray-50 rounded-lg p-2"><p className="text-[10px] text-gray-400">{s.label}</p><p className="text-sm font-bold text-gray-800">{s.val}</p></div>
                 ))}
               </div>
               <div className="flex items-center justify-between text-sm mb-3">
                 <span className="text-gray-500 text-xs">مبيعات الشفت</span>
-                <span className="font-bold text-purple-700">{fmtAmt((sh.salesHalalas??0)/100)} ر.س</span>
+                <span className="font-bold text-purple-700"><bdi>{evidence.sales}</bdi> ر.س</span>
+              </div>
+              <div className="flex items-center justify-between text-sm mb-3">
+                <span className="text-gray-500 text-xs">النقد المتوقع</span>
+                <span className="font-mono font-bold text-gray-800"><bdi>{evidence.expectedCash}</bdi> ر.س</span>
+              </div>
+              <div className="flex items-center justify-between text-sm mb-3">
+                <span className="text-gray-500 text-xs">الفرق</span>
+                <span className={`font-mono font-bold ${evidence.variance.cls}`}><bdi>{evidence.variance.text}</bdi></span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                <span>نقد وارد معلق (خارج الفرق)</span>
+                <span className="font-mono"><bdi>{evidence.pendingIncoming}</bdi> ر.س</span>
               </div>
               <div className="flex gap-2">
                 {sh.cashierPhone
@@ -7239,19 +7254,21 @@ function AccShifts({ navigate, setModal }:PageProps) {
                   <tr><td colSpan={8} className="text-center text-gray-400 text-sm py-8">لا يوجد سجل شفتات بعد</td></tr>
                 )}
                 {shiftHistory.map(sh=>{
-                  const diffH = sh.varianceHalalas ?? 0;
+                  const evidence = getShiftCountEvidence(sh);
+                  const statusDisplay = getShiftStatusDisplay(sh.status);
                   return (
                   <tr key={sh.id} className="border-b border-gray-50 hover:bg-gray-50/60 last:border-0">
                     <td className="px-4 py-3"><p className="font-semibold text-gray-800 text-xs">{sh.branchName}</p><p className="text-[10px] text-gray-400">{sh.cashierName}</p></td>
                     <td className="px-4 py-3 text-center"><Badge className="bg-gray-100 text-gray-600 text-[10px]">{sh.shiftType}</Badge></td>
                     <td className="px-4 py-3 text-center text-gray-500 text-xs">{fmtDate(sh.endedAt)}</td>
                     <td className="px-4 py-3 text-center font-mono text-xs text-gray-600">{fmtTime(sh.startedAt)} → {fmtTime(sh.endedAt)}</td>
-                    <td className="px-4 py-3 text-center font-bold text-gray-800">{sh.ordersCount??0}</td>
-                    <td className="px-4 py-3 text-center font-mono font-bold text-purple-700">{fmtAmt((sh.salesHalalas??0)/100)} ر.س</td>
+                    <td className="px-4 py-3 text-center font-bold text-gray-400" title="عدد الطلبات الفعلي غير متاح">{evidence.ordersCount}</td>
+                    <td className="px-4 py-3 text-center font-mono font-bold text-purple-700"><bdi>{evidence.sales}</bdi> ر.س</td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`font-mono font-bold text-sm ${diffH===0?"text-emerald-600":diffH>0?"text-blue-600":"text-red-600"}`}>{diffH>0?"+":""}{fmtAmt(diffH/100)} ر.س</span>
+                      <span className={`font-mono font-bold text-sm ${evidence.variance.cls}`}><bdi>{evidence.variance.text}</bdi></span>
+                      <p className="text-[10px] text-gray-500 mt-1">نقد وارد معلق (خارج الفرق): <bdi className="font-mono">{evidence.pendingIncoming}</bdi> ر.س</p>
                     </td>
-                    <td className="px-4 py-3 text-center"><Badge className="bg-emerald-50 text-emerald-700">{sh.statusLabelAr ?? "مغلق"}</Badge></td>
+                    <td className="px-4 py-3 text-center"><Badge className={statusDisplay.cls}>{sh.statusLabelAr ?? statusDisplay.label}</Badge></td>
                   </tr>
                   );
                 })}
@@ -7259,8 +7276,8 @@ function AccShifts({ navigate, setModal }:PageProps) {
               <tfoot className="bg-gray-50/80 border-t border-gray-200">
                 <tr>
                   <td className="px-4 py-2.5 font-bold text-gray-700 text-xs" colSpan={4}>الإجمالي</td>
-                  <td className="px-4 py-2.5 text-center font-bold text-gray-800">{shiftHistory.reduce((s,sh)=>s+(sh.ordersCount??0),0)}</td>
-                  <td className="px-4 py-2.5 text-center font-mono font-black text-purple-700">{fmtAmt(shiftHistory.reduce((s,sh)=>s+(sh.salesHalalas??0),0)/100)} ر.س</td>
+                  <td className="px-4 py-2.5 text-center font-bold text-gray-400" title="عدد الطلبات الفعلي غير متاح">—</td>
+                  <td className="px-4 py-2.5 text-center font-mono font-black text-purple-700"><bdi>{formatShiftSalesTotal(shiftHistory)}</bdi> ر.س</td>
                   <td colSpan={2}/>
                 </tr>
               </tfoot>
