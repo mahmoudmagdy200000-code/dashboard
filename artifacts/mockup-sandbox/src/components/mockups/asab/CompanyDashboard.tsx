@@ -61,7 +61,7 @@ import {
   useReportBuilderFields, usePreviewBuilderReport, useSaveBuilderReport,
   useSavedBuilderReports, useRunSavedBuilderReport,
 } from "../../../api/queries";
-import type { Operation as ApiOperation } from "../../../api/types";
+import { apiOpToCOp, sumCOpAmounts, type COp, type COpStatus, type CMatch, type CModKey } from "./operationMapping";
 import type {
   Asset, ExpenseInvoiceRow,
   PurchaseLine, PurchasesBlock, Supplier, PurchaseReturn, PurchaseEnumsCatalogue,
@@ -201,7 +201,7 @@ function KpiCard({ label, value, sub, icon, accent="purple", delta }:{
   );
 }
 
-const fmt = (n:number) => n.toLocaleString("ar-SA");
+const fmt = (n:number|null|undefined) => n == null ? "—" : n.toLocaleString("ar-SA");
 
 // ═══════════════════════════════════════════════════
 // COMPANY & HIERARCHY DATA
@@ -219,25 +219,6 @@ const BRANDS: {
 
 const ALL_BRANCHES = BRANDS.flatMap(b=>b.restaurants.flatMap(r=>r.branches.map(br=>({...br,brandId:b.id,brandName:b.name,brandColor:b.color}))));
 
-type COpStatus = "pending"|"approved"|"rejected"|"final-approved";
-type CMatch = "exact"|"review"|"diff";
-type CModKey = "sales"|"expenses"|"purchases"|"inventory"|"assets"|"shifts"|"employees"|"cash";
-
-type COp = {
-  id:string; branch:string; branchId?:string; brandName:string; brandColor:string;
-  module:CModKey; moduleLabel:string;
-  amount:number; timeAgo:string; status:COpStatus;
-  attachments:number; match:CMatch; diff?:string;
-  submittedBy:string; date:string; refNum:string;
-  // ── T03/T04 additive labels + badges (bind these, don't hardcode maps) ──
-  statusLabelAr?:string; matchLabelAr?:string;
-  originLabelAr?:string; originIcon?:string;
-  stage?:{ key:string; step:number; icon:string; labelAr:string; labelShortAr:string };
-  salesBreakdown?:{ cashHalalas:number; cardHalalas:number; appsHalalas:number; totalSalesHalalas:number; collectedHalalas:number; varianceHalalas:number } | null;
-  invoices?:{ invNum:string; vendor:string; desc:string; amount:number; date:string; verified:boolean }[];
-  channels?:{ name:string; icon:string; pos:number; actual:number }[];
-  purchaseItems?:{ item:string; unit:string; ordQty:number; rcvQty:number; unitPrice:number }[];
-};
 
 // ═══════════════════════════════════════════════════
 // ASSET DRAFT CONTEXT — تحويل المصروف إلى أصل ثابت
@@ -1041,7 +1022,7 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0 }:
 // ═══════════════════════════════════════════════════
 // T03/T04 NET-NEW SHARED UI (colocated)
 // ═══════════════════════════════════════════════════
-const fmtH = (h:number) => fmt(Math.round(h)/100); // halalas → SAR display
+const fmtH = (h:number|null|undefined) => h == null ? "—" : fmt(Math.round(h)/100); // halalas → SAR display
 
 // Branch/day state chips — GET /pipeline/daily-rollup (T03 §12).
 // The 7th chip (erp_imported) is a reserved future stage → always greyed out.
@@ -1410,7 +1391,7 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
           )}
         </div>
         <div className="text-left flex-shrink-0">
-          {op.amount>0 && <p className="font-mono font-bold text-gray-800 text-sm">{fmt(op.amount)} {t("ر.س","SAR")}</p>}
+          {op.amount != null && op.amount>0 && <p className="font-mono font-bold text-gray-800 text-sm">{fmt(op.amount)} {t("ر.س","SAR")}</p>}
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0" onClick={e=>e.stopPropagation()}>
           {!forHead && isPending && <>
@@ -2326,7 +2307,7 @@ function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove }
               <p className="text-sm font-semibold text-gray-800">{op.moduleLabel} — {op.branch}</p>
               <p className="text-xs text-gray-400">{op.brandName} · {op.submittedBy} · {op.timeAgo}</p>
             </div>
-            {op.amount>0&&<span className="font-mono font-bold text-gray-800 text-sm">{fmt(op.amount)} {t("ر.س","SAR")}</span>}
+            {op.amount != null && op.amount>0&&<span className="font-mono font-bold text-gray-800 text-sm">{fmt(op.amount)} {t("ر.س","SAR")}</span>}
             <COpStagePill op={op}/>
             <Badge className={`text-[10px] border ${MATCH_CFG[op.match].cls}`}>
               <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${MATCH_CFG[op.match].dot}`}/>
@@ -2361,7 +2342,7 @@ function HeadPending({ ops, finalApprove, reject, bulkFinalApprove }:HeadProps) 
     if(modFilter && o.module!==modFilter) return false;
     return true;
   });
-  const totalAmt = shown.reduce((s,o)=>s+o.amount,0);
+  const totalAmt = sumCOpAmounts(shown);
 
   const modLabels:Record<string,string>={
     sales:`💰 ${t("مبيعات","Sales")}`, expenses:`💸 ${t("مصروفات","Expenses")}`,
@@ -2398,7 +2379,7 @@ function HeadPending({ ops, finalApprove, reject, bulkFinalApprove }:HeadProps) 
               {m===""?t("الكل","All"):modLabels[m]}
             </button>
           ))}
-          {totalAmt>0 && <span className="mr-auto text-xs text-gray-500 font-mono font-semibold">{t("إجمالي العرض:","Displayed total:")} {fmt(totalAmt)} {t("ر.س","SAR")}</span>}
+          {totalAmt != null && totalAmt>0 && <span className="mr-auto text-xs text-gray-500 font-mono font-semibold">{t("إجمالي العرض:","Displayed total:")} {fmt(totalAmt)} {t("ر.س","SAR")}</span>}
         </div>
       </div>
 
@@ -2449,7 +2430,7 @@ function HeadPending({ ops, finalApprove, reject, bulkFinalApprove }:HeadProps) 
 function HeadApproved({ ops }:{ ops:COp[] }) {
   const { t, dir } = useCLang();
   const finalApproved = ops.filter(o=>o.status==="final-approved");
-  const totalAmt      = finalApproved.reduce((s,o)=>s+o.amount,0);
+  const totalAmt      = sumCOpAmounts(finalApproved);
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
@@ -2457,7 +2438,7 @@ function HeadApproved({ ops }:{ ops:COp[] }) {
           <h2 className="text-xl font-bold text-gray-800">{t("المعتمدة نهائياً 🔒","Final Approved 🔒")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{finalApproved.length} {t("عملية معتمدة نهائياً — م4 في مسار الاعتماد · بانتظار الترحيل لـ ERP","final-approved operations — S4 in pipeline · awaiting ERP posting")}</p>
         </div>
-        {totalAmt>0 && <span className="text-sm font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">{fmt(totalAmt)} {t("ر.س إجمالاً","SAR total")}</span>}
+        {totalAmt != null && totalAmt>0 && <span className="text-sm font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">{fmt(totalAmt)} {t("ر.س إجمالاً","SAR total")}</span>}
       </div>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         {finalApproved.length===0 && <div className="p-8 text-center text-gray-400 text-sm">{t("لا توجد عمليات معتمدة نهائياً حتى الآن","No final-approved operations yet")}</div>}
@@ -2469,7 +2450,7 @@ function HeadApproved({ ops }:{ ops:COp[] }) {
               <p className="font-semibold text-gray-800 text-sm">{op.moduleLabel} — {op.branch}</p>
               <p className="text-xs text-gray-400">{op.brandName} · {op.submittedBy} · {op.timeAgo}</p>
             </div>
-            {op.amount>0&&<span className="font-mono font-bold text-gray-800 text-sm">{fmt(op.amount)} {t("ر.س","SAR")}</span>}
+            {op.amount != null && op.amount>0&&<span className="font-mono font-bold text-gray-800 text-sm">{fmt(op.amount)} {t("ر.س","SAR")}</span>}
             <COpStagePill op={op}/>
             <Badge className={`text-[10px] border ${STATUS_CFG[op.status].cls}`}>{t(STATUS_CFG[op.status].label, EN_STATUS_CD[op.status].label)}</Badge>
           </div>
@@ -2780,41 +2761,6 @@ function HeadERP({ ops }:{ ops:COp[] }) {
 // ═══════════════════════════════════════════════════
 const DEFAULT_REJECT_REASON = "تحتاج مراجعة";
 
-function apiOpToCOp(op: ApiOperation): COp {
-  const brand = BRANDS.find(b=>b.name===op.brandName);
-  const moduleKey = (op.moduleKey as CModKey);
-  const moduleLabel = (
-    { sales:"مبيعات", expenses:"مصروفات", purchases:"مشتريات", inventory:"مخزون",
-      assets:"أصول", shifts:"شفتات", employees:"موظفون", cash:"عهد",
-      waste:"هدر" } as Record<string,string>
-  )[moduleKey] ?? moduleKey;
-  return {
-    id: op.id,
-    branch: op.branchName,
-    branchId: op.branchId,
-    brandName: op.brandName ?? brand?.name ?? "—",
-    brandColor: brand?.color ?? "#7C3AED",
-    module: moduleKey,
-    moduleLabel,
-    amount: op.amountHalalas / 100,
-    timeAgo: op.createdAt,
-    status: op.status as COpStatus,
-    attachments: op.attachmentCount ?? 0,
-    // Backend emits exactly exact|review|diff — pass through, default to "exact".
-    match: (op.match ?? "exact") as CMatch,
-    diff: op.diffNote ?? undefined,
-    submittedBy: op.submittedBy?.name ?? "—",
-    date: op.operationDate,
-    refNum: op.publicId,
-    statusLabelAr: op.statusLabelAr,
-    matchLabelAr: op.matchLabelAr,
-    originLabelAr: op.originLabelAr,
-    originIcon: op.originIcon,
-    stage: op.stage,
-    salesBreakdown: op.salesBreakdown ?? null,
-  };
-}
-
 // Distinct brand names present in the loaded ops — powers the brand filter
 // dropdowns on the sales/expenses tabs (meeting 2026-07-29 §2), so the options
 // reflect the real brands in scope rather than a static seed list.
@@ -2836,7 +2782,7 @@ function useSharedOps() {
     const apiOps = opsQuery.data?.data;
     // Driven entirely by GET /operations. No static fallback —
     // an empty list renders empty states, never mock operations.
-    return Array.isArray(apiOps) ? apiOps.map(apiOpToCOp) : [];
+    return Array.isArray(apiOps) ? apiOps.map(op => apiOpToCOp(op, BRANDS)) : [];
   }, [opsQuery.data]);
 
   const [rejectingId, setRejectingId] = useState<string | null>(null);
@@ -3076,7 +3022,7 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
   });
   const clearFilters = () => { setBranchFilter(""); setStatusFilter(""); setMatchFilter(""); setBrandFilter("الكل"); setDateFilter("الكل"); setSearch(""); };
   const hasFilters = branchFilter||statusFilter||matchFilter||brandFilter!=="الكل"||dateFilter!=="الكل"||search;
-  const totalShown = shown.filter(o=>o.status!=="rejected").reduce((s,o)=>s+o.amount,0);
+  const totalShown = sumCOpAmounts(shown.filter(o=>o.status!=="rejected"));
 
   return (
     <div className="space-y-5" dir={dir}>
@@ -3450,7 +3396,7 @@ function AccCompanyExpenses({ ops, approve, reject, bulkApprove }:{ ops:COp[]; a
     return true;
   });
 
-  const totalShown = shown.reduce((s,o)=>s+o.amount,0);
+  const totalShown = sumCOpAmounts(shown);
 
   const { t, dir } = useCLang();
   const SAR = t("ر.س","SAR");
@@ -3769,7 +3715,7 @@ function PurchaseOpRow({ op, purchaseRow, isPending, forHead, onApprove, onRejec
         {op.diff && <span className="text-[10px] text-red-500 max-w-[160px] truncate">{op.diff}</span>}
         <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${mcfg.cls}`}>{op.matchLabelAr ?? mcfg.label}</span>
         <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${scfg.cls}`}>{op.statusLabelAr ?? scfg.label}</span>
-        {op.amount>0 && <span className="font-mono font-bold text-gray-800 text-sm w-24 text-left">{fmt(op.amount)}</span>}
+        {op.amount != null && op.amount>0 && <span className="font-mono font-bold text-gray-800 text-sm w-24 text-left">{fmt(op.amount)}</span>}
         <button className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 flex items-center justify-center flex-shrink-0" onClick={e=>{e.stopPropagation();setExpanded(v=>!v);}}>
           {expanded?<ChevronUp size={13}/>:<ChevronDown size={13}/>}
         </button>
@@ -3817,7 +3763,7 @@ function AccCompanyPurchases({ ops, approve, reject, bulkApprove, requestClarifi
   const { data: returns = [] }   = usePurchaseReturns();
 
   // Rows → COp (reusing the shared mapper) so the row/detail components stay uniform.
-  const cRows = useMemo(()=>rows.map(r=>({ op: apiOpToCOp(r), purchaseRow: r.purchaseRow ?? null })), [rows]);
+  const cRows = useMemo(()=>rows.map(r=>({ op: apiOpToCOp(r, BRANDS), purchaseRow: r.purchaseRow ?? null })), [rows]);
   const pendingIds = rows.filter(r=>r.status==="pending").map(r=>r.id);
 
   // Distinct suppliers for the dropdown (prefer the suppliers endpoint, fall back to rows).

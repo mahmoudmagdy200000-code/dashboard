@@ -763,6 +763,21 @@ export interface AssetEnumsCatalogue {
 // ─── Shifts (T08) ────────────────────────────────────────────────────────────
 export type ShiftStatus = "active" | "late" | "pending_review" | "closed";
 
+/** `unknown` is a legacy projection, never evidence of a physical count. */
+export type CashCountState = "counted" | "unknown" | null;
+
+/** Review metadata emitted by the Admin shift presenter (handoff 02 §B). */
+export interface ShiftReportReview {
+  operation_id?: string | null;
+  public_id?: string | null;
+  status?: OperationStatus | null;
+  phase?: string | null;
+  return_cycle?: number | null;
+  return_reason?: string | null;
+  /** Preserve evidence fields without treating revision IDs as revision numbers. */
+  memberships?: Record<string, unknown>[] | null;
+}
+
 /** Canonical shift shape (T08 §4). Money = halalas. */
 export interface Shift {
   id: string;
@@ -770,6 +785,7 @@ export interface Shift {
   branchName: string;
   cashierEmployeeId: string | null;
   cashierName: string;
+  role?: string | null;
   cashierPhone?: string | null;
   whatsapp?: string | null;
   supervisorName?: string | null;
@@ -781,16 +797,19 @@ export interface Shift {
   statusLabelAr?: string;
   isLate: boolean;
   lateBannerAr?: string | null;
-  ordersCount: number;
+  ordersCount: number | null;
   salesHalalas: number;
-  openingFloatHalalas: number;
-  cashExpectedHalalas: number;
+  openingFloatHalalas: number | null;
+  cashExpectedHalalas: number | null;
   cashActualHalalas: number | null;
   varianceHalalas: number | null;
+  cashCountState?: CashCountState;
+  pendingIncomingCountedHalalas?: number | null;
+  reportReview?: ShiftReportReview | null;
   // Deprecated aliases still emitted by the backend.
   supervisor?: string;
   salesAmount?: number;
-  cashExpected?: number;
+  cashExpected?: number | null;
   cashActual?: number | null;
   variance?: number | null;
 }

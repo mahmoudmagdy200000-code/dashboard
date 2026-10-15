@@ -94,6 +94,28 @@ export interface SalesBreakdown {
   varianceHalalas: number;
 }
 
+/** Known SHF detail fields (handoff 02 §B, step 12). Missing money is not zero.
+ * Keys are optional because native/legacy payloads may not include count evidence.
+ * BD-2 liability and BD-3 correction versions are not part of this contract yet.
+ */
+export interface ShiftOpPayload {
+  shiftId?: string | null;
+  legacyShiftId?: string | number | null;
+  salesHalalas?: number | null;
+  cardTotalHalalas?: number | null;
+  aggregatorTotalsHalalas?: number | null;
+  /** Nested keys are not specified by the supplied Admin contract. */
+  aggregatorBreakdown?: Record<string, unknown>[] | null;
+  openingFloatHalalas?: number | null;
+  cashExpectedHalalas?: number | null;
+  cashActualHalalas?: number | null;
+  varianceHalalas?: number | null;
+  cashCountState?: import("./company").CashCountState;
+  pendingIncomingCountedHalalas?: number | null;
+  varianceAllocations?: Record<string, unknown>[] | null;
+  pkg6Review?: Record<string, unknown> | null;
+}
+
 export interface Operation {
   id: string;
   /** Human ID, e.g. "OPS-2401". */
@@ -107,7 +129,9 @@ export interface Operation {
   match?: MatchStatus;
   matchLabelAr?: string;
   diffNote?: string | null;
-  origin?: OperationOrigin;
+  origin?: OperationOrigin | null;
+  /** Both SHF and daily sales rows expose the server's review metadata here. */
+  reportReview?: Record<string, unknown> | null;
   originLabelAr?: string;
   originIcon?: string;
   attachmentCount?: number;
@@ -122,8 +146,8 @@ export interface Operation {
   brandName?: string;
   restaurantId?: string;
   restaurantName?: string;
-  /** Integer halalas. */
-  amountHalalas: number;
+  /** Integer halalas; missing/null means unavailable, not zero. */
+  amountHalalas?: number | null;
   operationDate: string;
   submittedAt?: string;
   createdAt: string;
@@ -151,7 +175,7 @@ export interface Operation {
   /** Alias of amountHalalas (halalas) emitted on head queue rows. */
   amount?: number;
   // ── Present only on GET /operations/{id} (single-detail response) ──────────
-  payload?: { channels?: unknown[] };
+  payload?: ShiftOpPayload & { channels?: unknown[] };
   auditTrail?: AuditEvent[];
   /** Sales-module single-op detail only (T04 §4); `null` until reconciled. */
   reconciliation?: import("./company").SalesReconciliation | null;
