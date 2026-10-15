@@ -1,4 +1,8 @@
 import "./_group.css";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Operation as ApiOperation } from "../../../api/types";
+import { queryKeys } from "../../../api/queries/keys";
+import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
 import { useState, useMemo, useEffect, useRef, ReactNode, createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
 import {
   useOperations, useApproveOperation, useRejectOperation, useBulkApprove, useFinalApprove,
@@ -1141,6 +1145,14 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
   const { t } = useCLang();
   const detailQ = useSalesDetails(op.id);
   const recon = detailQ.reconciliation;
+  const queryClient = useQueryClient();
+  const salesContext = () => {
+    const detail = queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detailQ.data;
+    return { operation: op, role: forHead ? "head" : "accountant", detail,
+      locked: detail?.reconciliation?.isLocked,
+      financialDataReady: hasSalesReconciliationEvidence(detail?.reconciliation) };
+  };
+  const salesPolicy = getSalesActionPolicy(salesContext());
   const patchMut = usePatchSalesDetails();
   const assignMut = useAssignSalesVariance();
 
@@ -1156,11 +1168,11 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
   const channels = recon?.channels ?? [];
   const totals = recon?.totals;
   const isLocked = recon?.isLocked ?? (op.status==="final-approved");
-  const varianceH = totals?.varianceHalalas ?? 0;
-  const hasVariance = varianceH !== 0;
-  const effRemainingH = remainingH ?? Math.abs(varianceH);
+  const varianceH = totals?.varianceHalalas ?? null;
+  const hasVariance = varianceH != null && varianceH !== 0;
+  const effRemainingH = remainingH ?? (varianceH == null ? null : Math.abs(varianceH));
   const assignedH = varEmps.reduce((s,e)=>s + Math.round((parseFloat(e.amount)||0)*100), 0);
-  const leftH = effRemainingH - assignedH;
+  const leftH = effRemainingH == null ? null : effRemainingH - assignedH;
 
   const coreCh = channels.filter(c=>c.group==="core");
   const deliveryCh = channels.filter(c=>c.group==="delivery");
@@ -1169,41 +1181,50 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
     setVarEmps(p=>p.map((e,j)=>j===i?{...e,[field]:val}:e));
 
   function beginEdit() {
-    const seed:Record<string,string> = {};
-    channels.forEach(c=>{ seed[c.key] = String(Math.round(c.actualAmountHalalas)/100); });
-    setDraft(seed);
-    setVarReason(recon?.varianceReason ?? "");
-    setEditMode(true);
+    if (!recon) return;
+    runSalesAction(salesContext, "edit", () => {
+      const seed:Record<string,string> = {};
+      channels.forEach(c=>{ seed[c.key] = String(Math.round(c.actualAmountHalalas)/100); });
+      setDraft(seed);
+      setVarReason(recon?.varianceReason ?? "");
+      setEditMode(true);
+    });
   }
   function saveEdit() {
-    const payloadChannels = channels.map(c=>({
-      key: c.key,
-      actualAmountHalalas: Math.round((parseFloat(draft[c.key] ?? String(c.actualAmountHalalas/100))||0)*100),
-      posAmountHalalas: c.posAmountHalalas,
-    }));
-    patchMut.mutate(
-      { operationId: op.id, payload: { channels: payloadChannels, varianceReason: varReason || undefined } },
-      { onSuccess: ()=>setEditMode(false) },
-    );
+    if (!recon) return;
+    runSalesAction(salesContext, "save", () => {
+      const payloadChannels = channels.map(c=>({
+        key: c.key,
+        actualAmountHalalas: Math.round((parseFloat(draft[c.key] ?? String(c.actualAmountHalalas/100))||0)*100),
+        posAmountHalalas: c.posAmountHalalas,
+      }));
+      patchMut.mutate(
+        { operationId: op.id, payload: { channels: payloadChannels, varianceReason: varReason || undefined } },
+        { onSuccess: ()=>setEditMode(false) },
+      );
+    });
   }
   function confirmAssign() {
-    const allocations = varEmps
-      .filter(e=>e.empId.trim() && (parseFloat(e.amount)||0)>0)
-      .map(e=>({ empNumber: e.empId.trim(), amountHalalas: Math.round((parseFloat(e.amount)||0)*100) }));
-    if (allocations.length===0) return;
-    assignMut.mutate(
-      { operationId: op.id, payload: { allocations, notes: assignNotes || undefined } },
-      { onSuccess: (res)=>{ setRemainingH(res.remainingVarianceHalalas); if (res.remainingVarianceHalalas<=0) setVarEmps([{empId:"",amount:""}]); } },
-    );
+    if (totals?.varianceHalalas == null) return;
+    runSalesAction(salesContext, "assign", () => {
+      const allocations = varEmps
+        .filter(e=>e.empId.trim() && (parseFloat(e.amount)||0)>0)
+        .map(e=>({ empNumber: e.empId.trim(), amountHalalas: Math.round((parseFloat(e.amount)||0)*100) }));
+      if (allocations.length===0) return;
+      assignMut.mutate(
+        { operationId: op.id, payload: { allocations, notes: assignNotes || undefined } },
+        { onSuccess: (res)=>{ setRemainingH(res.remainingVarianceHalalas); if (res.remainingVarianceHalalas<=0) setVarEmps([{empId:"",amount:""}]); } },
+      );
+    });
   }
 
   const ChannelRow = ({ c }:{ c:typeof channels[number] }) => (
     <div className={`flex items-center justify-between px-4 py-2.5 hover:bg-gray-50/60 ${c.status==="diff"?"bg-amber-50/40":""}`}>
       <div className="flex items-center gap-2">
         <span className="text-sm">{c.icon}</span><span className="text-xs text-gray-700">{c.labelAr}</span>
-        {c.diffHalalas!==0 && <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold">{c.statusLabelAr} {c.diffHalalas>0?"+":""}{fmtH(c.diffHalalas)}</span>}
+        {c.diffHalalas != null && c.diffHalalas!==0 && <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold">{c.statusLabelAr} {c.diffHalalas>0?"+":""}{fmtH(c.diffHalalas)}</span>}
       </div>
-      {editMode&&!isLocked ? (
+      {editMode && salesPolicy.edit ? (
         <input type="number" value={draft[c.key] ?? String(c.actualAmountHalalas/100)}
           onChange={e=>setDraft(d=>({...d,[c.key]:e.target.value}))}
           className="w-32 text-center font-mono font-semibold border-2 border-purple-300 rounded-lg px-2 py-1 text-xs bg-purple-50 focus:outline-none"/>
@@ -1213,11 +1234,14 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
 
   return (
     <div className="space-y-3">
+      {salesPolicy.pkg6 && <p role="note" className="text-xs text-amber-800 bg-amber-50 rounded-lg p-3">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</p>}
+      {salesPolicy.staleMembers.length > 0 && <p role="status" className="text-xs text-amber-700">{t("بانتظار إعادة اعتماد ورديات أعضاء","Awaiting reapproval of member shifts")}</p>}
+      {recon && !salesPolicy.pkg6 && !hasSalesReconciliationEvidence(recon) && <p role="note" className="text-xs text-gray-500">{t("بيانات التسوية غير مكتملة — التعديل غير متاح","Reconciliation data is incomplete — editing is unavailable")}</p>}
       {/* Reconciliation Panel */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-indigo-50/40">
           <p className="text-xs font-bold text-gray-700">{t("تسوية المبيعات","Sales Reconciliation")}</p>
-          {!isLocked && recon && (
+          {salesPolicy.edit && recon && (
             <button onClick={()=> editMode ? saveEdit() : beginEdit()} disabled={patchMut.isPending}
               className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border transition-all ${editMode?"bg-purple-600 text-white border-purple-600":"bg-white text-purple-600 border-purple-200 hover:bg-purple-50"}`}>
               <Edit3 size={10}/> {editMode?(patchMut.isPending?"جارٍ الحفظ…":"💾 حفظ"):"تعديل الأرقام"}
@@ -1240,7 +1264,7 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
                 <span className="text-xs font-bold text-indigo-900">{t("إجمالي المبيعات","Total Sales")}</span>
                 <span className="text-[10px] bg-indigo-100 text-indigo-500 px-1.5 py-0.5 rounded-md">{t("من رفع مدير الفرع — مقفل","From branch manager — locked")}</span>
               </div>
-              <span className="font-mono font-black text-indigo-800 text-sm">{fmtH(totals?.expectedTotalHalalas ?? 0)} ر.س</span>
+              <span className="font-mono font-black text-indigo-800 text-sm">{fmtH(totals?.expectedTotalHalalas)} ر.س</span>
             </div>
 
             {/* Core channels */}
@@ -1255,7 +1279,7 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
             {deliveryCh.map(c=><ChannelRow key={c.key} c={c}/>)}
 
             {/* Variance reason (edit mode) */}
-            {editMode && !isLocked && (
+            {editMode && salesPolicy.edit && (
               <div className="px-4 py-2.5">
                 <input value={varReason} onChange={e=>setVarReason(e.target.value)} maxLength={80}
                   placeholder={t("سبب الفرق (اختياري)","Variance reason (optional)")}
@@ -1264,13 +1288,13 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
             )}
 
             {/* تحميل الفرق على موظفين */}
-            {hasVariance && !isLocked && (
+            {hasVariance && salesPolicy.assign && (
               <div className="mx-4 my-2 bg-red-50 border border-red-200 rounded-xl overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-2.5 bg-red-100/60 border-b border-red-200">
                   <AlertTriangle size={13} className="text-red-600 flex-shrink-0"/>
-                  <p className="text-xs font-bold text-red-800">{t("تحميل الفرق على موظفين","Allocate variance to employees")} — {t("الفرق","Variance")}: <span className="font-mono">{fmtH(Math.abs(varianceH))} ر.س</span></p>
-                  <span className={`mr-auto text-[10px] font-bold px-2 py-0.5 rounded-lg ${leftH<=0?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}`}>
-                    {leftH<=0?"✓ محمَّل بالكامل":`${t("متبقي","Remaining")} ${fmtH(leftH)} ر.س`}
+                  <p className="text-xs font-bold text-red-800">{t("تحميل الفرق على موظفين","Allocate variance to employees")} — {t("الفرق","Variance")}: <span className="font-mono">{fmtH(varianceH == null ? null : Math.abs(varianceH))} ر.س</span></p>
+                  <span className={`mr-auto text-[10px] font-bold px-2 py-0.5 rounded-lg ${leftH != null && leftH<=0?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}`}>
+                    {leftH != null && leftH<=0?"✓ محمَّل بالكامل":`${t("متبقي","Remaining")} ${fmtH(leftH)} ر.س`}
                   </span>
                 </div>
                 <div className="p-3 space-y-2">
@@ -1278,14 +1302,14 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
                     <VarEmpRow key={i} branchId={op.branchId} row={e} canRemove={varEmps.length>1}
                       onField={(f,v)=>setVarEmpField(i,f,v)}
                       onRemove={()=>setVarEmps(p=>p.filter((_,j)=>j!==i))}
-                      onQuickFill={()=>setVarEmpField(i,"amount",String(Math.max(0,(leftH+Math.round((parseFloat(e.amount)||0)*100))/100)))}/>
+                      onQuickFill={()=>{ if (leftH == null) return; setVarEmpField(i,"amount",String(Math.max(0,(leftH+Math.round((parseFloat(e.amount)||0)*100))/100))); }}/>
                   ))}
                   <input value={assignNotes} onChange={e=>setAssignNotes(e.target.value)}
                     placeholder={t("ملاحظات (اختياري)","Notes (optional)")}
                     className="w-full text-[10px] border border-red-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:border-red-400"/>
                   <div className="flex items-center justify-between pt-1">
                     <button onClick={()=>setVarEmps(p=>[...p,{empId:"",amount:""}])} className="flex items-center gap-1 text-[10px] text-red-600 hover:underline font-semibold"><Plus size={10}/> {t("إضافة موظف آخر","Add another employee")}</button>
-                    <Btn size="sm" variant="success" onClick={confirmAssign} disabled={assignMut.isPending || leftH>0}>
+                    <Btn size="sm" variant="success" onClick={confirmAssign} disabled={assignMut.isPending || leftH == null || leftH>0}>
                       <CheckCircle2 size={10}/> {assignMut.isPending?t("جارٍ التحميل…","Uploading…"):t("تأكيد التحميل","Confirm Upload")}
                     </Btn>
                   </div>
@@ -1294,11 +1318,11 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
             )}
 
             {/* إجمالي التحصيل */}
-            <div className={`flex items-center justify-between px-4 py-3 font-bold border-t-2 ${varianceH===0?"bg-emerald-50/70 border-emerald-200":"bg-red-50/70 border-red-200"}`}>
-              <span className={`text-xs ${varianceH===0?"text-emerald-800":"text-red-800"}`}>{t("إجمالي التحصيل","Total Collection")}</span>
-              <span className={`font-mono text-sm ${varianceH===0?"text-emerald-700":"text-red-700"}`}>{fmtH(totals?.totalCollectionHalalas ?? 0)} ر.س</span>
+            <div className={`flex items-center justify-between px-4 py-3 font-bold border-t-2 ${varianceH===0?"bg-emerald-50/70 border-emerald-200":hasVariance?"bg-red-50/70 border-red-200":"bg-gray-50 border-gray-200"}`}>
+              <span className={`text-xs ${varianceH===0?"text-emerald-800":hasVariance?"text-red-800":"text-gray-500"}`}>{t("إجمالي التحصيل","Total Collection")}</span>
+              <span className={`font-mono text-sm ${varianceH===0?"text-emerald-700":hasVariance?"text-red-700":"text-gray-500"}`}>{fmtH(totals?.totalCollectionHalalas)} ر.س</span>
             </div>
-            {varianceH!==0 ? (
+            {varianceH == null ? <p className="text-xs text-gray-400 px-4 py-2.5">{t("الفرق غير متاح —","Variance unavailable —")}</p> : varianceH!==0 ? (
               <div className="flex items-center justify-between px-4 py-2.5 bg-red-100 border-t border-red-200">
                 <div className="flex items-center gap-2"><AlertTriangle size={12} className="text-red-600"/><span className="text-xs font-bold text-red-800">{totals?.statusLabelAr ?? t("يوجد فرق","Variance")}</span></div>
                 <span className="font-mono font-black text-red-800 text-sm">{fmtH(varianceH)} ر.س</span>
@@ -1321,7 +1345,7 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
           {onClarify && (
             <button onClick={e=>{e.stopPropagation();onClarify();}} className="px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold hover:bg-amber-100">❔ {t("طلب توضيح","Request Clarification")}</button>
           )}
-          <button onClick={e=>{e.stopPropagation();onReject();}} className="px-4 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold hover:bg-red-100">✕ {t("رفض","Reject")}</button>
+          {salesPolicy.return && <button onClick={e=>{e.stopPropagation();runSalesAction(salesContext, "return", onReject);}} className="px-4 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold hover:bg-red-100">✕ {t("رفض","Reject")}</button>}
           <button onClick={e=>{e.stopPropagation();onApprove();}} className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600">✓ {t("موافقة — إرسال لرئيس الحسابات","Approve — send to head")}</button>
         </div>
       )}
@@ -1337,6 +1361,11 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
   expanded?:boolean; onToggle?:()=>void; forHead?:boolean;
 }) {
   const { t } = useCLang();
+  const detailQ = useOperation(expanded && op.module === "sales" ? op.id : null);
+  const queryClient = useQueryClient();
+  const salesContext = () => ({ operation: op, role: forHead ? "head" : "accountant",
+    detail: queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detailQ.data });
+  const salesPolicy = getSalesActionPolicy(salesContext());
   const isPending = op.status === "pending";
   const isApproved = op.status === "approved";
   const isLocked = op.status === "final-approved";
@@ -1397,11 +1426,11 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
         <div className="flex items-center gap-1.5 flex-shrink-0" onClick={e=>e.stopPropagation()}>
           {!forHead && isPending && <>
             <button onClick={onApprove} title={t("موافقة","Approve")} className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center transition-all"><ThumbsUp size={13}/></button>
-            <button onClick={onReject} title={t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all"><ThumbsDown size={13}/></button>
+            {salesPolicy.return && <button onClick={()=>runSalesAction(salesContext, "return", onReject)} title={t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all"><ThumbsDown size={13}/></button>}
           </>}
           {forHead && isApproved && <>
             <button onClick={onApprove} title={t("اعتماد نهائي","Final Approve")} className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center transition-all"><ThumbsUp size={13}/></button>
-            <button onClick={onReject} title={t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all"><ThumbsDown size={13}/></button>
+            {salesPolicy.return && <button onClick={()=>runSalesAction(salesContext, "return", onReject)} title={t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all"><ThumbsDown size={13}/></button>}
           </>}
           {isLocked && <span className="flex items-center gap-1 text-xs text-slate-400 bg-slate-100 border border-slate-200 px-2 py-1.5 rounded-lg"><Lock size={11}/> {t("مُغلق","Locked")}</span>}
           <button className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 flex items-center justify-center transition-all" onClick={onToggle}>
@@ -1409,6 +1438,7 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
           </button>
         </div>
       </div>
+      {salesPolicy.pkg6 && <p className="px-5 pb-2 text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</p>}
       {expanded && (
         <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-4 space-y-4">
           {op.module==="sales" && <SalesReconPanel op={op} onApprove={onApprove} onReject={onReject} onClarify={onClarify} isPending={isPending} forHead={forHead}/>}
@@ -2316,7 +2346,7 @@ function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove }
             </Badge>
             <div className="flex gap-1.5 flex-shrink-0">
               <button onClick={()=>finalApprove(op.id)} title={t("اعتماد نهائي","Final Approve")} className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center text-xs"><CheckCircle2 size={12}/></button>
-              <button onClick={()=>reject(op.id)} title={t("رفض","Reject")} className="w-7 h-7 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center text-xs"><XCircle size={12}/></button>
+              {isPkg6SalesReport(op) ? <span className="text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</span> : <button onClick={()=>reject(op.id)} title={t("رفض","Reject")} className="w-7 h-7 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center text-xs"><XCircle size={12}/></button>}
             </div>
           </div>
         ))}
@@ -2771,7 +2801,8 @@ function cBrandNamesFromOps(ops: COp[]): string[] {
   return [...seen];
 }
 
-function useSharedOps() {
+function useSharedOps(role: CRole | null) {
+  const queryClient = useQueryClient();
   const opsQuery   = useOperations({ pageSize: 100 });
   const approveMut = useApproveOperation();
   const rejectMut  = useRejectOperation();
@@ -2785,6 +2816,15 @@ function useSharedOps() {
     // an empty list renders empty states, never mock operations.
     return Array.isArray(apiOps) ? apiOps.map(op => apiOpToCOp(op, BRANDS)) : [];
   }, [opsQuery.data]);
+  const currentOps = useRef(ops);
+  currentOps.current = ops;
+  const currentRole = useRef(role);
+  currentRole.current = role;
+  const detailFor = (op: { id: string }) => queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id));
+  const salesContextFor = (id: string) => {
+    const operation = currentOps.current.find(op => op.id === id);
+    return { operation, detail: operation ? detailFor(operation) : undefined, role: currentRole.current };
+  };
 
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [clarifyingId, setClarifyingId] = useState<string | null>(null);
@@ -2794,10 +2834,10 @@ function useSharedOps() {
   const { data: rejectReasons } = useRejectionReasons(rejectingModule);
 
   const approve            = (id:string)    => { approveMut.mutate({ id }); };
-  const reject             = (id:string)    => { setRejectingId(id); };
+  const reject             = (id:string)    => { runSalesAction(() => salesContextFor(id), "return", () => setRejectingId(id)); };
   const requestClarification = (id:string)  => { setClarifyingId(id); };
   const finalApprove       = (id:string)    => { finalMut.mutate({ id }); };
-  const bulkApprove        = (ids:string[]) => { bulkMut.mutate({ operationIds: ids }); };
+  const bulkApprove        = (ids:string[]) => { runSalesBulkApproval(currentOps.current, ids, currentRole.current, eligible => bulkMut.mutate({ operationIds: eligible }), detailFor); };
   const bulkFinalApprove   = (ids:string[]) => { ids.forEach(id => finalMut.mutate({ id })); };
 
   const rejectModalProps = {
@@ -2806,7 +2846,7 @@ function useSharedOps() {
     reasons: rejectReasons?.map(r=>({ key:r.key, labelAr:r.labelAr })),
     onClose: () => setRejectingId(null),
     onSubmit: ({ reason, notes }: { reason: string; notes?: string }) => {
-      if (rejectingId) rejectMut.mutate({ id: rejectingId, reason, notes });
+      if (rejectingId) runSalesAction(() => salesContextFor(rejectingId), "return", () => rejectMut.mutate({ id: rejectingId, reason, notes }));
       setRejectingId(null);
     },
   };
@@ -2993,6 +3033,7 @@ function AccDashboard({ navigate, ops }:{ navigate:(p:string)=>void; ops:COp[] }
 // ═══════════════════════════════════════════════════
 function AccCompanySales({ ops, approve, reject, requestClarification, bulkApprove }:{ ops:COp[]; approve:(id:string)=>void; reject:(id:string)=>void; requestClarification?:(id:string)=>void; bulkApprove:(ids:string[])=>void }) {
   const { t, dir } = useCLang();
+  const queryClient = useQueryClient();
   const exportOpsMut = useExportOperations();
   const [branchFilter, setBranchFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<""|COpStatus>("");
@@ -3004,6 +3045,8 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
 
   const mOps = ops.filter(o=>o.module==="sales");
   const pending = mOps.filter(o=>o.status==="pending");
+  const bulkSalesIds = salesBulkApprovalIds(mOps, pending.map(op => op.id), "accountant",
+    op => queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)));
   const brandNames = cBrandNamesFromOps(ops);
 
   // Live day-completeness pills (T04 §3) + sales KPIs (T04 §2).
@@ -3029,7 +3072,8 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
         <div><h2 className="text-xl font-bold text-gray-800">{t("موديول المبيعات","Sales Module")}</h2><p className="text-gray-400 text-sm mt-0.5">{pending.length} {t("بيان معلق بانتظار مراجعتك","pending statements awaiting your review")}</p></div>
-        {pending.length>0 && <Btn variant="success" size="sm" onClick={()=>bulkApprove(pending.map(o=>o.id))}>✓ {t("موافقة على الكل","Approve All")} ({pending.length})</Btn>}
+        {bulkSalesIds.length>0 && <Btn variant="success" size="sm" onClick={()=>bulkApprove(bulkSalesIds)}>✓ {t("موافقة على الكل","Approve All")} ({bulkSalesIds.length})</Btn>}
+        {pending.some(isPkg6SalesReport) && <p className="text-xs text-amber-700">{t("تقارير اليوم تُعتمد فرديًا","Day reports are approved individually")}</p>}
       </div>
       <div className="grid grid-cols-4 gap-4">
         <KpiCard label={t("إجمالي البيانات المرفوعة","Total Uploaded")} value={String(mOps.length)} sub={t("كل الحالات","All statuses")}          icon={<FileText size={18} className="text-purple-600"/>} accent="purple"/>
@@ -3141,7 +3185,7 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
           <div><h3 className="font-bold text-gray-900 text-sm">{t("بيانات المبيعات","Sales Statements")}</h3><p className="text-[11px] text-gray-400 mt-0.5">{shown.length} {t("بيان · إجمالي","statements · total")} {fmt(totalShown)} {t("ر.س","SAR")}</p></div>
           <div className="flex gap-2">
             <button onClick={()=>exportOpsMut.mutate({moduleKey:"sales", format:"xlsx"})} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><Download size={11}/> Excel</button>
-            {pending.length>0 && <Btn size="sm" variant="success" onClick={()=>bulkApprove(pending.map(o=>o.id))}>✓ موافقة جماعية ({pending.length})</Btn>}
+            {bulkSalesIds.length>0 && <Btn size="sm" variant="success" onClick={()=>bulkApprove(bulkSalesIds)}>✓ موافقة جماعية ({bulkSalesIds.length})</Btn>}
           </div>
         </div>
         {shown.length===0
@@ -6581,7 +6625,7 @@ function CompanyDashboardInner() {
     : null;
   const [role, setRole] = useState<CRole|null>(initRole);
   const [page, setPage] = useState<string>(initRole ? DEFAULT_PAGE[initRole] : "");
-  const { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, rejectModalProps, clarifyModalProps } = useSharedOps();
+  const { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, rejectModalProps, clarifyModalProps } = useSharedOps(role);
 
   // Tag the current history entry with a page so Back/Forward can restore it.
   const tagHistory = (p:string, replace=false) => {

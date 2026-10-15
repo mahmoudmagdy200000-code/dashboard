@@ -1,4 +1,8 @@
 import "./_group.css";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Operation as ApiOperation } from "../../../api/types";
+import { queryKeys } from "../../../api/queries/keys";
+import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
 import { toast } from "sonner";
 import { useState, useEffect, useMemo, ReactNode, createContext, useContext, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import {
@@ -319,6 +323,7 @@ interface Op {
   match: MatchStatus;
   attachments: number;
   status: OpStatus;
+  reportReview?: ApiOperation["reportReview"];
   diff?: string;
   // Sales matching breakdown (T04 §8) — null until reconciled
   salesBreakdown?: { cashHalalas:number; cardHalalas:number; appsHalalas:number; totalSalesHalalas:number; collectedHalalas:number; varianceHalalas:number } | null;
@@ -578,6 +583,7 @@ const EN_EXCEPTION_ITEMS = {
 };
 
 interface PageProps {
+  role?: RoleId | null;
   navigate: (p: PageId) => void;
   setModal: (id: string | null) => void;
   setDetailId: (id: string | null) => void;
@@ -1862,7 +1868,7 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
     return "";
   }, [role, state.page, lang]);
 
-  const pageProps: PageProps = { navigate, setModal, setDetailId, detailId:state.detailId, ops, approveOp, rejectOp, finalApproveOp, bulkApprove, returnForReview, addCorrectiveOp, markErpPosted };
+  const pageProps: PageProps = { role: state.role, navigate, setModal, setDetailId, detailId:state.detailId, ops, approveOp, rejectOp, finalApproveOp, bulkApprove, returnForReview, addCorrectiveOp, markErpPosted };
 
   const enProfile = lang === "ar" ? profile : { ...profile, ...EN_ROLE_LABELS[role] };
 
@@ -2049,8 +2055,9 @@ function OpRow({ op, onView, onApprove, onReject }: {
         <Btn size="sm" onClick={onView}><Eye size={12}/> {t("عرض","View")}</Btn>
         {isPending && <>
           <Btn size="sm" variant="success" onClick={onApprove}><ThumbsUp size={12}/></Btn>
-          <Btn size="sm" variant="danger"  onClick={onReject}><ThumbsDown size={12}/></Btn>
+          {!isPkg6SalesReport(op) && <Btn size="sm" variant="danger" onClick={onReject}><ThumbsDown size={12}/></Btn>}
         </>}
+        {isPkg6SalesReport(op) && <span className="text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</span>}
         {isLocked && (
           <span className="flex items-center gap-1 text-xs text-slate-400 bg-slate-100 border border-slate-200 px-2 py-1.5 rounded-lg">
             <Lock size={11}/> {t("مُغلق","Locked")}
@@ -2272,6 +2279,7 @@ function mapApiOpToOp(a: any): Op {
   };
   return {
     id: a.publicId ?? a.id ?? "",
+    reportReview: a.reportReview,
     // Display the name only — the backend now always sends branchName ("" for a
     // deleted branch). branchId is kept below for filtering/links, never shown as
     // a label (it was the raw UUID leaking into «اسم الفرع»).
@@ -3305,7 +3313,7 @@ function SimplePage({ title, icon, desc }:{ title:string; icon:string; desc:stri
 // ACCOUNTANT PAGES
 // ════════════════════════════════════════════════════════════
 
-function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, rejectOp, bulkApprove }:PageProps) {
+function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, rejectOp, bulkApprove, role }:PageProps) {
   const { t, lang } = useLang();
   // Live data subscription — falls back to inline `ops` prop on empty / error.
   const { data: dashData } = useAccountantDashboardPlatform();
@@ -3350,7 +3358,9 @@ function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, rejectO
   ];
 
   const displayed = applyFilters(ops, filters);
-  const pendingIds = pending.map(o=>o.id);
+  const queryClient = useQueryClient();
+  const pendingIds = salesBulkApprovalIds(pending, pending.map(o=>o.id), role,
+    op => queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)));
 
   return (
     <div className="space-y-5">
@@ -3557,7 +3567,7 @@ function AccModulePage({ moduleKey, title, navigate, setModal, setDetailId, ops,
 }
 
 // ─── Dedicated Sales page ────────────────────────────────────────────────────
-function AccSalesPage({ navigate, setModal, setDetailId, ops, approveOp, rejectOp, bulkApprove }:PageProps) {
+function AccSalesPage({ navigate, setModal, setDetailId, ops, approveOp, rejectOp, bulkApprove, role }:PageProps) {
   const { t, dir, lang } = useLang();
   const en = lang === "en";
   const exportOpsMut = useExportOperations();
@@ -3574,6 +3584,9 @@ function AccSalesPage({ navigate, setModal, setDetailId, ops, approveOp, rejectO
   const brandOpts = brandOptionsFromOps(ops);
   const mOps    = ops.filter(o=>o.moduleKey==="sales");
   const pending  = mOps.filter(o=>o.status==="pending");
+  const queryClient = useQueryClient();
+  const bulkSalesIds = salesBulkApprovalIds(pending, pending.map(op => op.id), role,
+    op => queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)));
   const filtered = applyFilters(ops, filters, "sales")
     .filter(o=>!salesDate || (o.operationDate ?? "").slice(0,10)===salesDate)
     .filter(o=>!brand || o.brandId===brand);
@@ -3585,7 +3598,7 @@ function AccSalesPage({ navigate, setModal, setDetailId, ops, approveOp, rejectO
           <h2 className="text-xl font-bold text-gray-800">{t("موديول المبيعات","Sales Module")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{pending.length} {t("بيان معلق بانتظار مراجعتك","pending entries awaiting your review")}</p>
         </div>
-        {pending.length>0 && <Btn variant="success" size="sm" onClick={()=>bulkApprove(pending.map(o=>o.id))}>✓ {t("موافقة على الكل","Approve All")} ({pending.length})</Btn>}
+        {bulkSalesIds.length>0 && <Btn variant="success" size="sm" onClick={()=>bulkApprove(bulkSalesIds)}>✓ {t("موافقة على الكل","Approve All")} ({bulkSalesIds.length})</Btn>}
       </div>
 
       <div className="grid grid-cols-4 gap-4">
@@ -3699,7 +3712,7 @@ function AccSalesPage({ navigate, setModal, setDetailId, ops, approveOp, rejectO
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 transition-all">
             <FileText size={11}/> Excel
           </button>
-          {pending.length>0 && <Btn size="sm" variant="success" onClick={()=>bulkApprove(pending.map(o=>o.id))}>✓ {t("موافقة جماعية","Bulk Approve")}</Btn>}
+          {bulkSalesIds.length>0 && <Btn size="sm" variant="success" onClick={()=>bulkApprove(bulkSalesIds)}>✓ {t("موافقة جماعية","Bulk Approve")}</Btn>}
         </div>
       }>
         {filtered.length===0
@@ -4601,15 +4614,22 @@ function AccVarEmpRow({ branchId, row, onField, onRemove, onQuickFill, canRemove
   );
 }
 
-function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops, approveOp, addCorrectiveOp }:PageProps) {
+function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops, approveOp, addCorrectiveOp, role }:PageProps) {
   const { t, lang, dir } = useLang();
   const en = lang === "en";
-  const op = ops.find(o=>o.id===detailId) || ops[0];
+  const op = ops.find(o=>o.id===detailId);
 
   // Real reconciliation rides on GET /operations/{id} (T04 §4). `detailId` accepts
   // uuid or publicId; the row's `id` is the publicId, so fetch by op.id.
   const { data: detail } = useOperation(op?.id);
   const recon = detail?.reconciliation ?? null;
+  const queryClient = useQueryClient();
+  const salesContext = () => {
+    const currentDetail = op ? queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detail : undefined;
+    return { operation: op, role, detail: currentDetail, locked: currentDetail?.reconciliation?.isLocked,
+      financialDataReady: hasSalesReconciliationEvidence(currentDetail?.reconciliation) };
+  };
+  const salesPolicy = getSalesActionPolicy(salesContext());
   const assignMut = useAssignSalesVariance();
   const patchMut = usePatchSalesDetails();
   const clarifyMut = useRequestClarification();
@@ -4622,7 +4642,8 @@ function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops, approv
     ? apiAudit
     : (op ? buildAuditTrail(op) : []);
 
-  const totalSales = op?.amount || 0;
+  const totalSales = detail?.amountHalalas == null ? null : Math.round(detail.amountHalalas / 100);
+  const fmtSales = (value: number | null | undefined) => value == null ? "—" : fmtAmt(value);
   const channels = recon?.channels ?? [];
   const coreCh = channels.filter(c=>c.group==="core");
   const deliveryCh = channels.filter(c=>c.group==="delivery");
@@ -4633,23 +4654,28 @@ function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops, approv
   const [reconVarReason, setReconVarReason] = useState("");
 
   function beginEdit() {
-    const seed:Record<string,string> = {};
-    channels.forEach(c=>{ seed[c.key] = String(Math.round(c.actualAmountHalalas)/100); });
-    setDraft(seed);
-    setReconVarReason(recon?.varianceReason ?? "");
-    setReconEditMode(true);
+    if (!op || !recon) return;
+    runSalesAction(salesContext, "edit", () => {
+      const seed:Record<string,string> = {};
+      channels.forEach(c=>{ seed[c.key] = String(Math.round(c.actualAmountHalalas)/100); });
+      setDraft(seed);
+      setReconVarReason(recon?.varianceReason ?? "");
+      setReconEditMode(true);
+    });
   }
   function saveEdit() {
-    if (!op) return;
-    const payloadChannels = channels.map(c=>({
-      key: c.key,
-      actualAmountHalalas: Math.round((parseFloat(draft[c.key] ?? String(c.actualAmountHalalas/100))||0)*100),
-      posAmountHalalas: c.posAmountHalalas,
-    }));
-    patchMut.mutate(
-      { operationId: op.id, payload: { channels: payloadChannels, varianceReason: reconVarReason || undefined } },
-      { onSuccess: ()=>setReconEditMode(false) },
-    );
+    if (!op || !recon) return;
+    runSalesAction(salesContext, "save", () => {
+      const payloadChannels = channels.map(c=>({
+        key: c.key,
+        actualAmountHalalas: Math.round((parseFloat(draft[c.key] ?? String(c.actualAmountHalalas/100))||0)*100),
+        posAmountHalalas: c.posAmountHalalas,
+      }));
+      patchMut.mutate(
+        { operationId: op.id, payload: { channels: payloadChannels, varianceReason: reconVarReason || undefined } },
+        { onSuccess: ()=>setReconEditMode(false) },
+      );
+    });
   }
 
   type VEmp = { empId:string; amount:string };
@@ -4657,26 +4683,31 @@ function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops, approv
   const setVarEmpField = (i:number, field:keyof VEmp, val:string) =>
     setVarEmps(p=>p.map((e,j)=>j===i ? {...e,[field]:val} : e));
 
-  const totalCollection = recon ? Math.round(recon.totals.totalCollectionHalalas/100) : 0;
+  const totalCollection = recon?.totals?.totalCollectionHalalas == null ? null : Math.round(recon.totals.totalCollectionHalalas/100);
   // Prefer the server-computed variance when reconciliation is present.
-  const variance        = recon ? Math.round(recon.totals.varianceHalalas/100) : 0;
-  const hasVariance     = variance !== 0;
+  const variance        = recon?.totals?.varianceHalalas == null ? null : Math.round(recon.totals.varianceHalalas/100);
+  const hasVariance     = variance != null && variance !== 0;
   const assignedTotal   = varEmps.reduce((s,e)=>s+(parseFloat(e.amount)||0), 0);
-  const remaining       = Math.abs(variance) - assignedTotal;
+  const remaining       = variance == null ? null : Math.abs(variance) - assignedTotal;
 
   const isLocked = (recon?.isLocked ?? false) || op?.status === "final-approved";
 
   function confirmVarianceAssign() {
-    if (!op) return;
-    const allocations = varEmps
-      .filter(e=>e.empId.trim() && (parseFloat(e.amount)||0)>0)
-      .map(e=>({ empNumber: e.empId.trim(), amountHalalas: Math.round((parseFloat(e.amount)||0)*100) }));
-    if (allocations.length===0) return;
-    assignMut.mutate({ operationId: op.id, payload: { allocations, notes: reconVarReason || undefined } });
+    if (!op || recon?.totals?.varianceHalalas == null) return;
+    runSalesAction(salesContext, "assign", () => {
+      const allocations = varEmps
+        .filter(e=>e.empId.trim() && (parseFloat(e.amount)||0)>0)
+        .map(e=>({ empNumber: e.empId.trim(), amountHalalas: Math.round((parseFloat(e.amount)||0)*100) }));
+      if (allocations.length===0) return;
+      assignMut.mutate({ operationId: op.id, payload: { allocations, notes: reconVarReason || undefined } });
+    });
   }
 
   return (
     <div className="space-y-4">
+      {salesPolicy.pkg6 && <p role="note" className="text-xs text-amber-800 bg-amber-50 rounded-lg p-3">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</p>}
+      {salesPolicy.staleMembers.length > 0 && <p role="status" className="text-xs text-amber-700">{t("بانتظار إعادة اعتماد ورديات أعضاء","Awaiting reapproval of member shifts")}</p>}
+      {recon && !salesPolicy.pkg6 && !hasSalesReconciliationEvidence(recon) && <p role="note" className="text-xs text-gray-500">{t("بيانات التسوية غير مكتملة — التعديل غير متاح","Reconciliation data is incomplete — editing is unavailable")}</p>}
       <Breadcrumb items={[
         { label:t("لوحة التحكم","Dashboard"), onClick:()=>navigate("acc-dashboard") },
         { label:t("المبيعات","Sales"), onClick:()=>navigate("acc-sales") },
@@ -4729,9 +4760,9 @@ function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops, approv
               <p className="text-blue-500 text-xs">{t("بانتظار رئيس الحسابات","Awaiting Head Accountant")}</p></>
             ) : (
               <><p className="text-gray-500 text-xs">{t("إجمالي المبيعات","Total Sales")}</p>
-              <p className="font-bold text-purple-700 text-2xl font-mono mt-0.5">{fmtAmt(totalSales)}<span className="text-sm mx-1">{t("ر.س","SAR")}</span></p>
-              {hasVariance && <p className="text-red-500 text-xs mt-0.5 font-medium">⚠ {t("فرق:","Variance:")} {fmtAmt(Math.abs(variance))} {t("ر.س","SAR")}</p>}
-              {!hasVariance && <p className="text-emerald-600 text-xs mt-0.5 font-medium">✓ {t("التسوية مطابقة","Reconciliation matched")}</p>}</>
+              <p className="font-bold text-purple-700 text-2xl font-mono mt-0.5">{fmtSales(totalSales)}<span className="text-sm mx-1">{t("ر.س","SAR")}</span></p>
+              {hasVariance && <p className="text-red-500 text-xs mt-0.5 font-medium">⚠ {t("فرق:","Variance:")} {fmtSales(variance == null ? null : Math.abs(variance))} {t("ر.س","SAR")}</p>}
+              {variance === 0 && <p className="text-emerald-600 text-xs mt-0.5 font-medium">✓ {t("التسوية مطابقة","Reconciliation matched")}</p>}</>
             )}
           </div>
         </div>
@@ -4741,7 +4772,7 @@ function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops, approv
       <div className="grid grid-cols-3 gap-4">
         <div className="col-span-2 space-y-4">
           <Card title={t("تسوية المبيعات","Sales Reconciliation")} actions={
-            !isLocked && recon && (
+            salesPolicy.edit && recon && (
               <button onClick={()=> reconEditMode ? saveEdit() : beginEdit()} disabled={patchMut.isPending}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all ${reconEditMode?"bg-purple-600 text-white border-purple-600":"bg-white text-purple-600 border-purple-200 hover:bg-purple-50"}`}>
                 <Edit3 size={11}/> {reconEditMode ? (patchMut.isPending?t("جارٍ الحفظ…","Saving…"):t("💾 حفظ التعديلات","💾 Save Changes")) : t("تعديل الأرقام","Edit Figures")}
@@ -4762,7 +4793,7 @@ function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops, approv
                   <span className="text-sm font-bold text-indigo-900">{t("إجمالي المبيعات","Total Sales")}</span>
                   <span className="text-[10px] bg-indigo-100 text-indigo-500 px-1.5 py-0.5 rounded-md">{t("(من رفع مدير الفرع — مقفل)","(Branch Manager entry — locked)")}</span>
                 </div>
-                <span className="font-mono font-black text-indigo-800 text-base">{fmtAmt(Math.round(recon.totals.expectedTotalHalalas/100))} {t("ر.س","SAR")}</span>
+                <span className="font-mono font-black text-indigo-800 text-base">{recon.totals?.expectedTotalHalalas == null ? "—" : fmtAmt(Math.round(recon.totals.expectedTotalHalalas/100))} {t("ر.س","SAR")}</span>
               </div>
 
               {/* ── Core channels ── */}
@@ -4771,14 +4802,14 @@ function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops, approv
                   <div className="flex items-center gap-2">
                     <span className="text-base">{c.icon}</span>
                     <span className="text-sm text-gray-700 font-medium">{c.labelAr}</span>
-                    {c.diffHalalas!==0 && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold">{c.statusLabelAr} {c.diffHalalas>0?"+":""}{fmtAmt(Math.round(c.diffHalalas/100))}</span>}
+                    {c.diffHalalas != null && c.diffHalalas!==0 && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold">{c.statusLabelAr} {c.diffHalalas>0?"+":""}{fmtAmt(Math.round(c.diffHalalas/100))}</span>}
                   </div>
-                  {reconEditMode && !isLocked ? (
+                  {reconEditMode && salesPolicy.edit ? (
                     <input type="number" value={draft[c.key] ?? String(c.actualAmountHalalas/100)}
                       onChange={e=>setDraft(d=>({...d,[c.key]:e.target.value}))}
                       className="w-36 text-center font-mono font-semibold border-2 border-purple-300 rounded-xl px-3 py-1.5 text-sm bg-purple-50 focus:outline-none focus:border-purple-500"/>
                   ) : (
-                    <span className="font-mono font-semibold text-gray-800 text-sm">{fmtAmt(Math.round(c.actualAmountHalalas/100))} {t("ر.س","SAR")}</span>
+                    <span className="font-mono font-semibold text-gray-800 text-sm">{c.actualAmountHalalas == null ? "—" : fmtAmt(Math.round(c.actualAmountHalalas/100))} {t("ر.س","SAR")}</span>
                   )}
                 </div>
               ))}
@@ -4796,28 +4827,28 @@ function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops, approv
                   <div className="flex items-center gap-2">
                     <span className="text-base">{c.icon}</span>
                     <span className="text-sm text-gray-700 font-medium">{c.labelAr}</span>
-                    {c.diffHalalas!==0 && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold">{c.statusLabelAr} {c.diffHalalas>0?"+":""}{fmtAmt(Math.round(c.diffHalalas/100))}</span>}
+                    {c.diffHalalas != null && c.diffHalalas!==0 && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold">{c.statusLabelAr} {c.diffHalalas>0?"+":""}{fmtAmt(Math.round(c.diffHalalas/100))}</span>}
                   </div>
-                  {reconEditMode && !isLocked ? (
+                  {reconEditMode && salesPolicy.edit ? (
                     <input type="number" value={draft[c.key] ?? String(c.actualAmountHalalas/100)}
                       onChange={e=>setDraft(d=>({...d,[c.key]:e.target.value}))}
                       className="w-36 text-center font-mono font-semibold border-2 border-purple-300 rounded-xl px-3 py-1.5 text-sm bg-purple-50 focus:outline-none focus:border-purple-500"/>
                   ) : (
-                    <span className={`font-mono font-semibold text-sm ${c.status==="diff"?"text-amber-700":"text-gray-800"}`}>{fmtAmt(Math.round(c.actualAmountHalalas/100))} {t("ر.س","SAR")}</span>
+                    <span className={`font-mono font-semibold text-sm ${c.status==="diff"?"text-amber-700":"text-gray-800"}`}>{c.actualAmountHalalas == null ? "—" : fmtAmt(Math.round(c.actualAmountHalalas/100))} {t("ر.س","SAR")}</span>
                   )}
                 </div>
               ))}
 
               {/* ── قسم توزيع الفرق على الموظفين (يظهر فقط عند وجود فرق) ── */}
-              {hasVariance && !isLocked && (
+              {hasVariance && salesPolicy.assign && (
                 <div className="mx-4 my-3 bg-red-50 border border-red-200 rounded-xl overflow-hidden">
                   <div className="flex items-center gap-2 px-4 py-3 bg-red-100/60 border-b border-red-200">
                     <AlertTriangle size={14} className="text-red-600 flex-shrink-0"/>
                     <p className="text-sm font-bold text-red-800">
-                      {t("تحميل الفرق على موظفين — الفرق:","Assign variance to employees — Variance:")} <span className="font-mono">{fmtAmt(variance)} {t("ر.س","SAR")}</span>
+                      {t("تحميل الفرق على موظفين — الفرق:","Assign variance to employees — Variance:")} <span className="font-mono">{fmtSales(variance)} {t("ر.س","SAR")}</span>
                     </p>
-                    <span className={`mr-auto text-xs font-bold px-2 py-1 rounded-lg ${remaining<=0?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}`}>
-                      {remaining<=0 ? t("✓ محمَّل بالكامل","✓ Fully assigned") : `${t("متبقي","Remaining")} ${fmtAmt(remaining)} ${t("ر.س","SAR")}`}
+                    <span className={`mr-auto text-xs font-bold px-2 py-1 rounded-lg ${remaining != null && remaining<=0?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}`}>
+                      {remaining != null && remaining<=0 ? t("✓ محمَّل بالكامل","✓ Fully assigned") : `${t("متبقي","Remaining")} ${fmtSales(remaining)} ${t("ر.س","SAR")}`}
                     </span>
                   </div>
                   <div className="p-4 space-y-2">
@@ -4841,14 +4872,14 @@ function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops, approv
                       <AccVarEmpRow key={i} branchId={op?.branchId} row={e} canRemove={varEmps.length>1} t={t}
                         onField={(f,v)=>setVarEmpField(i,f,v)}
                         onRemove={()=>setVarEmps(p=>p.filter((_,j)=>j!==i))}
-                        onQuickFill={()=>setVarEmpField(i,"amount",String(Math.max(0, remaining+(parseFloat(e.amount)||0))))}/>
+                        onQuickFill={()=>{ if (remaining == null) return; setVarEmpField(i,"amount",String(Math.max(0, remaining+(parseFloat(e.amount)||0)))); }}/>
                     ))}
                     <div className="flex items-center justify-between pt-1">
                       <button onClick={()=>setVarEmps(p=>[...p,{empId:"",amount:""}])}
                         className="flex items-center gap-1 text-xs text-red-600 hover:underline font-semibold">
                         <Plus size={11}/> {t("إضافة موظف آخر","Add Another Employee")}
                       </button>
-                      <Btn size="sm" variant="success" onClick={confirmVarianceAssign} disabled={assignMut.isPending || remaining>0}>
+                      <Btn size="sm" variant="success" onClick={confirmVarianceAssign} disabled={assignMut.isPending || remaining == null || remaining>0}>
                         <CheckCircle2 size={11}/> {assignMut.isPending?t("جارٍ التحميل…","Uploading…"):t("تأكيد التحميل","Confirm Assignment")}
                       </Btn>
                     </div>
@@ -4857,18 +4888,18 @@ function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops, approv
               )}
 
               {/* ── إجمالي التحصيل ── */}
-              <div className={`flex items-center justify-between px-4 py-3.5 font-bold border-t-2 ${variance===0?"bg-emerald-50/70 border-emerald-200":"bg-red-50/70 border-red-200"}`}>
-                <span className={`text-sm ${variance===0?"text-emerald-800":"text-red-800"}`}>{t("إجمالي التحصيل","Total Collected")}</span>
-                <span className={`font-mono text-base ${variance===0?"text-emerald-700":"text-red-700"}`}>{fmtAmt(totalCollection)} {t("ر.س","SAR")}</span>
+              <div className={`flex items-center justify-between px-4 py-3.5 font-bold border-t-2 ${variance===0?"bg-emerald-50/70 border-emerald-200":hasVariance?"bg-red-50/70 border-red-200":"bg-gray-50 border-gray-200"}`}>
+                <span className={`text-sm ${variance===0?"text-emerald-800":hasVariance?"text-red-800":"text-gray-500"}`}>{t("إجمالي التحصيل","Total Collected")}</span>
+                <span className={`font-mono text-base ${variance===0?"text-emerald-700":hasVariance?"text-red-700":"text-gray-500"}`}>{fmtSales(totalCollection)} {t("ر.س","SAR")}</span>
               </div>
 
-              {variance !== 0 ? (
+              {variance == null ? <p className="text-xs text-gray-400 px-4 py-3">{t("الفرق غير متاح —","Variance unavailable —")}</p> : variance !== 0 ? (
                 <div className="flex items-center justify-between px-4 py-3 bg-red-100 border-t border-red-200">
                   <div className="flex items-center gap-2">
                     <AlertTriangle size={13} className="text-red-600"/>
                     <span className="text-sm font-bold text-red-800">{t("الفرق المطلوب تحميله على الموظفين","Variance to assign to employees")}</span>
                   </div>
-                  <span className="font-mono font-black text-red-800 text-base">{fmtAmt(variance)} {t("ر.س","SAR")}</span>
+                  <span className="font-mono font-black text-red-800 text-base">{fmtSales(variance)} {t("ر.س","SAR")}</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-center px-4 py-3 bg-emerald-50">
@@ -4940,20 +4971,21 @@ function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops, approv
                     </div>
                   ))}
                 </div>
-                <button
-                  disabled={correctMut.isPending}
+                {salesPolicy.correct && <button
+                  disabled={correctMut.isPending || !salesPolicy.correct}
                   onClick={()=>{
-                    if(op) {
+                    runSalesAction(salesContext, "correct", () => {
+                      if (!op) return;
                       // Real POST /operations/{id}/correction; keep the optimistic
                       // linked op so the UI updates immediately either way.
                       correctMut.mutate({ id: op.id });
                       if (addCorrectiveOp) addCorrectiveOp(op.id);
                       navigate("acc-sales");
-                    }
+                    });
                   }}
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amber-50 text-amber-700 font-semibold text-sm hover:bg-amber-100 border border-amber-200 disabled:opacity-50">
                   <FileText size={14}/> {t("إنشاء عملية تعديل مرتبطة","Create Linked Correction")}
-                </button>
+                </button>}
               </div>
             </Card>
           ) : op?.status==="pending" ? (
@@ -4962,9 +4994,9 @@ function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops, approv
                 <button onClick={()=>{ approveOp(op.id); }} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-600 text-white font-semibold text-sm hover:bg-emerald-700 shadow-sm">
                   <CheckCircle2 size={15}/> {t("موافقة — إرسال لرئيس الحسابات","Approve — Send to Head Accountant")}
                 </button>
-                <button onClick={()=>{ setDetailId(op.id); setModal("reject"); }} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-50 text-red-700 font-semibold text-sm hover:bg-red-100 border border-red-200">
+                {salesPolicy.return && <button onClick={()=>runSalesAction(salesContext, "return", () => { setDetailId(op.id); setModal("reject"); })} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-50 text-red-700 font-semibold text-sm hover:bg-red-100 border border-red-200">
                   <XCircle size={15}/> {t("رفض — إعادة لمدير الفرع","Reject — Return to Branch Manager")}
-                </button>
+                </button>}
                 <button onClick={()=>setClarifyOpen(true)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-50 text-blue-700 font-semibold text-sm hover:bg-blue-100 border border-blue-200">
                   <MessageSquare size={15}/> {t("طلب توضيح","Request Clarification")}
                 </button>
@@ -9806,7 +9838,7 @@ function HeadApprovalTab({ ops, finalApproveOp, rejectOp, setModal, setDetailId,
                   <span className="font-mono font-semibold text-gray-800">{fmtAmt(op.amount)} {t("ر.س","SAR")}</span>
                   <div className="flex gap-1">
                     <button onClick={()=>finalApproveOp(op.id)} className="p-1.5 rounded hover:bg-emerald-50"><CheckCircle2 size={13} className="text-emerald-600"/></button>
-                    <button onClick={()=>{ setDetailId(op.id); setModal("reject"); }} className="p-1.5 rounded hover:bg-red-50"><XCircle size={13} className="text-red-500"/></button>
+                    {isPkg6SalesReport(op) ? <span className="text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</span> : <button onClick={()=>{ setDetailId(op.id); setModal("reject"); }} className="p-1.5 rounded hover:bg-red-50"><XCircle size={13} className="text-red-500"/></button>}
                   </div>
                 </div>
               ))}
@@ -9894,13 +9926,14 @@ function HeadPending({ navigate, setModal, setDetailId, ops, finalApproveOp, rej
               className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border font-semibold transition-all ${isCond?"bg-amber-100 text-amber-800 border-amber-300":"bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"}`}>
               <AlertTriangle size={11}/> {t("مشروط","Conditional")}
             </button>
-            {returnForReview && (
+            {isPkg6SalesReport(op) && <span className="text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</span>}
+            {returnForReview && !isPkg6SalesReport(op) && (
               <button onClick={()=>{ const note = window.prompt(t("ملاحظة الإرجاع (اختياري)","Return note (optional)")) ?? undefined; returnForReview(op.id, note || undefined); }}
                 className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 font-semibold hover:bg-blue-100">
                 <RotateCcw size={11}/> {t("إرجاع للمراجعة","Return")}
               </button>
             )}
-            <div className="relative group">
+            <div className="relative group" hidden={isPkg6SalesReport(op)}>
               <button className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 font-semibold hover:bg-red-100">
                 <XCircle size={11}/> {t("رفض","Reject")}
               </button>
@@ -10304,7 +10337,7 @@ function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops, final
                   <span className="font-mono font-bold text-gray-800 tabular-nums">{fmtAmt(op.amount)} {t("ر.س","SAR")}</span>
                   <div className="flex gap-1.5">
                     <Btn size="sm" variant="success" onClick={()=>finalApproveOp(op.id)}><CheckCircle2 size={12}/> {t("اعتماد","Approve")}</Btn>
-                    <Btn size="sm" variant="danger" onClick={()=>{ setDetailId(op.id); setModal("reject"); }}><XCircle size={12}/> {t("رفض","Reject")}</Btn>
+                    {isPkg6SalesReport(op) ? <span className="text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</span> : <Btn size="sm" variant="danger" onClick={()=>{ setDetailId(op.id); setModal("reject"); }}><XCircle size={12}/> {t("رفض","Reject")}</Btn>}
                   </div>
                 </div>
               );
@@ -16950,6 +16983,17 @@ export function ASABPrototype() {
   // ─────────────────────────────────────────────────────────
   const now = () => new Date().toLocaleTimeString("ar-SA", { hour:"2-digit", minute:"2-digit" });
 
+  const salesQueryClient = useQueryClient();
+  const currentSalesOps = useRef(ops);
+  currentSalesOps.current = ops;
+  const currentSalesRole = useRef(appState.role);
+  currentSalesRole.current = appState.role;
+  const salesDetailFor = (op: { id: string }) => salesQueryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id));
+  const salesContextFor = (id: string) => {
+    const operation = currentSalesOps.current.find(op => op.id === id);
+    return { operation, detail: operation ? salesDetailFor(operation) : undefined, role: currentSalesRole.current };
+  };
+
   // ─── Live mutations (fire alongside optimistic local state) ──────────────
   const approveMut       = useApproveOperation();
   const rejectMut        = useRejectOperation();
@@ -16970,14 +17014,16 @@ export function ASABPrototype() {
     approveMut.mutate({ id });
   };
   const rejectOp = (id:string, reason:string) => {
-    setOps(p=>p.map(o=>
-      o.id===id && (o.status==="pending" || o.status==="approved")
-        ? { ...o, status:"rejected" as OpStatus, rejectReason:reason,
-            rejectedBy: appState.role==="head" ? "رئيس الحسابات" : "المحاسب المختص",
-            rejectedAt: now() }
-        : o
-    ));
-    rejectMut.mutate({ id, reason });
+    runSalesAction(() => salesContextFor(id), "return", () => {
+      setOps(p=>p.map(o=>
+        o.id===id && (o.status==="pending" || o.status==="approved")
+          ? { ...o, status:"rejected" as OpStatus, rejectReason:reason,
+              rejectedBy: appState.role==="head" ? "رئيس الحسابات" : "المحاسب المختص",
+              rejectedAt: now() }
+          : o
+      ));
+      rejectMut.mutate({ id, reason });
+    });
   };
   const finalApproveOp = (id:string, conditional?: { note: string }) => {
     setOps(p=>p.map(o=>
@@ -16991,7 +17037,10 @@ export function ASABPrototype() {
     finalMut.mutate({ id, isConditional: !!conditional, conditionalNote: conditional?.note });
   };
   const bulkApprove = (ids:string[]) => {
-    const set = new Set(ids);
+    const eligible = salesBulkApprovalIds(currentSalesOps.current, ids.filter(id =>
+      currentSalesOps.current.find(op => op.id === id)?.status === "pending"), currentSalesRole.current, salesDetailFor);
+    const set = new Set([...eligible, ...ids.filter(id =>
+      currentSalesOps.current.find(op => op.id === id)?.status === "approved")]);
     const ts = now();
     // Partition ids by current status so we send the right call per group.
     const pendingIds:string[] = [];
@@ -17008,40 +17057,45 @@ export function ASABPrototype() {
       return o;
     }));
     // T10 §A4: pending → stage-1 bulk-approve; approved → one bulk-final-approve call.
-    if (pendingIds.length > 0)  bulkApproveMut.mutate({ operationIds: pendingIds });
+    runSalesBulkApproval(currentSalesOps.current, pendingIds, currentSalesRole.current, eligibleIds =>
+      bulkApproveMut.mutate({ operationIds: eligibleIds }), salesDetailFor);
     if (approvedIds.length > 0) bulkFinalMut.mutate({ operationIds: approvedIds });
   };
 
   // T10 §A4 — return an approved op to the accountant for review (op → pending).
   const returnForReview = (id:string, note?:string) => {
-    setOps(p=>p.map(o=>
-      o.id===id && o.status==="approved"
-        ? { ...o, status:"pending" as OpStatus, approvedBy:undefined, approvedAt:undefined }
-        : o
-    ));
-    returnReviewMut.mutate({ id, note });
+    runSalesAction(() => salesContextFor(id), "returnForReview", () => {
+      setOps(p=>p.map(o=>
+        o.id===id && o.status==="approved"
+          ? { ...o, status:"pending" as OpStatus, approvedBy:undefined, approvedAt:undefined }
+          : o
+      ));
+      returnReviewMut.mutate({ id, note });
+    });
   };
 
   // Corrective operation: creates a new linked pending op referencing the original
   const addCorrectiveOp = (refId:string) => {
-    const original = ops.find(o=>o.id===refId);
-    if(!original) return;
-    const newId = `COR-${refId.replace("OPS-","").replace("COR-","")}`;
-    const corrective: Op = {
-      ...original,
-      id: newId,
-      status: "pending",
-      isCorrection: true,
-      correctiveRef: refId,
-      timeAgo: "للتو",
-      submittedBy: "تعديل بواسطة رئيس الحسابات",
-      approvedBy: undefined, approvedAt: undefined,
-      finalApprovedBy: undefined, finalApprovedAt: undefined,
-      rejectedBy: undefined, rejectedAt: undefined,
-      erpPosted: undefined, erpBatchId: undefined, erpPostedAt: undefined,
-      rejectReason: undefined,
-    };
-    setOps(p=>[corrective, ...p]);
+    runSalesAction(() => salesContextFor(refId), "correct", () => {
+      const original = ops.find(o=>o.id===refId);
+      if(!original) return;
+      const newId = `COR-${refId.replace("OPS-","").replace("COR-","")}`;
+      const corrective: Op = {
+        ...original,
+        id: newId,
+        status: "pending",
+        isCorrection: true,
+        correctiveRef: refId,
+        timeAgo: "للتو",
+        submittedBy: "تعديل بواسطة رئيس الحسابات",
+        approvedBy: undefined, approvedAt: undefined,
+        finalApprovedBy: undefined, finalApprovedAt: undefined,
+        rejectedBy: undefined, rejectedAt: undefined,
+        erpPosted: undefined, erpBatchId: undefined, erpPostedAt: undefined,
+        rejectReason: undefined,
+      };
+      setOps(p=>[corrective, ...p]);
+    });
   };
 
   // ERP posting: marks ops as posted with batch ID — separate from final-approval.
