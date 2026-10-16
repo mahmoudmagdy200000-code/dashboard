@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
+import { headLegacyBulkIds } from "./headReviewGuards";
 import { toast } from "sonner";
 import { useState, useEffect, useMemo, ReactNode, createContext, useContext, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import {
@@ -16955,8 +16956,9 @@ export function ASABPrototype() {
   const bulkApprove = (ids:string[]) => {
     const eligible = salesBulkApprovalIds(currentSalesOps.current, ids.filter(id =>
       currentSalesOps.current.find(op => op.id === id)?.status === "pending"), currentSalesRole.current, salesDetailFor);
-    const set = new Set([...eligible, ...ids.filter(id =>
-      currentSalesOps.current.find(op => op.id === id)?.status === "approved")]);
+    const approved = headLegacyBulkIds(currentSalesOps.current, ids.filter(id =>
+      currentSalesOps.current.find(op => op.id === id)?.status === "approved"), currentSalesRole.current, salesDetailFor);
+    const set = new Set([...eligible, ...approved]);
     const ts = now();
     // Partition ids by current status so we send the right call per group.
     const pendingIds:string[] = [];

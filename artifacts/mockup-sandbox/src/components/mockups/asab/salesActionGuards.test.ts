@@ -8,10 +8,11 @@ import {
   hasSalesReconciliationEvidence,
   type SalesAction, type SalesActionContext,
 } from "./salesActionGuards.ts";
-import { getHeadReviewPolicy } from "./headReviewGuards.ts";
+import { getHeadReviewPolicy, headLegacyBulkIds } from "./headReviewGuards.ts";
 
 const legacy = { id: "legacy", moduleKey: "sales", status: "pending" };
 const day = { ...legacy, id: "day", reportReview: { phase: "accountant_review" } };
+const shf = { id: "shf", moduleKey: "shifts", status: "pending", reportReview: { phase: "accountant_review" } };
 const nullableLegacyRecon = {
   channels: [{ key: "cash", actualAmountHalalas: 0, posAmountHalalas: null, diffHalalas: null }],
   totals: { expectedTotalHalalas: 100, totalCollectionHalalas: 0, varianceHalalas: -100 },
@@ -222,7 +223,7 @@ test("actual bulk handlers exclude PKG-6 before requests and optimistic state ch
     const sent: string[][] = [];
     const mutate = ({ operationIds }: { operationIds: string[] }) => sent.push(operationIds);
     const [bulk] = uiHandlers(file, container, ["bulkApprove"], {
-      runSalesBulkApproval, salesBulkApprovalIds,
+      runSalesBulkApproval, salesBulkApprovalIds, headLegacyBulkIds,
       currentOps: { current: state }, currentRole: { current: "accountant" },
       currentSalesOps: { current: state }, currentSalesRole: { current: "accountant" },
       ops: state, detailFor: () => undefined, salesDetailFor: () => undefined,
@@ -234,6 +235,94 @@ test("actual bulk handlers exclude PKG-6 before requests and optimistic state ch
     bulk(["day", "legacy", "expense"]);
     assert.deepEqual(sent, [["legacy", "expense"]]);
     assert.equal(state.find(op => op.id === "day")?.status, "pending");
+  }
+});
+
+test("accountant bulk selection excludes SHF across mixed selections and detail evidence", () => {
+  const expense = { id: "expense", moduleKey: "expenses", status: "pending" };
+  const operations = [shf, day, legacy, expense];
+  for (const [requested, expected] of [
+    [["shf"], []],
+    [["shf", "legacy"], ["legacy"]],
+    [["shf", "day", "legacy"], ["legacy"]],
+    [["shf", "expense"], ["expense"]],
+    [["day"], []],
+    [["legacy"], ["legacy"]],
+  ] as const) {
+    const sent: string[][] = [];
+    const eligible = runSalesBulkApproval(operations, requested, "accountant", payload => sent.push(payload));
+    assert.deepEqual(eligible, expected, requested.join(","));
+    assert.deepEqual(sent, expected.length ? [expected] : [], requested.join(","));
+  }
+  const detailShf = { ...shf, id: "legacy" };
+  assert.deepEqual(salesBulkApprovalIds([legacy], ["legacy"], "accountant", () => detailShf), []);
+  assert.deepEqual(runSalesBulkApproval([legacy], ["legacy"], "accountant", () => assert.fail("detail SHF entered bulk"), () => detailShf), []);
+});
+
+test("Dashboard and ASABPrototype shared bulk handlers never emit SHF or PKG-6 IDs", () => {
+  const expense = { id: "expense", moduleKey: "expenses", status: "pending" };
+  const operations = [shf, day, legacy, expense];
+  const cases = [
+    { requested:["shf"], expected:[] },
+    { requested:["shf","legacy"], expected:["legacy"] },
+    { requested:["shf","day","legacy"], expected:["legacy"] },
+    { requested:["shf","expense"], expected:["expense"] },
+    { requested:["day"], expected:[] },
+    { requested:["legacy"], expected:["legacy"] },
+  ];
+  for (const [file, container] of [["CompanyDashboard.tsx", "useSharedOps"], ["ASABPrototype.tsx", "ASABPrototype"]]) {
+    for (const {requested, expected} of cases) {
+      let state = [...operations];
+      const sent: string[][] = [];
+      const mutate = ({ operationIds }: { operationIds: string[] }) => sent.push(operationIds);
+      const [bulk] = uiHandlers(file, container, ["bulkApprove"], {
+        runSalesBulkApproval, salesBulkApprovalIds, headLegacyBulkIds,
+        currentOps: { current: state }, currentRole: { current: "accountant" },
+        currentSalesOps: { current: state }, currentSalesRole: { current: "accountant" },
+        ops: state, detailFor: () => undefined, salesDetailFor: () => undefined,
+        now: () => "now", setOps: (update: (ops: typeof state) => typeof state) => { state = update(state); },
+        bulkMut: { mutate }, bulkApproveMut: { mutate }, bulkFinalMut: { mutate: () => assert.fail("unexpected final approval") },
+      });
+      bulk(requested);
+      assert.deepEqual(sent, expected.length ? [expected] : [], `${file}: ${requested.join(",")}`);
+    }
+    const sent: string[][] = [];
+    const [bulk] = uiHandlers(file, container, ["bulkApprove"], {
+      runSalesBulkApproval, salesBulkApprovalIds, headLegacyBulkIds,
+      currentOps: { current: [legacy] }, currentRole: { current: "accountant" },
+      currentSalesOps: { current: [legacy] }, currentSalesRole: { current: "accountant" },
+      ops: [legacy], detailFor: () => ({ ...shf, id:"legacy" }), salesDetailFor: () => ({ ...shf, id:"legacy" }),
+      now: () => "now", setOps: () => {},
+      bulkMut: { mutate: ({operationIds}: {operationIds:string[]}) => sent.push(operationIds) },
+      bulkApproveMut: { mutate: ({operationIds}: {operationIds:string[]}) => sent.push(operationIds) },
+      bulkFinalMut: { mutate: () => assert.fail("unexpected final approval") },
+    });
+    bulk(["legacy"]);
+    assert.deepEqual(sent, [], `${file}: SHF in detail`);
+  }
+});
+
+test("ASABPrototype blocks protected approved rows while preserving head Legacy bulk", () => {
+  const approvedShf = { ...shf, status:"approved" };
+  const approvedDay = { ...day, status:"approved" };
+  const approvedLegacy = { ...legacy, status:"approved" };
+  const operations = [approvedShf, approvedDay, approvedLegacy];
+  for (const [role, requested, expected] of [
+    ["accountant", ["shf","day"], []],
+    ["head", ["shf","day","legacy"], []],
+    ["head", ["legacy"], ["legacy"]],
+  ] as const) {
+    const sent: string[][] = [];
+    const [bulk] = uiHandlers("ASABPrototype.tsx", "ASABPrototype", ["bulkApprove"], {
+      runSalesBulkApproval, salesBulkApprovalIds, headLegacyBulkIds,
+      currentSalesOps: { current: operations }, currentSalesRole: { current: role },
+      ops: operations, salesDetailFor: () => undefined,
+      now: () => "now", setOps: () => {},
+      bulkApproveMut: { mutate: () => assert.fail("unexpected accountant bulk approval") },
+      bulkFinalMut: { mutate: ({ operationIds }: { operationIds:string[] }) => sent.push(operationIds) },
+    });
+    bulk(requested);
+    assert.deepEqual(sent, expected.length ? [expected] : [], `${role}: ${requested.join(",")}`);
   }
 });
 

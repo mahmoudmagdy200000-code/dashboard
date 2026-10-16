@@ -21,6 +21,7 @@ export const SALES_RETURN_HINT = {
 };
 
 const isSales = (op?: SalesGuardOperation | null) => (op?.moduleKey ?? op?.module) === "sales";
+const isShf = (op?: SalesGuardOperation | null) => op?.moduleKey === "shifts" || op?.module === "shifts";
 
 /** Use only the API's review evidence, never an origin, ID prefix or money value. */
 export function isPkg6SalesReport(op?: SalesGuardOperation | null): boolean {
@@ -29,6 +30,7 @@ export function isPkg6SalesReport(op?: SalesGuardOperation | null): boolean {
 
 export function getSalesActionPolicy({ operation, detail, role, locked, financialDataReady }: SalesActionContext) {
   const sales = isSales(operation) || isSales(detail);
+  const shf = isShf(operation) || isShf(detail);
   // A null/absent detail review must not erase positive list evidence.
   const pkg6 = isPkg6SalesReport(operation) || isPkg6SalesReport(detail);
   const status = detail?.status ?? operation?.status;
@@ -51,7 +53,7 @@ export function getSalesActionPolicy({ operation, detail, role, locked, financia
     returnForReview: !!operation && (!sales || (!pkg6 && !isLocked && role === "head" && status === "approved")),
     correct: !!operation && (!sales || (!pkg6 && status === "final-approved" &&
       (role === "accountant" || role === "head"))),
-    bulkApprove: !!operation && (!sales || (!pkg6 && role === "accountant" && status === "pending")),
+    bulkApprove: !!operation && !shf && (!sales || (!pkg6 && role === "accountant" && status === "pending")),
   };
 }
 
