@@ -8,6 +8,7 @@ import {
   hasSalesReconciliationEvidence,
   type SalesAction, type SalesActionContext,
 } from "./salesActionGuards.ts";
+import { getHeadReviewPolicy } from "./headReviewGuards.ts";
 
 const legacy = { id: "legacy", moduleKey: "sales", status: "pending" };
 const day = { ...legacy, id: "day", reportReview: { phase: "accountant_review" } };
@@ -149,7 +150,7 @@ test("actual sales edit/save/assign handlers send no forbidden requests in eithe
   }
 });
 
-test("actual reject confirmation and return handlers recheck review before HTTP or optimistic updates", () => {
+test("actual reject confirmation and return handlers recheck review before HTTP or optimistic updates", async () => {
   for (const role of ["accountant", "head"]) {
     for (const pkg6 of [false, true]) {
       const operation = { ...legacy, status: role === "head" ? "approved" : "pending", reportReview: pkg6 ? day.reportReview : undefined };
@@ -158,14 +159,17 @@ test("actual reject confirmation and return handlers recheck review before HTTP 
       const scope = {
         runSalesAction, salesContextFor: () => ({ operation, role }), rejectingId: "legacy",
         rejectingModule: "sales", rejectReasons: undefined,
+        currentRole: { current:role }, operationFor: () => operation, detailFor: () => undefined,
+        actionLock: { current:false }, setActionsPending: () => {},
+        loadFreshDetail: async () => operation, getHeadReviewPolicy, getSalesActionPolicy,
         runOperationAction: (_id: string, _action: string, effect: () => void) => effect(),
         setRejectingId: () => {}, now: () => "now", appState: { role },
         setOps: (update: unknown) => changes.push(update),
-        rejectMut: { mutate: () => requests.push("POST reject") },
+        rejectMut: { mutate: () => requests.push("POST reject"), mutateAsync: async () => { requests.push("POST reject"); } },
         returnReviewMut: { mutate: () => requests.push("POST return-for-review") },
       };
       const [confirm] = uiHandlers("CompanyDashboard.tsx", "useSharedOps", ["rejectModalProps.onSubmit"], scope);
-      confirm({ reason: "reason" });
+      await confirm({ reason: "reason" });
       const [reject, returnForReview] = uiHandlers("ASABPrototype.tsx", "ASABPrototype", ["rejectOp", "returnForReview"], scope);
       reject("legacy", "reason");
       returnForReview("legacy");

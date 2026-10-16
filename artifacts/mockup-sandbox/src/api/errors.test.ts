@@ -70,6 +70,10 @@ test('HTTP 409 Conflict normalization', () => {
   assert.equal(errNotSubmitted.code, 'DAY_REPORT_NOT_SUBMITTED');
   assert.equal(errNotSubmitted.messageAr, 'يجب إرسال تقرير اليوم أولًا');
 
+  const liabilityPending = new ApiError({ message: 'BRANCH_LIABILITY_APPROVAL_PENDING' }, 409);
+  assert.equal(liabilityPending.code, 'BRANCH_LIABILITY_APPROVAL_PENDING');
+  assert.equal(liabilityPending.messageAr, 'توزيع مسؤولية العجز بانتظار الاعتماد قبل الاعتماد النهائي للوردية');
+
   // 409 with legacy envelope (e.g. BD-4 PKG6_DAY_REPORT_READ_ONLY)
   const errLegacy409 = new ApiError(
     {

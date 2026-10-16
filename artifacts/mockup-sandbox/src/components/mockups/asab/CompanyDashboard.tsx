@@ -4,9 +4,12 @@ import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, type ShfReviewAction } from "./shiftReviewQueue";
+import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT } from "./headReviewGuards";
+import { api } from "../../../api/client";
+import { toast } from "sonner";
 import { useState, useMemo, useEffect, useRef, ReactNode, createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
 import {
-  useOperations, useApproveOperation, useRejectOperation, useBulkApprove, useFinalApprove,
+  useOperations, useApproveOperation, useRejectOperation, useBulkApprove, useFinalApprove, useBulkFinalApprove,
   useVerifyExpenseInvoice, useUnverifyExpenseInvoice, useReviewExpenseInvoice,
   useExpensesKpis, useConvertToAssetDraft,
   useAssetDrafts, useConfirmAssetDraft, useDiscardAssetDraft, useImportAssets, useCreateAsset, usePatchAsset, useAssets, useExportAssets,
@@ -1443,9 +1446,9 @@ function ShiftOpPanel({ detail, loading, error }:{ detail?:ApiOperation; loading
   );
 }
 
-function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle, forHead=false }:{
+function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle, forHead=false, actionsPending=false }:{
   op:COp; onApprove:()=>void; onReject:()=>void; onClarify?:()=>void; onView:()=>void;
-  expanded?:boolean; onToggle?:()=>void; forHead?:boolean;
+  expanded?:boolean; onToggle?:()=>void; forHead?:boolean; actionsPending?:boolean;
 }) {
   const { t } = useCLang();
   const detailQ = useOperation(expanded && (op.module === "sales" || op.module === "shifts") ? op.id : null);
@@ -1454,6 +1457,8 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
     detail: queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detailQ.data });
   const salesPolicy = getSalesActionPolicy(salesContext());
   const shiftPolicy = getShfReviewPolicy(op, forHead ? "head" : "accountant",
+    queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detailQ.data);
+  const headPolicy = getHeadReviewPolicy(op, forHead ? "head" : null,
     queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detailQ.data);
   const isPending = op.status === "pending";
   const isApproved = op.status === "approved";
@@ -1518,8 +1523,8 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
             {(op.module === "shifts" ? shiftPolicy.returnToManager : salesPolicy.return) && <button onClick={op.module === "shifts" ? onReject : ()=>runSalesAction(salesContext, "return", onReject)} title={op.module === "shifts" ? t("إرجاع لمدير الفرع","Return to branch manager") : t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all"><ThumbsDown size={13}/></button>}
           </>}
           {forHead && isApproved && <>
-            <button onClick={onApprove} title={t("اعتماد نهائي","Final Approve")} className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center transition-all"><ThumbsUp size={13}/></button>
-            {salesPolicy.return && <button onClick={()=>runSalesAction(salesContext, "return", onReject)} title={t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all"><ThumbsDown size={13}/></button>}
+            {headPolicy.finalApprove && <button disabled={actionsPending} onClick={onApprove} title={t("اعتماد نهائي","Final Approve")} className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center transition-all disabled:opacity-50"><ThumbsUp size={13}/></button>}
+            {headPolicy.returnForReview && salesPolicy.return && <button disabled={actionsPending} onClick={()=>runSalesAction(salesContext, "return", onReject)} title={op.module === "shifts" ? t("إعادة للمحاسب للتعديل","Return to accountant for changes") : t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all disabled:opacity-50"><ThumbsDown size={13}/></button>}
           </>}
           {isLocked && <span className="flex items-center gap-1 text-xs text-slate-400 bg-slate-100 border border-slate-200 px-2 py-1.5 rounded-lg"><Lock size={11}/> {t("مُغلق","Locked")}</span>}
           <button className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 flex items-center justify-center transition-all" onClick={onToggle}>
@@ -1528,6 +1533,7 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
         </div>
       </div>
       {salesPolicy.pkg6 && <p className="px-5 pb-2 text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</p>}
+      {forHead && headPolicy.blockedReason && <p className="px-5 pb-2 text-xs text-amber-700">{t(HEAD_DAY_EVIDENCE_HINT.ar, HEAD_DAY_EVIDENCE_HINT.en)}</p>}
       {expanded && (
         <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-4 space-y-4">
           {op.module==="sales" && <SalesReconPanel op={op} onApprove={onApprove} onReject={onReject} onClarify={onClarify} isPending={isPending} forHead={forHead}/>}
@@ -2337,17 +2343,21 @@ type HeadProps = {
   finalApprove:(id:string)=>void;
   reject:(id:string)=>void;
   bulkFinalApprove:(ids:string[])=>void;
+  actionsPending:boolean;
 };
 
 // ═══════════════════════════════════════════════════
 // HEAD ACCOUNTANT — DASHBOARD
 // ═══════════════════════════════════════════════════
-function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove }:HeadProps) {
+function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove, actionsPending }:HeadProps) {
   const { t, dir } = useCLang();
+  const queryClient = useQueryClient();
   const { data: apiHeadDash } = useHeadDashboard();
   const { data: apiCompanyDash } = useCompanyAdminDashboard();
   const apiKpis = (apiHeadDash?.kpis ?? {}) as Record<string, number | string>;
   const awaitingHead  = ops.filter(o=>o.status==="approved");
+  const dashboardBulkIds = awaitingHead.map(op=>op.id);
+  const dashboardBulkAllowed = headLegacyBulkIds(ops, dashboardBulkIds, "head", op=>queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id))).length===dashboardBulkIds.length;
   const finalApproved = ops.filter(o=>o.status==="final-approved");
   const rejected      = ops.filter(o=>o.status==="rejected");
   // Brand performance comes from GET /company/me/dashboard. No static fallback.
@@ -2416,7 +2426,8 @@ function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove }
           <h3 className="font-bold text-amber-800 text-sm">⏳ {t("بانتظار اعتمادك النهائي","Awaiting Your Final Approval")} ({awaitingHead.length})</h3>
           {awaitingHead.length>0 && (
             <div className="flex items-center gap-2">
-              <Btn size="sm" variant="success" onClick={()=>bulkFinalApprove(awaitingHead.map(o=>o.id))}>✅ {t("اعتماد الكل","Approve All")}</Btn>
+              <Btn size="sm" variant="success" disabled={!dashboardBulkAllowed || actionsPending} onClick={()=>bulkFinalApprove(dashboardBulkIds)}>✅ {t("اعتماد الكل","Approve All")}</Btn>
+              {!dashboardBulkAllowed && <span className="text-xs text-amber-700">{t("اعتماد SHF وتقرير اليوم فرديًا بعد تحقق الدليل","Review SHF and day reports individually after evidence checks")}</span>}
               <button onClick={()=>navigate("head-pending")} className="text-xs text-purple-600 font-semibold hover:underline">{t("عرض الكل ←","View All →")}</button>
             </div>
           )}
@@ -2436,8 +2447,8 @@ function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove }
               {t(MATCH_CFG[op.match].label, EN_MATCH_CD[op.match])}
             </Badge>
             <div className="flex gap-1.5 flex-shrink-0">
-              <button onClick={()=>finalApprove(op.id)} title={t("اعتماد نهائي","Final Approve")} className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center text-xs"><CheckCircle2 size={12}/></button>
-              {isPkg6SalesReport(op) ? <span className="text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</span> : <button onClick={()=>reject(op.id)} title={t("رفض","Reject")} className="w-7 h-7 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center text-xs"><XCircle size={12}/></button>}
+              {getHeadReviewPolicy(op,"head").finalApprove && <button disabled={actionsPending} onClick={()=>finalApprove(op.id)} title={t("اعتماد نهائي","Final Approve")} className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center text-xs disabled:opacity-50"><CheckCircle2 size={12}/></button>}
+              {getHeadReviewPolicy(op,"head").blockedReason ? <span className="text-xs text-amber-700">{t(HEAD_DAY_EVIDENCE_HINT.ar, HEAD_DAY_EVIDENCE_HINT.en)}</span> : getHeadReviewPolicy(op,"head").returnForReview && !isPkg6SalesReport(op) && <button disabled={actionsPending} onClick={()=>reject(op.id)} title={op.module==="shifts"?t("إعادة للمحاسب للتعديل","Return to accountant for changes"):t("رفض","Reject")} className="w-7 h-7 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center text-xs disabled:opacity-50"><XCircle size={12}/></button>}
             </div>
           </div>
         ))}
@@ -2451,8 +2462,9 @@ function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove }
 // يعرض العمليات التي وافق عليها المحاسب (status="approved")
 // وينقلها لـ "final-approved" بدلاً من حذفها
 // ═══════════════════════════════════════════════════
-function HeadPending({ ops, finalApprove, reject, bulkFinalApprove }:HeadProps) {
+function HeadPending({ ops, finalApprove, reject, bulkFinalApprove, actionsPending }:HeadProps) {
   const { t, dir } = useCLang();
+  const queryClient = useQueryClient();
   const [selected,setSelected]  = useState<string|null>(null);
   const [brandFilter,setBrandFilter] = useState("الكل");
   const [modFilter,setModFilter] = useState<""|CModKey>("");
@@ -2465,10 +2477,13 @@ function HeadPending({ ops, finalApprove, reject, bulkFinalApprove }:HeadProps) 
     return true;
   });
   const totalAmt = sumCOpAmounts(shown);
+  const shownIds = shown.map(op=>op.id);
+  const bulkAllowed = headLegacyBulkIds(ops, shownIds, "head", op=>queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id))).length===shownIds.length;
 
   const modLabels:Record<string,string>={
     sales:`💰 ${t("مبيعات","Sales")}`, expenses:`💸 ${t("مصروفات","Expenses")}`,
     purchases:`🛒 ${t("مشتريات","Purchases")}`, inventory:`📦 ${t("مخزون","Inventory")}`,
+    shifts:`🕒 ${t("ورديات","Shifts")}`,
   };
 
   return (
@@ -2479,9 +2494,9 @@ function HeadPending({ ops, finalApprove, reject, bulkFinalApprove }:HeadProps) 
           <p className="text-gray-400 text-sm mt-0.5">{awaitingHead.length} {t("عملية — موافق عليها من المحاسب · تنتظر اعتمادك (م3 → م4)","operations — accountant-approved · awaiting your final approval (S3 → S4)")}</p>
         </div>
         {awaitingHead.length>0 && (
-          <Btn variant="success" onClick={()=>bulkFinalApprove(awaitingHead.map(o=>o.id))}>
-            <CheckCircle2 size={13}/> {t("اعتماد الكل","Approve All")} ({awaitingHead.length})
-          </Btn>
+          <div className="text-left"><Btn variant="success" disabled={!bulkAllowed || actionsPending} onClick={()=>bulkFinalApprove(shownIds)}>
+            <CheckCircle2 size={13}/> {t("اعتماد المعروض","Approve displayed")} ({shownIds.length})
+          </Btn>{!bulkAllowed && <p className="text-xs text-amber-700 mt-1">{t("اعتماد SHF وتقرير اليوم فرديًا بعد تحقق الدليل","Review SHF and day reports individually after evidence checks")}</p>}</div>
         )}
       </div>
 
@@ -2495,7 +2510,7 @@ function HeadPending({ ops, finalApprove, reject, bulkFinalApprove }:HeadProps) 
           ))}
         </div>
         <div className="flex items-center gap-2">
-          {(["","sales","expenses","purchases","inventory"] as (""|CModKey)[]).map(m=>(
+          {(["","sales","shifts","expenses","purchases","inventory"] as (""|CModKey)[]).map(m=>(
             <button key={m} onClick={()=>setModFilter(m)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${modFilter===m?"bg-purple-600 text-white border-purple-600":"bg-white text-gray-600 border-gray-200 hover:border-purple-300"}`}>
               {m===""?t("الكل","All"):modLabels[m]}
@@ -2517,6 +2532,7 @@ function HeadPending({ ops, finalApprove, reject, bulkFinalApprove }:HeadProps) 
             <OpRow
               op={op}
               forHead={true}
+              actionsPending={actionsPending}
               onApprove={()=>{ finalApprove(op.id); setSelected(null); }}
               onReject={()=>{ reject(op.id); setSelected(null); }}
               onView={()=>setSelected(selected===op.id?null:op.id)}
@@ -2527,15 +2543,13 @@ function HeadPending({ ops, finalApprove, reject, bulkFinalApprove }:HeadProps) 
               <div className="px-5 pb-4 space-y-3 border-t border-gray-50 pt-3">
                 <CPipelineBar op={op}/>
                 <div className="flex gap-2">
-                  <Btn variant="success" size="sm" onClick={()=>{ finalApprove(op.id); setSelected(null); }}>
+                  <Btn variant="success" size="sm" disabled={actionsPending || !getHeadReviewPolicy(op,"head").finalApprove} onClick={()=>{ finalApprove(op.id); setSelected(null); }}>
                     <Lock size={12}/> {t("اعتماد نهائي (م4)","Final Approve (S4)")}
                   </Btn>
-                  <Btn variant="danger" size="sm" onClick={()=>{ reject(op.id); setSelected(null); }}>
-                    <ThumbsDown size={12}/> {t("رفض","Reject")}
-                  </Btn>
-                  <Btn size="sm" onClick={()=>alert(`📎 ${t("المرفقات","Attachments")} (${op.attachments}):\n• ${t("فاتورة مبيعات POS","POS Sales Invoice")}\n• ${t("تقرير الكاشير","Cashier Report")}\n• ${t("صورة إيصال التسليم","Delivery Receipt Image")}`)}>
-                    <Paperclip size={12}/> {op.attachments} {t("مرفقات","attachments")}
-                  </Btn>
+                  {getHeadReviewPolicy(op,"head").returnForReview && !isPkg6SalesReport(op) && <Btn variant="danger" size="sm" disabled={actionsPending} onClick={()=>{ reject(op.id); setSelected(null); }}>
+                    <ThumbsDown size={12}/> {op.module==="shifts"?t("إعادة للمحاسب للتعديل","Return to accountant for changes"):t("رفض","Reject")}
+                  </Btn>}
+                  {getHeadReviewPolicy(op,"head").blockedReason && <p className="text-xs text-amber-700">{t(HEAD_DAY_EVIDENCE_HINT.ar, HEAD_DAY_EVIDENCE_HINT.en)}</p>}
                 </div>
               </div>
             )}
@@ -2728,20 +2742,25 @@ function HeadRejected({ ops }:{ ops:COp[] }) {
 
 // HEAD — MODULE PAGES (نفس المحاسب — اعتماد نهائي فقط)
 // ═══════════════════════════════════════════════════
-function HeadModulePage({ moduleKey, title, ops, finalApprove, reject }:{
+function HeadModulePage({ moduleKey, title, ops, finalApprove, reject, bulkFinalApprove, actionsPending }:{
   moduleKey:CModKey; title:string; ops:COp[];
-  finalApprove:(id:string)=>void; reject:(id:string)=>void;
+  finalApprove:(id:string)=>void; reject:(id:string)=>void; bulkFinalApprove:(ids:string[])=>void; actionsPending:boolean;
 }) {
   const { t, dir } = useCLang();
+  const queryClient = useQueryClient();
+  const [expandedId, setExpandedId] = useState<string|null>(null);
   const mOps = ops.filter(o=>o.module===moduleKey);
   const awaitingHead = mOps.filter(o=>o.status==="approved");
+  const moduleBulkIds = awaitingHead.map(op=>op.id);
+  const moduleBulkAllowed = headLegacyBulkIds(ops, moduleBulkIds, "head", op=>queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id))).length===moduleBulkIds.length;
   const finalApproved = mOps.filter(o=>o.status==="final-approved");
   const rejected = mOps.filter(o=>o.status==="rejected");
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
         <div><h2 className="text-xl font-bold text-gray-800">{title}</h2><p className="text-gray-400 text-sm">{awaitingHead.length} {t("عملية بانتظار اعتمادك النهائي","operations awaiting your final approval")}</p></div>
-        {awaitingHead.length>0 && <Btn variant="success" size="sm" onClick={()=>awaitingHead.forEach(o=>finalApprove(o.id))}>🔒 {t("اعتماد الكل","Approve All")} ({awaitingHead.length})</Btn>}
+        {awaitingHead.length>0 && <div className="text-left"><Btn variant="success" size="sm" disabled={!moduleBulkAllowed || actionsPending} onClick={()=>bulkFinalApprove(moduleBulkIds)}>🔒 {t("اعتماد الكل","Approve All")} ({awaitingHead.length})</Btn>
+          {!moduleBulkAllowed && <p className="text-xs text-amber-700 mt-1">{t("اعتماد SHF وتقرير اليوم فرديًا بعد تحقق الدليل","Review SHF and day reports individually after evidence checks")}</p>}</div>}
       </div>
       <div className="grid grid-cols-3 gap-4">
         <KpiCard label={t("بانتظار اعتمادي","Awaiting My Approval")} value={String(awaitingHead.length)} sub={t("موافق عليها من المحاسب","Accountant-approved")} icon={<Clock size={18} className="text-amber-600"/>} accent="amber"/>
@@ -2753,14 +2772,16 @@ function HeadModulePage({ moduleKey, title, ops, finalApprove, reject }:{
         {awaitingHead.length===0?(
           <div className="p-8 text-center text-gray-400 text-sm">✅ {t("لا توجد عمليات معلقة في هذا الموديول","No pending operations in this module")}</div>
         ):awaitingHead.map(op=>(
-          <OpRow key={op.id} op={op} forHead onApprove={()=>finalApprove(op.id)} onReject={()=>reject(op.id)} onView={()=>alert(`🔍 ${t("تفاصيل","Details")}:\n${op.refNum}\n${op.branch} · ${fmt(op.amount)} ${t("ر.س","SAR")}`)}/>
+          <OpRow key={op.id} op={op} forHead actionsPending={actionsPending} onApprove={()=>finalApprove(op.id)} onReject={()=>reject(op.id)}
+            onView={()=>setExpandedId(expandedId===op.id?null:op.id)} expanded={expandedId===op.id} onToggle={()=>setExpandedId(expandedId===op.id?null:op.id)}/>
         ))}
       </div>
       {finalApproved.length>0&&(
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60"><h3 className="font-bold text-gray-900 text-sm">{t("معتمدة نهائياً","Final Approved")}</h3></div>
           {finalApproved.map(op=>(
-            <OpRow key={op.id} op={op} forHead onApprove={()=>{}} onReject={()=>{}} onView={()=>alert(`🔍 ${op.refNum}\n${op.branch} · ${t("معتمد نهائياً","Final Approved")}`)}/>
+            <OpRow key={op.id} op={op} forHead actionsPending={actionsPending} onApprove={()=>{}} onReject={()=>{}}
+              onView={()=>setExpandedId(expandedId===op.id?null:op.id)} expanded={expandedId===op.id} onToggle={()=>setExpandedId(expandedId===op.id?null:op.id)}/>
           ))}
         </div>
       )}
@@ -2898,8 +2919,11 @@ function useSharedOps(role: CRole | null) {
   const approveMut = useApproveOperation();
   const rejectMut  = useRejectOperation();
   const finalMut   = useFinalApprove();
+  const bulkFinalMut = useBulkFinalApprove();
   const bulkMut    = useBulkApprove();
   const clarifyMut = useRequestClarification();
+  const actionLock = useRef(false);
+  const [actionsPending, setActionsPending] = useState(false);
 
   const ops: COp[] = useMemo(() => {
     const apiOps = opsQuery.data?.data;
@@ -2915,6 +2939,11 @@ function useSharedOps(role: CRole | null) {
     queryClient.getQueryData<{data:ApiOperation[]}>(queryKeys.operations({ moduleKey:"shifts", pageSize:100 }))?.data
       ?.find(op => op.id === id) ?? currentOps.current.find(op => op.id === id);
   const detailFor = (op: { id: string }) => queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id));
+  const loadFreshDetail = async (id:string) => {
+    const response = await api.get<ApiOperation>(`/operations/${id}`);
+    queryClient.setQueryData(queryKeys.operation(id), response.data);
+    return response.data;
+  };
   const salesContextFor = (id: string) => {
     const operation = operationFor(id);
     return { operation, detail: operation ? detailFor(operation) : undefined, role: currentRole.current };
@@ -2938,21 +2967,78 @@ function useSharedOps(role: CRole | null) {
   const { data: rejectReasons } = useRejectionReasons(rejectingModule);
 
   const approve            = (id:string)    => { runOperationAction(id, "approve", () => approveMut.mutate({ id })); };
-  const reject             = (id:string)    => { runOperationAction(id, "returnToManager", () => runSalesAction(() => salesContextFor(id), "return", () => setRejectingId(id))); };
+  const reject             = (id:string)    => {
+    const operation = operationFor(id);
+    if (currentRole.current === "head" && operation && ("module" in operation ? operation.module : operation.moduleKey) === "shifts") {
+      if (!actionLock.current && getHeadReviewPolicy(operation, currentRole.current, detailFor(operation)).returnForReview) setRejectingId(id);
+      return;
+    }
+    runOperationAction(id, "returnToManager", () => runSalesAction(() => salesContextFor(id), "return", () => setRejectingId(id)));
+  };
   const requestClarification = (id:string)  => { runOperationAction(id, "clarify", () => setClarifyingId(id)); };
-  const finalApprove       = (id:string)    => { finalMut.mutate({ id }); };
+  const finalApprove       = async (id:string) => {
+    if (actionLock.current) return;
+    const operation = operationFor(id);
+    if (!getHeadReviewPolicy(operation, currentRole.current, operation && detailFor(operation)).finalApprove) return;
+    setActionsPending(true);
+    let mutationStarted = false;
+    try {
+      const completed = await runHeadFinalApproval(operation, currentRole.current, loadFreshDetail, async operationId => {
+        mutationStarted = true;
+        await finalMut.mutateAsync({ id:operationId });
+      }, actionLock);
+      if (!completed) toast.error("تغيرت حالة العملية؛ حدّث القائمة وأعد المراجعة");
+    } catch (error) {
+      if (!mutationStarted) toast.error(getErrorMessage(error, "ar")); // mutation hook already translates its errors
+    } finally { setActionsPending(false); }
+  };
   const bulkApprove        = (ids:string[]) => { runSalesBulkApproval(currentOps.current, ids, currentRole.current, eligible => bulkMut.mutate({ operationIds: eligible }), detailFor); };
-  const bulkFinalApprove   = (ids:string[]) => { ids.forEach(id => finalMut.mutate({ id })); };
+  const bulkFinalApprove = async (ids:string[]) => {
+    if (actionLock.current || ids.length===0 || headLegacyBulkIds(currentOps.current, ids, currentRole.current, detailFor).length !== new Set(ids).size) return;
+    actionLock.current = true;
+    setActionsPending(true);
+    let mutationStarted = false;
+    try {
+      const fresh = await Promise.all(ids.map(id => loadFreshDetail(id)));
+      const freshById = new Map(fresh.map(op => [op.id, op]));
+      if (headLegacyBulkIds(currentOps.current, ids, currentRole.current, op => freshById.get(op.id)).length !== new Set(ids).size) {
+        toast.error("تغيرت حالة العمليات؛ راجع القائمة قبل الاعتماد الجماعي");
+        return;
+      }
+      mutationStarted = true;
+      await bulkFinalMut.mutateAsync({ operationIds:ids });
+    } catch (error) {
+      if (!mutationStarted) toast.error(getErrorMessage(error, "ar"));
+    } finally { actionLock.current = false; setActionsPending(false); }
+  };
 
   const rejectModalProps = {
     open: rejectingId !== null,
     subject: rejectingOp && ("refNum" in rejectingOp ? rejectingOp.refNum : rejectingOp.publicId),
     reasons: rejectReasons?.map(r=>({ key:r.key, labelAr:r.labelAr })),
     requireReasons: rejectingModule === "shifts",
-    returnToManager: rejectingModule === "shifts",
+    returnToManager: rejectingModule === "shifts" && currentRole.current === "accountant",
+    returnToAccountant: rejectingModule === "shifts" && currentRole.current === "head",
     onClose: () => setRejectingId(null),
-    onSubmit: ({ reason, notes }: { reason: string; notes?: string }) => {
-      if (rejectingId && (rejectingModule !== "shifts" || rejectReasons?.some(r => r.key === reason)))
+    onSubmit: async ({ reason, notes }: { reason: string; notes?: string }) => {
+      if (rejectingId && currentRole.current === "head") {
+        const operation = operationFor(rejectingId);
+        const hasReason = rejectingModule !== "shifts" || rejectReasons?.some(r => r.key === reason);
+        if (!actionLock.current && operation && hasReason && getHeadReviewPolicy(operation, currentRole.current, detailFor(operation)).returnForReview &&
+          getSalesActionPolicy(salesContextFor(rejectingId)).return) {
+          actionLock.current = true; setActionsPending(true);
+          let mutationStarted = false;
+          try {
+            const detail = await loadFreshDetail(rejectingId);
+            if (getHeadReviewPolicy(operation, currentRole.current, detail).returnForReview &&
+              getSalesActionPolicy({ operation, detail, role:currentRole.current }).return) {
+              mutationStarted = true;
+              await rejectMut.mutateAsync({ id:rejectingId, reason, notes });
+            } else toast.error("تغيرت حالة العملية؛ حدّث القائمة وأعد المراجعة");
+          } catch (error) { if (!mutationStarted) toast.error(getErrorMessage(error, "ar")); }
+          finally { actionLock.current = false; setActionsPending(false); }
+        }
+      } else if (rejectingId && (rejectingModule !== "shifts" || rejectReasons?.some(r => r.key === reason)))
         runOperationAction(rejectingId, "returnToManager", () => runSalesAction(() => salesContextFor(rejectingId), "return", () => rejectMut.mutate({ id: rejectingId, reason, notes })));
       setRejectingId(null);
     },
@@ -2969,7 +3055,7 @@ function useSharedOps(role: CRole | null) {
     },
   };
 
-  return { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, rejectModalProps, clarifyModalProps };
+  return { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, actionsPending, rejectModalProps, clarifyModalProps };
 }
 
 // ═══════════════════════════════════════════════════
@@ -5809,6 +5895,7 @@ function AccCompanyReports() {
 // ═══════════════════════════════════════════════════
 type SharedOpsProps = {
   ops:COp[];
+  actionsPending:boolean;
   approve:(id:string)=>void;
   reject:(id:string)=>void;
   requestClarification?:(id:string)=>void;
@@ -6551,10 +6638,11 @@ function ProcSent() {
 // ═══════════════════════════════════════════════════
 // PAGE ROUTER
 // ═══════════════════════════════════════════════════
-function PageRouter({ role, page, navigate, ops, approve, reject, requestClarification, bulkApprove, finalApprove, bulkFinalApprove }:{
+function PageRouter({ role, page, navigate, ops, approve, reject, requestClarification, bulkApprove, finalApprove, bulkFinalApprove, actionsPending }:{
   role:CRole; page:string; navigate:(p:string)=>void;
 } & SharedOpsProps) {
-  const headProps:HeadProps = { navigate, ops, finalApprove, reject, bulkFinalApprove };
+  const headProps:HeadProps = { navigate, ops, finalApprove, reject, bulkFinalApprove, actionsPending };
+  const headModuleProps = { ops, finalApprove, reject, bulkFinalApprove, actionsPending };
 
   if(role==="company-admin") {
     if(page==="ca-dashboard")    return <CADashboard navigate={navigate}/>;
@@ -6572,15 +6660,15 @@ function PageRouter({ role, page, navigate, ops, approve, reject, requestClarifi
     if(page==="head-pending")     return <HeadPending {...headProps}/>;
     if(page==="head-approved")    return <HeadApproved ops={ops}/>;
     if(page==="head-rejected")    return <HeadRejected ops={ops}/>;
-    if(page==="head-sales")       return <HeadModulePage moduleKey="sales"     title="مبيعات — اعتماد نهائي"     ops={ops} finalApprove={finalApprove} reject={reject}/>;
-    if(page==="head-expenses")    return <HeadModulePage moduleKey="expenses"  title="مصروفات — اعتماد نهائي"   ops={ops} finalApprove={finalApprove} reject={reject}/>;
-    if(page==="head-purchases")   return <HeadModulePage moduleKey="purchases" title="مشتريات — اعتماد نهائي"   ops={ops} finalApprove={finalApprove} reject={reject}/>;
-    if(page==="head-inventory")   return <HeadModulePage moduleKey="inventory" title="مخزون — اعتماد نهائي"     ops={ops} finalApprove={finalApprove} reject={reject}/>;
+    if(page==="head-sales")       return <HeadModulePage moduleKey="sales"     title="مبيعات — اعتماد نهائي"     {...headModuleProps}/>;
+    if(page==="head-expenses")    return <HeadModulePage moduleKey="expenses"  title="مصروفات — اعتماد نهائي"   {...headModuleProps}/>;
+    if(page==="head-purchases")   return <HeadModulePage moduleKey="purchases" title="مشتريات — اعتماد نهائي"   {...headModuleProps}/>;
+    if(page==="head-inventory")   return <HeadModulePage moduleKey="inventory" title="مخزون — اعتماد نهائي"     {...headModuleProps}/>;
     if(page==="head-waste")       return <AccCompanyWaste/>;
-    if(page==="head-assets")      return <HeadModulePage moduleKey="assets"    title="أصول — اعتماد نهائي"      ops={ops} finalApprove={finalApprove} reject={reject}/>;
-    if(page==="head-shifts")      return <HeadModulePage moduleKey="shifts"    title="ورديات — اعتماد نهائي"    ops={ops} finalApprove={finalApprove} reject={reject}/>;
-    if(page==="head-employees")   return <HeadModulePage moduleKey="employees" title="موظفون — اعتماد نهائي"   ops={ops} finalApprove={finalApprove} reject={reject}/>;
-    if(page==="head-cash")        return <HeadModulePage moduleKey="cash"      title="صندوق — اعتماد نهائي"    ops={ops} finalApprove={finalApprove} reject={reject}/>;
+    if(page==="head-assets")      return <HeadModulePage moduleKey="assets"    title="أصول — اعتماد نهائي"      {...headModuleProps}/>;
+    if(page==="head-shifts")      return <HeadModulePage moduleKey="shifts"    title="ورديات — اعتماد نهائي"    {...headModuleProps}/>;
+    if(page==="head-employees")   return <HeadModulePage moduleKey="employees" title="موظفون — اعتماد نهائي"   {...headModuleProps}/>;
+    if(page==="head-cash")        return <HeadModulePage moduleKey="cash"      title="صندوق — اعتماد نهائي"    {...headModuleProps}/>;
     if(page==="head-accountants") return <HeadAccountants/>;
     if(page==="head-reports")     return <HeadReports/>;
     if(page==="head-reminders")   return <HeadReminders/>;
@@ -6588,7 +6676,7 @@ function PageRouter({ role, page, navigate, ops, approve, reject, requestClarifi
     return <HeadDashboard {...headProps}/>;
   }
   if(role==="accountant") {
-    return <AccountantRoot page={page} navigate={navigate} ops={ops} approve={approve} reject={reject} requestClarification={requestClarification} bulkApprove={bulkApprove} finalApprove={finalApprove} bulkFinalApprove={bulkFinalApprove}/>;
+    return <AccountantRoot page={page} navigate={navigate} ops={ops} approve={approve} reject={reject} requestClarification={requestClarification} bulkApprove={bulkApprove} finalApprove={finalApprove} bulkFinalApprove={bulkFinalApprove} actionsPending={actionsPending}/>;
   }
   if(role==="branch") {
     if(page==="branch-overview")   return <BranchOverview/>;
@@ -6628,7 +6716,7 @@ function CompanyDashboardInner() {
     : null;
   const [role, setRole] = useState<CRole|null>(initRole);
   const [page, setPage] = useState<string>(initRole ? DEFAULT_PAGE[initRole] : "");
-  const { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, rejectModalProps, clarifyModalProps } = useSharedOps(role);
+  const { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, actionsPending, rejectModalProps, clarifyModalProps } = useSharedOps(role);
 
   // Tag the current history entry with a page so Back/Forward can restore it.
   const tagHistory = (p:string, replace=false) => {
@@ -6677,7 +6765,7 @@ function CompanyDashboardInner() {
     <Shell role={role} page={page} navigate={navigate} onLogout={logout} headPendingCount={headPendingCount}>
       <PageRouter role={role} page={page} navigate={navigate}
         ops={ops} approve={approve} reject={reject} requestClarification={requestClarification}
-        bulkApprove={bulkApprove} finalApprove={finalApprove} bulkFinalApprove={bulkFinalApprove}/>
+        bulkApprove={bulkApprove} finalApprove={finalApprove} bulkFinalApprove={bulkFinalApprove} actionsPending={actionsPending}/>
       <RejectModal {...rejectModalProps} t={t}/>
       <ClarifyModal {...clarifyModalProps} t={t}/>
       {/* Floating live-support chat — available to every company role. */}

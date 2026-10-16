@@ -29,6 +29,7 @@ interface Props {
   /** SHF requires an API reason key, and returning it does not reopen the shift. */
   requireReasons?: boolean;
   returnToManager?: boolean;
+  returnToAccountant?: boolean;
   onClose: () => void;
   onSubmit: (payload: { reason: string; notes?: string }) => void;
   /** Optional translate function. */
@@ -41,6 +42,7 @@ export function RejectModal({
   reasons,
   requireReasons = false,
   returnToManager = false,
+  returnToAccountant = false,
   onClose,
   onSubmit,
   t = (ar) => ar,
@@ -104,7 +106,7 @@ export function RejectModal({
         >
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>
-              {returnToManager ? t("إرجاع لمدير الفرع", "Return to branch manager") : t("رفض العملية", "Reject Operation")}
+              {returnToManager ? t("إرجاع لمدير الفرع", "Return to branch manager") : returnToAccountant ? t("إعادة للمحاسب للتعديل", "Return to accountant for changes") : t("رفض العملية", "Reject Operation")}
             </div>
             {subject && (
               <div
@@ -126,7 +128,7 @@ export function RejectModal({
                 lineHeight: 1.5,
               }}
             >
-              {returnToManager ? t("ستُعاد العملية إلى مدير الفرع مع سبب الإرجاع. لن يُعاد فتح الوردية ماليًا.", "The operation returns to the branch manager with a reason. This does not financially reopen the shift.") : t("ستُعاد العملية إلى مدير الفرع مع سبب الرفض.", "The operation will be returned to the branch manager with the rejection reason.")}
+              {returnToManager ? t("ستُعاد العملية إلى مدير الفرع مع سبب الإرجاع. لن يُعاد فتح الوردية ماليًا.", "The operation returns to the branch manager with a reason. This does not financially reopen the shift.") : returnToAccountant ? t("ستُعاد الوردية إلى المحاسب للتعديل مع سبب الإرجاع.", "The shift returns to the accountant for changes with the return reason.") : t("ستُعاد العملية إلى مدير الفرع مع سبب الرفض.", "The operation will be returned to the branch manager with the rejection reason.")}
             </div>
           </div>
           <button
@@ -243,7 +245,7 @@ export function RejectModal({
               fontFamily: "inherit",
             }}
           >
-            {returnToManager ? t("تأكيد الإرجاع", "Confirm return") : t("تأكيد الرفض", "Confirm Reject")}
+            {returnToManager || returnToAccountant ? t("تأكيد الإرجاع", "Confirm return") : t("تأكيد الرفض", "Confirm Reject")}
           </button>
           <button
             onClick={onClose}

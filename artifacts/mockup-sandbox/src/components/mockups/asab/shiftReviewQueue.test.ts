@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction } from "./shiftReviewQueue.ts";
+import { getHeadReviewPolicy } from "./headReviewGuards.ts";
 
 const shift = (status: string, phase?: string) => ({
   id: "shf-1", module: "shifts", status,
@@ -87,10 +88,10 @@ test("actual shared handlers recheck SHF policy before approve, return, or clari
     ["accountant", shift("pending")],
   ] as const) {
     const requests: string[] = [];
-    const handlers = new Function("runShfReviewAction", "operationFor", "currentRole", "detailFor", "approveMut", "runSalesAction", "salesContextFor", "setRejectingId", "setClarifyingId", js)(
+    const handlers = new Function("runShfReviewAction", "operationFor", "currentRole", "detailFor", "approveMut", "runSalesAction", "salesContextFor", "setRejectingId", "setClarifyingId", "actionLock", "getHeadReviewPolicy", js)(
       runShfReviewAction, () => op, { current: role }, () => undefined,
       { mutate: () => requests.push("approve") }, (_context: unknown, _action: unknown, effect: () => void) => effect(),
-      () => ({ operation: op, role }), () => requests.push("return"), () => requests.push("clarify"),
+      () => ({ operation: op, role }), () => requests.push("return"), () => requests.push("clarify"), {current:false}, getHeadReviewPolicy,
     ) as { approve:(id:string)=>void; reject:(id:string)=>void; requestClarification:(id:string)=>void };
     handlers.approve("shf-1"); handlers.reject("shf-1"); handlers.requestClarification("shf-1");
     assert.deepEqual(requests, role === "accountant" && op.reportReview?.phase === "accountant_review" && op.status === "pending"
@@ -99,7 +100,7 @@ test("actual shared handlers recheck SHF policy before approve, return, or clari
   }
 });
 
-test("SHF return confirmation sends only an API reason in a still-returnable phase", () => {
+test("SHF return confirmation sends only an API reason in a still-returnable phase", async () => {
   const hook = component("useSharedOps");
   const modal = hook.body!.statements.find(node => ts.isVariableStatement(node) && node.declarationList.declarations.some(d => d.name.getText(source) === "rejectModalProps"));
   assert.ok(modal && ts.isVariableStatement(modal));
@@ -116,13 +117,13 @@ test("SHF return confirmation sends only an API reason in a still-returnable pha
   ] as const) {
     const requests: string[] = [];
     const row = shift(phase === "manager_returned" ? "rejected" : "pending", phase);
-    const onSubmit = new Function("rejectingId", "rejectingModule", "rejectReasons", "runOperationAction", "runSalesAction", "salesContextFor", "rejectMut", "setRejectingId", js)(
+    const onSubmit = new Function("rejectingId", "rejectingModule", "rejectReasons", "runOperationAction", "runSalesAction", "salesContextFor", "rejectMut", "setRejectingId", "currentRole", js)(
       "shf-1", "shifts", [{ key: "valid" }],
       (_id: string, action: "returnToManager", effect: () => void) => runShfReviewAction(row, "accountant", action, effect),
       (_context: unknown, _action: unknown, effect: () => void) => effect(), () => ({ operation: row, role: "accountant" }),
-      { mutate: () => requests.push("POST reject") }, () => {},
-    ) as (payload: { reason: string }) => void;
-    onSubmit({ reason });
+      { mutate: () => requests.push("POST reject") }, () => {}, {current:"accountant"},
+    ) as (payload: { reason: string }) => Promise<void>;
+    await onSubmit({ reason });
     assert.deepEqual(requests, expected ? ["POST reject"] : [], `${phase}/${reason}`);
   }
 });

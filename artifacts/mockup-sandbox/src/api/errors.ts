@@ -35,7 +35,8 @@ const REVIEW_ERROR_AR: Record<string, string> = {
   "STALE_RETURN_CYCLE": "دورة الإرجاع تغيرت؛ حدّث الصفحة",
   "STALE_ALLOCATION_VERSION": "إصدار توزيع العجز تغير؛ حدّث الصفحة",
   "PHYSICAL_RECOUNT_REQUIRED": "يجب إجراء جرد نقدي فعلي قبل المتابعة",
-  "LIABILITY_ALLOCATION_REQUIRED": "يجب تحديد كامل المسؤولية عن العجز قبل المتابعة"
+  "LIABILITY_ALLOCATION_REQUIRED": "يجب تحديد كامل المسؤولية عن العجز قبل المتابعة",
+  "BRANCH_LIABILITY_APPROVAL_PENDING": "توزيع مسؤولية العجز بانتظار الاعتماد قبل الاعتماد النهائي للوردية"
 };
 
 const IS_ERROR_CODE = /^[A-Z][A-Z0-9_]+$/;
