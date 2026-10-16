@@ -19,7 +19,7 @@ import {
 } from "../api/auth";
 import { getTokens, clearTokens } from "../api/tokens";
 import { clearEntrySelection } from "./entrySelection";
-import { hasRoleGrant } from "./roleAccess";
+import { financialAccessFingerprint, hasRoleGrant, purgeFinancialQueries } from "./roleAccess";
 import { disconnectEcho, getEcho } from "../api/echo";
 import { setProcurementPlatformScope } from "../api/queries/platform/procurement";
 import type {
@@ -40,6 +40,7 @@ interface NotificationNewEvent extends AppNotification {}
 
 interface AuthContextValue {
   user: MeResponse | null;
+  financialTransition: boolean;
   /** True while we're checking the bootstrap session (first /auth/me). */
   initializing: boolean;
   /** True while the login mutation is in-flight. */
@@ -68,6 +69,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<MeResponse | null>(null);
+  const [financialTransition, setFinancialTransition] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [loggingIn, setLoggingIn] = useState(false);
   const [defaultPage, setDefaultPage] = useState<string | null>(null);
@@ -352,8 +354,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshMe = useCallback(async () => {
     const me = await fetchMe();
+    if (financialAccessFingerprint(user) !== financialAccessFingerprint(me)) {
+      setFinancialTransition(true);
+      try {
+        await purgeFinancialQueries(queryClient);
+        setUser(me);
+      } finally {
+        setFinancialTransition(false);
+      }
+      return;
+    }
     setUser(me);
-  }, []);
+  }, [queryClient, user]);
 
   const hasPermission = useCallback(
     (key: string) => Boolean(user?.permissions?.[key]),
@@ -368,6 +380,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
+      financialTransition,
       initializing,
       loggingIn,
       defaultPage,
@@ -378,7 +391,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hasPermission,
       isRole,
     }),
-    [user, initializing, loggingIn, defaultPage, login, loginWith2fa, logout, refreshMe, hasPermission, isRole],
+    [user, financialTransition, initializing, loggingIn, defaultPage, login, loginWith2fa, logout, refreshMe, hasPermission, isRole],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

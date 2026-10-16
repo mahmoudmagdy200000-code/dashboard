@@ -266,7 +266,7 @@ import {
   useExportShifts,
 } from "../../../api/queries";
 import { isApiError } from "../../../api/errors";
-import { canRunAccountantOperations, chooseGrantedRole, grantedRoleKeys, pageForRole, prototypeRoles } from "../../../auth/roleAccess";
+import { canRunAccountantOperations, chooseGrantedRole, grantedRoleKeys, pageForRole, prototypeRoles, purgeFinancialQueries } from "../../../auth/roleAccess";
 import { historyBranchOptions, historyPageTarget } from "../../../api/queries/shifts";
 import { formatShiftHalalas, formatShiftSalesTotal, getShiftCountEvidence, getShiftStatusDisplay } from "./shiftCountEvidence";
 import { api, APP_BASE_URL } from "../../../api/client";
@@ -16879,6 +16879,9 @@ export function ASABPrototype() {
   const t = <T,>(ar: T, en: T): T => lang === "ar" ? ar : en;
   const dir = lang === "ar" ? "rtl" : "ltr";
   const { user, logout: authLogout } = useAuth();
+  const queryClient = useQueryClient();
+  const [switchingRole, setSwitchingRole] = useState(false);
+  const switchLock = useRef(false);
 
   // The entry pick is only a preference among roles granted by /auth/me.
   const [appState, setAppState] = useState<AppState>(() => {
@@ -16900,30 +16903,33 @@ export function ASABPrototype() {
   // Local setOps is preserved to drive optimistic UI for approve / reject / final-approve / ERP mutations.
   const isHead = currentRole === "head";
   const { data: apiOps } = useAccountantOperationsPlatform({ pageSize: 100, ...opsRange },
-    {enabled:canRunAccountantOperations(user,currentRole)});
+    {enabled:!switchingRole && canRunAccountantOperations(user,currentRole)});
   // B-H1: head reads from the enriched /head/operations/* queues (accountantName, brandName,
   // branchName, amountHalalas baked in) — not the thin /accountant/operations shape.
   // NOTE: no `= []` defaults — a fresh [] literal each render would make these effect deps
   // unstable and loop setOps. Leave them `undefined` until react-query yields a stable ref.
-  const { data: headPendingOps }  = usePendingOperations(opsRange, { enabled: isHead });
-  const { data: headFinalOps }    = useFinalApprovedOperations(opsRange, { enabled: isHead });
-  const { data: headRejectedOps } = useRejectedOperations(opsRange, { enabled: isHead });
+  const { data: headPendingOps }  = usePendingOperations(opsRange, { enabled: !switchingRole && isHead });
+  const { data: headFinalOps }    = useFinalApprovedOperations(opsRange, { enabled: !switchingRole && isHead });
+  const { data: headRejectedOps } = useRejectedOperations(opsRange, { enabled: !switchingRole && isHead });
   const [ops, setOps] = useState<Op[]>([]);
   // Sync incoming live ops into local state when a non-empty batch arrives. A side effect, so
   // useEffect (not useMemo); deps are the stable react-query data refs.
   useEffect(() => {
+    if (switchingRole || !currentRole) return;
     if (isHead) {
       const merged = [
-        ...((headPendingOps as any[]) ?? []),
-        ...((headFinalOps as any[]) ?? []),
-        ...((headRejectedOps as any[]) ?? []),
+        ...(queryClient.getQueryData(queryKeys.platformPendingOperations(opsRange)) === headPendingOps ? (headPendingOps ?? []) : []),
+        ...(queryClient.getQueryData(queryKeys.platformFinalApprovedOperations(opsRange)) === headFinalOps ? (headFinalOps ?? []) : []),
+        ...(queryClient.getQueryData(queryKeys.platformRejectedOperations(opsRange)) === headRejectedOps ? (headRejectedOps ?? []) : []),
       ];
       if (merged.length > 0) setOps(merged.map(mapApiOpToOp));
-    } else if (((apiOps as unknown[]) ?? []).length > 0) {
+    } else if (currentRole === "accountant" && canRunAccountantOperations(user,currentRole)
+      && queryClient.getQueryData(queryKeys.platformAccountantOperations({pageSize:100,...opsRange})) === apiOps
+      && ((apiOps as unknown[]) ?? []).length > 0) {
       setOps((apiOps as any[]).map(mapApiOpToOp));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiOps, headPendingOps, headFinalOps, headRejectedOps, isHead]);
+  }, [apiOps, headPendingOps, headFinalOps, headRejectedOps, isHead, switchingRole, currentRole]);
 
   // Reconcile a changed /auth/me grant before any role-specific child mounts.
   useEffect(() => {
@@ -16940,10 +16946,19 @@ export function ASABPrototype() {
       else window.history.pushState(st, "");
     } catch { /* history unavailable */ }
   };
-  const login = (role:RoleId) => {
-    if (!allowedRoles.includes(role)) return;
-    const p = ROLE_PROFILES[role].defaultPage;
-    setAppState({ role, page:p, detailId:null, modal:null }); tagShiftHistory(p, true);
+  const login = async (role:RoleId) => {
+    if (!allowedRoles.includes(role) || switchLock.current || role === currentRole) return;
+    switchLock.current = true;
+    setSwitchingRole(true);
+    try {
+      await purgeFinancialQueries(queryClient);
+      setOps([]);
+      const p = ROLE_PROFILES[role].defaultPage;
+      setAppState({ role, page:p, detailId:null, modal:null }); tagShiftHistory(p, true);
+    } finally {
+      setSwitchingRole(false);
+      switchLock.current = false;
+    }
   };
   // Full sign-out: clear the pre-login entry selection + the auth session so the user returns
   // to the entry flow (dashboard → role → login), not the in-mockup role picker.
@@ -17125,6 +17140,7 @@ export function ASABPrototype() {
       <p role="alert">{t("ليس لديك صلاحية للوصول إلى هذه اللوحة","You cannot access this dashboard")}</p>
     </LangContext.Provider>
   );
+  if(switchingRole) return <p role="status">{t("جارٍ تغيير الدور…","Switching role…")}</p>;
 
   const dashboard = <AppShell
     state={safeState} ops={ops} period={period} setPeriod={setPeriod}

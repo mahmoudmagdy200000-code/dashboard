@@ -2,7 +2,7 @@ import "./_group.css";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
-import { chooseGrantedRole, companyRoles, grantedRoleKeys, pageForRole } from "../../../auth/roleAccess";
+import { chooseGrantedRole, companyRoles, grantedRoleKeys, pageForRole, purgeFinancialQueries } from "../../../auth/roleAccess";
 import { historyBranchOptions, historyPageTarget } from "../../../api/queries/shifts";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRows, shfReviewPageTarget, type ShfReviewAction, type ShfReviewGroup } from "./shiftReviewQueue";
@@ -3030,7 +3030,12 @@ function cBrandNamesFromOps(ops: COp[]): string[] {
 
 function useSharedOps(role: CRole | null) {
   const queryClient = useQueryClient();
-  const opsQuery   = useOperations({ pageSize: 100 });
+  const financialRole = role === "accountant" || role === "head";
+  const opsQuery = useQuery({
+    queryKey: [...queryKeys.operations({ pageSize: 100 }), role],
+    enabled: financialRole,
+    queryFn: async () => (await api.get<{data:ApiOperation[]}>("/operations", {params:{pageSize:100}})).data,
+  });
   const approveMut = useApproveOperation();
   const rejectMut  = useRejectOperation();
   const finalMut   = useFinalApprove();
@@ -3042,11 +3047,11 @@ function useSharedOps(role: CRole | null) {
   const [shiftReviewPage, setShiftReviewPage] = useState(1);
 
   const ops: COp[] = useMemo(() => {
-    const apiOps = opsQuery.data?.data;
+    const apiOps = financialRole ? opsQuery.data?.data : undefined;
     // Driven entirely by GET /operations. No static fallback —
     // an empty list renders empty states, never mock operations.
     return Array.isArray(apiOps) ? apiOps.map(op => apiOpToCOp(op, BRANDS)) : [];
-  }, [opsQuery.data]);
+  }, [opsQuery.data, financialRole]);
   const currentOps = useRef(ops);
   currentOps.current = ops;
   const currentRole = useRef(role);
@@ -3076,6 +3081,7 @@ function useSharedOps(role: CRole | null) {
 
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [clarifyingId, setClarifyingId] = useState<string | null>(null);
+  const clearDialogs = () => { setRejectingId(null); setClarifyingId(null); };
 
   // Reject reasons scoped to the module of the op being rejected (T03 §13).
   const rejectingOp = rejectingId ? operationFor(rejectingId) : undefined;
@@ -3172,7 +3178,7 @@ function useSharedOps(role: CRole | null) {
   };
 
   return { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, actionsPending,
-    shiftReviewPage, setShiftReviewPage, rejectModalProps, clarifyModalProps };
+    shiftReviewPage, setShiftReviewPage, rejectModalProps, clarifyModalProps, clearDialogs };
 }
 
 // ═══════════════════════════════════════════════════
@@ -6887,6 +6893,9 @@ function PageRouter({ role, page, navigate, ops, approve, reject, requestClarifi
 function CompanyDashboardInner() {
   const { t } = useCLang();
   const { user, logout: authLogout } = useAuth();
+  const queryClient = useQueryClient();
+  const [switchingRole, setSwitchingRole] = useState(false);
+  const switchLock = useRef(false);
   const initSel = readEntrySelection();
   const initRole = chooseGrantedRole(user,companyRoles,
     initSel?.slug === "asab/CompanyDashboard" ? initSel.role : null) as CRole | null;
@@ -6895,7 +6904,7 @@ function CompanyDashboardInner() {
   const allowedRoles = grantedRoleKeys(user).filter(r => companyRoles.includes(r)) as CRole[];
   const currentRole = role && allowedRoles.includes(role) ? role : allowedRoles[0] ?? null;
   const currentPage = currentRole ? pageForRole(currentRole,page,DEFAULT_PAGE[currentRole]) : "";
-  const { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, actionsPending, shiftReviewPage, setShiftReviewPage, rejectModalProps, clarifyModalProps } = useSharedOps(currentRole);
+  const { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, actionsPending, shiftReviewPage, setShiftReviewPage, rejectModalProps, clarifyModalProps, clearDialogs } = useSharedOps(switchingRole ? null : currentRole);
 
   // Tag the current history entry with a page so Back/Forward can restore it.
   const tagHistory = (p:string, replace=false) => {
@@ -6905,9 +6914,18 @@ function CompanyDashboardInner() {
       else window.history.pushState(st, "");
     } catch { /* history unavailable */ }
   };
-  const selectRole = (r:CRole) => {
-    if (!allowedRoles.includes(r)) return;
-    setRole(r); setPage(DEFAULT_PAGE[r]); tagHistory(DEFAULT_PAGE[r], true);
+  const selectRole = async (r:CRole) => {
+    if (!allowedRoles.includes(r) || switchLock.current || r === currentRole) return;
+    switchLock.current = true;
+    setSwitchingRole(true);
+    clearDialogs();
+    try {
+      await purgeFinancialQueries(queryClient);
+      setRole(r); setPage(DEFAULT_PAGE[r]); tagHistory(DEFAULT_PAGE[r], true);
+    } finally {
+      setSwitchingRole(false);
+      switchLock.current = false;
+    }
   };
   const navigate = (p:string) => {
     if (!currentRole || pageForRole(currentRole,p,"") !== p) return;
@@ -6934,6 +6952,7 @@ function CompanyDashboardInner() {
   }, [role,currentRole]);
 
   if(!currentRole) return <p role="alert">{t("ليس لديك صلاحية للوصول إلى بوابة الشركات","You cannot access the company dashboard")}</p>;
+  if(switchingRole) return <p role="status">{t("جارٍ تغيير الدور…","Switching role…")}</p>;
 
   const headPendingCount = ops.filter(o=>o.status==="approved").length;
 
@@ -6943,8 +6962,8 @@ function CompanyDashboardInner() {
       <PageRouter role={currentRole} page={currentPage} navigate={navigate}
         ops={ops} approve={approve} reject={reject} requestClarification={requestClarification}
         bulkApprove={bulkApprove} finalApprove={finalApprove} bulkFinalApprove={bulkFinalApprove} actionsPending={actionsPending} shiftReviewPage={shiftReviewPage} setShiftReviewPage={setShiftReviewPage}/>
-      <RejectModal {...rejectModalProps} t={t}/>
-      <ClarifyModal {...clarifyModalProps} t={t}/>
+      {(currentRole==="accountant" || currentRole==="head") && <RejectModal {...rejectModalProps} t={t}/>}
+      {(currentRole==="accountant" || currentRole==="head") && <ClarifyModal {...clarifyModalProps} t={t}/>}
       {/* Floating live-support chat — available to every company role. */}
       <LiveChatWidget t={t}/>
     </Shell>

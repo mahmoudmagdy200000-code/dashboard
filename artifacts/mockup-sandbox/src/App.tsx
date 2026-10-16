@@ -5,7 +5,7 @@ import { V, G, CYAN, LOGO, ensureAuthStyles } from "./auth/authTheme";
 import { useSiteLang } from "./auth/siteLang";
 import { LangToggle } from "./auth/LangToggle";
 import { readEntrySelection } from "./auth/entrySelection";
-import { canOpenDashboard, chooseGrantedRole, companyRoles, preferredDashboard, prototypeRoles } from "./auth/roleAccess";
+import { canOpenDashboard, chooseGrantedRole, companyRoles, financialAccessFingerprint, preferredDashboard, prototypeRoles } from "./auth/roleAccess";
 import { useAuth } from "./auth/AuthContext";
 import type { MeResponse } from "./api/types";
 import { OnboardingWizard } from "./auth/OnboardingWizard";
@@ -109,8 +109,8 @@ function previewHref(componentSlug: string): string {
 function getPreviewPath(): string | null {
   // 1. Hash routing (static deployment)
   const hash = window.location.hash;
-  const hashMatch = hash.match(/^#\/preview\/(.+)$/);
-  if (hashMatch) return hashMatch[1];
+  const hashMatch = hash.match(/^#\/preview(?:\/(.*))?$/);
+  if (hashMatch) return hashMatch[1] ?? "";
 
   // 2. Pathname routing (dev / canvas iframes)
   const basePath = getBasePath();
@@ -119,8 +119,8 @@ function getPreviewPath(): string | null {
     basePath && pathname.startsWith(basePath)
       ? pathname.slice(basePath.length) || "/"
       : pathname;
-  const match = local.match(/^\/preview\/(.+)$/);
-  return match ? match[1] : null;
+  const match = local.match(/^\/preview(?:\/(.*))?$/);
+  return match ? match[1] ?? "" : null;
 }
 
 // ─── ASAB Landing Page (only shown for logged-in users — picks a dashboard) ──
@@ -250,7 +250,7 @@ function ASABLanding({ onLogout, user }: { onLogout: () => void; user: MeRespons
 
 // ─── App — auth-aware shell ──────────────────────────────────────────────────
 function App() {
-  const { user, initializing, logout } = useAuth();
+  const { user, initializing, financialTransition, logout } = useAuth();
   const [, forceUpdate] = useState(0);
   // True once the post-login auto-redirect has run — so a later Back to root shows
   // the dashboard picker instead of getting stuck on the "opening…" loader.
@@ -294,7 +294,7 @@ function App() {
     window.location.hash = `#/preview/${target}`;
   }, [user]);
 
-  if (initializing) {
+  if (initializing || financialTransition) {
     return (
       <div
         dir="rtl"
@@ -329,15 +329,15 @@ function App() {
   }
 
   const previewPath = getPreviewPath();
-  if (previewPath) {
-    if ((previewPath === "asab/ASABPrototype" || previewPath === "asab/CompanyDashboard")
-      && !canOpenDashboard(user,previewPath)) {
+  if (previewPath !== null) {
+    if (!canOpenDashboard(user,previewPath)) {
       return <div role="alert" dir="rtl" style={{padding:32}}>ليس لديك صلاحية للوصول إلى هذه اللوحة</div>;
     }
     return (
       <>
         <SubscriptionExpiredBanner />
         <PreviewRenderer
+          key={financialAccessFingerprint(user)}
           componentPath={previewPath}
           modules={discoveredModules}
         />

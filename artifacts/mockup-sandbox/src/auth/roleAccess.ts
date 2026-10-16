@@ -1,4 +1,5 @@
 import type { RoleKey } from "../api/types";
+import type { QueryClient } from "@tanstack/react-query";
 
 type Identity = { roles?: unknown } | null | undefined;
 
@@ -12,26 +13,68 @@ export const companyRoles: readonly RoleKey[] = [
   "company-admin", "head", "accountant", "branch", "procurement",
 ];
 
-function stringIds(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every(id => typeof id === "string" && id.length > 0);
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const moduleKey = /^[a-z][a-z0-9_-]*$/;
+
+function validStrings(value: unknown, pattern: RegExp): value is string[] {
+  return Array.isArray(value) && value.every(id => typeof id === "string"
+    && id === id.trim() && pattern.test(id)) && new Set(value).size === value.length;
+}
+
+function validGrant(grant: Record<string, unknown>): grant is Record<string, unknown> & {key:RoleKey} {
+  if (!knownRoles.includes(grant.key as RoleKey)
+    || !["all", "brand", "restaurant", "branch"].includes(grant.scope as string)
+    || !validStrings(grant.brandIds,uuid) || !validStrings(grant.restaurantIds,uuid)
+    || !validStrings(grant.branchIds,uuid) || !validStrings(grant.moduleKeys,moduleKey)) return false;
+  if (grant.key === "accountant" && (grant.scope !== "brand" || grant.brandIds.length === 0)) return false;
+  if (grant.key === "branch" && (grant.scope !== "branch" || grant.branchIds.length === 0)) return false;
+  if (grant.key === "admin" && (grant.scope !== "all" || grant.brandIds.length
+    || grant.restaurantIds.length || grant.branchIds.length)) return false;
+  // TenantBranchResolver ORs all populated hierarchy arrays, regardless of the scope label.
+  return grant.scope === "all" || grant.brandIds.length + grant.restaurantIds.length + grant.branchIds.length > 0;
 }
 
 /** Only /auth/me role assignments grant a Dashboard role. */
 export function grantedRoleKeys(identity: Identity): RoleKey[] {
   if (!identity || !Array.isArray(identity.roles)) return [];
   const granted = new Set<RoleKey>();
+  const repeated = new Set<RoleKey>();
+  const seen = new Set<RoleKey>();
+  let malformed = false;
   for (const value of identity.roles) {
-    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    if (!value || typeof value !== "object" || Array.isArray(value)) { malformed = true; continue; }
     const grant = value as Record<string, unknown>;
-    if (!knownRoles.includes(grant.key as RoleKey)
-      || !["all", "brand", "restaurant", "branch"].includes(grant.scope as string)
-      || !stringIds(grant.brandIds) || !stringIds(grant.restaurantIds)
-      || !stringIds(grant.branchIds) || !stringIds(grant.moduleKeys)) continue;
-    if (grant.scope !== "all"
-      && grant.brandIds.length + grant.restaurantIds.length + grant.branchIds.length === 0) continue;
-    granted.add(grant.key as RoleKey);
+    if (!knownRoles.includes(grant.key as RoleKey)) continue;
+    const key = grant.key as RoleKey;
+    if (seen.has(key)) repeated.add(key);
+    seen.add(key);
+    if (validGrant(grant)) granted.add(key);
+    else malformed = true;
   }
-  return [...granted];
+  // ResolveTenant uses the first assignment; any repeated key makes that context ambiguous.
+  return repeated.size || malformed ? [] : [...granted];
+}
+
+/** Include scope and ordering: the first Backend assignment determines tenant context. */
+export function financialAccessFingerprint(identity: Identity): string {
+  const subject = identity as (Identity & {id?:unknown}) | null | undefined;
+  return JSON.stringify([subject?.id ?? null, subject?.roles ?? null]);
+}
+
+const sensitivePrefixes: readonly (readonly string[])[] = [
+  ["operations"], ["shifts"], ["asset-drafts"], ["accountant"], ["head"],
+  ["platform", "accountant"], ["platform", "operations"], ["platform", "head"],
+  ["platform", "admin"], ["platform", "erp"], ["platform", "reports"], ["erp"], ["sales"],
+  ["expense-invoices"], ["expenses"], ["assets"], ["cash-custody"],
+  ["employees"], ["inventory"], ["waste"], ["purchases"], ["pipeline"], ["billing"],
+];
+
+/** Cancel before removal so a prior role's late response cannot restore financial cache. */
+export async function purgeFinancialQueries(queryClient: QueryClient): Promise<void> {
+  const predicate = (query: {queryKey: readonly unknown[]}) => sensitivePrefixes.some(prefix =>
+    prefix.every((part,index) => query.queryKey[index] === part));
+  await queryClient.cancelQueries({predicate});
+  queryClient.removeQueries({predicate});
 }
 
 export function hasRoleGrant(identity: Identity, ...roles: RoleKey[]): boolean {
