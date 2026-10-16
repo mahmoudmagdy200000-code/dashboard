@@ -1,5 +1,5 @@
 import "./_group.css";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
@@ -266,9 +266,10 @@ import {
   useExportShifts,
 } from "../../../api/queries";
 import { isApiError } from "../../../api/errors";
+import { canRunAccountantOperations, chooseGrantedRole, grantedRoleKeys, pageForRole, prototypeRoles } from "../../../auth/roleAccess";
 import { historyBranchOptions, historyPageTarget } from "../../../api/queries/shifts";
 import { formatShiftHalalas, formatShiftSalesTotal, getShiftCountEvidence, getShiftStatusDisplay } from "./shiftCountEvidence";
-import { APP_BASE_URL } from "../../../api/client";
+import { api, APP_BASE_URL } from "../../../api/client";
 import { NotificationBell } from "../../shared/NotificationBell";
 import { GlobalSearch } from "../../shared/GlobalSearch";
 import { ClarifyModal } from "../../shared/ClarifyModal";
@@ -1837,7 +1838,7 @@ function Sidebar({ role, ops, page, navigate, logout, collapsed, setCollapsed }:
 // ─────────────────────────────────────────────
 // APP SHELL
 // ─────────────────────────────────────────────
-function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApproveOp, bulkApprove, returnForReview, addCorrectiveOp, markErpPosted, navigate, logout, setModal, setDetailId }:{
+function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApproveOp, bulkApprove, returnForReview, addCorrectiveOp, markErpPosted, navigate, logout, setModal, setDetailId, allowedRoles, onSelectRole }:{
   state:AppState; ops:Op[];
   period:OpPeriod; setPeriod:(p:OpPeriod)=>void;
   approveOp:(id:string)=>void; rejectOp:(id:string,r:string)=>void;
@@ -1846,6 +1847,7 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
   addCorrectiveOp?:(refId:string)=>void; markErpPosted?:(ids:string[])=>Promise<string>|void;
   navigate:(p:PageId)=>void; logout:()=>void;
   setModal:(id:string|null)=>void; setDetailId:(id:string|null)=>void;
+  allowedRoles:RoleId[]; onSelectRole:(role:RoleId)=>void;
 }) {
   const { lang, setLang, t: tL, dir } = useLang();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -1886,6 +1888,11 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
             <p className="text-gray-400 text-xs">{supplierName || enProfile.label}</p>
           </div>
           <div className="flex items-center gap-2">
+            {allowedRoles.length>1 && <select aria-label={tL("الدور الممنوح","Granted role")} value={role}
+              onChange={e=>onSelectRole(e.target.value as RoleId)}
+              className="text-xs border border-gray-200 rounded-lg px-2 py-1.5">
+              {allowedRoles.map(r=><option key={r} value={r}>{ROLE_PROFILES[r].label}</option>)}
+            </select>}
             <div className="text-xs text-gray-400 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg hidden sm:block">
               {formatTodayLong(lang)}
             </div>
@@ -10147,6 +10154,61 @@ function HeadRejected({ ops }:PageProps) {
   );
 }
 
+function HeadShiftHistory() {
+  const { t } = useLang();
+  const [dateFrom,setDateFrom] = useState("");
+  const [dateTo,setDateTo] = useState("");
+  const [branchId,setBranchId] = useState("");
+  const [page,setPage] = useState(1);
+  const {data:branchRows} = useQuery({
+    queryKey:["shifts","assigned-branch-lookup"],
+    queryFn:async()=>{
+      const response = await api.get<{data:Array<{id:string;name:string}>}>("/lookups/branches");
+      return response.data.data;
+    },
+  });
+  const branches = Array.isArray(branchRows) ? branchRows.filter(branch=>
+    typeof branch?.id === "string" && typeof branch?.name === "string") : [];
+  const query = useShiftsHistory({dateFrom,dateTo,branchId,page,pageSize:20});
+  const busy = query.isPending || query.isFetching;
+  const meta = busy || query.isError ? undefined : query.data?.meta;
+  const rows = busy || query.isError ? [] : query.data?.data ?? [];
+  return <section className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+    <h3 className="font-bold text-gray-800 text-sm">{t("سجل الورديات — قراءة فقط","Shift history — read only")}</h3>
+    <div className="flex flex-wrap gap-3 text-xs">
+      <label>{t("من تاريخ الإغلاق","Closed from")}<input type="date" value={dateFrom}
+        onChange={e=>{setDateFrom(e.target.value);setPage(1);}} className="block border rounded px-2 py-1"/></label>
+      <label>{t("إلى تاريخ الإغلاق","Closed to")}<input type="date" value={dateTo}
+        onChange={e=>{setDateTo(e.target.value);setPage(1);}} className="block border rounded px-2 py-1"/></label>
+      <label>{t("الفرع","Branch")}<select value={branchId}
+        onChange={e=>{setBranchId(e.target.value);setPage(1);}} className="block border rounded px-2 py-1">
+        <option value="">{t("كل الفروع المعيّنة","All assigned branches")}</option>
+        {branches.map(branch=><option key={branch.id} value={branch.id}>{branch.name}</option>)}
+      </select></label>
+    </div>
+    {busy && <p role="status">{t("جارٍ تحميل السجل…","Loading history…")}</p>}
+    {!busy && query.isError && <p role="alert">{isApiError(query.error) ? query.error.messageAr : t("تعذر تحميل سجل الورديات","Could not load shift history")}</p>}
+    {!busy && !query.isError && rows.length===0 && <p>{t("لا توجد ورديات في هذه الصفحة","No shifts on this page")}</p>}
+    {!busy && !query.isError && rows.map(shift=>{
+      const evidence = getShiftCountEvidence(shift);
+      return <div key={shift.id} className="flex flex-wrap gap-4 border-t py-2 text-xs">
+        <span>{shift.branchName}</span><span>{shift.cashierName}</span>
+        <span>{shift.endedAt ? new Date(shift.endedAt).toLocaleDateString("ar-SA") : "—"}</span>
+        <span>{t("الفرق","Variance")}: <bdi>{evidence.variance.text}</bdi></span>
+      </div>;
+    })}
+    <div className="flex items-center justify-between text-xs">
+      <span>{t("الصفحة","Page")} {meta?.page ?? page} / {meta?.totalPages ?? "—"}</span>
+      <div className="flex gap-2">
+        <button disabled={busy || query.isError || historyPageTarget(meta,page,-1)===page}
+          onClick={()=>setPage(historyPageTarget(meta,page,-1))}>{t("السابق","Previous")}</button>
+        <button disabled={busy || query.isError || historyPageTarget(meta,page,1)===page}
+          onClick={()=>setPage(historyPageTarget(meta,page,1))}>{t("التالي","Next")}</button>
+      </div>
+    </div>
+  </section>;
+}
+
 function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops, finalApproveOp, rejectOp, bulkApprove }:PageProps&{moduleKey:string}) {
   const { t, lang, dir } = useLang();
   const en = lang === "en";
@@ -10314,6 +10376,7 @@ function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops, final
           </div>
         )}
       </div>
+      {moduleKey==="shifts" && <HeadShiftHistory/>}
     </div>
   );
 }
@@ -16809,37 +16872,25 @@ function SupReports({}: PageProps) {
 // ════════════════════════════════════════════════════════════
 // MAIN EXPORT
 // ════════════════════════════════════════════════════════════
-// Map the authenticated MeResponse.role (RoleKey) onto this prototype's RoleId.
-// `company-admin` has its own dashboard (routed in App.tsx), so it returns null
-// here and never overrides the ASAB role.
-function roleKeyToRoleId(rk?: string | null): RoleId | null {
-  switch (rk) {
-    case "admin": return "admin";
-    case "head": return "head";
-    case "accountant": return "accountant";
-    case "branch": return "branch";
-    case "procurement": return "procurement";
-    case "supplier": return "supplier";
-    default: return null;
-  }
-}
-
 export function ASABPrototype() {
   // Seed from the site-wide language chosen on the entry screen, and keep them in sync.
   const [lang, setLangState] = useState<Lang>(() => getSiteLang());
   const setLang = (l: Lang) => { setSiteLang(l); setLangState(l); };
   const t = <T,>(ar: T, en: T): T => lang === "ar" ? ar : en;
   const dir = lang === "ar" ? "rtl" : "ltr";
+  const { user, logout: authLogout } = useAuth();
 
-  // Seed the role synchronously from the pre-login entry pick so we never flash the
-  // legacy in-mockup role picker for a frame before adopting it.
+  // The entry pick is only a preference among roles granted by /auth/me.
   const [appState, setAppState] = useState<AppState>(() => {
     const sel = readEntrySelection();
-    if (sel?.slug === "asab/ASABPrototype" && sel.role && (sel.role in ROLE_PROFILES)) {
-      return { role: sel.role as RoleId, page: ROLE_PROFILES[sel.role as RoleId].defaultPage, detailId: null, modal: null };
-    }
-    return { role: null, page: "", detailId: null, modal: null };
+    const role = chooseGrantedRole(user,prototypeRoles,
+      sel?.slug === "asab/ASABPrototype" ? sel.role : null) as RoleId | null;
+    return {role,page:role ? ROLE_PROFILES[role].defaultPage : "",detailId:null,modal:null};
   });
+  const allowedRoles = grantedRoleKeys(user).filter(r=>prototypeRoles.includes(r)) as RoleId[];
+  const currentRole = appState.role && allowedRoles.includes(appState.role) ? appState.role : allowedRoles[0] ?? null;
+  const currentPage = currentRole ? pageForRole(currentRole,appState.page,ROLE_PROFILES[currentRole].defaultPage) : "";
+  const safeState = {...appState,role:currentRole,page:currentPage};
   // Top-bar period filter (server-side dateFrom/dateTo). Default "all" → no params,
   // so nothing is hidden until the user picks a window. Applies to the operation
   // lists only (per backend §d).
@@ -16847,8 +16898,9 @@ export function ASABPrototype() {
   const opsRange = periodRange(period);
   // Live operations from platform API — falls back to INITIAL_OPS when API returns empty.
   // Local setOps is preserved to drive optimistic UI for approve / reject / final-approve / ERP mutations.
-  const isHead = appState.role === "head";
-  const { data: apiOps } = useAccountantOperationsPlatform({ pageSize: 100, ...opsRange });
+  const isHead = currentRole === "head";
+  const { data: apiOps } = useAccountantOperationsPlatform({ pageSize: 100, ...opsRange },
+    {enabled:canRunAccountantOperations(user,currentRole)});
   // B-H1: head reads from the enriched /head/operations/* queues (accountantName, brandName,
   // branchName, amountHalalas baked in) — not the thin /accountant/operations shape.
   // NOTE: no `= []` defaults — a fresh [] literal each render would make these effect deps
@@ -16873,21 +16925,13 @@ export function ASABPrototype() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiOps, headPendingOps, headFinalOps, headRejectedOps, isHead]);
 
-  const { user, logout: authLogout } = useAuth();
-  // The authenticated user's REAL role is authoritative: adopt it once it loads
-  // so a logged-in accountant always lands on the accountant dashboard, never a
-  // stale pre-login entry pick (which can be any role). Applied once per user id
-  // (ref-guarded) so in-app navigation afterwards is preserved.
-  const adoptedRoleForUser = useRef<string | null>(null);
+  // Reconcile a changed /auth/me grant before any role-specific child mounts.
   useEffect(() => {
-    const rid = roleKeyToRoleId(user?.role);
-    if (!rid || !user) return;
-    if (adoptedRoleForUser.current === user.id) return;
-    adoptedRoleForUser.current = user.id;
-    setAppState(prev =>
-      prev.role === rid ? prev : { role: rid, page: ROLE_PROFILES[rid].defaultPage, detailId: null, modal: null },
-    );
-  }, [user]);
+    if (appState.role !== currentRole) setAppState({
+      role:currentRole,page:currentRole ? ROLE_PROFILES[currentRole].defaultPage : "",
+      detailId:null,modal:null,
+    });
+  }, [appState.role,currentRole]);
   // Tag the current history entry with a page so Back/Forward can restore it.
   const tagShiftHistory = (p:string, replace=false) => {
     try {
@@ -16896,7 +16940,11 @@ export function ASABPrototype() {
       else window.history.pushState(st, "");
     } catch { /* history unavailable */ }
   };
-  const login = (role:RoleId) => { const p = ROLE_PROFILES[role].defaultPage; setAppState({ role, page:p, detailId:null, modal:null }); tagShiftHistory(p, true); };
+  const login = (role:RoleId) => {
+    if (!allowedRoles.includes(role)) return;
+    const p = ROLE_PROFILES[role].defaultPage;
+    setAppState({ role, page:p, detailId:null, modal:null }); tagShiftHistory(p, true);
+  };
   // Full sign-out: clear the pre-login entry selection + the auth session so the user returns
   // to the entry flow (dashboard → role → login), not the in-mockup role picker.
   const logout = () => {
@@ -16907,19 +16955,10 @@ export function ASABPrototype() {
     clearEntrySelection();
     void authLogout();
   };
-  // Open directly on the role picked in the pre-login entry flow (once per mount). After an
-  // in-app logout the ref stays set, so the internal role picker still works for switching roles.
-  const adoptedEntryRef = useRef(false);
-  useEffect(() => {
-    if (adoptedEntryRef.current || appState.role) return;
-    const sel = readEntrySelection();
-    if (sel?.slug === "asab/ASABPrototype" && sel.role && (sel.role in ROLE_PROFILES)) {
-      adoptedEntryRef.current = true;
-      login(sel.role as RoleId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appState.role]);
-  const navigate = (page:PageId) => { setAppState(s=>({...s, page, modal:null})); tagShiftHistory(page); };
+  const navigate = (page:PageId) => {
+    if (!currentRole || pageForRole(currentRole,page,"") !== page) return;
+    setAppState(s=>({...s, page, modal:null})); tagShiftHistory(page);
+  };
   const setModal = (modal:string|null) => setAppState(s=>({...s, modal}));
   const setDetailId = (detailId:string|null) => setAppState(s=>({...s, detailId}));
 
@@ -16927,11 +16966,12 @@ export function ASABPrototype() {
   useEffect(() => {
     const onPop = (e:PopStateEvent) => {
       const p = (e.state as { asabPage?: string } | null)?.asabPage;
-      if (typeof p === "string") setAppState(s=>({...s, page:p as PageId, modal:null}));
+      if (typeof p === "string" && currentRole && pageForRole(currentRole,p,"") === p)
+        setAppState(s=>({...s, page:p as PageId, modal:null}));
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, []);
+  }, [currentRole]);
 
   // ─── FINANCIAL STATE MACHINE ─────────────────────────────
   // pending  → approved           (accountant, records actor + time)
@@ -16946,7 +16986,7 @@ export function ASABPrototype() {
   const currentSalesOps = useRef(ops);
   currentSalesOps.current = ops;
   const currentSalesRole = useRef(appState.role);
-  currentSalesRole.current = appState.role;
+  currentSalesRole.current = currentRole;
   const salesDetailFor = (op: { id: string }) => salesQueryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id));
   const salesContextFor = (id: string) => {
     const operation = currentSalesOps.current.find(op => op.id === id);
@@ -17080,25 +17120,23 @@ export function ASABPrototype() {
     return finalBatchId;
   };
 
-  if(!appState.role) return (
+  if(!currentRole) return (
     <LangContext.Provider value={{ lang, setLang, t, dir }}>
-      <LoginScreen onLogin={login}/>
+      <p role="alert">{t("ليس لديك صلاحية للوصول إلى هذه اللوحة","You cannot access this dashboard")}</p>
     </LangContext.Provider>
   );
 
+  const dashboard = <AppShell
+    state={safeState} ops={ops} period={period} setPeriod={setPeriod}
+    approveOp={approveOp} rejectOp={rejectOp} finalApproveOp={finalApproveOp} bulkApprove={bulkApprove}
+    returnForReview={returnForReview} addCorrectiveOp={addCorrectiveOp} markErpPosted={markErpPosted}
+    navigate={navigate} logout={logout} setModal={setModal} setDetailId={setDetailId}
+    allowedRoles={allowedRoles} onSelectRole={login}
+  />;
   return (
     <LangContext.Provider value={{ lang, setLang, t, dir }}>
-      <AssetDraftProvider>
-        <AppShell
-          state={appState} ops={ops} period={period} setPeriod={setPeriod}
-          approveOp={approveOp} rejectOp={rejectOp} finalApproveOp={finalApproveOp} bulkApprove={bulkApprove}
-          returnForReview={returnForReview} addCorrectiveOp={addCorrectiveOp} markErpPosted={markErpPosted}
-          navigate={navigate} logout={logout} setModal={setModal} setDetailId={setDetailId}
-        />
-        {/* Floating live-support chat. It targets the company-scoped support queue,
-            so the platform admin (the support side, not a customer) doesn't get it. */}
-        {appState.role !== "admin" && <LiveChatWidget t={t}/>}
-      </AssetDraftProvider>
+      {currentRole==="accountant" ? <AssetDraftProvider>{dashboard}</AssetDraftProvider> : dashboard}
+      {currentRole !== "admin" && <LiveChatWidget t={t}/>}
     </LangContext.Provider>
   );
 }

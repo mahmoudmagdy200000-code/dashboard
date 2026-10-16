@@ -46,9 +46,11 @@ export function useAccountantDashboardPlatform() {
 // ─── Operations ─────────────────────────────────────────────────────────────
 export function useAccountantOperationsPlatform(
   filter: PlatformAccountantOpsFilter = {},
+  options: { enabled?: boolean } = {},
 ) {
   return useQuery({
     queryKey: queryKeys.platformAccountantOperations(filter),
+    enabled: options.enabled,
     queryFn: async () => {
       const res = await api.get<Page<Operation> | Operation[]>(
         "/accountant/operations",

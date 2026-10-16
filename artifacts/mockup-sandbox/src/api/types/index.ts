@@ -8,13 +8,24 @@ export type RoleKey =
   | "procurement"
   | "supplier";
 
+/** Actual /auth/me roles[] assignment; a legacy user.role is not a grant. */
+export interface RoleGrant {
+  key: RoleKey;
+  scope: "all" | "brand" | "restaurant" | "branch";
+  brandIds: string[];
+  restaurantIds: string[];
+  branchIds: string[];
+  moduleKeys: string[];
+}
+
 // ─── Authentication ──────────────────────────────────────────────────────────
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: RoleKey;
-  /** Null only for platform `admin`. */
+  /** Legacy compatibility only; /auth/me authorizes through roles[] below. */
+  role?: RoleKey;
+  /** May be null for platform users; role scopes are carried by roles[]. */
   companyId: string | null;
   brandIds?: string[];
   restaurantIds?: string[];
@@ -43,6 +54,7 @@ export interface MeSupplier {
 }
 
 export interface MeResponse extends User {
+  roles: RoleGrant[];
   /** Permission map (key → boolean) for UI gating. */
   permissions: Record<string, boolean>;
   /** Present for role `supplier` — carries the business name for the header. */

@@ -1,7 +1,8 @@
 import "./_group.css";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
+import { chooseGrantedRole, companyRoles, grantedRoleKeys, pageForRole } from "../../../auth/roleAccess";
 import { historyBranchOptions, historyPageTarget } from "../../../api/queries/shifts";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRows, shfReviewPageTarget, type ShfReviewAction, type ShfReviewGroup } from "./shiftReviewQueue";
@@ -933,8 +934,9 @@ function CompanyLoginScreen({ onSelect }:{ onSelect:(r:CRole)=>void }) {
 // ═══════════════════════════════════════════════════
 // Notifications come from the platform API; empty until the backend returns them (no static seed).
 const SHELL_NOTIFICATIONS: { id:number; title:string; body:string; time:string; icon:string; unread:boolean }[] = [];
-function Shell({ role, page, navigate, onLogout, children, headPendingCount=0 }:{
+function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, allowedRoles, onSelectRole }:{
   role:CRole; page:string; navigate:(p:string)=>void; onLogout:()=>void; children:ReactNode; headPendingCount?:number;
+  allowedRoles:CRole[]; onSelectRole:(role:CRole)=>void;
 }) {
   const { lang, setLang, t, dir } = useCLang();
   const meta = ROLE_META[role];
@@ -972,6 +974,13 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0 }:
             </div>
           </div>
         </div>
+        {allowedRoles.length>1 && <div className="px-4 py-2 border-b border-white/10">
+          <select aria-label={t("الدور الممنوح","Granted role")} value={role}
+            onChange={e=>onSelectRole(e.target.value as CRole)}
+            className="w-full rounded-lg bg-white text-gray-800 text-xs px-2 py-1.5">
+            {allowedRoles.map(r=><option key={r} value={r}>{t(ROLE_META[r].label,EN_C_ROLE_META[r].label)}</option>)}
+          </select>
+        </div>}
         <nav className="flex-1 px-3 py-3 overflow-y-auto">
           {nav.map((entry,i)=>{
             if(isSection(entry)) return (
@@ -2792,6 +2801,61 @@ function HeadRejected({ ops }:{ ops:COp[] }) {
 
 // HEAD — MODULE PAGES (نفس المحاسب — اعتماد نهائي فقط)
 // ═══════════════════════════════════════════════════
+function HeadShiftHistory() {
+  const { t, lang } = useCLang();
+  const [dateFrom,setDateFrom] = useState("");
+  const [dateTo,setDateTo] = useState("");
+  const [branchId,setBranchId] = useState("");
+  const [page,setPage] = useState(1);
+  const {data:branchRows} = useQuery({
+    queryKey:["shifts","assigned-branch-lookup"],
+    queryFn:async()=>{
+      const response = await api.get<{data:Array<{id:string;name:string}>}>("/lookups/branches");
+      return response.data.data;
+    },
+  });
+  const branches = Array.isArray(branchRows) ? branchRows.filter(branch=>
+    typeof branch?.id === "string" && typeof branch?.name === "string") : [];
+  const query = useShiftsHistory({dateFrom,dateTo,branchId,page,pageSize:20});
+  const busy = query.isPending || query.isFetching;
+  const meta = busy || query.isError ? undefined : query.data?.meta;
+  const rows = busy || query.isError ? [] : query.data?.data ?? [];
+  return <section className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+    <h3 className="font-bold text-gray-800 text-sm">{t("سجل الورديات — قراءة فقط","Shift history — read only")}</h3>
+    <div className="flex flex-wrap gap-3 text-xs">
+      <label>{t("من تاريخ الإغلاق","Closed from")}<input type="date" value={dateFrom}
+        onChange={e=>{setDateFrom(e.target.value);setPage(1);}} className="block border rounded px-2 py-1"/></label>
+      <label>{t("إلى تاريخ الإغلاق","Closed to")}<input type="date" value={dateTo}
+        onChange={e=>{setDateTo(e.target.value);setPage(1);}} className="block border rounded px-2 py-1"/></label>
+      <label>{t("الفرع","Branch")}<select value={branchId}
+        onChange={e=>{setBranchId(e.target.value);setPage(1);}} className="block border rounded px-2 py-1">
+        <option value="">{t("كل الفروع المعيّنة","All assigned branches")}</option>
+        {branches.map(branch=><option key={branch.id} value={branch.id}>{branch.name}</option>)}
+      </select></label>
+    </div>
+    {busy && <p role="status">{t("جارٍ تحميل السجل…","Loading history…")}</p>}
+    {!busy && query.isError && <p role="alert">{getErrorMessage(query.error,lang)}</p>}
+    {!busy && !query.isError && rows.length===0 && <p>{t("لا توجد ورديات في هذه الصفحة","No shifts on this page")}</p>}
+    {!busy && !query.isError && rows.map(shift=>{
+      const evidence = getShiftCountEvidence(shift,lang);
+      return <div key={shift.id} className="flex flex-wrap gap-4 border-t py-2 text-xs">
+        <span>{shift.branchName}</span><span>{shift.cashierName}</span>
+        <span>{shift.endedAt ? new Date(shift.endedAt).toLocaleDateString("ar-SA") : "—"}</span>
+        <span>{t("الفرق","Variance")}: <bdi>{evidence.variance.text}</bdi></span>
+      </div>;
+    })}
+    <div className="flex items-center justify-between text-xs">
+      <span>{t("الصفحة","Page")} {meta?.page ?? page} / {meta?.totalPages ?? "—"}</span>
+      <div className="flex gap-2">
+        <button disabled={busy || query.isError || historyPageTarget(meta,page,-1)===page}
+          onClick={()=>setPage(historyPageTarget(meta,page,-1))}>{t("السابق","Previous")}</button>
+        <button disabled={busy || query.isError || historyPageTarget(meta,page,1)===page}
+          onClick={()=>setPage(historyPageTarget(meta,page,1))}>{t("التالي","Next")}</button>
+      </div>
+    </div>
+  </section>;
+}
+
 function HeadModulePage({ moduleKey, title, ops, finalApprove, reject, bulkFinalApprove, actionsPending }:{
   moduleKey:CModKey; title:string; ops:COp[];
   finalApprove:(id:string)=>void; reject:(id:string)=>void; bulkFinalApprove:(ids:string[])=>void; actionsPending:boolean;
@@ -2835,6 +2899,7 @@ function HeadModulePage({ moduleKey, title, ops, finalApprove, reject, bulkFinal
           ))}
         </div>
       )}
+      {moduleKey==="shifts" && <HeadShiftHistory/>}
     </div>
   );
 }
@@ -6821,16 +6886,16 @@ function PageRouter({ role, page, navigate, ops, approve, reject, requestClarifi
 // ═══════════════════════════════════════════════════
 function CompanyDashboardInner() {
   const { t } = useCLang();
-  const { logout: authLogout } = useAuth();
-  // Seed the role synchronously from the pre-login entry pick so we never flash the
-  // legacy in-mockup role picker for a frame before adopting it.
+  const { user, logout: authLogout } = useAuth();
   const initSel = readEntrySelection();
-  const initRole = initSel?.slug === "asab/CompanyDashboard" && initSel.role && (initSel.role in DEFAULT_PAGE)
-    ? (initSel.role as CRole)
-    : null;
+  const initRole = chooseGrantedRole(user,companyRoles,
+    initSel?.slug === "asab/CompanyDashboard" ? initSel.role : null) as CRole | null;
   const [role, setRole] = useState<CRole|null>(initRole);
   const [page, setPage] = useState<string>(initRole ? DEFAULT_PAGE[initRole] : "");
-  const { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, actionsPending, shiftReviewPage, setShiftReviewPage, rejectModalProps, clarifyModalProps } = useSharedOps(role);
+  const allowedRoles = grantedRoleKeys(user).filter(r => companyRoles.includes(r)) as CRole[];
+  const currentRole = role && allowedRoles.includes(role) ? role : allowedRoles[0] ?? null;
+  const currentPage = currentRole ? pageForRole(currentRole,page,DEFAULT_PAGE[currentRole]) : "";
+  const { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, actionsPending, shiftReviewPage, setShiftReviewPage, rejectModalProps, clarifyModalProps } = useSharedOps(currentRole);
 
   // Tag the current history entry with a page so Back/Forward can restore it.
   const tagHistory = (p:string, replace=false) => {
@@ -6840,8 +6905,14 @@ function CompanyDashboardInner() {
       else window.history.pushState(st, "");
     } catch { /* history unavailable */ }
   };
-  const selectRole = (r:CRole) => { setRole(r); setPage(DEFAULT_PAGE[r]); tagHistory(DEFAULT_PAGE[r], true); };
-  const navigate   = (p:string) => { setPage(p); tagHistory(p); };
+  const selectRole = (r:CRole) => {
+    if (!allowedRoles.includes(r)) return;
+    setRole(r); setPage(DEFAULT_PAGE[r]); tagHistory(DEFAULT_PAGE[r], true);
+  };
+  const navigate = (p:string) => {
+    if (!currentRole || pageForRole(currentRole,p,"") !== p) return;
+    setPage(p); tagHistory(p);
+  };
   // Real sign-out: clear the pre-login pick + the auth session so the sidebar
   // "logout" returns to the entry flow, not the in-mockup role picker. Don't clear
   // role/page here — that flashes the picker while sign-out is in flight; App
@@ -6852,32 +6923,24 @@ function CompanyDashboardInner() {
   useEffect(() => {
     const onPop = (e:PopStateEvent) => {
       const p = (e.state as { asabCoPage?: string } | null)?.asabCoPage;
-      if (typeof p === "string") setPage(p);
+      if (typeof p === "string" && currentRole && pageForRole(currentRole,p,"") === p) setPage(p);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, []);
+  }, [currentRole]);
 
-  // Open directly on the role picked in the pre-login entry flow (once per mount). After an
-  // in-app logout the ref stays set, so the internal role picker still works for switching roles.
-  const adoptedEntryRef = useRef(false);
   useEffect(() => {
-    if (adoptedEntryRef.current || role) return;
-    const sel = readEntrySelection();
-    if (sel?.slug === "asab/CompanyDashboard" && sel.role && (sel.role in DEFAULT_PAGE)) {
-      adoptedEntryRef.current = true;
-      selectRole(sel.role as CRole);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role]);
+    if (role !== currentRole) { setRole(currentRole); setPage(currentRole ? DEFAULT_PAGE[currentRole] : ""); }
+  }, [role,currentRole]);
 
-  if(!role) return <CompanyLoginScreen onSelect={selectRole}/>;
+  if(!currentRole) return <p role="alert">{t("ليس لديك صلاحية للوصول إلى بوابة الشركات","You cannot access the company dashboard")}</p>;
 
   const headPendingCount = ops.filter(o=>o.status==="approved").length;
 
-  return (
-    <Shell role={role} page={page} navigate={navigate} onLogout={logout} headPendingCount={headPendingCount}>
-      <PageRouter role={role} page={page} navigate={navigate}
+  const dashboard = (
+    <Shell role={currentRole} page={currentPage} navigate={navigate} onLogout={logout} headPendingCount={headPendingCount}
+      allowedRoles={allowedRoles} onSelectRole={selectRole}>
+      <PageRouter role={currentRole} page={currentPage} navigate={navigate}
         ops={ops} approve={approve} reject={reject} requestClarification={requestClarification}
         bulkApprove={bulkApprove} finalApprove={finalApprove} bulkFinalApprove={bulkFinalApprove} actionsPending={actionsPending} shiftReviewPage={shiftReviewPage} setShiftReviewPage={setShiftReviewPage}/>
       <RejectModal {...rejectModalProps} t={t}/>
@@ -6886,14 +6949,15 @@ function CompanyDashboardInner() {
       <LiveChatWidget t={t}/>
     </Shell>
   );
+  return currentRole==="accountant"
+    ? <CAssetDraftProvider>{dashboard}</CAssetDraftProvider>
+    : dashboard;
 }
 
 export default function CompanyDashboard() {
   return (
     <CLangProvider>
-      <CAssetDraftProvider>
-        <CompanyDashboardInner/>
-      </CAssetDraftProvider>
+      <CompanyDashboardInner/>
     </CLangProvider>
   );
 }

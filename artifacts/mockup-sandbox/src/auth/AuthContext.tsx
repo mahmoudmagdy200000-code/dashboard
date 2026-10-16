@@ -19,6 +19,7 @@ import {
 } from "../api/auth";
 import { getTokens, clearTokens } from "../api/tokens";
 import { clearEntrySelection } from "./entrySelection";
+import { hasRoleGrant } from "./roleAccess";
 import { disconnectEcho, getEcho } from "../api/echo";
 import { setProcurementPlatformScope } from "../api/queries/platform/procurement";
 import type {
@@ -101,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // the cross-company surface; /company/me/procurement/* would 403 WRONG_TENANT.
   // Keep the procurement base path in sync with whoever is signed in.
   useEffect(() => {
-    setProcurementPlatformScope(user?.role === "procurement" && !user?.companyId);
+    setProcurementPlatformScope(hasRoleGrant(user, "procurement") && !user?.companyId);
   }, [user]);
 
   // Listen for forced-logout signal from the axios 401 interceptor.
@@ -360,7 +361,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const isRole = useCallback(
-    (...roles: RoleKey[]) => Boolean(user && roles.includes(user.role)),
+    (...roles: RoleKey[]) => hasRoleGrant(user, ...roles),
     [user],
   );
 

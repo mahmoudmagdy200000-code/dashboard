@@ -5,7 +5,9 @@ import { V, G, CYAN, LOGO, ensureAuthStyles } from "./auth/authTheme";
 import { useSiteLang } from "./auth/siteLang";
 import { LangToggle } from "./auth/LangToggle";
 import { readEntrySelection } from "./auth/entrySelection";
+import { canOpenDashboard, chooseGrantedRole, companyRoles, preferredDashboard, prototypeRoles } from "./auth/roleAccess";
 import { useAuth } from "./auth/AuthContext";
+import type { MeResponse } from "./api/types";
 import { OnboardingWizard } from "./auth/OnboardingWizard";
 import { InvitationAcceptPage } from "./auth/InvitationAcceptPage";
 import { SubscriptionExpiredBanner } from "./components/shared/SubscriptionExpiredBanner";
@@ -121,17 +123,8 @@ function getPreviewPath(): string | null {
   return match ? match[1] : null;
 }
 
-// Map a backend defaultPage hint to a known mockup slug. Backend can return
-// either a full slug ("asab/CompanyDashboard") or a short hint ("dashboard").
-function resolveLandingSlug(defaultPage: string | null, role: string | undefined): string {
-  if (defaultPage && defaultPage.includes("/")) return defaultPage;
-  if (role === "admin") return "asab/ASABPrototype";
-  // Every company role lands in CompanyDashboard (it routes internally by role).
-  return "asab/CompanyDashboard";
-}
-
 // ─── ASAB Landing Page (only shown for logged-in users — picks a dashboard) ──
-function ASABLanding({ onLogout, userName }: { onLogout: () => void; userName: string }) {
+function ASABLanding({ onLogout, user }: { onLogout: () => void; user: MeResponse }) {
   const [lang, setLang, t] = useSiteLang();
   const dashboards = [
     {
@@ -162,7 +155,7 @@ function ASABLanding({ onLogout, userName }: { onLogout: () => void; userName: s
       ),
       icon: "🏨",
     },
-  ];
+  ].filter(d => canOpenDashboard(user,d.slug));
 
   return (
     <div className="asab-landing" dir={lang === "ar" ? "rtl" : "ltr"} style={{ direction: lang === "ar" ? "rtl" : "ltr" }}>
@@ -187,7 +180,7 @@ function ASABLanding({ onLogout, userName }: { onLogout: () => void; userName: s
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <LangToggle lang={lang} onChange={setLang} variant="light" />
           <span style={{ fontSize: 13, color: G[600] }}>
-            {t("مرحباً،", "Welcome,")} <span style={{ color: G[900], fontWeight: 700 }}>{userName}</span>
+            {t("مرحباً،", "Welcome,")} <span style={{ color: G[900], fontWeight: 700 }}>{user.name}</span>
           </span>
           <button
             onClick={onLogout}
@@ -257,7 +250,7 @@ function ASABLanding({ onLogout, userName }: { onLogout: () => void; userName: s
 
 // ─── App — auth-aware shell ──────────────────────────────────────────────────
 function App() {
-  const { user, initializing, defaultPage, logout } = useAuth();
+  const { user, initializing, logout } = useAuth();
   const [, forceUpdate] = useState(0);
   // True once the post-login auto-redirect has run — so a later Back to root shows
   // the dashboard picker instead of getting stuck on the "opening…" loader.
@@ -267,7 +260,11 @@ function App() {
   useEffect(() => {
     const onHashChange = () => forceUpdate((n) => n + 1);
     window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
+    window.addEventListener("popstate", onHashChange);
+    return () => {
+      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener("popstate", onHashChange);
+    };
   }, []);
 
   // Reset the one-shot redirect guard on logout so the next login redirects afresh.
@@ -284,7 +281,10 @@ function App() {
     redirectHandledRef.current = true; // we've evaluated the landing for this session
     const sel = readEntrySelection();
     const current = getPreviewPath();
-    const target = sel?.slug ?? (defaultPage ? resolveLandingSlug(defaultPage, user.role) : null);
+    const supported = sel?.slug === "asab/ASABPrototype" ? prototypeRoles : companyRoles;
+    const selected = sel && canOpenDashboard(user,sel.slug)
+      && chooseGrantedRole(user,supported,sel.role) === sel.role;
+    const target = selected ? sel.slug : preferredDashboard(user);
     if (!target) return;
     // Already on the chosen dashboard → leave the user where they are.
     if (current === target) return;
@@ -292,7 +292,7 @@ function App() {
     if (current && !sel) return;
     // Fresh pick wins over a stale preview hash left over from a previous session.
     window.location.hash = `#/preview/${target}`;
-  }, [user, defaultPage]);
+  }, [user]);
 
   if (initializing) {
     return (
@@ -330,6 +330,10 @@ function App() {
 
   const previewPath = getPreviewPath();
   if (previewPath) {
+    if ((previewPath === "asab/ASABPrototype" || previewPath === "asab/CompanyDashboard")
+      && !canOpenDashboard(user,previewPath)) {
+      return <div role="alert" dir="rtl" style={{padding:32}}>ليس لديك صلاحية للوصول إلى هذه اللوحة</div>;
+    }
     return (
       <>
         <SubscriptionExpiredBanner />
@@ -367,7 +371,7 @@ function App() {
   return (
     <>
       <SubscriptionExpiredBanner />
-      <ASABLanding onLogout={() => void logout()} userName={user.name} />
+      <ASABLanding onLogout={() => void logout()} user={user} />
     </>
   );
 }
