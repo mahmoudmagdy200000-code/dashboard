@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
-import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, type ShfReviewAction } from "./shiftReviewQueue";
+import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRows, shfReviewPageTarget, type ShfReviewAction, type ShfReviewGroup } from "./shiftReviewQueue";
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT } from "./headReviewGuards";
 import { api } from "../../../api/client";
 import { toast } from "sonner";
@@ -2924,6 +2924,7 @@ function useSharedOps(role: CRole | null) {
   const clarifyMut = useRequestClarification();
   const actionLock = useRef(false);
   const [actionsPending, setActionsPending] = useState(false);
+  const [shiftReviewPage, setShiftReviewPage] = useState(1);
 
   const ops: COp[] = useMemo(() => {
     const apiOps = opsQuery.data?.data;
@@ -2936,7 +2937,7 @@ function useSharedOps(role: CRole | null) {
   const currentRole = useRef(role);
   currentRole.current = role;
   const operationFor = (id: string) =>
-    queryClient.getQueryData<{data:ApiOperation[]}>(queryKeys.operations({ moduleKey:"shifts", pageSize:100 }))?.data
+    queryClient.getQueryData<{data:ApiOperation[]}>(queryKeys.operations({ moduleKey:"shifts", pageSize:100, page:shiftReviewPage }))?.data
       ?.find(op => op.id === id) ?? currentOps.current.find(op => op.id === id);
   const detailFor = (op: { id: string }) => queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id));
   const loadFreshDetail = async (id:string) => {
@@ -3055,7 +3056,8 @@ function useSharedOps(role: CRole | null) {
     },
   };
 
-  return { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, actionsPending, rejectModalProps, clarifyModalProps };
+  return { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, actionsPending,
+    shiftReviewPage, setShiftReviewPage, rejectModalProps, clarifyModalProps };
 }
 
 // ═══════════════════════════════════════════════════
@@ -4797,21 +4799,34 @@ function ShiftConfigCard({ cfg }:{ cfg:ShiftConfig }) {
   );
 }
 
-function AccCompanyShifts({ approve, reject, requestClarification }:{ approve:(id:string)=>void; reject:(id:string)=>void; requestClarification?:(id:string)=>void }) {
+function AccCompanyShifts({ approve, reject, requestClarification, page, setPage }:{
+  approve:(id:string)=>void; reject:(id:string)=>void; requestClarification?:(id:string)=>void;
+  page:number; setPage:(page:number)=>void;
+}) {
   const { t, dir, lang } = useCLang();
   type ShiftTab = "live"|"setup"|"close"|"history";
   const [tab,          setTab]          = useState<ShiftTab>("live");
   const [expandedId, setExpandedId] = useState<string|null>(null);
   const [contactShift, setContactShift] = useState<Shift|null>(null);
-  const operationsQuery = useOperations({ moduleKey:"shifts", pageSize:100 });
-  const shiftOps = (operationsQuery.data?.data ?? []).filter(op => op.moduleKey === "shifts")
-    .map(op => apiOpToCOp(op, BRANDS));
-  const reviewGroups = [
-    { key: "pending", title: t("بانتظار مراجعة المحاسب", "Awaiting accountant review") },
-    { key: "returned", title: t("أُعيدت لمدير الفرع", "Returned to branch manager") },
-    { key: "final", title: t("معتمدة ونهائية", "Approved and final") },
-    { key: "other", title: t("حالات أخرى للقراءة", "Other read-only states") },
-  ] as const;
+  const operationsQuery = useOperations({ moduleKey:"shifts", pageSize:100, page });
+  const shiftOps = shfReviewRows(operationsQuery.data).map(op => apiOpToCOp(op, BRANDS));
+  const meta = operationsQuery.data?.meta;
+  const totalPages = meta && Number.isSafeInteger(meta.totalPages) && meta.totalPages > 0 ? meta.totalPages : undefined;
+  const shownPage = meta && Number.isSafeInteger(meta.page) && meta.page > 0 ? meta.page : page;
+  const reviewLoading = operationsQuery.isPending || operationsQuery.isFetching;
+  const changeReviewPage = (direction:-1 | 1) => {
+    const target = shfReviewPageTarget(shownPage, totalPages, direction);
+    if (target !== page) { setExpandedId(null); setPage(target); }
+  };
+  const reviewGroups:{key:ShfReviewGroup;title:string}[] = [
+    { key:"accountant_review", title:t("بانتظار مراجعة المحاسب","Awaiting accountant review") },
+    { key:"head_returned", title:t("أُعيدت من رئيس الحسابات — تنتظر إجراء المحاسب","Returned by head — awaiting accountant action") },
+    { key:"pending_unknown", title:t("مرحلة معلّقة تحتاج تحققًا — للقراءة فقط","Pending phase needs verification — read-only") },
+    { key:"head_review", title:t("لدى رئيس الحسابات — لم تعتمد نهائيًا","With head — not final approved") },
+    { key:"final_approved", title:t("معتمدة نهائيًا","Final approved") },
+    { key:"manager_returned", title:t("أُعيدت لمدير الفرع","Returned to branch manager") },
+    { key:"other", title:t("حالات أخرى للقراءة","Other read-only states") },
+  ];
 
   const { data: live, isLoading: liveLoading } = useShiftsLive();
   const { data: historyPage } = useShiftsHistory();
@@ -4914,15 +4929,22 @@ function AccCompanyShifts({ approve, reject, requestClarification }:{ approve:(i
       {/* Accountant SHF operation review; the native close flow is not used here. */}
       {tab==="close" && (
         <div className="space-y-4">
-          {operationsQuery.isLoading && <p role="status" className="text-sm text-gray-500">{t("جارٍ تحميل عمليات الورديات…","Loading shift operations…")}</p>}
+          <div className="flex items-center justify-between gap-3 text-xs text-gray-600">
+            <p>{t("الصفحة","Page")} {shownPage}{totalPages ? ` / ${totalPages}` : ""} · {t("عمليات هذه الصفحة","Operations on this page")}: {reviewLoading || operationsQuery.isError ? "—" : shiftOps.length}</p>
+            <div className="flex gap-2">
+              <button disabled={reviewLoading || operationsQuery.isError || shfReviewPageTarget(shownPage,totalPages,-1)===page} onClick={()=>changeReviewPage(-1)} className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-50">{t("السابق","Previous")}</button>
+              <button disabled={reviewLoading || operationsQuery.isError || shfReviewPageTarget(shownPage,totalPages,1)===page} onClick={()=>changeReviewPage(1)} className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-50">{t("التالي","Next")}</button>
+            </div>
+          </div>
+          {reviewLoading && <p role="status" className="text-sm text-gray-500">{t("جارٍ تحميل عمليات الورديات…","Loading shift operations…")}</p>}
           {operationsQuery.isError && <p role="alert" className="text-sm text-red-700">{getErrorMessage(operationsQuery.error, lang)}</p>}
-          {!operationsQuery.isLoading && !operationsQuery.isError && shiftOps.length===0 && <p className="text-sm text-gray-500">{t("لا توجد عمليات ورديات للمراجعة","No shift operations to review")}</p>}
-          {!operationsQuery.isLoading && !operationsQuery.isError && reviewGroups.map(group => {
+          {!reviewLoading && !operationsQuery.isError && shiftOps.length===0 && <p className="text-sm text-gray-500">{t("لا توجد عمليات ورديات في هذه الصفحة","No shift operations on this page")}</p>}
+          {!reviewLoading && !operationsQuery.isError && reviewGroups.map(group => {
             const rows = shiftOps.filter(op => getShfReviewGroup(op) === group.key);
             return rows.length>0 && <section key={group.key} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <h3 className="px-5 py-3.5 text-sm font-bold text-gray-800 bg-gray-50 border-b border-gray-100">{group.title} ({rows.length})</h3>
+              <h3 className="px-5 py-3.5 text-sm font-bold text-gray-800 bg-gray-50 border-b border-gray-100">{group.title} ({rows.length} {t("في هذه الصفحة","on this page")})</h3>
               {rows.map(op => <div key={op.id}>
-                {group.key==="pending" && getShfReviewPolicy(op, "accountant").returnToManager===false && <p className="px-5 pt-2 text-xs text-amber-700">{t("هذه المرحلة للقراءة فقط لدى المحاسب","This phase is read-only for the accountant")}</p>}
+                {(group.key==="pending_unknown" || group.key==="other") && <p className="px-5 pt-2 text-xs text-amber-700">{t("هذه المرحلة للقراءة فقط لدى المحاسب","This phase is read-only for the accountant")}</p>}
                 <OpRow op={op} onApprove={()=>approve(op.id)} onReject={()=>reject(op.id)}
                   onClarify={requestClarification ? ()=>requestClarification(op.id) : undefined}
                   onView={()=>setExpandedId(expandedId===op.id?null:op.id)}
@@ -5895,6 +5917,8 @@ function AccCompanyReports() {
 // ═══════════════════════════════════════════════════
 type SharedOpsProps = {
   ops:COp[];
+  shiftReviewPage:number;
+  setShiftReviewPage:(page:number)=>void;
   actionsPending:boolean;
   approve:(id:string)=>void;
   reject:(id:string)=>void;
@@ -5904,7 +5928,7 @@ type SharedOpsProps = {
   bulkFinalApprove:(ids:string[])=>void;
 };
 
-function AccountantRoot({ page, navigate, ops, approve, reject, requestClarification, bulkApprove }:{ page:string; navigate:(p:string)=>void } & SharedOpsProps) {
+function AccountantRoot({ page, navigate, ops, approve, reject, requestClarification, bulkApprove, shiftReviewPage, setShiftReviewPage }:{ page:string; navigate:(p:string)=>void } & SharedOpsProps) {
   if(page==="acc-dashboard")  return <AccDashboard navigate={navigate} ops={ops}/>;
   if(page==="acc-sales")      return <AccCompanySales ops={ops} approve={approve} reject={reject} requestClarification={requestClarification} bulkApprove={bulkApprove}/>;
   if(page==="acc-expenses")   return <AccCompanyExpenses ops={ops} approve={approve} reject={reject} bulkApprove={bulkApprove}/>;
@@ -5912,7 +5936,7 @@ function AccountantRoot({ page, navigate, ops, approve, reject, requestClarifica
   if(page==="acc-inventory")  return <AccCompanyInventory navigate={navigate} ops={ops} approve={approve} reject={reject}/>;
   if(page==="acc-waste")      return <AccCompanyWaste/>;
   if(page==="acc-assets")     return <AccCompanyAssets/>;
-  if(page==="acc-shifts")     return <AccCompanyShifts approve={approve} reject={reject} requestClarification={requestClarification}/>;
+  if(page==="acc-shifts")     return <AccCompanyShifts approve={approve} reject={reject} requestClarification={requestClarification} page={shiftReviewPage} setPage={setShiftReviewPage}/>;
   if(page==="acc-employees")  return <AccCompanyEmployees/>;
   if(page==="acc-cash")       return <AccCompanyCash/>;
   if(page==="acc-reminders")  return <AccCompanyReminders/>;
@@ -6638,7 +6662,7 @@ function ProcSent() {
 // ═══════════════════════════════════════════════════
 // PAGE ROUTER
 // ═══════════════════════════════════════════════════
-function PageRouter({ role, page, navigate, ops, approve, reject, requestClarification, bulkApprove, finalApprove, bulkFinalApprove, actionsPending }:{
+function PageRouter({ role, page, navigate, ops, approve, reject, requestClarification, bulkApprove, finalApprove, bulkFinalApprove, actionsPending, shiftReviewPage, setShiftReviewPage }:{
   role:CRole; page:string; navigate:(p:string)=>void;
 } & SharedOpsProps) {
   const headProps:HeadProps = { navigate, ops, finalApprove, reject, bulkFinalApprove, actionsPending };
@@ -6676,7 +6700,7 @@ function PageRouter({ role, page, navigate, ops, approve, reject, requestClarifi
     return <HeadDashboard {...headProps}/>;
   }
   if(role==="accountant") {
-    return <AccountantRoot page={page} navigate={navigate} ops={ops} approve={approve} reject={reject} requestClarification={requestClarification} bulkApprove={bulkApprove} finalApprove={finalApprove} bulkFinalApprove={bulkFinalApprove} actionsPending={actionsPending}/>;
+    return <AccountantRoot page={page} navigate={navigate} ops={ops} approve={approve} reject={reject} requestClarification={requestClarification} bulkApprove={bulkApprove} finalApprove={finalApprove} bulkFinalApprove={bulkFinalApprove} actionsPending={actionsPending} shiftReviewPage={shiftReviewPage} setShiftReviewPage={setShiftReviewPage}/>;
   }
   if(role==="branch") {
     if(page==="branch-overview")   return <BranchOverview/>;
@@ -6716,7 +6740,7 @@ function CompanyDashboardInner() {
     : null;
   const [role, setRole] = useState<CRole|null>(initRole);
   const [page, setPage] = useState<string>(initRole ? DEFAULT_PAGE[initRole] : "");
-  const { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, actionsPending, rejectModalProps, clarifyModalProps } = useSharedOps(role);
+  const { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, actionsPending, shiftReviewPage, setShiftReviewPage, rejectModalProps, clarifyModalProps } = useSharedOps(role);
 
   // Tag the current history entry with a page so Back/Forward can restore it.
   const tagHistory = (p:string, replace=false) => {
@@ -6765,7 +6789,7 @@ function CompanyDashboardInner() {
     <Shell role={role} page={page} navigate={navigate} onLogout={logout} headPendingCount={headPendingCount}>
       <PageRouter role={role} page={page} navigate={navigate}
         ops={ops} approve={approve} reject={reject} requestClarification={requestClarification}
-        bulkApprove={bulkApprove} finalApprove={finalApprove} bulkFinalApprove={bulkFinalApprove} actionsPending={actionsPending}/>
+        bulkApprove={bulkApprove} finalApprove={finalApprove} bulkFinalApprove={bulkFinalApprove} actionsPending={actionsPending} shiftReviewPage={shiftReviewPage} setShiftReviewPage={setShiftReviewPage}/>
       <RejectModal {...rejectModalProps} t={t}/>
       <ClarifyModal {...clarifyModalProps} t={t}/>
       {/* Floating live-support chat — available to every company role. */}

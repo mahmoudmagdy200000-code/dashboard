@@ -8,12 +8,30 @@ export type ShfReviewOperation = {
 
 export type ShfReviewAction = "approve" | "returnToManager" | "clarify";
 
-export function getShfReviewGroup(op: ShfReviewOperation): "pending" | "returned" | "final" | "other" | null {
+export type ShfReviewGroup = "accountant_review" | "head_returned" | "pending_unknown" |
+  "head_review" | "final_approved" | "manager_returned" | "other";
+
+export function getShfReviewGroup(op: ShfReviewOperation): ShfReviewGroup | null {
   if ((op.module ?? op.moduleKey) !== "shifts") return null;
-  if (op.status === "pending") return "pending";
-  if (op.status === "rejected" && op.reportReview?.phase === "manager_returned") return "returned";
-  if (op.status === "approved" || op.status === "final-approved") return "final";
+  if (op.status === "pending") {
+    if (op.reportReview?.phase === "accountant_review") return "accountant_review";
+    if (op.reportReview?.phase === "head_returned") return "head_returned";
+    return "pending_unknown";
+  }
+  if (op.status === "rejected" && op.reportReview?.phase === "manager_returned") return "manager_returned";
+  if (op.status === "approved" && op.reportReview?.phase === "head_review") return "head_review";
+  if (op.status === "final-approved") return "final_approved";
   return "other";
+}
+
+/** Only rows in the current, Backend-scoped API page are rendered. */
+export function shfReviewRows<T extends ShfReviewOperation>(page?: { data: readonly T[] } | null): T[] {
+  return Array.isArray(page?.data) ? page.data.filter(op => (op.module ?? op.moduleKey) === "shifts") : [];
+}
+
+export function shfReviewPageTarget(page:number, totalPages:number | undefined, direction:-1 | 1):number {
+  if (!Number.isSafeInteger(page) || page < 1 || !Number.isSafeInteger(totalPages) || totalPages == null || totalPages < 1) return page;
+  return Math.min(totalPages, Math.max(1, page + direction));
 }
 
 export function getShfReviewPolicy(op: ShfReviewOperation | undefined, role: string | null | undefined,
