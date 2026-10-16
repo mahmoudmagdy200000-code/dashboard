@@ -1392,12 +1392,9 @@ function ShiftOpPanel({ detail, loading, error }:{ detail?:ApiOperation; loading
         {line("إجمالي المبيعات (شامل الضريبة)","Gross sales (including VAT)",payload.salesHalalas)}
         {line("إجمالي الشبكة","Card total",payload.cardTotalHalalas)}
         {line("تطبيقات التوصيل (قبل العمولة)","Aggregators (before commission)",payload.aggregatorTotalsHalalas)}
-        {Array.isArray(payload.aggregatorBreakdown) && payload.aggregatorBreakdown.map((row,i) => (
+        {Array.isArray(payload.aggregatorBreakdown) && payload.aggregatorBreakdown.map((_,i) => (
           <div key={i} className="text-xs text-gray-600 py-1 flex flex-wrap gap-2">
-            <span>{t("تطبيق","Aggregator")} {i+1}:</span>
-            {row && typeof row === "object" && Object.entries(row).map(([key,value]) => (
-              <span key={key}>{key}: <bdi>{key.endsWith("Halalas") ? money(value) : value == null ? "—" : typeof value === "string" || typeof value === "number" ? String(value) : "—"}</bdi></span>
-            ))}
+            <span>{t("تطبيق","Aggregator")} {i+1}: {t("تفاصيل التطبيق غير متاحة","Aggregator details unavailable")}</span>
           </div>
         ))}
         {line("الافتتاحي المهيأ (ليس إثبات استلام)","Configured opening (not receipt evidence)",payload.openingFloatHalalas)}
@@ -1407,7 +1404,8 @@ function ShiftOpPanel({ detail, loading, error }:{ detail?:ApiOperation; loading
         <div className={`flex justify-between gap-3 text-xs border-b border-gray-100 py-1.5 ${validVariance ? variance < 0 ? "text-red-700" : variance > 0 ? "text-blue-700" : "" : ""}`}>
           <span>{varianceLabel}</span><bdi className="font-mono">{count === "unknown" ? t("غير مجرود","Not counted") : count === "counted" ? money(variance) : "—"}</bdi>
         </div>
-        {line("نقدية واردة معلّقة (خارج الفرق)","Pending incoming cash (excluded from variance)",payload.pendingIncomingCountedHalalas)}
+        {typeof payload.pendingIncomingCountedHalalas === "number" && Number.isSafeInteger(payload.pendingIncomingCountedHalalas) && payload.pendingIncomingCountedHalalas > 0 &&
+          line("نقدية واردة معلّقة (خارج الفرق)","Pending incoming cash (excluded from variance)",payload.pendingIncomingCountedHalalas)}
       </div>
       <div className="text-xs space-y-1">
         <p>{t("مرحلة المراجعة","Review phase")}: {phaseText}</p>
@@ -1416,10 +1414,8 @@ function ShiftOpPanel({ detail, loading, error }:{ detail?:ApiOperation; loading
       {Array.isArray(payload.varianceAllocations) && payload.varianceAllocations.length > 0 && (
         <div className="text-xs space-y-1">
           <h4 className="font-bold">{t("تخصيصات الفرق من العملية","Operation variance allocations")}</h4>
-          {payload.varianceAllocations.map((row,i) => (
-            <p key={i}>{t("تخصيص","Allocation")} {i+1}: {row && typeof row === "object" && Object.entries(row).map(([key,value]) => (
-              <span key={key} className="mr-2">{key}: <bdi>{key.endsWith("Halalas") ? money(value) : value == null ? "—" : typeof value === "string" || typeof value === "number" ? String(value) : "—"}</bdi></span>
-            ))}</p>
+          {payload.varianceAllocations.map((_,i) => (
+            <p key={i}>{t("تخصيص","Allocation")} {i+1}: {t("تفاصيل التخصيص غير متاحة","Allocation details unavailable")}</p>
           ))}
         </div>
       )}

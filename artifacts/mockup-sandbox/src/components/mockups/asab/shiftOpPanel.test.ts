@@ -31,7 +31,7 @@ const fin01 = {
   moduleKey: "shifts",
   payload: {
     salesHalalas: 11500, cardTotalHalalas: 5000, aggregatorTotalsHalalas: 2500,
-    aggregatorBreakdown: [{ aggregatorName: "API app", amountHalalas: 2500 }],
+    aggregatorBreakdown: [{ aggregatorId: "private-app-id", amountHalalas: 2500, internalField: "hidden-app" }],
     openingFloatHalalas: 1000, cashExpectedHalalas: 5000,
     cashActualHalalas: 3000, varianceHalalas: -2000,
     cashCountState: "counted", pendingIncomingCountedHalalas: 300,
@@ -54,13 +54,29 @@ test("FIN-01 uses server halalas, and configured opening never becomes confirmed
   }
   assert.match(html, /مجرود فعلياً/);
   assert.match(html, /عجز/);
-  assert.match(html, /API app/);
+  assert.match(html, /تفاصيل التطبيق غير متاحة/);
+  assert.doesNotMatch(html, /private-app-id|hidden-app|aggregatorId|internalField|amountHalalas/);
   assert.match(html, /عند المحاسب/);
   assert.match(html, /API reason/);
   assert.match(html, /API action/);
   assert.match(html, /الافتتاحي المهيأ/);
   assert.match(html, /<span>الافتتاحي المؤكد<\/span><bdi>—<\/bdi>/);
   assert.doesNotMatch(html, /ضريبة القيمة المضافة|صافي المبيعات|VAT|Net/);
+});
+
+test("pending incoming appears separately only for a positive safe integer halala amount", () => {
+  const label = "نقدية واردة معلّقة (خارج الفرق)";
+  const positive = render({ detail: fin01 });
+  assert.match(positive, /نقدية واردة معلّقة/);
+  assert.ok(positive.includes(formatShiftHalalas(300, "ar")));
+  for (const value of [0, null, undefined, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, "300"]) {
+    const html = render({ detail: { ...fin01, payload: { ...fin01.payload, pendingIncomingCountedHalalas: value } } });
+    assert.equal(html.includes(label), false, String(value));
+    assert.match(html, /عجز/);
+    assert.ok(html.includes(formatShiftHalalas(-2000, "ar")), "server variance must stay unchanged");
+  }
+  const { pendingIncomingCountedHalalas: _missing, ...withoutPending } = fin01.payload;
+  assert.equal(render({ detail: { ...fin01, payload: withoutPending } }).includes(label), false);
 });
 
 test("unknown and null counts never assert a cash count, match or zero variance", () => {
@@ -99,8 +115,10 @@ test("BD-2 liability preserves redacted identities and treats version as allocat
 
 test("operation variance allocations are shown only when the API supplies rows", () => {
   assert.doesNotMatch(render({ detail: fin01 }), /تخصيصات الفرق من العملية/);
-  const detail = { ...fin01, payload: { ...fin01.payload, varianceAllocations: [{ amountHalalas: 500 }] } };
+  const detail = { ...fin01, payload: { ...fin01.payload, varianceAllocations: [{ amountHalalas: 500, employeeId: "private-employee-id", internalField: "hidden-allocation" }] } };
   const html = render({ detail });
   assert.match(html, /تخصيصات الفرق من العملية/);
-  assert.ok(html.includes(formatShiftHalalas(500, "ar")));
+  assert.match(html, /تفاصيل التخصيص غير متاحة/);
+  assert.doesNotMatch(html, /private-employee-id|hidden-allocation|employeeId|internalField|amountHalalas/);
+  assert.equal(html.includes(`>${formatShiftHalalas(500, "ar")}</bdi>`), false);
 });
