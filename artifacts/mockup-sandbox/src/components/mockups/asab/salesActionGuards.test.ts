@@ -11,6 +11,11 @@ import {
 
 const legacy = { id: "legacy", moduleKey: "sales", status: "pending" };
 const day = { ...legacy, id: "day", reportReview: { phase: "accountant_review" } };
+const nullableLegacyRecon = {
+  channels: [{ key: "cash", actualAmountHalalas: 0, posAmountHalalas: null, diffHalalas: null }],
+  totals: { expectedTotalHalalas: 100, totalCollectionHalalas: 0, varianceHalalas: -100 },
+  varianceReason: null,
+};
 const forbidden: SalesAction[] = ["edit", "save", "assign", "return", "returnForReview", "correct", "bulkApprove"];
 
 test("PKG-6 sales guards prevent legacy effects for accountant and head", () => {
@@ -168,6 +173,42 @@ test("actual reject confirmation and return handlers recheck review before HTTP 
   }
 });
 
+test("nullable Backend legacy evidence permits actual edit/save/assign only for allowed roles and states", () => {
+  const recon = nullableLegacyRecon;
+  for (const [file, component, assign] of [
+    ["CompanyDashboard.tsx", "SalesReconPanel", "confirmAssign"],
+    ["ASABPrototype.tsx", "AccSalesDetail", "confirmVarianceAssign"],
+  ]) {
+    for (const role of ["accountant", "head"]) {
+      for (const status of ["pending", "approved", "final-approved"]) {
+        for (const reportReview of [undefined, null, day.reportReview]) {
+          const operation = { ...legacy, status, reportReview };
+          const requests: string[] = [];
+          const edits: unknown[] = [];
+          const handlers = uiHandlers(file, component, ["beginEdit", "saveEdit", assign], {
+            runSalesAction,
+            salesContext: () => ({ operation, role, financialDataReady: hasSalesReconciliationEvidence(recon) }),
+            op: operation, recon, channels: recon.channels, totals: recon.totals,
+            draft: { cash: "0" }, varReason: "", reconVarReason: "", assignNotes: "",
+            varEmps: [{ empId: "employee", amount: "1" }],
+            setDraft: (value: unknown) => edits.push(value), setVarReason: () => {}, setEditMode: () => {},
+            setReconVarReason: () => {}, setReconEditMode: () => {},
+            patchMut: { mutate: (request: { payload: { channels: unknown[] } }) => {
+              assert.deepEqual(request.payload.channels, [{ key: "cash", actualAmountHalalas: 0, posAmountHalalas: null }]);
+              requests.push("PATCH sales-details");
+            } },
+            assignMut: { mutate: () => requests.push("POST sales-variance/assign") },
+          });
+          handlers.forEach(handler => handler());
+          const allowed = role === "accountant" && status !== "final-approved" && reportReview == null;
+          assert.deepEqual(requests, allowed ? ["PATCH sales-details", "POST sales-variance/assign"] : [], `${file}: ${role}, ${status}, ${reportReview == null ? "Legacy" : "PKG-6"}`);
+          assert.deepEqual(edits, allowed ? [{ cash: "0" }] : []);
+        }
+      }
+    }
+  }
+});
+
 test("actual bulk handlers exclude PKG-6 before requests and optimistic state changes", () => {
   const expense = { id: "expense", moduleKey: "expenses", status: "pending" };
   for (const [file, container] of [["CompanyDashboard.tsx", "useSharedOps"], ["ASABPrototype.tsx", "ASABPrototype"]]) {
@@ -258,5 +299,40 @@ test("reconciliation evidence requires the API's actual integer amounts, includi
     { ...valid, totals: { ...valid.totals, varianceHalalas: null } },
     { ...valid, channels: [{ ...valid.channels[0], actualAmountHalalas: "0" }] }]) {
     assert.equal(hasSalesReconciliationEvidence(value), false);
+  }
+});
+
+test("channel POS and difference accept explicit null independently without changing evidence", () => {
+  for (const posAmountHalalas of [null, 0, 100]) {
+    for (const diffHalalas of [null, 0, -100]) {
+      const recon = { ...nullableLegacyRecon, channels: [{ ...nullableLegacyRecon.channels[0], posAmountHalalas, diffHalalas }] };
+      const before = structuredClone(recon);
+      assert.equal(hasSalesReconciliationEvidence(recon), true);
+      assert.deepEqual(recon, before, "validation must preserve null and real amounts");
+    }
+  }
+});
+
+test("nullable channels still reject malformed amounts and missing required evidence", () => {
+  const malformed = [undefined, "0", false, NaN, Infinity, -Infinity, 0.5, Number.MAX_SAFE_INTEGER + 1];
+  for (const key of ["actualAmountHalalas", "posAmountHalalas", "diffHalalas"]) {
+    for (const value of [...malformed, ...(key === "actualAmountHalalas" ? [null] : [])]) {
+      const channel: Record<string, unknown> = { ...nullableLegacyRecon.channels[0], [key]: value };
+      assert.equal(hasSalesReconciliationEvidence({ ...nullableLegacyRecon, channels: [channel] }), false, key);
+    }
+    const channel: Record<string, unknown> = { ...nullableLegacyRecon.channels[0] };
+    delete channel[key];
+    assert.equal(hasSalesReconciliationEvidence({ ...nullableLegacyRecon, channels: [channel] }), false, `missing ${key}`);
+  }
+  for (const key of ["expectedTotalHalalas", "totalCollectionHalalas", "varianceHalalas"]) {
+    for (const value of [...malformed, null]) {
+      assert.equal(hasSalesReconciliationEvidence({ ...nullableLegacyRecon, totals: { ...nullableLegacyRecon.totals, [key]: value } }), false, key);
+    }
+    const totals: Record<string, unknown> = { ...nullableLegacyRecon.totals };
+    delete totals[key];
+    assert.equal(hasSalesReconciliationEvidence({ ...nullableLegacyRecon, totals }), false, `missing ${key}`);
+  }
+  for (const channels of [[], [null], [nullableLegacyRecon.channels[0], { actualAmountHalalas: null }]]) {
+    assert.equal(hasSalesReconciliationEvidence({ ...nullableLegacyRecon, channels }), false);
   }
 });

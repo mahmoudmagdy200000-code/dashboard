@@ -64,7 +64,9 @@ export function hasSalesReconciliationEvidence(value: unknown): boolean {
   const amount = (v: unknown) => typeof v === "number" && Number.isSafeInteger(v);
   return ["expectedTotalHalalas", "totalCollectionHalalas", "varianceHalalas"].every(key => amount(totals[key])) &&
     recon.channels.every(channel => typeof channel === "object" && channel !== null &&
-      ["actualAmountHalalas", "posAmountHalalas", "diffHalalas"].every(key => amount(channel[key])));
+      amount(channel.actualAmountHalalas) &&
+      // Backend may explicitly omit POS evidence with null; actuals and totals remain required.
+      ["posAmountHalalas", "diffHalalas"].every(key => channel[key] === null || amount(channel[key])));
 }
 
 /** Re-evaluate immediately at the effect boundary, including modal confirmation. */
