@@ -1,7 +1,7 @@
 import type { RoleKey } from "../api/types";
 import type { QueryClient } from "@tanstack/react-query";
 
-type Identity = { roles?: unknown } | null | undefined;
+type Identity = { roles?: unknown; id?: unknown; companyId?: unknown } | null | undefined;
 
 const knownRoles: readonly RoleKey[] = [
   "admin", "company-admin", "head", "accountant", "branch", "procurement", "supplier",
@@ -26,8 +26,10 @@ function validGrant(grant: Record<string, unknown>): grant is Record<string, unk
     || !["all", "brand", "restaurant", "branch"].includes(grant.scope as string)
     || !validStrings(grant.brandIds,uuid) || !validStrings(grant.restaurantIds,uuid)
     || !validStrings(grant.branchIds,uuid) || !validStrings(grant.moduleKeys,moduleKey)) return false;
-  if (grant.key === "accountant" && (grant.scope !== "brand" || grant.brandIds.length === 0)) return false;
-  if (grant.key === "branch" && (grant.scope !== "branch" || grant.branchIds.length === 0)) return false;
+  if (grant.key === "accountant" && !(
+    (grant.scope === "brand" && grant.brandIds.length > 0)
+    || (grant.scope === "restaurant" && grant.restaurantIds.length > 0))) return false;
+  if (grant.key === "branch" && (grant.scope !== "branch" || grant.branchIds.length !== 1)) return false;
   if (grant.key === "admin" && (grant.scope !== "all" || grant.brandIds.length
     || grant.restaurantIds.length || grant.branchIds.length)) return false;
   // TenantBranchResolver ORs all populated hierarchy arrays, regardless of the scope label.
@@ -44,7 +46,7 @@ export function grantedRoleKeys(identity: Identity): RoleKey[] {
   for (const value of identity.roles) {
     if (!value || typeof value !== "object" || Array.isArray(value)) { malformed = true; continue; }
     const grant = value as Record<string, unknown>;
-    if (!knownRoles.includes(grant.key as RoleKey)) continue;
+    if (!knownRoles.includes(grant.key as RoleKey)) { malformed = true; continue; }
     const key = grant.key as RoleKey;
     if (seen.has(key)) repeated.add(key);
     seen.add(key);
@@ -57,8 +59,29 @@ export function grantedRoleKeys(identity: Identity): RoleKey[] {
 
 /** Include scope and ordering: the first Backend assignment determines tenant context. */
 export function financialAccessFingerprint(identity: Identity): string {
-  const subject = identity as (Identity & {id?:unknown}) | null | undefined;
-  return JSON.stringify([subject?.id ?? null, subject?.roles ?? null]);
+  return JSON.stringify([identity?.id ?? null, identity?.companyId ?? null, identity?.roles ?? null]);
+}
+
+const accessGenerations = new WeakMap<QueryClient, number>();
+const directRequests = new WeakMap<QueryClient, Set<AbortController>>();
+
+export function financialAccessGeneration(queryClient: QueryClient): number {
+  return accessGenerations.get(queryClient) ?? 0;
+}
+
+/** Direct api.get calls are outside React Query cancellation. */
+export function registerFinancialRequest(queryClient: QueryClient) {
+  const controller = new AbortController();
+  let requests = directRequests.get(queryClient);
+  if (!requests) { requests = new Set(); directRequests.set(queryClient,requests); }
+  requests.add(controller);
+  const release = () => requests.delete(controller);
+  return {
+    generation:financialAccessGeneration(queryClient),
+    signal:controller.signal,
+    abort:() => { controller.abort(); release(); },
+    release,
+  };
 }
 
 const sensitivePrefixes: readonly (readonly string[])[] = [
@@ -71,6 +94,9 @@ const sensitivePrefixes: readonly (readonly string[])[] = [
 
 /** Cancel before removal so a prior role's late response cannot restore financial cache. */
 export async function purgeFinancialQueries(queryClient: QueryClient): Promise<void> {
+  accessGenerations.set(queryClient,financialAccessGeneration(queryClient)+1);
+  for (const request of directRequests.get(queryClient) ?? []) request.abort();
+  directRequests.get(queryClient)?.clear();
   const predicate = (query: {queryKey: readonly unknown[]}) => sensitivePrefixes.some(prefix =>
     prefix.every((part,index) => query.queryKey[index] === part));
   await queryClient.cancelQueries({predicate});

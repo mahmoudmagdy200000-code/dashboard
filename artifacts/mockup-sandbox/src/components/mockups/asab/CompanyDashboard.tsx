@@ -2,7 +2,7 @@ import "./_group.css";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
-import { chooseGrantedRole, companyRoles, grantedRoleKeys, pageForRole, purgeFinancialQueries } from "../../../auth/roleAccess";
+import { chooseGrantedRole, companyRoles, financialAccessFingerprint, financialAccessGeneration, grantedRoleKeys, hasRoleGrant, pageForRole, purgeFinancialQueries, registerFinancialRequest } from "../../../auth/roleAccess";
 import { historyBranchOptions, historyPageTarget } from "../../../api/queries/shifts";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRows, shfReviewPageTarget, type ShfReviewAction, type ShfReviewGroup } from "./shiftReviewQueue";
@@ -10,7 +10,7 @@ import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_
 import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocationHalalas, runShfAllocationCorrection, type ShfAllocationRow } from "./shiftAllocationCorrection";
 import { api } from "../../../api/client";
 import { toast } from "sonner";
-import { useState, useMemo, useEffect, useRef, ReactNode, createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
+import { useState, useMemo, useEffect, useLayoutEffect, useRef, ReactNode, createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
 import {
   useOperations, useApproveOperation, useRejectOperation, useBulkApprove, useFinalApprove, useBulkFinalApprove,
   useVerifyExpenseInvoice, useUnverifyExpenseInvoice, useReviewExpenseInvoice,
@@ -1372,7 +1372,20 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
 // ═══════════════════════════════════════════════════
 function ShiftAllocationForm({ op, shortageHalalas }:{ op:COp; shortageHalalas:number }) {
   const { t, lang } = useCLang();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+  const mounted = useRef(false);
+  const pendingDirect = useRef(new Set<()=>void>());
+  const fingerprint = financialAccessFingerprint(user);
+  const currentFingerprint = useRef(fingerprint);
+  currentFingerprint.current = fingerprint;
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; for (const abort of pendingDirect.current) abort(); pendingDirect.current.clear(); };
+  }, []);
+  const accessStillCurrent = (generation:number, expectedFingerprint:string) =>
+    mounted.current && generation === financialAccessGeneration(queryClient)
+    && expectedFingerprint === currentFingerprint.current && hasRoleGrant(user,"accountant");
   const allocationMut = useShiftVarianceAllocations();
   const submitLock = useRef(false);
   const [pending, setPending] = useState(false);
@@ -1382,23 +1395,31 @@ function ShiftAllocationForm({ op, shortageHalalas }:{ op:COp; shortageHalalas:n
   const setField = (index:number,field:keyof ShfAllocationRow,value:string) =>
     setRows(current=>current.map((row,i)=>i===index?{...row,[field]:value}:row));
   const submit = async () => {
-    if (!allocations || pending || submitLock.current) return;
+    if (!allocations || pending || submitLock.current || !mounted.current || !hasRoleGrant(user,"accountant")) return;
+    const generation = financialAccessGeneration(queryClient);
+    const requestFingerprint = currentFingerprint.current;
     setPending(true);
     let postStarted = false;
     try {
       const completed = await runShfAllocationCorrection(op, "accountant", rows, async () => {
-        const response = await api.get<ApiOperation>(`/operations/${op.id}`);
-        queryClient.setQueryData(queryKeys.operation(op.id), response.data);
-        return response.data;
+        const request = registerFinancialRequest(queryClient);
+        pendingDirect.current.add(request.abort);
+        try {
+          const response = await api.get<ApiOperation>(`/operations/${op.id}`,{signal:request.signal});
+          if (request.signal.aborted || !accessStillCurrent(generation,requestFingerprint)) throw new FinancialAccessChangedError();
+          queryClient.setQueryData(queryKeys.operation(op.id), response.data);
+          return response.data;
+        } finally { pendingDirect.current.delete(request.abort); request.release(); }
       }, async (shiftId, currentAllocations) => {
+        if (!accessStillCurrent(generation,requestFingerprint)) throw new FinancialAccessChangedError();
         postStarted = true;
         await allocationMut.mutateAsync({operationId:op.id,shiftId,allocations:currentAllocations});
       }, submitLock);
-      if (completed) setRows([{empNumber:"",amountSar:""}]);
-      else toast.error(t("تغير دليل الوردية؛ حدّث القائمة وأعد المراجعة","Shift evidence changed; refresh and review again"));
+      if (completed && accessStillCurrent(generation,requestFingerprint)) setRows([{empNumber:"",amountSar:""}]);
+      else if (accessStillCurrent(generation,requestFingerprint)) toast.error(t("تغير دليل الوردية؛ حدّث القائمة وأعد المراجعة","Shift evidence changed; refresh and review again"));
     } catch (error) {
-      if (!postStarted) toast.error(getErrorMessage(error,"ar")); // The mutation hook translates POST errors.
-    } finally { setPending(false); }
+      if (!postStarted && !(error instanceof FinancialAccessChangedError)) toast.error(getErrorMessage(error,"ar")); // The mutation hook translates POST errors.
+    } finally { if (mounted.current) setPending(false); }
   };
   return <div className="space-y-2 rounded-xl border border-red-200 bg-red-50/40 p-3 text-xs">
     <h4 className="font-bold text-red-800">{t("تصحيح توزيع العجز","Correct shortage allocation")}</h4>
@@ -3028,8 +3049,16 @@ function cBrandNamesFromOps(ops: COp[]): string[] {
   return [...seen];
 }
 
-function useSharedOps(role: CRole | null) {
+class FinancialAccessChangedError extends Error {}
+
+function useSharedOps(role: CRole | null, fingerprint: string) {
   const queryClient = useQueryClient();
+  const mounted = useRef(false);
+  const pendingDirect = useRef(new Set<()=>void>());
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; for (const abort of pendingDirect.current) abort(); pendingDirect.current.clear(); };
+  }, []);
   const financialRole = role === "accountant" || role === "head";
   const opsQuery = useQuery({
     queryKey: [...queryKeys.operations({ pageSize: 100 }), role],
@@ -3056,14 +3085,32 @@ function useSharedOps(role: CRole | null) {
   currentOps.current = ops;
   const currentRole = useRef(role);
   currentRole.current = role;
+  const currentFingerprint = useRef(fingerprint);
+  currentFingerprint.current = fingerprint;
+  const captureAccess = () => {
+    const activeRole = currentRole.current;
+    if (!mounted.current || (activeRole !== "accountant" && activeRole !== "head")) return null;
+    return {generation:financialAccessGeneration(queryClient),role:activeRole,fingerprint:currentFingerprint.current};
+  };
+  const accessStillCurrent = (context:NonNullable<ReturnType<typeof captureAccess>>) =>
+    mounted.current && context.generation === financialAccessGeneration(queryClient)
+    && context.role === currentRole.current && context.fingerprint === currentFingerprint.current;
   const operationFor = (id: string) =>
     queryClient.getQueryData<{data:ApiOperation[]}>(queryKeys.operations({ moduleKey:"shifts", pageSize:100, page:shiftReviewPage }))?.data
       ?.find(op => op.id === id) ?? currentOps.current.find(op => op.id === id);
   const detailFor = (op: { id: string }) => queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id));
   const loadFreshDetail = async (id:string) => {
-    const response = await api.get<ApiOperation>(`/operations/${id}`);
-    queryClient.setQueryData(queryKeys.operation(id), response.data);
-    return response.data;
+    const context = captureAccess();
+    if (!context) throw new FinancialAccessChangedError();
+    const request = registerFinancialRequest(queryClient);
+    pendingDirect.current.add(request.abort);
+    try {
+      const response = await api.get<ApiOperation>(`/operations/${id}`,{signal:request.signal});
+      if (request.signal.aborted || request.generation !== context.generation || !accessStillCurrent(context))
+        throw new FinancialAccessChangedError();
+      queryClient.setQueryData(queryKeys.operation(id), response.data);
+      return response.data;
+    } finally { pendingDirect.current.delete(request.abort); request.release(); }
   };
   const salesContextFor = (id: string) => {
     const operation = operationFor(id);
@@ -3102,36 +3149,44 @@ function useSharedOps(role: CRole | null) {
     if (actionLock.current) return;
     const operation = operationFor(id);
     if (!getHeadReviewPolicy(operation, currentRole.current, operation && detailFor(operation)).finalApprove) return;
+    const context = captureAccess();
+    if (!context) return;
     setActionsPending(true);
     let mutationStarted = false;
     try {
       const completed = await runHeadFinalApproval(operation, currentRole.current, loadFreshDetail, async operationId => {
+        if (!accessStillCurrent(context)) throw new FinancialAccessChangedError();
         mutationStarted = true;
         await finalMut.mutateAsync({ id:operationId });
       }, actionLock);
-      if (!completed) toast.error("تغيرت حالة العملية؛ حدّث القائمة وأعد المراجعة");
+      if (!completed && accessStillCurrent(context)) toast.error("تغيرت حالة العملية؛ حدّث القائمة وأعد المراجعة");
     } catch (error) {
-      if (!mutationStarted) toast.error(getErrorMessage(error, "ar")); // mutation hook already translates its errors
-    } finally { setActionsPending(false); }
+      if (!mutationStarted && !(error instanceof FinancialAccessChangedError) && accessStillCurrent(context))
+        toast.error(getErrorMessage(error, "ar")); // mutation hook already translates its errors
+    } finally { if (mounted.current) setActionsPending(false); }
   };
   const bulkApprove        = (ids:string[]) => { runSalesBulkApproval(currentOps.current, ids, currentRole.current, eligible => bulkMut.mutate({ operationIds: eligible }), detailFor); };
   const bulkFinalApprove = async (ids:string[]) => {
     if (actionLock.current || ids.length===0 || headLegacyBulkIds(currentOps.current, ids, currentRole.current, detailFor).length !== new Set(ids).size) return;
+    const context = captureAccess();
+    if (!context) return;
     actionLock.current = true;
     setActionsPending(true);
     let mutationStarted = false;
     try {
       const fresh = await Promise.all(ids.map(id => loadFreshDetail(id)));
+      if (!accessStillCurrent(context)) throw new FinancialAccessChangedError();
       const freshById = new Map(fresh.map(op => [op.id, op]));
       if (headLegacyBulkIds(currentOps.current, ids, currentRole.current, op => freshById.get(op.id)).length !== new Set(ids).size) {
         toast.error("تغيرت حالة العمليات؛ راجع القائمة قبل الاعتماد الجماعي");
         return;
       }
+      if (!accessStillCurrent(context)) throw new FinancialAccessChangedError();
       mutationStarted = true;
       await bulkFinalMut.mutateAsync({ operationIds:ids });
     } catch (error) {
-      if (!mutationStarted) toast.error(getErrorMessage(error, "ar"));
-    } finally { actionLock.current = false; setActionsPending(false); }
+      if (!mutationStarted && !(error instanceof FinancialAccessChangedError) && accessStillCurrent(context)) toast.error(getErrorMessage(error, "ar"));
+    } finally { actionLock.current = false; if (mounted.current) setActionsPending(false); }
   };
 
   const rejectModalProps = {
@@ -3157,7 +3212,7 @@ function useSharedOps(role: CRole | null) {
               mutationStarted = true;
               await rejectMut.mutateAsync({ id:rejectingId, reason, notes });
             } else toast.error("تغيرت حالة العملية؛ حدّث القائمة وأعد المراجعة");
-          } catch (error) { if (!mutationStarted) toast.error(getErrorMessage(error, "ar")); }
+          } catch (error) { if (!mutationStarted && !(error instanceof FinancialAccessChangedError)) toast.error(getErrorMessage(error, "ar")); }
           finally { actionLock.current = false; setActionsPending(false); }
         }
       } else if (rejectingId && (rejectingModule !== "shifts" || rejectReasons?.some(r => r.key === reason)))
@@ -6904,7 +6959,7 @@ function CompanyDashboardInner() {
   const allowedRoles = grantedRoleKeys(user).filter(r => companyRoles.includes(r)) as CRole[];
   const currentRole = role && allowedRoles.includes(role) ? role : allowedRoles[0] ?? null;
   const currentPage = currentRole ? pageForRole(currentRole,page,DEFAULT_PAGE[currentRole]) : "";
-  const { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, actionsPending, shiftReviewPage, setShiftReviewPage, rejectModalProps, clarifyModalProps, clearDialogs } = useSharedOps(switchingRole ? null : currentRole);
+  const { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, actionsPending, shiftReviewPage, setShiftReviewPage, rejectModalProps, clarifyModalProps, clearDialogs } = useSharedOps(switchingRole ? null : currentRole, financialAccessFingerprint(user));
 
   // Tag the current history entry with a page so Back/Forward can restore it.
   const tagHistory = (p:string, replace=false) => {

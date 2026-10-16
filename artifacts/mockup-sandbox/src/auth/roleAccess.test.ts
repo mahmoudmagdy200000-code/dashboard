@@ -5,10 +5,13 @@ import ts from "typescript";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
+import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval } from "../components/mockups/asab/headReviewGuards.ts";
+import { getSalesActionPolicy } from "../components/mockups/asab/salesActionGuards.ts";
 import {
   canOpenDashboard, canRunAccountantOperations, canRunShiftConfigs, canRunShiftHistory,
   chooseGrantedRole, companyRoles, grantedRoleKeys, hasRoleGrant, pageForRole,
   preferredDashboard, prototypeRoles, purgeFinancialQueries, financialAccessFingerprint,
+  financialAccessGeneration, registerFinancialRequest,
 } from "./roleAccess.ts";
 
 const grant = (key:string, scope="all", ids:string[] = []) => ({
@@ -30,9 +33,14 @@ test("Backend scope rules accept valid hierarchy arrays and reject malformed gra
   assert.deepEqual(grantedRoleKeys(identity([{...grant("accountant","brand",[brandA]),
     restaurantIds:[restaurantA],branchIds:[branchA]}])),["accountant"]);
   assert.deepEqual(grantedRoleKeys(identity([grant("branch","branch",[branchA])])),["branch"]);
+  assert.deepEqual(grantedRoleKeys(identity([grant("accountant","restaurant",[restaurantA])])),["accountant"]);
+  assert.deepEqual(grantedRoleKeys(identity([{...grant("accountant","restaurant",[restaurantA]),
+    brandIds:[brandA],branchIds:[branchA]}])),["accountant"]);
   assert.deepEqual(grantedRoleKeys(admin),["admin"]);
   for (const bad of [
-    grant("accountant","restaurant",[restaurantA]), grant("branch","brand",[brandA]),
+    grant("accountant","branch",[branchA]), grant("branch","brand",[brandA]),
+    grant("branch","branch",[]),grant("branch","branch",[branchA,restaurantA]),
+    grant("accountant","restaurant",[]),
     {...grant("accountant","brand",[brandA]),brandIds:[" "]},
     {...grant("accountant","brand",[brandA]),brandIds:["not-a-uuid"]},
     {...grant("accountant","brand",[brandA]),brandIds:[brandA,brandA]},
@@ -59,6 +67,8 @@ test("ambiguous repeated same-role assignments fail closed in either order", () 
   assert.deepEqual(grantedRoleKeys(identity([{...grant("head"),moduleKeys:null},
     grant("accountant","brand",[brandA])])),[]);
   assert.deepEqual(grantedRoleKeys(identity([null,grant("accountant","brand",[brandA])])),[]);
+  assert.deepEqual(grantedRoleKeys(identity([grant("brand-owner"),grant("accountant","brand",[brandA])])),[]);
+  assert.deepEqual(grantedRoleKeys(identity([{...grant("accountant","brand",[brandA]),key:7}])),[]);
 });
 
 test("actual preview path parser recognizes empty and unknown hash/path URLs for denial", () => {
@@ -114,10 +124,152 @@ test("financial cache cancellation excludes unrelated queries and ignores late r
   client.clear();
 });
 
+test("financial purge increments generation immediately and aborts registered direct requests", async () => {
+  const client = new QueryClient();
+  const before = financialAccessGeneration(client);
+  const request = registerFinancialRequest(client);
+  assert.equal(request.generation,before);
+  const purging = purgeFinancialQueries(client);
+  assert.equal(financialAccessGeneration(client),before+1);
+  assert.equal(request.signal.aborted,true);
+  await purging;
+  request.release();
+  client.clear();
+});
+
+test("actual loadFreshDetail discards a late direct response after access invalidation", async () => {
+  const source = ts.createSourceFile("CompanyDashboard.tsx",
+    readFileSync(new URL("../components/mockups/asab/CompanyDashboard.tsx",import.meta.url),"utf8"),
+    ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  let declaration:ts.VariableDeclaration|undefined;
+  const walk = (node:ts.Node) => {
+    if (ts.isVariableDeclaration(node) && node.name.getText(source) === "loadFreshDetail") declaration = node;
+    ts.forEachChild(node,walk);
+  };
+  walk(source);
+  assert.ok(declaration);
+  const compiled = ts.transpileModule(`const ${declaration.getText(source)};`,{
+    compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None},
+  }).outputText;
+  const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
+  const detailKey = ["operations","direct-op"];
+  const observer = new QueryObserver(client,{queryKey:detailKey,
+    queryFn:async()=>({id:"observer"}),enabled:false});
+  const unsubscribe = observer.subscribe(()=>{});
+  let resolveGet!: (value:{data:{id:string}})=>void;
+  let requestSignal:AbortSignal|undefined;
+  const api = {get:(_url:string,options?:{signal?:AbortSignal})=>{
+    requestSignal = options?.signal;
+    return new Promise<{data:{id:string}}>(resolve=>{resolveGet=resolve;});
+  }};
+  const context = () => ({generation:financialAccessGeneration(client),role:"head",fingerprint:"scope-a"});
+  const valid = (snapshot:ReturnType<typeof context>) =>
+    snapshot.generation === financialAccessGeneration(client) && snapshot.role === "head";
+  const loader = new Function("api","queryClient","queryKeys","captureAccess","accessStillCurrent",
+    "registerFinancialRequest","pendingDirect","FinancialAccessChangedError",compiled + "\nreturn loadFreshDetail;",
+  )(api,client,{operation:(id:string)=>["operations",id]},context,valid,
+    registerFinancialRequest,{current:new Set<()=>void>()},class FinancialAccessChangedError extends Error {},
+  ) as (id:string)=>Promise<{id:string}>;
+  const loading = loader("direct-op");
+  await purgeFinancialQueries(client);
+  resolveGet({data:{id:"direct-op"}}); // deliberately ignore abort, as a non-cancellable adapter could
+  await assert.rejects(loading);
+  assert.equal(requestSignal?.aborted,true);
+  assert.equal(client.getQueryData(detailKey),undefined);
+  unsubscribe();
+  client.clear();
+});
+
+function mountHeadActions(operation:{id:string;moduleKey:string;status:string;reportReview?:unknown}, rejecting=false) {
+  const source = ts.createSourceFile("CompanyDashboard.tsx",
+    readFileSync(new URL("../components/mockups/asab/CompanyDashboard.tsx",import.meta.url),"utf8"),
+    ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  const declaration = source.statements.find(node => ts.isFunctionDeclaration(node)
+    && node.name?.text === "useSharedOps");
+  assert.ok(declaration);
+  const compiled = ts.transpileModule(declaration.getText(source),{
+    compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None},
+  }).outputText;
+  const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
+  const mutations:string[] = [];
+  const requests:Array<{resolve:(value:{data:typeof operation})=>void;signal?:AbortSignal}> = [];
+  const api = {get:(_url:string,options?:{signal?:AbortSignal})=>new Promise<{data:typeof operation}>(resolve=>{
+    requests.push({resolve,signal:options?.signal});
+  })};
+  const mutation = (name:string)=>()=>({mutate:()=>mutations.push(name),
+    mutateAsync:async()=>{mutations.push(name);}});
+  let stateIndex=0;
+  const state = (initial:unknown) => {
+    const index=stateIndex++;
+    return React.useState(index===2 && rejecting ? operation.id : initial);
+  };
+  const useSharedOps = new Function("useQueryClient","useQuery","queryKeys","api",
+    "useApproveOperation","useRejectOperation","useFinalApprove","useBulkFinalApprove",
+    "useBulkApprove","useRequestClarification","useRef","useState","useMemo","useLayoutEffect",
+    "apiOpToCOp","BRANDS","useRejectionReasons","financialAccessGeneration",
+    "registerFinancialRequest","FinancialAccessChangedError","getHeadReviewPolicy",
+    "runHeadFinalApproval","headLegacyBulkIds","getSalesActionPolicy","toast","getErrorMessage",
+    compiled + "\nreturn useSharedOps;",
+  )(()=>client,()=>({data:{data:[operation]}}),
+    {operations:()=>["operations","list"],operation:(id:string)=>["operations",id]},api,
+    mutation("approve"),mutation("reject"),mutation("final"),mutation("bulk-final"),
+    mutation("bulk"),mutation("clarify"),React.useRef,state,React.useMemo,
+    (effect:()=>void)=>effect(),(op:unknown)=>op,{},()=>({data:[{key:"RETURN"}]}),
+    financialAccessGeneration,registerFinancialRequest,class FinancialAccessChangedError extends Error {},
+    getHeadReviewPolicy,runHeadFinalApproval,headLegacyBulkIds,getSalesActionPolicy,
+    {error:()=>{}},()=>"error",
+  ) as (role:string,fingerprint:string)=>{
+    finalApprove:(id:string)=>Promise<void>;
+    bulkFinalApprove:(ids:string[])=>Promise<void>;
+    rejectModalProps:{onSubmit:(value:{reason:string})=>Promise<void>};
+  };
+  let actions!:ReturnType<typeof useSharedOps>;
+  renderToStaticMarkup(React.createElement(()=>{
+    actions=useSharedOps("head","scope-a");
+    return null;
+  }));
+  return {actions,client,mutations,requests};
+}
+
+test("final approval does not mutate after a late detail response crosses access generation", async () => {
+  const op={id:"final-op",moduleKey:"shifts",status:"approved",reportReview:{phase:"head_review"}};
+  const {actions,client,mutations,requests}=mountHeadActions(op);
+  const action=actions.finalApprove(op.id);
+  assert.equal(requests.length,1);
+  await purgeFinancialQueries(client);
+  requests[0].resolve({data:op});
+  await action;
+  assert.equal(requests[0].signal?.aborted,true);
+  assert.deepEqual(mutations,[]);
+  assert.equal(client.getQueryData(["operations",op.id]),undefined);
+  client.clear();
+});
+
+test("bulk final approval and head return stop before mutation after access invalidation", async () => {
+  for (const [operation,run] of [
+    [{id:"bulk-op",moduleKey:"expenses",status:"approved"},"bulk"] as const,
+    [{id:"return-op",moduleKey:"shifts",status:"approved",reportReview:{phase:"head_review"}},"return"] as const,
+  ]) {
+    const {actions,client,mutations,requests}=mountHeadActions(operation,run==="return");
+    const action=run==="bulk"
+      ? actions.bulkFinalApprove([operation.id])
+      : actions.rejectModalProps.onSubmit({reason:"RETURN"});
+    assert.equal(requests.length,1,run);
+    await purgeFinancialQueries(client);
+    requests[0].resolve({data:operation});
+    await action;
+    assert.deepEqual(mutations,[],run);
+    assert.equal(client.getQueryData(["operations",operation.id]),undefined,run);
+    client.clear();
+  }
+});
+
 test("scope fingerprints change on role order, grant narrowing and revocation", () => {
   assert.notEqual(financialAccessFingerprint(multi),financialAccessFingerprint(identity([...multi.roles].reverse())));
   assert.notEqual(financialAccessFingerprint(accountant),financialAccessFingerprint(identity([grant("accountant","brand",[branchA])])));
   assert.notEqual(financialAccessFingerprint(accountant),financialAccessFingerprint(identity([])));
+  assert.notEqual(financialAccessFingerprint({...accountant,companyId:"company-a"}),
+    financialAccessFingerprint({...accountant,companyId:"company-b"}));
 });
 
 test("login landing, direct URL, refresh and Back/Forward decisions use /auth/me grants", () => {
@@ -336,7 +488,7 @@ test("actual CompanyDashboard component boundary does not mount accountant draft
   const CompanyDashboardInner = new Function(
     "React","useState","useEffect","useRef","useQueryClient","useAuth","useCLang","readEntrySelection",
     "chooseGrantedRole","companyRoles","grantedRoleKeys","pageForRole","DEFAULT_PAGE",
-    "useSharedOps","Shell","PageRouter","RejectModal","ClarifyModal","LiveChatWidget",
+    "useSharedOps","financialAccessFingerprint","Shell","PageRouter","RejectModal","ClarifyModal","LiveChatWidget",
     "CAssetDraftProvider",compiled + "\nreturn CompanyDashboardInner;",
   )(React,React.useState,React.useEffect,React.useRef,()=>({}),
     ()=>({user:current,logout:async()=>{}}),()=>({t:(ar:string)=>ar}),()=>null,
@@ -345,7 +497,7 @@ test("actual CompanyDashboard component boundary does not mount accountant draft
     ()=>({ops:[],approve:()=>{},reject:()=>{},requestClarification:()=>{},finalApprove:()=>{},
       bulkApprove:()=>{},bulkFinalApprove:()=>{},actionsPending:false,shiftReviewPage:1,
       setShiftReviewPage:()=>{},rejectModalProps:{},clarifyModalProps:{}}),
-    Shell,({role}:{role:string})=>React.createElement("p",null,role),
+    financialAccessFingerprint,Shell,({role}:{role:string})=>React.createElement("p",null,role),
     ()=>{dialogs.push("reject");return null;},
     ()=>{dialogs.push("clarify");return null;},()=>null,CAssetDraftProvider,
   ) as React.ComponentType;
@@ -375,7 +527,7 @@ test("actual CompanyDashboard operations hook suppresses cached financial rows a
   const mutation = ()=>({mutate:()=>{},mutateAsync:async()=>{}});
   const useSharedOps = new Function("useQueryClient","useQuery","queryKeys","api",
     "useApproveOperation","useRejectOperation","useFinalApprove","useBulkFinalApprove",
-    "useBulkApprove","useRequestClarification","useRef","useState","useMemo",
+    "useBulkApprove","useRequestClarification","useRef","useState","useMemo","useLayoutEffect",
     "apiOpToCOp","BRANDS","useRejectionReasons",compiled + "\nreturn useSharedOps;",
   )(()=>({getQueryData:()=>undefined}),
     (config:{enabled:boolean;queryKey:unknown[];queryFn:()=>Promise<unknown>})=>{
@@ -385,7 +537,7 @@ test("actual CompanyDashboard operations hook suppresses cached financial rows a
     {operations:()=>["operations"],operation:()=>["operations","id"]},
     {get:async(url:string)=>{requests.push(url);return {data:{data:[]}};}},
     mutation,mutation,mutation,mutation,mutation,mutation,
-    React.useRef,React.useState,React.useMemo,(op:{id:string})=>op,{},()=>({data:[]}),
+    React.useRef,React.useState,React.useMemo,()=>{},(op:{id:string})=>op,{},()=>({data:[]}),
   ) as (role:string)=>{ops:Array<{id:string}>};
   const render = (role:string) => renderToStaticMarkup(React.createElement(() => {
     const {ops} = useSharedOps(role);
@@ -424,7 +576,7 @@ test("CompanyDashboard role switch hides populated ops and purges cache before s
   };
   const Inner = new Function("React","useState","useEffect","useRef","useQueryClient",
     "useAuth","useCLang","readEntrySelection","chooseGrantedRole","companyRoles",
-    "grantedRoleKeys","pageForRole","DEFAULT_PAGE","useSharedOps","Shell",
+    "grantedRoleKeys","pageForRole","DEFAULT_PAGE","useSharedOps","financialAccessFingerprint","Shell",
     "PageRouter","RejectModal","ClarifyModal","LiveChatWidget","CAssetDraftProvider",
     "purgeFinancialQueries",compiled + "\nreturn CompanyDashboardInner;",
   )(React,state,()=>{},(value:unknown)=>({current:value}),()=>({}),
@@ -435,6 +587,7 @@ test("CompanyDashboard role switch hides populated ops and purges cache before s
       approve:()=>{},reject:()=>{},requestClarification:()=>{},finalApprove:()=>{},
       bulkApprove:()=>{},bulkFinalApprove:()=>{},actionsPending:false,shiftReviewPage:1,
       setShiftReviewPage:()=>{},rejectModalProps:{},clarifyModalProps:{}}),
+    financialAccessFingerprint,
     ({children,onSelectRole}:{children:React.ReactNode;onSelectRole:(role:string)=>Promise<void>})=>{
       selectRole = onSelectRole;
       return React.createElement("div",null,children);
