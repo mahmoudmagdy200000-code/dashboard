@@ -47,6 +47,39 @@ test("only an accountant with a pending counted shortage and current phase may c
   assert.equal(getShfAllocationEvidence(list,{...detail,moduleKey:"sales"},"accountant"),null);
 });
 
+test("review absence permits correction, but an explicitly null or undefined phase denies it", () => {
+  const missingPhase = { return_reason: "existing review without phase" };
+  assert.deepEqual(getShfAllocationEvidence(
+    {...list,reportReview:missingPhase},
+    {...detail,reportReview:missingPhase,payload:{...detail.payload,pkg6Review:missingPhase}},
+    "accountant",
+  ),{shiftId:"admin-shift-id",shortageHalalas:2000});
+  assert.deepEqual(getShfAllocationEvidence({...list,reportReview:null},
+    {...detail,reportReview:null,payload:{...detail.payload,pkg6Review:null}},"accountant"),
+    {shiftId:"admin-shift-id",shortageHalalas:2000},"a null review is the API's absent-review fallback");
+  for (const phase of [null,undefined]) {
+    const review = {phase};
+    assert.equal(getShfAllocationEvidence({...list,reportReview:review},detail,"accountant"),null,"list phase");
+    assert.equal(getShfAllocationEvidence(list,{...detail,reportReview:review},"accountant"),null,"detail phase");
+    assert.equal(getShfAllocationEvidence(list,{...detail,payload:{...detail.payload,pkg6Review:review}},"accountant"),
+      null,"payload phase");
+  }
+});
+
+test("an explicit null phase never starts the allocation POST", async () => {
+  let posts = 0;
+  const lock = {current:false};
+  for (const invalid of [
+    {list:{...list,reportReview:{phase:null}},detail},
+    {list,detail:{...detail,reportReview:{phase:null}}},
+    {list,detail:{...detail,payload:{...detail.payload,pkg6Review:{phase:null}}}},
+  ]) {
+    assert.equal(await runShfAllocationCorrection(invalid.list,"accountant",rows,async()=>invalid.detail,
+      async()=>{posts++;},lock),false);
+  }
+  assert.equal(posts,0);
+});
+
 test("SAR inputs become exact positive integer halalas without rounding", () => {
   assert.equal(parsePositiveSarHalalas("12.50"),1250);
   assert.equal(parsePositiveSarHalalas("0.01"),1);

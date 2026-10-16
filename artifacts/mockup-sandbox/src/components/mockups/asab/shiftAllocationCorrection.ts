@@ -22,8 +22,9 @@ const isShift = (op: ShfAllocationOperation) =>
 function phaseAllowsCorrection(review: unknown): boolean {
   if (review == null) return true; // Backend defaults an absent phase to accountant_review.
   if (typeof review !== "object" || Array.isArray(review)) return false;
+  if (!Object.hasOwn(review, "phase")) return true;
   const phase = (review as { phase?: unknown }).phase;
-  return phase == null || phase === "accountant_review";
+  return phase === "accountant_review";
 }
 
 function listAllowsCorrection(op: ShfAllocationOperation | undefined, role: string | null | undefined): op is ShfAllocationOperation {
