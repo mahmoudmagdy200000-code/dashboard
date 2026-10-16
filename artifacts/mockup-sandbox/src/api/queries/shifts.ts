@@ -29,15 +29,45 @@ export function useShiftsLive() {
 }
 
 // ─── Closed-shift history (T08 §3) — paginated ───────────────────────────────
+export function historyRequestParams(filter: ShiftFilter): ShiftFilter {
+  const params: ShiftFilter = {};
+  for (const key of ["dateFrom","dateTo","branchId","shiftType","search"] as const) {
+    const value = filter[key];
+    if (typeof value === "string" && value !== "" && value !== "all") params[key] = value;
+  }
+  params.page = Number.isSafeInteger(filter.page) && (filter.page ?? 0) > 0 ? filter.page : 1;
+  params.pageSize = Number.isSafeInteger(filter.pageSize) && (filter.pageSize ?? 0) > 0
+    ? Math.min(filter.pageSize!,100) : 20;
+  return params;
+}
+
+export function historyPageTarget(
+  meta: Pick<Page<Shift>["meta"],"page"|"totalPages"> | undefined,
+  currentPage: number,
+  direction: -1 | 1,
+): number {
+  if (!meta || !Number.isSafeInteger(meta.page) || !Number.isSafeInteger(meta.totalPages)
+    || meta.page < 1 || meta.totalPages < 1) return currentPage;
+  const target = meta.page + direction;
+  return target >= 1 && target <= meta.totalPages ? target : currentPage;
+}
+
+export function historyBranchOptions(configs: readonly ShiftConfig[]): Array<{id:string;name:string}> {
+  return configs.flatMap(config => {
+    const branch = config as ShiftConfig & {scope?:unknown;branchId?:unknown;branchName?:unknown};
+    return branch.scope === "branch" && typeof branch.branchId === "string" && branch.branchId
+      && typeof branch.branchName === "string" && branch.branchName
+      ? [{id:branch.branchId,name:branch.branchName}] : [];
+  });
+}
+
 export function useShiftsHistory(filter: ShiftFilter = {}) {
-  const clean = Object.fromEntries(
-    Object.entries(filter).filter(([, v]) => v !== undefined && v !== "" && v !== "all"),
-  );
+  const params = historyRequestParams(filter);
   return useQuery({
-    queryKey: queryKeys.shifts(filter),
+    queryKey: queryKeys.shifts(params),
     queryFn: async () => {
       const res = await api.get<Page<Shift>>("/accountant/shifts/history", {
-        params: clean,
+        params,
       });
       return res.data;
     },

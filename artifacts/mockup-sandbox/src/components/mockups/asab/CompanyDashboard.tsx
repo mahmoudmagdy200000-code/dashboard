@@ -2,6 +2,7 @@ import "./_group.css";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
+import { historyBranchOptions, historyPageTarget } from "../../../api/queries/shifts";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRows, shfReviewPageTarget, type ShfReviewAction, type ShfReviewGroup } from "./shiftReviewQueue";
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT } from "./headReviewGuards";
@@ -4857,6 +4858,10 @@ function AccCompanyShifts({ approve, reject, requestClarification, page, setPage
   const [tab,          setTab]          = useState<ShiftTab>("live");
   const [expandedId, setExpandedId] = useState<string|null>(null);
   const [contactShift, setContactShift] = useState<Shift|null>(null);
+  const [historyDateFrom, setHistoryDateFrom] = useState("");
+  const [historyDateTo, setHistoryDateTo] = useState("");
+  const [historyBranchId, setHistoryBranchId] = useState("");
+  const [historyPageNum, setHistoryPageNum] = useState(1);
   const operationsQuery = useOperations({ moduleKey:"shifts", pageSize:100, page });
   const shiftOps = shfReviewRows(operationsQuery.data).map(op => apiOpToCOp(op, BRANDS));
   const meta = operationsQuery.data?.meta;
@@ -4878,7 +4883,9 @@ function AccCompanyShifts({ approve, reject, requestClarification, page, setPage
   ];
 
   const { data: live, isLoading: liveLoading } = useShiftsLive();
-  const { data: historyPage } = useShiftsHistory();
+  const historyQuery = useShiftsHistory({dateFrom:historyDateFrom,dateTo:historyDateTo,branchId:historyBranchId,page:historyPageNum,pageSize:20});
+  const { data: historyBranchConfigs = [] } = useShiftConfigs("branch");
+  const historyBranches = historyBranchOptions(historyBranchConfigs);
   const { data: configs = [] } = useShiftConfigs();
   const exportMut = useExportShifts();
 
@@ -4886,7 +4893,15 @@ function AccCompanyShifts({ approve, reject, requestClarification, page, setPage
   const overdue = live?.overdue ?? [];
   const allLive = [...active, ...overdue];
   const kpis    = live?.kpis;
-  const history = historyPage?.data ?? [];
+  const historyBusy = historyQuery.isPending || historyQuery.isFetching;
+  const historyPage = historyQuery.data;
+  const history = historyBusy || historyQuery.isError ? [] : historyPage?.data ?? [];
+  const historyMeta = historyBusy || historyQuery.isError ? undefined : historyPage?.meta;
+  const historyShownPage = historyMeta && Number.isSafeInteger(historyMeta.page) && historyMeta.page > 0 ? historyMeta.page : historyPageNum;
+  const changeHistoryPage = (direction:-1|1) => {
+    const target = historyPageTarget(historyMeta,historyPageNum,direction);
+    if (target !== historyPageNum) setHistoryPageNum(target);
+  };
 
   const TABS: { key:ShiftTab; label:string; icon:React.ReactNode }[] = [
     { key:"live",    label:t("مباشر","Live"),    icon:<Activity size={13}/> },
@@ -5011,7 +5026,24 @@ function AccCompanyShifts({ approve, reject, requestClarification, page, setPage
             <p className="font-bold text-gray-900 text-sm">{t("سجل الشفتات المغلقة","Closed Shifts History")}</p>
             <button onClick={()=>exportMut.mutate({})} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><FileText size={11}/> Excel</button>
           </div>
-          {history.length===0 ? <p className="text-center text-gray-400 text-sm py-8">{t("لا يوجد سجل","No history")}</p> : (
+          <div className="px-5 py-3 flex flex-wrap items-end gap-3 text-xs">
+            <label>{t("من تاريخ الإغلاق","Closed from")}<input type="date" value={historyDateFrom}
+              onChange={e=>{setHistoryDateFrom(e.target.value);setHistoryPageNum(1);}}
+              className="block mt-1 rounded-lg border border-gray-200 px-2 py-1.5"/></label>
+            <label>{t("إلى تاريخ الإغلاق","Closed to")}<input type="date" value={historyDateTo}
+              onChange={e=>{setHistoryDateTo(e.target.value);setHistoryPageNum(1);}}
+              className="block mt-1 rounded-lg border border-gray-200 px-2 py-1.5"/></label>
+            <label>{t("الفرع","Branch")}<select value={historyBranchId}
+              onChange={e=>{setHistoryBranchId(e.target.value);setHistoryPageNum(1);}}
+              className="block mt-1 rounded-lg border border-gray-200 px-2 py-1.5">
+              <option value="">{t("كل الفروع المعيّنة","All assigned branches")}</option>
+              {historyBranches.map(branch=><option key={branch.id} value={branch.id}>{branch.name}</option>)}
+            </select></label>
+          </div>
+          {historyBusy && <p role="status" className="text-center text-gray-400 text-sm py-8">{t("جارٍ تحميل السجل…","Loading history…")}</p>}
+          {!historyBusy && historyQuery.isError && <p role="alert" className="text-center text-red-700 text-sm py-8">{getErrorMessage(historyQuery.error,lang)}</p>}
+          {!historyBusy && !historyQuery.isError && history.length===0 && <p className="text-center text-gray-400 text-sm py-8">{t("لا يوجد سجل لهذه المرشحات","No history for these filters")}</p>}
+          {!historyBusy && !historyQuery.isError && history.length>0 && (
             <table className="w-full text-xs">
               <thead className="bg-gray-50">
                 <tr>
@@ -5043,6 +5075,15 @@ function AccCompanyShifts({ approve, reject, requestClarification, page, setPage
               </tbody>
             </table>
           )}
+          <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between text-xs">
+            <span>{t("الصفحة","Page")} {historyShownPage} / {historyMeta?.totalPages ?? "—"}</span>
+            <div className="flex gap-2">
+              <button disabled={historyBusy || historyQuery.isError || historyPageTarget(historyMeta,historyPageNum,-1)===historyPageNum}
+                onClick={()=>changeHistoryPage(-1)} className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-50">{t("السابق","Previous")}</button>
+              <button disabled={historyBusy || historyQuery.isError || historyPageTarget(historyMeta,historyPageNum,1)===historyPageNum}
+                onClick={()=>changeHistoryPage(1)} className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-50">{t("التالي","Next")}</button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -266,6 +266,7 @@ import {
   useExportShifts,
 } from "../../../api/queries";
 import { isApiError } from "../../../api/errors";
+import { historyBranchOptions, historyPageTarget } from "../../../api/queries/shifts";
 import { formatShiftHalalas, formatShiftSalesTotal, getShiftCountEvidence, getShiftStatusDisplay } from "./shiftCountEvidence";
 import { APP_BASE_URL } from "../../../api/client";
 import { NotificationBell } from "../../shared/NotificationBell";
@@ -6787,7 +6788,21 @@ function ShiftSmartPanel({ cfg, onNum, onDur, onStart, onGen }:{
 
 function AccShifts({ navigate, setModal }:PageProps) {
   const { data: shiftsLive } = useShiftsLive();
-  const { data: shiftsHistoryPage } = useShiftsHistory();
+  const [historyDateFrom, setHistoryDateFrom] = useState("");
+  const [historyDateTo, setHistoryDateTo] = useState("");
+  const [historyBranchId, setHistoryBranchId] = useState("");
+  const [historyPageNum, setHistoryPageNum] = useState(1);
+  const historyQuery = useShiftsHistory({dateFrom:historyDateFrom,dateTo:historyDateTo,branchId:historyBranchId,page:historyPageNum,pageSize:20});
+  const { data: historyBranchConfigs = [] } = useShiftConfigs("branch");
+  const historyBranches = historyBranchOptions(historyBranchConfigs);
+  const historyBusy = historyQuery.isPending || historyQuery.isFetching;
+  const shiftsHistoryPage = historyQuery.data;
+  const historyMeta = historyBusy || historyQuery.isError ? undefined : shiftsHistoryPage?.meta;
+  const historyShownPage = historyMeta && Number.isSafeInteger(historyMeta.page) && historyMeta.page > 0 ? historyMeta.page : historyPageNum;
+  const changeHistoryPage = (direction:-1|1) => {
+    const target = historyPageTarget(historyMeta,historyPageNum,direction);
+    if (target !== historyPageNum) setHistoryPageNum(target);
+  };
   // 2026-08-09 — assign shifts by BRAND or by BRANCH (a branch override wins).
   const [shiftScope, setShiftScope] = useState<"brand"|"branch">("brand");
   const { data: shiftConfigs } = useShiftConfigs(shiftScope);
@@ -6856,7 +6871,7 @@ function AccShifts({ navigate, setModal }:PageProps) {
   const overdueShifts = shiftsLive?.overdue ?? [];
   const liveShifts    = [...activeShifts, ...overdueShifts];
   const kpis          = shiftsLive?.kpis;
-  const shiftHistory  = shiftsHistoryPage?.data ?? [];
+  const shiftHistory  = historyBusy || historyQuery.isError ? [] : shiftsHistoryPage?.data ?? [];
 
   const shiftDurHrs = (s:{startedAt:string}) => Math.max(0,(Date.now()-new Date(s.startedAt).getTime())/36e5);
   const fmtTime = (iso?:string|null) => iso ? new Date(iso).toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"}) : "—";
@@ -7184,6 +7199,26 @@ function AccShifts({ navigate, setModal }:PageProps) {
               <FileText size={11}/> {exportShiftsMut.isPending?"جارٍ التصدير...":"تصدير Excel"}
             </button>
           </div>
+          <div className="px-4 py-3 flex flex-wrap items-end gap-3 text-xs">
+            <label>من تاريخ الإغلاق<input type="date" value={historyDateFrom}
+              onChange={e=>{setHistoryDateFrom(e.target.value);setHistoryPageNum(1);}}
+              className="block mt-1 rounded-lg border border-gray-200 px-2 py-1.5"/></label>
+            <label>إلى تاريخ الإغلاق<input type="date" value={historyDateTo}
+              onChange={e=>{setHistoryDateTo(e.target.value);setHistoryPageNum(1);}}
+              className="block mt-1 rounded-lg border border-gray-200 px-2 py-1.5"/></label>
+            <label>الفرع<select value={historyBranchId}
+              onChange={e=>{setHistoryBranchId(e.target.value);setHistoryPageNum(1);}}
+              className="block mt-1 rounded-lg border border-gray-200 px-2 py-1.5">
+              <option value="">كل الفروع المعيّنة</option>
+              {historyBranches.map(branch=><option key={branch.id} value={branch.id}>{branch.name}</option>)}
+            </select></label>
+          </div>
+          {historyBusy && <p role="status" className="text-center text-gray-400 text-sm py-8">جارٍ تحميل السجل…</p>}
+          {!historyBusy && historyQuery.isError && <p role="alert" className="text-center text-red-700 text-sm py-8">
+            {isApiError(historyQuery.error) ? historyQuery.error.messageAr : "تعذر تحميل سجل الشفتات"}
+          </p>}
+          {!historyBusy && !historyQuery.isError && shiftHistory.length===0 && <p className="text-center text-gray-400 text-sm py-8">لا يوجد سجل لهذه المرشحات</p>}
+          {!historyBusy && !historyQuery.isError && shiftHistory.length>0 && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm" dir="rtl">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -7199,9 +7234,6 @@ function AccShifts({ navigate, setModal }:PageProps) {
                 </tr>
               </thead>
               <tbody>
-                {shiftHistory.length===0 && (
-                  <tr><td colSpan={8} className="text-center text-gray-400 text-sm py-8">لا يوجد سجل شفتات بعد</td></tr>
-                )}
                 {shiftHistory.map(sh=>{
                   const evidence = getShiftCountEvidence(sh);
                   const statusDisplay = getShiftStatusDisplay(sh.status);
@@ -7224,13 +7256,23 @@ function AccShifts({ navigate, setModal }:PageProps) {
               </tbody>
               <tfoot className="bg-gray-50/80 border-t border-gray-200">
                 <tr>
-                  <td className="px-4 py-2.5 font-bold text-gray-700 text-xs" colSpan={4}>الإجمالي</td>
+                  <td className="px-4 py-2.5 font-bold text-gray-700 text-xs" colSpan={4}>إجمالي هذه الصفحة</td>
                   <td className="px-4 py-2.5 text-center font-bold text-gray-400" title="عدد الطلبات الفعلي غير متاح">—</td>
                   <td className="px-4 py-2.5 text-center font-mono font-black text-purple-700"><bdi>{formatShiftSalesTotal(shiftHistory)}</bdi> ر.س</td>
                   <td colSpan={2}/>
                 </tr>
               </tfoot>
             </table>
+          </div>
+          )}
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-xs">
+            <span>الصفحة {historyShownPage} / {historyMeta?.totalPages ?? "—"}</span>
+            <div className="flex gap-2">
+              <button disabled={historyBusy || historyQuery.isError || historyPageTarget(historyMeta,historyPageNum,-1)===historyPageNum}
+                onClick={()=>changeHistoryPage(-1)} className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-50">السابق</button>
+              <button disabled={historyBusy || historyQuery.isError || historyPageTarget(historyMeta,historyPageNum,1)===historyPageNum}
+                onClick={()=>changeHistoryPage(1)} className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-50">التالي</button>
+            </div>
           </div>
         </Card>
       )}
