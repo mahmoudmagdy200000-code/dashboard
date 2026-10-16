@@ -26,6 +26,9 @@ interface Props {
   subject?: string;
   /** API-driven reason list (T03 §13). Falls back to a static list when omitted/empty. */
   reasons?: ReasonOption[];
+  /** SHF requires an API reason key, and returning it does not reopen the shift. */
+  requireReasons?: boolean;
+  returnToManager?: boolean;
   onClose: () => void;
   onSubmit: (payload: { reason: string; notes?: string }) => void;
   /** Optional translate function. */
@@ -36,11 +39,13 @@ export function RejectModal({
   open,
   subject,
   reasons,
+  requireReasons = false,
+  returnToManager = false,
   onClose,
   onSubmit,
   t = (ar) => ar,
 }: Props) {
-  const options = reasons && reasons.length > 0 ? reasons : PRESET_REASONS;
+  const options = requireReasons ? (reasons ?? []) : reasons && reasons.length > 0 ? reasons : PRESET_REASONS;
   const hasOther = options.some((o) => o.key === OTHER_KEY || o.key === "أخرى");
   const [reasonKey, setReasonKey] = useState<string>(options[0]?.key ?? "");
   const [customReason, setCustomReason] = useState("");
@@ -48,9 +53,9 @@ export function RejectModal({
 
   if (!open) return null;
 
-  const isOther = hasOther && (reasonKey === OTHER_KEY || reasonKey === "أخرى");
+  const isOther = !requireReasons && hasOther && (reasonKey === OTHER_KEY || reasonKey === "أخرى");
   const finalReason = isOther ? customReason.trim() : reasonKey;
-  const canSubmit = finalReason.length > 0;
+  const canSubmit = finalReason.length > 0 && (isOther || options.some(option => option.key === reasonKey));
 
   function handleSubmit() {
     if (!canSubmit) return;
@@ -99,7 +104,7 @@ export function RejectModal({
         >
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>
-              {t("رفض العملية", "Reject Operation")}
+              {returnToManager ? t("إرجاع لمدير الفرع", "Return to branch manager") : t("رفض العملية", "Reject Operation")}
             </div>
             {subject && (
               <div
@@ -121,10 +126,7 @@ export function RejectModal({
                 lineHeight: 1.5,
               }}
             >
-              {t(
-                "ستُعاد العملية إلى مدير الفرع مع سبب الرفض.",
-                "The operation will be returned to the branch manager with the rejection reason.",
-              )}
+              {returnToManager ? t("ستُعاد العملية إلى مدير الفرع مع سبب الإرجاع. لن يُعاد فتح الوردية ماليًا.", "The operation returns to the branch manager with a reason. This does not financially reopen the shift.") : t("ستُعاد العملية إلى مدير الفرع مع سبب الرفض.", "The operation will be returned to the branch manager with the rejection reason.")}
             </div>
           </div>
           <button
@@ -168,12 +170,14 @@ export function RejectModal({
             marginBottom: 12,
           }}
         >
+          {requireReasons && <option value="">{t("اختر سببًا من القائمة", "Select an API reason")}</option>}
           {options.map((r) => (
             <option key={r.key} value={r.key}>
               {r.labelAr}
             </option>
           ))}
         </select>
+        {requireReasons && options.length===0 && <p role="status" style={{ fontSize: 12, color: "#b45309", marginBottom: 12 }}>{t("أسباب الإرجاع غير متاحة حاليًا", "Return reasons are currently unavailable")}</p>}
 
         {isOther && (
           <input
@@ -239,7 +243,7 @@ export function RejectModal({
               fontFamily: "inherit",
             }}
           >
-            {t("تأكيد الرفض", "Confirm Reject")}
+            {returnToManager ? t("تأكيد الإرجاع", "Confirm return") : t("تأكيد الرفض", "Confirm Reject")}
           </button>
           <button
             onClick={onClose}

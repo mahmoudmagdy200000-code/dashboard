@@ -157,6 +157,8 @@ test("actual reject confirmation and return handlers recheck review before HTTP 
       const changes: unknown[] = [];
       const scope = {
         runSalesAction, salesContextFor: () => ({ operation, role }), rejectingId: "legacy",
+        rejectingModule: "sales", rejectReasons: undefined,
+        runOperationAction: (_id: string, _action: string, effect: () => void) => effect(),
         setRejectingId: () => {}, now: () => "now", appState: { role },
         setOps: (update: unknown) => changes.push(update),
         rejectMut: { mutate: () => requests.push("POST reject") },

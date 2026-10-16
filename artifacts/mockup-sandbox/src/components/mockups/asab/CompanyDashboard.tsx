@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
+import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, type ShfReviewAction } from "./shiftReviewQueue";
 import { useState, useMemo, useEffect, useRef, ReactNode, createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
 import {
   useOperations, useApproveOperation, useRejectOperation, useBulkApprove, useFinalApprove,
@@ -73,7 +74,7 @@ import type {
   Shift, ShiftConfig,
   Employee as ApiEmployee, EmployeeMovementCategory, CashCustodyRow,
 } from "../../../api/types/company";
-import { isApiError } from "../../../api/errors";
+import { getErrorMessage, isApiError } from "../../../api/errors";
 import { isUnassignedAsset, buildAssignPatch, branchPatchPart } from "./assetAssignment";
 import { NotificationBell } from "../../shared/NotificationBell";
 import { RejectModal } from "../../shared/RejectModal";
@@ -1452,6 +1453,8 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
   const salesContext = () => ({ operation: op, role: forHead ? "head" : "accountant",
     detail: queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detailQ.data });
   const salesPolicy = getSalesActionPolicy(salesContext());
+  const shiftPolicy = getShfReviewPolicy(op, forHead ? "head" : "accountant",
+    queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detailQ.data);
   const isPending = op.status === "pending";
   const isApproved = op.status === "approved";
   const isLocked = op.status === "final-approved";
@@ -1511,8 +1514,8 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0" onClick={e=>e.stopPropagation()}>
           {!forHead && isPending && <>
-            <button onClick={onApprove} title={t("موافقة","Approve")} className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center transition-all"><ThumbsUp size={13}/></button>
-            {salesPolicy.return && <button onClick={()=>runSalesAction(salesContext, "return", onReject)} title={t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all"><ThumbsDown size={13}/></button>}
+            {(op.module !== "shifts" || shiftPolicy.approve) && <button onClick={onApprove} title={t("موافقة","Approve")} className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center transition-all"><ThumbsUp size={13}/></button>}
+            {(op.module === "shifts" ? shiftPolicy.returnToManager : salesPolicy.return) && <button onClick={op.module === "shifts" ? onReject : ()=>runSalesAction(salesContext, "return", onReject)} title={op.module === "shifts" ? t("إرجاع لمدير الفرع","Return to branch manager") : t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all"><ThumbsDown size={13}/></button>}
           </>}
           {forHead && isApproved && <>
             <button onClick={onApprove} title={t("اعتماد نهائي","Final Approve")} className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center transition-all"><ThumbsUp size={13}/></button>
@@ -1529,6 +1532,7 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
         <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-4 space-y-4">
           {op.module==="sales" && <SalesReconPanel op={op} onApprove={onApprove} onReject={onReject} onClarify={onClarify} isPending={isPending} forHead={forHead}/>}
           {op.module==="shifts" && <ShiftOpPanel detail={detailQ.data} loading={detailQ.isLoading} error={detailQ.isError}/>}
+          {op.module==="shifts" && !forHead && shiftPolicy.clarify && onClarify && <button onClick={onClarify} className="text-xs font-semibold text-purple-700 underline">{t("طلب إيضاح","Request clarification")}</button>}
           {op.module==="expenses" && (
             <p className="text-xs text-gray-400 text-center py-2">{t("افتح البيان لعرض الفواتير كاملاً مع خيار التحويل إلى أصل ثابت","Open statement to view full invoices with asset conversion option")}</p>
           )}
@@ -2907,43 +2911,60 @@ function useSharedOps(role: CRole | null) {
   currentOps.current = ops;
   const currentRole = useRef(role);
   currentRole.current = role;
+  const operationFor = (id: string) =>
+    queryClient.getQueryData<{data:ApiOperation[]}>(queryKeys.operations({ moduleKey:"shifts", pageSize:100 }))?.data
+      ?.find(op => op.id === id) ?? currentOps.current.find(op => op.id === id);
   const detailFor = (op: { id: string }) => queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id));
   const salesContextFor = (id: string) => {
-    const operation = currentOps.current.find(op => op.id === id);
+    const operation = operationFor(id);
     return { operation, detail: operation ? detailFor(operation) : undefined, role: currentRole.current };
+  };
+  const runOperationAction = (id: string, action: ShfReviewAction, effect: () => void) => {
+    const operation = operationFor(id);
+    if (!operation) return false;
+    if (("module" in operation ? operation.module : operation.moduleKey) === "shifts") {
+      return runShfReviewAction(operation, currentRole.current, action, effect, detailFor(operation));
+    }
+    effect();
+    return true;
   };
 
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [clarifyingId, setClarifyingId] = useState<string | null>(null);
 
   // Reject reasons scoped to the module of the op being rejected (T03 §13).
-  const rejectingModule = rejectingId ? ops.find(o=>o.id===rejectingId)?.module : undefined;
+  const rejectingOp = rejectingId ? operationFor(rejectingId) : undefined;
+  const rejectingModule = rejectingOp && ("module" in rejectingOp ? rejectingOp.module : rejectingOp.moduleKey);
   const { data: rejectReasons } = useRejectionReasons(rejectingModule);
 
-  const approve            = (id:string)    => { approveMut.mutate({ id }); };
-  const reject             = (id:string)    => { runSalesAction(() => salesContextFor(id), "return", () => setRejectingId(id)); };
-  const requestClarification = (id:string)  => { setClarifyingId(id); };
+  const approve            = (id:string)    => { runOperationAction(id, "approve", () => approveMut.mutate({ id })); };
+  const reject             = (id:string)    => { runOperationAction(id, "returnToManager", () => runSalesAction(() => salesContextFor(id), "return", () => setRejectingId(id))); };
+  const requestClarification = (id:string)  => { runOperationAction(id, "clarify", () => setClarifyingId(id)); };
   const finalApprove       = (id:string)    => { finalMut.mutate({ id }); };
   const bulkApprove        = (ids:string[]) => { runSalesBulkApproval(currentOps.current, ids, currentRole.current, eligible => bulkMut.mutate({ operationIds: eligible }), detailFor); };
   const bulkFinalApprove   = (ids:string[]) => { ids.forEach(id => finalMut.mutate({ id })); };
 
   const rejectModalProps = {
     open: rejectingId !== null,
-    subject: rejectingId ? ops.find(o => o.id === rejectingId)?.refNum : undefined,
+    subject: rejectingOp && ("refNum" in rejectingOp ? rejectingOp.refNum : rejectingOp.publicId),
     reasons: rejectReasons?.map(r=>({ key:r.key, labelAr:r.labelAr })),
+    requireReasons: rejectingModule === "shifts",
+    returnToManager: rejectingModule === "shifts",
     onClose: () => setRejectingId(null),
     onSubmit: ({ reason, notes }: { reason: string; notes?: string }) => {
-      if (rejectingId) runSalesAction(() => salesContextFor(rejectingId), "return", () => rejectMut.mutate({ id: rejectingId, reason, notes }));
+      if (rejectingId && (rejectingModule !== "shifts" || rejectReasons?.some(r => r.key === reason)))
+        runOperationAction(rejectingId, "returnToManager", () => runSalesAction(() => salesContextFor(rejectingId), "return", () => rejectMut.mutate({ id: rejectingId, reason, notes })));
       setRejectingId(null);
     },
   };
 
+  const clarifyingOp = clarifyingId ? operationFor(clarifyingId) : undefined;
   const clarifyModalProps = {
     open: clarifyingId !== null,
-    subject: clarifyingId ? ops.find(o => o.id === clarifyingId)?.refNum : undefined,
+    subject: clarifyingOp && ("refNum" in clarifyingOp ? clarifyingOp.refNum : clarifyingOp.publicId),
     onClose: () => setClarifyingId(null),
     onSubmit: ({ message }: { message: string }) => {
-      if (clarifyingId) clarifyMut.mutate({ id: clarifyingId, message });
+      if (clarifyingId) runOperationAction(clarifyingId, "clarify", () => clarifyMut.mutate({ id: clarifyingId, message }));
       setClarifyingId(null);
     },
   };
@@ -4690,11 +4711,21 @@ function ShiftConfigCard({ cfg }:{ cfg:ShiftConfig }) {
   );
 }
 
-function AccCompanyShifts({ ops }:{ ops:COp[] }) {
+function AccCompanyShifts({ approve, reject, requestClarification }:{ approve:(id:string)=>void; reject:(id:string)=>void; requestClarification?:(id:string)=>void }) {
   const { t, dir, lang } = useCLang();
   type ShiftTab = "live"|"setup"|"close"|"history";
   const [tab,          setTab]          = useState<ShiftTab>("live");
+  const [expandedId, setExpandedId] = useState<string|null>(null);
   const [contactShift, setContactShift] = useState<Shift|null>(null);
+  const operationsQuery = useOperations({ moduleKey:"shifts", pageSize:100 });
+  const shiftOps = (operationsQuery.data?.data ?? []).filter(op => op.moduleKey === "shifts")
+    .map(op => apiOpToCOp(op, BRANDS));
+  const reviewGroups = [
+    { key: "pending", title: t("بانتظار مراجعة المحاسب", "Awaiting accountant review") },
+    { key: "returned", title: t("أُعيدت لمدير الفرع", "Returned to branch manager") },
+    { key: "final", title: t("معتمدة ونهائية", "Approved and final") },
+    { key: "other", title: t("حالات أخرى للقراءة", "Other read-only states") },
+  ] as const;
 
   const { data: live, isLoading: liveLoading } = useShiftsLive();
   const { data: historyPage } = useShiftsHistory();
@@ -4794,9 +4825,26 @@ function AccCompanyShifts({ ops }:{ ops:COp[] }) {
         </div>
       )}
 
-      {/* Reserved for SHF review; Dashboard-native close is not available. */}
+      {/* Accountant SHF operation review; the native close flow is not used here. */}
       {tab==="close" && (
-        <p className="text-sm text-gray-500">{t("مراجعة الورديات — التفاصيل ستتاح هنا لاحقاً","Shift review — details will appear here later")}</p>
+        <div className="space-y-4">
+          {operationsQuery.isLoading && <p role="status" className="text-sm text-gray-500">{t("جارٍ تحميل عمليات الورديات…","Loading shift operations…")}</p>}
+          {operationsQuery.isError && <p role="alert" className="text-sm text-red-700">{getErrorMessage(operationsQuery.error, lang)}</p>}
+          {!operationsQuery.isLoading && !operationsQuery.isError && shiftOps.length===0 && <p className="text-sm text-gray-500">{t("لا توجد عمليات ورديات للمراجعة","No shift operations to review")}</p>}
+          {!operationsQuery.isLoading && !operationsQuery.isError && reviewGroups.map(group => {
+            const rows = shiftOps.filter(op => getShfReviewGroup(op) === group.key);
+            return rows.length>0 && <section key={group.key} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <h3 className="px-5 py-3.5 text-sm font-bold text-gray-800 bg-gray-50 border-b border-gray-100">{group.title} ({rows.length})</h3>
+              {rows.map(op => <div key={op.id}>
+                {group.key==="pending" && getShfReviewPolicy(op, "accountant").returnToManager===false && <p className="px-5 pt-2 text-xs text-amber-700">{t("هذه المرحلة للقراءة فقط لدى المحاسب","This phase is read-only for the accountant")}</p>}
+                <OpRow op={op} onApprove={()=>approve(op.id)} onReject={()=>reject(op.id)}
+                  onClarify={requestClarification ? ()=>requestClarification(op.id) : undefined}
+                  onView={()=>setExpandedId(expandedId===op.id?null:op.id)}
+                  expanded={expandedId===op.id} onToggle={()=>setExpandedId(expandedId===op.id?null:op.id)}/>
+              </div>)}
+            </section>;
+          })}
+        </div>
       )}
 
       {/* HISTORY TAB */}
@@ -5777,7 +5825,7 @@ function AccountantRoot({ page, navigate, ops, approve, reject, requestClarifica
   if(page==="acc-inventory")  return <AccCompanyInventory navigate={navigate} ops={ops} approve={approve} reject={reject}/>;
   if(page==="acc-waste")      return <AccCompanyWaste/>;
   if(page==="acc-assets")     return <AccCompanyAssets/>;
-  if(page==="acc-shifts")     return <AccCompanyShifts ops={ops}/>;
+  if(page==="acc-shifts")     return <AccCompanyShifts approve={approve} reject={reject} requestClarification={requestClarification}/>;
   if(page==="acc-employees")  return <AccCompanyEmployees/>;
   if(page==="acc-cash")       return <AccCompanyCash/>;
   if(page==="acc-reminders")  return <AccCompanyReminders/>;
