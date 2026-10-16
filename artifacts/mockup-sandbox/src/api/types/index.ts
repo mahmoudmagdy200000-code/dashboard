@@ -96,7 +96,7 @@ export interface SalesBreakdown {
 
 /** Known SHF detail fields (handoff 02 §B, step 12). Missing money is not zero.
  * Keys are optional because native/legacy payloads may not include count evidence.
- * BD-2 liability and BD-3 correction versions are not part of this contract yet.
+ * BD-3 correction versions are not part of this contract yet.
  */
 export interface ShiftOpPayload {
   shiftId?: string | null;
@@ -114,6 +114,19 @@ export interface ShiftOpPayload {
   pendingIncomingCountedHalalas?: number | null;
   varianceAllocations?: Record<string, unknown>[] | null;
   pkg6Review?: Record<string, unknown> | null;
+}
+
+/** BD-2 read-only allocation evidence. `version` belongs to the allocation. */
+export interface ShiftLiability {
+  version?: number | null;
+  managerApprovalStatus?: string | null;
+  createdByType?: string | null;
+  shares?: Array<{
+    type?: string | null;
+    id?: string | null;
+    name?: string | null;
+    amountHalalas?: number | null;
+  }> | null;
 }
 
 export interface Operation {
@@ -176,6 +189,7 @@ export interface Operation {
   amount?: number;
   // ── Present only on GET /operations/{id} (single-detail response) ──────────
   payload?: ShiftOpPayload & { channels?: unknown[] };
+  liability?: ShiftLiability | null;
   auditTrail?: AuditEvent[];
   /** Sales-module single-op detail only (T04 §4); `null` until reconciled. */
   reconciliation?: import("./company").SalesReconciliation | null;

@@ -1355,12 +1355,103 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
 // ═══════════════════════════════════════════════════
 // SHARED: OPS ROW COMPONENT
 // ═══════════════════════════════════════════════════
+function ShiftOpPanel({ detail, loading, error }:{ detail?:ApiOperation; loading?:boolean; error?:boolean }) {
+  const { t, lang } = useCLang();
+  if (loading) return <p role="status">{t("جارٍ تحميل تفاصيل الوردية…","Loading shift details…")}</p>;
+  if (error) return <p role="alert">{t("تعذر تحميل تفاصيل الوردية","Could not load shift details")}</p>;
+  if (!detail?.payload) return <p>{t("تفاصيل الوردية غير متاحة","Shift details are unavailable")}</p>;
+
+  const payload = detail.payload;
+  const count = payload.cashCountState;
+  const money = (value:unknown) => formatShiftHalalas(value, lang);
+  const line = (ar:string, en:string, value:unknown) => (
+    <div className="flex justify-between gap-3 text-xs border-b border-gray-100 py-1.5">
+      <span>{t(ar,en)}</span><bdi className="font-mono">{money(value)}</bdi>
+    </div>
+  );
+  const rawReview = payload.pkg6Review ?? detail.reportReview;
+  const review = rawReview && typeof rawReview === "object" ? rawReview : null;
+  const phase = review?.phase;
+  const phaseLabels:Record<string,[string,string]> = {
+    accountant_review:["عند المحاسب","With accountant"], head_review:["عند رئيس الحسابات","With head"],
+    head_returned:["أعادها رئيس الحسابات","Returned by head"], manager_returned:["أُعيدت لمدير الفرع","Returned to manager"],
+  };
+  const phaseText = typeof phase === "string" ? (Object.hasOwn(phaseLabels, phase) ? t(...phaseLabels[phase]) : phase) : "—";
+  const returnReason = typeof review?.return_reason === "string" && review.return_reason ? review.return_reason : "—";
+  const variance = payload.varianceHalalas;
+  const validVariance = count === "counted" && typeof variance === "number" && Number.isSafeInteger(variance);
+  const varianceLabel = validVariance && variance < 0 ? t("عجز","Shortage")
+    : validVariance && variance > 0 ? t("فائض — للفرع","Surplus — branch") : t("الفرق","Variance");
+  const liability = detail.liability;
+  return (
+    <section aria-label={t("تفاصيل وردية الكاشير","Cashier shift details")} className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
+      <div className="flex justify-between text-xs"><span>{t("حالة الجرد","Count state")}</span>
+        <strong>{count === "counted" ? t("مجرود فعلياً","Physically counted") : count === "unknown" ? t("غير مجرود — لا يُعتمد كدليل","Not counted — not evidence") : "—"}</strong>
+      </div>
+      <div>
+        {line("إجمالي المبيعات (شامل الضريبة)","Gross sales (including VAT)",payload.salesHalalas)}
+        {line("إجمالي الشبكة","Card total",payload.cardTotalHalalas)}
+        {line("تطبيقات التوصيل (قبل العمولة)","Aggregators (before commission)",payload.aggregatorTotalsHalalas)}
+        {Array.isArray(payload.aggregatorBreakdown) && payload.aggregatorBreakdown.map((row,i) => (
+          <div key={i} className="text-xs text-gray-600 py-1 flex flex-wrap gap-2">
+            <span>{t("تطبيق","Aggregator")} {i+1}:</span>
+            {row && typeof row === "object" && Object.entries(row).map(([key,value]) => (
+              <span key={key}>{key}: <bdi>{key.endsWith("Halalas") ? money(value) : value == null ? "—" : typeof value === "string" || typeof value === "number" ? String(value) : "—"}</bdi></span>
+            ))}
+          </div>
+        ))}
+        {line("الافتتاحي المهيأ (ليس إثبات استلام)","Configured opening (not receipt evidence)",payload.openingFloatHalalas)}
+        <div className="flex justify-between gap-3 text-xs border-b border-gray-100 py-1.5"><span>{t("الافتتاحي المؤكد","Confirmed opening")}</span><bdi>—</bdi></div>
+        {line("النقد المتوقع","Expected cash",payload.cashExpectedHalalas)}
+        {line("النقد المجرود","Counted cash",count === "counted" ? payload.cashActualHalalas : null)}
+        <div className={`flex justify-between gap-3 text-xs border-b border-gray-100 py-1.5 ${validVariance ? variance < 0 ? "text-red-700" : variance > 0 ? "text-blue-700" : "" : ""}`}>
+          <span>{varianceLabel}</span><bdi className="font-mono">{count === "unknown" ? t("غير مجرود","Not counted") : count === "counted" ? money(variance) : "—"}</bdi>
+        </div>
+        {line("نقدية واردة معلّقة (خارج الفرق)","Pending incoming cash (excluded from variance)",payload.pendingIncomingCountedHalalas)}
+      </div>
+      <div className="text-xs space-y-1">
+        <p>{t("مرحلة المراجعة","Review phase")}: {phaseText}</p>
+        <p>{t("سبب الإرجاع","Return reason")}: {returnReason}</p>
+      </div>
+      {Array.isArray(payload.varianceAllocations) && payload.varianceAllocations.length > 0 && (
+        <div className="text-xs space-y-1">
+          <h4 className="font-bold">{t("تخصيصات الفرق من العملية","Operation variance allocations")}</h4>
+          {payload.varianceAllocations.map((row,i) => (
+            <p key={i}>{t("تخصيص","Allocation")} {i+1}: {row && typeof row === "object" && Object.entries(row).map(([key,value]) => (
+              <span key={key} className="mr-2">{key}: <bdi>{key.endsWith("Halalas") ? money(value) : value == null ? "—" : typeof value === "string" || typeof value === "number" ? String(value) : "—"}</bdi></span>
+            ))}</p>
+          ))}
+        </div>
+      )}
+      <div className="text-xs space-y-1">
+        <h4 className="font-bold">{t("توزيع المسؤولية","Liability allocation")}</h4>
+        {liability ? <>
+          <p>{t("نسخة توزيع المسؤولية","Allocation version")}: {typeof liability.version === "number" && Number.isSafeInteger(liability.version) ? liability.version : "—"}</p>
+          <p>{t("اعتماد المدير","Manager approval")}: {liability.managerApprovalStatus === "approved" ? t("معتمد من المدير","Approved by manager") : liability.managerApprovalStatus === "pending" ? t("قيد الاعتماد","Pending approval") : liability.managerApprovalStatus || "—"}</p>
+          <p>{t("مصدر التوزيع","Allocation source")}: {liability.createdByType || "—"}</p>
+          {Array.isArray(liability.shares) && liability.shares.length ? liability.shares.map((share,i) => (
+            <p key={i}>{t("حصة","Share")} {i+1}: {share.type ?? "—"} · {share.id == null && share.name == null
+              ? t("هوية المسؤول غير متاحة","Responsible party identity unavailable")
+              : <>{t("المعرف","ID")}: {share.id ?? "—"} · {t("الاسم","Name")}: {share.name ?? "—"}</>} · <bdi>{money(share.amountHalalas)}</bdi></p>
+          )) : <p>{t("تفاصيل الحصص غير متاحة","Share details unavailable")}</p>}
+        </> : <p>{t("دليل توزيع المسؤولية غير متاح","Liability evidence unavailable")}</p>}
+      </div>
+      <div className="text-xs space-y-1">
+        <h4 className="font-bold">{t("سجل الأحداث","Audit trail")}</h4>
+        {detail.auditTrail?.length ? detail.auditTrail.map((event,i) => (
+          <p key={i}>{event.action} · {event.by} · {event.time}</p>
+        )) : <p>—</p>}
+      </div>
+    </section>
+  );
+}
+
 function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle, forHead=false }:{
   op:COp; onApprove:()=>void; onReject:()=>void; onClarify?:()=>void; onView:()=>void;
   expanded?:boolean; onToggle?:()=>void; forHead?:boolean;
 }) {
   const { t } = useCLang();
-  const detailQ = useOperation(expanded && op.module === "sales" ? op.id : null);
+  const detailQ = useOperation(expanded && (op.module === "sales" || op.module === "shifts") ? op.id : null);
   const queryClient = useQueryClient();
   const salesContext = () => ({ operation: op, role: forHead ? "head" : "accountant",
     detail: queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detailQ.data });
@@ -1441,6 +1532,7 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
       {expanded && (
         <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-4 space-y-4">
           {op.module==="sales" && <SalesReconPanel op={op} onApprove={onApprove} onReject={onReject} onClarify={onClarify} isPending={isPending} forHead={forHead}/>}
+          {op.module==="shifts" && <ShiftOpPanel detail={detailQ.data} loading={detailQ.isLoading} error={detailQ.isError}/>}
           {op.module==="expenses" && (
             <p className="text-xs text-gray-400 text-center py-2">{t("افتح البيان لعرض الفواتير كاملاً مع خيار التحويل إلى أصل ثابت","Open statement to view full invoices with asset conversion option")}</p>
           )}
@@ -1473,7 +1565,7 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
               </div>
             ) : null;
           })()}
-          {(op.module!=="sales"&&op.module!=="expenses"&&op.module!=="purchases"&&op.module!=="inventory") && (
+          {(op.module!=="sales"&&op.module!=="shifts"&&op.module!=="expenses"&&op.module!=="purchases"&&op.module!=="inventory") && (
             <p className="text-xs text-gray-400 text-center">{t("انقر على زر العرض للتفاصيل الكاملة","Click view for full details")}</p>
           )}
         </div>
