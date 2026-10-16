@@ -262,7 +262,6 @@ import {
   useShiftConfigs,
   useSaveShiftConfig,
   useSaveBranchShiftConfig,
-  useCloseShift,
   useExportShifts,
 } from "../../../api/queries";
 import { isApiError } from "../../../api/errors";
@@ -6793,12 +6792,8 @@ function AccShifts({ navigate, setModal }:PageProps) {
   const { data: shiftConfigs } = useShiftConfigs(shiftScope);
   const saveShiftCfgMut = useSaveShiftConfig();
   const saveBranchShiftCfgMut = useSaveBranchShiftConfig();
-  const closeShiftMut = useCloseShift();
   const exportShiftsMut = useExportShifts();
   const [tab, setTab] = useState<"live"|"setup"|"close"|"history">("live");
-  // Close form (T08 §5): expected cash is server-derived — no salesSystem field.
-  const [closeForm, setCloseForm] = useState({shiftId:"",cashActual:"",cardTotal:"",aggTotal:"",notes:""});
-  const [closeSent, setCloseSent] = useState<string|null>(null);
 
   // ─── Shift Setup state ─────────────────────────────────────────────────────
   // Real, accountant-scoped brands from GET /company/me/shifts/configs — no static seed.
@@ -6866,27 +6861,6 @@ function AccShifts({ navigate, setModal }:PageProps) {
   const fmtTime = (iso?:string|null) => iso ? new Date(iso).toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"}) : "—";
   const fmtDate = (iso?:string|null) => iso ? new Date(iso).toLocaleDateString("ar-SA") : "—";
 
-  const closeShift = liveShifts.find(s=>s.id===closeForm.shiftId);
-  const expectedH  = closeShift?.cashExpectedHalalas ?? 0;
-  const cashH      = Math.round((parseFloat(closeForm.cashActual)||0)*100);
-  const cashDiffH  = closeShift && closeForm.cashActual!=="" ? cashH - expectedH : null;
-
-  const submitClose = () => {
-    if (!closeForm.shiftId || closeForm.cashActual==="") return;
-    closeShiftMut.mutate({
-      shiftId: closeForm.shiftId,
-      cashActualHalalas: cashH,
-      cardTotalHalalas: closeForm.cardTotal!=="" ? Math.round((parseFloat(closeForm.cardTotal)||0)*100) : undefined,
-      aggregatorTotalsHalalas: closeForm.aggTotal!=="" ? Math.round((parseFloat(closeForm.aggTotal)||0)*100) : undefined,
-      notes: closeForm.notes || undefined,
-    }, {
-      onSuccess: (data) => {
-        setCloseSent(data.operationPublicId || data.operationId);
-        setTimeout(()=>{ setCloseSent(null); setCloseForm({shiftId:"",cashActual:"",cardTotal:"",aggTotal:"",notes:""}); setTab("history"); },2200);
-      },
-    });
-  };
-
   return (
     <div className="space-y-5" dir="rtl">
       {/* Header */}
@@ -6913,6 +6887,7 @@ function AccShifts({ navigate, setModal }:PageProps) {
         {([
           {id:"live"    as const, label:"🟢 مباشر"},
           {id:"setup"   as const, label:"⚙️ إعداد الشفتات"},
+          {id:"close"   as const, label:"📋 مراجعة الورديات"},
           {id:"history" as const, label:"📋 السجل التاريخي"},
         ] as {id:"live"|"setup"|"close"|"history";label:string}[]).map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)}
@@ -6980,7 +6955,6 @@ function AccShifts({ navigate, setModal }:PageProps) {
                 {sh.cashierPhone
                   ? <a href={`tel:${sh.cashierPhone}`} className="flex-1 flex items-center justify-center gap-1.5 text-xs py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"><Phone size={12}/> تواصل</a>
                   : <button onClick={()=>setModal("contact")} className="flex-1 flex items-center justify-center gap-1.5 text-xs py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"><Phone size={12}/> تواصل</button>}
-                <button onClick={()=>{setCloseForm(p=>({...p,shiftId:sh.id})); setTab("close");}} className="flex-1 flex items-center justify-center gap-1.5 text-xs py-2 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100"><Lock size={12}/> إغلاق الشفت</button>
               </div>
             </div>
             );
@@ -7195,67 +7169,9 @@ function AccShifts({ navigate, setModal }:PageProps) {
         </div>
       )}
 
-      {/* ── TAB: CLOSE (T08 §5 — expected cash server-derived; goes to pending_review + SHF- op) ── */}
+      {/* Reserved for SHF review. */}
       {tab==="close" && (
-        <div className="max-w-xl mx-auto">
-          <Card title="🔒 إغلاق الشفت">
-            <div className="p-5 space-y-4">
-              {closeSent ? (
-                <div className="text-center py-8">
-                  <div className="text-4xl mb-3">✅</div>
-                  <p className="font-bold text-emerald-700">تم إغلاق الشفت وإرساله للمراجعة</p>
-                  <p className="text-sm text-gray-500 mt-1">رقم العملية: <span className="font-mono font-bold text-gray-700">{closeSent}</span></p>
-                  <p className="text-xs text-gray-400 mt-1">بانتظار اعتماد المحاسب ثم الاعتماد النهائي من رئيس الحسابات — سيتم توجيهك لسجل الشفتات...</p>
-                </div>
-              ) : (
-                <>
-                  <div>
-                    <label className="text-[11px] font-semibold text-gray-500 block mb-1">الشفت المفتوح</label>
-                    <select value={closeForm.shiftId} onChange={e=>setCloseForm(p=>({...p,shiftId:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
-                      <option value="">— اختر شفتاً مفتوحاً —</option>
-                      {liveShifts.map(s=><option key={s.id} value={s.id}>{s.branchName} · {s.shiftType} · {s.cashierName}</option>)}
-                    </select>
-                    {liveShifts.length===0 && <p className="text-[11px] text-gray-400 mt-1">لا توجد شفتات مفتوحة للإغلاق حالياً.</p>}
-                  </div>
-                  {closeShift && (
-                    <div className="p-3 rounded-xl bg-purple-50 border border-purple-200 flex justify-between items-center">
-                      <span className="text-sm font-semibold text-purple-800">النقد المتوقع (محسوب من النظام)</span>
-                      <span className="font-mono font-black text-lg text-purple-700">{fmtAmt(expectedH/100)} ر.س</span>
-                    </div>
-                  )}
-                  <div>
-                    <label className="text-[11px] font-semibold text-gray-500 block mb-1">النقد الفعلي في الصندوق (ر.س)</label>
-                    <input type="number" value={closeForm.cashActual} onChange={e=>setCloseForm(p=>({...p,cashActual:e.target.value}))} placeholder="أدخل المبلغ المعدود..." className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono"/>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[11px] font-semibold text-gray-500 block mb-1">إجمالي الشبكة (ر.س)</label>
-                      <input type="number" value={closeForm.cardTotal} onChange={e=>setCloseForm(p=>({...p,cardTotal:e.target.value}))} placeholder="0.00" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono"/>
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-semibold text-gray-500 block mb-1">تطبيقات التوصيل (ر.س)</label>
-                      <input type="number" value={closeForm.aggTotal} onChange={e=>setCloseForm(p=>({...p,aggTotal:e.target.value}))} placeholder="0.00" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono"/>
-                    </div>
-                  </div>
-                  {cashDiffH!==null && (
-                    <div className={`p-3 rounded-xl border ${cashDiffH===0?"bg-emerald-50 border-emerald-200":cashDiffH>0?"bg-blue-50 border-blue-200":"bg-red-50 border-red-200"}`}>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-semibold text-gray-700">الفرق (عجز/زيادة)</span>
-                        <span className={`font-mono font-black text-lg ${cashDiffH===0?"text-emerald-700":cashDiffH>0?"text-blue-700":"text-red-700"}`}>{cashDiffH>0?"+":""}{fmtAmt(cashDiffH/100)} ر.س {cashDiffH===0?"✅":cashDiffH>0?"⬆":"⬇"}</span>
-                      </div>
-                      <p className="text-[11px] mt-1 text-gray-500">{cashDiffH===0?"مطابق تاماً — لا خصم":cashDiffH>0?"زيادة في الصندوق — لا خصم":"عجز نقدي — يُحمَّل على الكاشير عند الاعتماد النهائي ما لم يُوزَّع"}</p>
-                    </div>
-                  )}
-                  <div>
-                    <label className="text-[11px] font-semibold text-gray-500 block mb-1">ملاحظات (اختياري)</label>
-                    <textarea value={closeForm.notes} onChange={e=>setCloseForm(p=>({...p,notes:e.target.value}))} placeholder="ملاحظات الشفت..." rows={3} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none"/>
-                  </div>
-                  <Btn variant="success" className="w-full justify-center" onClick={submitClose} disabled={!closeForm.shiftId||closeForm.cashActual===""||closeShiftMut.isPending}><Lock size={14}/> {closeShiftMut.isPending?"جارٍ الإغلاق...":"تأكيد إغلاق الشفت"}</Btn>
-                </>
-              )}
-            </div>
-          </Card>
-        </div>
+        <p className="text-sm text-gray-500" role="note">مراجعة الورديات — التفاصيل ستتاح هنا لاحقاً</p>
       )}
 
       {/* ── TAB: HISTORY (T08 §3/§7 — canonical shape + Excel export) ──────────── */}

@@ -16,8 +16,7 @@ import {
   useDailyReconciliation, useSaveDailyVarianceAllocation, useExportInventory,
   useWaste, usePatchWasteProduct, usePutWasteAllocations, useApproveWaste, useRejectWaste,
   useBulkApproveWaste, useExportWaste,
-  useShiftsLive, useShiftsHistory, useShiftConfigs, useSaveShiftConfig, useCloseShift,
-  useShiftVarianceAllocations, useExportShifts,
+  useShiftsLive, useShiftsHistory, useShiftConfigs, useSaveShiftConfig, useExportShifts,
   useEmployees, useEmployeeMovements, useCreateEmployeeMovement, useSettleEmployeeBalance,
   useExportEmployeeStatement, useExportPayroll,
   useCashCustody, useCashTransactions, useCreateCashTransaction, useApproveCashTxn,
@@ -39,7 +38,7 @@ import {
   // Branch Manager
   useBranchOverview, useBranchEmployees, useBranchItems, useBranchPurchaseRequests,
   useBranchSuppliers, useBranchActiveShift, useBranchSubmitItemsCount, useBranchUpload,
-  useBranchRequestNewSupplier, useBranchOpenShift, useBranchCloseShift, useBranchSettings,
+  useBranchRequestNewSupplier, useBranchSettings,
   useUpdateBranchSettings, useCreateBranchPurchaseRequest,
   // Procurement
   useProcurementOverview, useProcurementOrders, useGroupedOrders, useSentOrders,
@@ -4568,123 +4567,6 @@ function AccCompanyAssets() {
 // ═══════════════════════════════════════════════════
 /// ACCOUNTANT — SHIFTS MODULE (T08)
 // ═══════════════════════════════════════════════════
-// One employee row for the cash-gap split (empNumber → name lookup).
-function ShiftSplitRow({ branchId, row, onField, onRemove, canRemove }:{
-  branchId:string; row:{empNumber:string;amount:string};
-  onField:(f:"empNumber"|"amount",v:string)=>void; onRemove:()=>void; canRemove:boolean;
-}) {
-  const { t } = useCLang();
-  const { data: emp } = useBranchEmployeesLookup(branchId, row.empNumber.length>=3?row.empNumber:undefined);
-  return (
-    <div className="flex items-center gap-2">
-      <input placeholder={t("رقم الموظف","Emp #")} value={row.empNumber} onChange={e=>onField("empNumber",e.target.value)}
-        className="w-20 text-center font-mono border border-red-200 rounded-lg px-2 py-1 text-[10px] bg-white focus:outline-none focus:border-red-400"/>
-      <div className="h-7 flex-1 flex items-center px-2 rounded-lg bg-white border border-gray-100 text-[10px] text-gray-700">{emp?.name || <span className="text-gray-300">{t("يُعبأ تلقائياً","auto")}</span>}</div>
-      <input placeholder={t("المبلغ (ر.س)","Amount")} type="number" value={row.amount} onChange={e=>onField("amount",e.target.value)}
-        className="w-24 text-center font-mono border border-red-200 rounded-lg px-2 py-1 text-[10px] bg-white focus:outline-none focus:border-red-400"/>
-      {canRemove && <button onClick={onRemove} className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><X size={12}/></button>}
-    </div>
-  );
-}
-
-// Close form + close→approve chain + cash-gap split (T08 §5/§6) for one live shift.
-function ShiftCloseCard({ shift }:{ shift:Shift }) {
-  const { t } = useCLang();
-  const closeMut    = useCloseShift();
-  const varianceMut = useShiftVarianceAllocations();
-  const approveMut  = useApproveOperation();
-  const [cash, setCash] = useState("");
-  const [card, setCard] = useState("");
-  const [agg,  setAgg]  = useState("");
-  const [result, setResult] = useState<{ operationId:string; varianceHalalas:number|null }|null>(null);
-  const [rows, setRows] = useState<{empNumber:string;amount:string}[]>([{empNumber:"",amount:""}]);
-
-  const expectedH = shift.cashExpectedHalalas ?? 0;
-  const cashH = Math.round((parseFloat(cash)||0)*100);
-  const previewVar = cash!=="" ? cashH - expectedH : null;
-
-  const doClose = () => {
-    closeMut.mutate({
-      shiftId: shift.id,
-      cashActualHalalas: cashH,
-      cardTotalHalalas: card!=="" ? Math.round(parseFloat(card)*100) : undefined,
-      aggregatorTotalsHalalas: agg!=="" ? Math.round(parseFloat(agg)*100) : undefined,
-    }, { onSuccess:(data)=> setResult({ operationId:data.operationId, varianceHalalas:data.varianceHalalas }) });
-  };
-  const varH = result?.varianceHalalas ?? 0;
-  const gap = varH < 0;                 // shortage → auto-charged unless split first
-  const allocTotalH = rows.reduce((s,r)=>s+Math.round((parseFloat(r.amount)||0)*100),0);
-  const remainH = Math.abs(varH) - allocTotalH;
-  const submitSplit = () => varianceMut.mutate({ shiftId: shift.id,
-    allocations: rows.filter(r=>r.empNumber&&r.amount).map(r=>({ empNumber:r.empNumber, amountHalalas:Math.round((parseFloat(r.amount)||0)*100) })) });
-  const approveOp = () => { if(result) approveMut.mutate({ id: result.operationId }); };
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="px-5 py-3 bg-gray-50/60 border-b border-gray-100 flex items-center justify-between">
-        <div><p className="font-bold text-gray-800 text-sm">{shift.branchName}</p><p className="text-[10px] text-gray-400">{shift.shiftType} · {shift.cashierName}</p></div>
-        {result ? <Badge className="bg-amber-100 text-amber-700 border border-amber-200 text-[10px]">{t("بانتظار المراجعة","Pending review")}</Badge>
-                : <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px]">{t("جاهز للإغلاق","Ready to close")}</Badge>}
-      </div>
-      {!result ? (
-        <div className="p-5 space-y-4">
-          <div className="grid grid-cols-4 gap-3">
-            <div><label className="text-[11px] font-semibold text-gray-600 block mb-1.5">{t("النقد المتوقع (محسوب)","Expected cash (derived)")}</label>
-              <div className="h-10 flex items-center px-3 bg-gray-50 border border-gray-200 rounded-lg font-mono font-bold text-purple-700 text-sm">{fmtH(expectedH)}</div></div>
-            <div><label className="text-[11px] font-semibold text-gray-600 block mb-1.5">{t("النقد الفعلي بالصندوق","Actual cash")}</label>
-              <input type="number" placeholder="0.00" value={cash} onChange={e=>setCash(e.target.value)} className="w-full text-sm border-2 border-purple-300 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500 font-mono"/></div>
-            <div><label className="text-[11px] font-semibold text-gray-600 block mb-1.5">{t("إجمالي الشبكة","Card total")}</label>
-              <input type="number" placeholder="0.00" value={card} onChange={e=>setCard(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none font-mono"/></div>
-            <div><label className="text-[11px] font-semibold text-gray-600 block mb-1.5">{t("تطبيقات التوصيل","Aggregators")}</label>
-              <input type="number" placeholder="0.00" value={agg} onChange={e=>setAgg(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none font-mono"/></div>
-          </div>
-          {previewVar!==null && (
-            <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border ${previewVar===0?"bg-emerald-50 border-emerald-200":"bg-red-50 border-red-200"}`}>
-              {previewVar===0 ? <CheckCircle2 size={14} className="text-emerald-600"/> : <AlertTriangle size={14} className="text-red-600"/>}
-              <p className={`text-xs font-bold ${previewVar===0?"text-emerald-800":"text-red-800"}`}>
-                {previewVar===0?t("✓ لا يوجد فرق — الكاش متطابق","✓ No variance"):`${t("فرق","Variance")}: ${previewVar>0?"+":""}${fmtH(previewVar)} ${t("ر.س","SAR")}`}
-              </p>
-            </div>
-          )}
-          <div className="flex justify-end">
-            <Btn variant="success" onClick={doClose} disabled={cash===""||closeMut.isPending}><Lock size={11}/> {t("تأكيد إغلاق الشفت","Confirm close")}</Btn>
-          </div>
-        </div>
-      ) : (
-        <div className="p-5 space-y-3">
-          <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border ${gap?"bg-red-50 border-red-200":"bg-emerald-50 border-emerald-200"}`}>
-            {gap?<AlertTriangle size={14} className="text-red-600"/>:<CheckCircle2 size={14} className="text-emerald-600"/>}
-            <p className={`text-xs font-bold ${gap?"text-red-800":"text-emerald-800"}`}>
-              {gap?`${t("عجز نقدي","Cash shortage")}: ${fmtH(Math.abs(varH))} ${t("ر.س — يُحمَّل على الكاشير ما لم توزّعه","SAR — auto-charged to cashier unless split")}`:t("لا يوجد عجز — لا خصم","No shortage — no charge")}
-            </p>
-          </div>
-          {gap && (
-            <div className="bg-red-50/60 border border-red-200 rounded-xl p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold text-red-800">{t("توزيع فرق الكاش على موظفين (اختياري)","Split cash gap across employees (optional)")}</p>
-                <span className={`text-[10px] font-mono ${remainH===0?"text-emerald-600":"text-red-700"}`}>{t("المتبقي","Remaining")}: {fmtH(remainH)}</span>
-              </div>
-              {rows.map((r,i)=>(
-                <ShiftSplitRow key={i} branchId={shift.branchId} row={r}
-                  onField={(f,v)=>setRows(p=>p.map((x,idx)=>idx===i?{...x,[f]:v}:x))}
-                  onRemove={()=>setRows(p=>p.filter((_,idx)=>idx!==i))} canRemove={rows.length>1}/>
-              ))}
-              <div className="flex items-center justify-between">
-                <button onClick={()=>setRows(p=>[...p,{empNumber:"",amount:""}])} className="flex items-center gap-1 text-[10px] text-red-600 hover:underline font-semibold"><Plus size={10}/> {t("إضافة موظف","Add employee")}</button>
-                <button onClick={submitSplit} disabled={varianceMut.isPending} className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-[10px] font-bold hover:bg-red-600 disabled:opacity-50">💾 {t("حفظ التوزيع","Save split")}</button>
-              </div>
-              <p className="text-[9px] text-red-500">{t("يجب أن يساوي مجموع التخصيصات قيمة الفرق قبل الاعتماد النهائي من رئيس الحسابات.","Allocations must sum to the gap before head final-approval.")}</p>
-            </div>
-          )}
-          <div className="flex justify-end">
-            <Btn variant="primary" onClick={approveOp} disabled={approveMut.isPending}><Check size={11}/> {t("اعتماد المراجعة (إرسال لرئيس الحسابات)","Approve → send to head")}</Btn>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // Per-brand N-shift config editor (T08 §1).
 function ShiftConfigCard({ cfg }:{ cfg:ShiftConfig }) {
   const { t } = useCLang();
@@ -4740,7 +4622,7 @@ function AccCompanyShifts({ ops }:{ ops:COp[] }) {
   const TABS: { key:ShiftTab; label:string; icon:React.ReactNode }[] = [
     { key:"live",    label:t("مباشر","Live"),    icon:<Activity size={13}/> },
     { key:"setup",   label:t("إعداد","Setup"),   icon:<Settings size={13}/> },
-    { key:"close",   label:t("إغلاق","Close"),   icon:<Lock size={13}/> },
+    { key:"close",   label:t("مراجعة الورديات","Shift review"), icon:<Clipboard size={13}/> },
     { key:"history", label:t("سجل","History"),   icon:<BarChart3 size={13}/> },
   ];
 
@@ -4804,7 +4686,6 @@ function AccCompanyShifts({ ops }:{ ops:COp[] }) {
                 </div>
                 <div className="px-5 pb-4 flex items-center justify-between">
                   <div><p className="text-[10px] text-gray-400">{t("النقد المتوقع","Expected cash")}</p><p className="font-black text-gray-800 text-base font-mono"><bdi>{evidence.expectedCash}</bdi> {t("ر.س","SAR")}</p></div>
-                  <Btn size="sm" variant="primary" onClick={()=>setTab("close")}><Lock size={11}/> {t("إغلاق الشفت","Close shift")}</Btn>
                 </div>
                 <div className="px-5 pb-4 flex flex-wrap items-center justify-between gap-3 text-xs">
                   <p>{t("الفرق","Variance")}: <span className={`font-mono font-bold ${evidence.variance.cls}`}><bdi>{evidence.variance.text}</bdi></span></p>
@@ -4825,13 +4706,9 @@ function AccCompanyShifts({ ops }:{ ops:COp[] }) {
         </div>
       )}
 
-      {/* CLOSE TAB */}
+      {/* Reserved for SHF review; Dashboard-native close is not available. */}
       {tab==="close" && (
-        <div className="space-y-4">
-          <p className="text-sm text-gray-500">{t("اختر شفتاً مفتوحاً لإغلاقه — النقد المتوقع محسوب من الخادم","Pick an open shift to close — expected cash is server-derived")}</p>
-          {allLive.length===0 && <p className="text-center text-gray-400 text-sm py-8">{t("لا توجد شفتات مفتوحة للإغلاق","No open shifts to close")}</p>}
-          {allLive.map(s=><ShiftCloseCard key={s.id} shift={s}/>)}
-        </div>
+        <p className="text-sm text-gray-500">{t("مراجعة الورديات — التفاصيل ستتاح هنا لاحقاً","Shift review — details will appear here later")}</p>
       )}
 
       {/* HISTORY TAB */}
@@ -6091,30 +5968,20 @@ function BranchEmployees() {
 }
 
 function BranchShifts() {
-  const { t, dir } = useCLang();
-  const { data: activeShift } = useBranchActiveShift();
-  const openShiftMut = useBranchOpenShift();
-  const closeShiftMut = useBranchCloseShift();
-  const SAR = t("ر.س","SAR");
+  const { t, dir, lang } = useCLang();
+  const { data: activeShift, isLoading, isError } = useBranchActiveShift();
   return (
     <div className="space-y-5" dir={dir}>
-      <div><h2 className="text-xl font-bold text-gray-800">{t("شفتات الفرع","Branch Shifts")}</h2></div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border-2 border-amber-200 shadow-sm p-5">
-          <div className="flex items-center gap-2 mb-4"><div className="w-3 h-3 rounded-full bg-amber-400 animate-pulse"/><h3 className="font-bold text-amber-800">{t("شفت مفتوح الآن","Shift Open Now")}</h3></div>
-          <p className="text-gray-700 font-semibold">{t("شفت مسائي — ليلى سالم","Evening shift — Layla Salem")}</p>
-          <p className="text-xs text-gray-400 mt-1">{t("فتح: 4:00 م · مبلغ الصندوق:","Opened: 4:00 PM · Cash amount:")} 500 {SAR}</p>
-          <div className="mt-4"><Btn variant="danger" onClick={()=>{ if(activeShift?.id){ closeShiftMut.mutate({ id: activeShift.id }); } else { alert(`✅ ${t("تم إغلاق الشفت وإرساله للمحاسب","Shift closed and sent to accountant")}`); } }}><X size={12}/> {t("إغلاق الشفت","Close Shift")}</Btn></div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h3 className="font-bold text-gray-800 mb-4">{t("فتح شفت جديد","Open New Shift")}</h3>
-          <div className="space-y-3">
-            <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الكاشير","Cashier")}</label><select className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"><option>أنس محمد</option><option>ليلى سالم</option></select></div>
-            <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t(`مبلغ افتتاح الصندوق (${SAR})`,`Opening Cash Amount (${SAR})`)}</label><input type="number" defaultValue="500" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
-            <Btn variant="success" onClick={()=>openShiftMut.mutate({ registerOpeningHalalas: 50000 })}><CheckCircle2 size={12}/> {t("فتح شفت","Open Shift")}</Btn>
-          </div>
-        </div>
-      </div>
+      <h2 className="text-xl font-bold text-gray-800">{t("شفتات الفرع","Branch Shifts")}</h2>
+      {isLoading ? <p role="status" className="text-sm text-gray-500">{t("جارٍ التحميل…","Loading…")}</p>
+        : isError ? <p role="alert" className="text-sm text-red-700">{t("تعذر تحميل الشفت النشط","Could not load the active shift")}</p>
+        : !activeShift ? <p className="text-sm text-gray-500">{t("لا يوجد شفت نشط حالياً","No active shift")}</p>
+        : <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-2">
+            <p className="font-semibold text-gray-800">{t("الشفت النشط","Active shift")}: <bdi>{activeShift.id || "—"}</bdi></p>
+            <p className="text-sm text-gray-600">{t("المشرف","Supervisor")}: {activeShift.supervisorName || "—"}</p>
+            <p className="text-sm text-gray-600">{t("وقت البدء","Started at")}: {activeShift.startedAt || "—"}</p>
+            <p className="text-sm text-gray-600">{t("العهدة الافتتاحية","Opening float")}: <bdi>{formatShiftHalalas(activeShift.registerOpeningHalalas, lang)}</bdi> {t("ر.س","SAR")}</p>
+          </div>}
     </div>
   );
 }
