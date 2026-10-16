@@ -5,6 +5,7 @@ import { queryKeys } from "../../../api/queries/keys";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRows, shfReviewPageTarget, type ShfReviewAction, type ShfReviewGroup } from "./shiftReviewQueue";
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT } from "./headReviewGuards";
+import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocationHalalas, runShfAllocationCorrection, type ShfAllocationRow } from "./shiftAllocationCorrection";
 import { api } from "../../../api/client";
 import { toast } from "sonner";
 import { useState, useMemo, useEffect, useRef, ReactNode, createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
@@ -20,7 +21,7 @@ import {
   useDailyReconciliation, useSaveDailyVarianceAllocation, useExportInventory,
   useWaste, usePatchWasteProduct, usePutWasteAllocations, useApproveWaste, useRejectWaste,
   useBulkApproveWaste, useExportWaste,
-  useShiftsLive, useShiftsHistory, useShiftConfigs, useSaveShiftConfig, useExportShifts,
+  useShiftsLive, useShiftsHistory, useShiftConfigs, useSaveShiftConfig, useExportShifts, useShiftVarianceAllocations,
   useEmployees, useEmployeeMovements, useCreateEmployeeMovement, useSettleEmployeeBalance,
   useExportEmployeeStatement, useExportPayroll,
   useCashCustody, useCashTransactions, useCreateCashTransaction, useApproveCashTxn,
@@ -1109,9 +1110,9 @@ function OperationAttachmentsPanel({ operationId }:{ operationId:string }) {
 type VEmpCD = { empId:string; amount:string };
 
 // One variance-allocation row — owns its own employee-name lookup by empNumber.
-function VarEmpRow({ branchId, row, onField, onRemove, onQuickFill, canRemove }:{
+function VarEmpRow({ branchId, row, onField, onRemove, onQuickFill, canRemove, disabled=false, strictDecimal=false }:{
   branchId?:string; row:VEmpCD; onField:(field:keyof VEmpCD,val:string)=>void;
-  onRemove:()=>void; onQuickFill:()=>void; canRemove:boolean;
+  onRemove:()=>void; onQuickFill?:()=>void; canRemove:boolean; disabled?:boolean; strictDecimal?:boolean;
 }) {
   const { data: emp } = useBranchEmployeesLookup(branchId, row.empId.length>=3 ? row.empId : undefined);
   const empName = emp?.name ?? "";
@@ -1119,7 +1120,7 @@ function VarEmpRow({ branchId, row, onField, onRemove, onQuickFill, canRemove }:
     <div className="flex items-center gap-2">
       <div className="flex flex-col gap-0.5">
         <label className="text-[9px] text-gray-400">رقم الموظف</label>
-        <input placeholder="مثال: 1001" value={row.empId} onChange={ev=>onField("empId",ev.target.value)}
+        <input placeholder="مثال: 1001" value={row.empId} onChange={ev=>onField("empId",ev.target.value)} disabled={disabled}
           className="w-20 text-center font-mono border border-red-200 rounded-lg px-2 py-1 text-[10px] bg-white focus:outline-none focus:border-red-400"/>
       </div>
       <div className="flex flex-col gap-0.5 flex-1">
@@ -1128,16 +1129,16 @@ function VarEmpRow({ branchId, row, onField, onRemove, onQuickFill, canRemove }:
       </div>
       <div className="flex flex-col gap-0.5">
         <label className="text-[9px] text-gray-400">المبلغ (ر.س)</label>
-        <input placeholder="0.00" type="number" value={row.amount} onChange={ev=>onField("amount",ev.target.value)}
+        <input placeholder="0.00" type={strictDecimal ? "text" : "number"} inputMode="decimal" value={row.amount} onChange={ev=>onField("amount",ev.target.value)} disabled={disabled}
           className="w-24 text-center font-mono border border-red-200 rounded-lg px-2 py-1 text-[10px] bg-white focus:outline-none focus:border-red-400"/>
       </div>
-      <div className="flex flex-col gap-0.5">
+      {onQuickFill && <div className="flex flex-col gap-0.5">
         <label className="text-[9px] text-gray-400 opacity-0">⚡</label>
         <button onClick={onQuickFill}
           className="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-bold hover:bg-amber-200 border border-amber-200">⚡ المتبقي</button>
-      </div>
+      </div>}
       {canRemove && (
-        <button onClick={onRemove} className="mt-3 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><X size={12}/></button>
+        <button onClick={onRemove} disabled={disabled} className="mt-3 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><X size={12}/></button>
       )}
     </div>
   );
@@ -1359,7 +1360,53 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
 // ═══════════════════════════════════════════════════
 // SHARED: OPS ROW COMPONENT
 // ═══════════════════════════════════════════════════
-function ShiftOpPanel({ detail, loading, error }:{ detail?:ApiOperation; loading?:boolean; error?:boolean }) {
+function ShiftAllocationForm({ op, shortageHalalas }:{ op:COp; shortageHalalas:number }) {
+  const { t, lang } = useCLang();
+  const queryClient = useQueryClient();
+  const allocationMut = useShiftVarianceAllocations();
+  const submitLock = useRef(false);
+  const [pending, setPending] = useState(false);
+  const [rows, setRows] = useState<ShfAllocationRow[]>([{empNumber:"",amountSar:""}]);
+  const allocations = prepareShfAllocations(rows, shortageHalalas);
+  const remaining = remainingShfAllocationHalalas(rows, shortageHalalas);
+  const setField = (index:number,field:keyof ShfAllocationRow,value:string) =>
+    setRows(current=>current.map((row,i)=>i===index?{...row,[field]:value}:row));
+  const submit = async () => {
+    if (!allocations || pending || submitLock.current) return;
+    setPending(true);
+    let postStarted = false;
+    try {
+      const completed = await runShfAllocationCorrection(op, "accountant", rows, async () => {
+        const response = await api.get<ApiOperation>(`/operations/${op.id}`);
+        queryClient.setQueryData(queryKeys.operation(op.id), response.data);
+        return response.data;
+      }, async (shiftId, currentAllocations) => {
+        postStarted = true;
+        await allocationMut.mutateAsync({operationId:op.id,shiftId,allocations:currentAllocations});
+      }, submitLock);
+      if (completed) setRows([{empNumber:"",amountSar:""}]);
+      else toast.error(t("تغير دليل الوردية؛ حدّث القائمة وأعد المراجعة","Shift evidence changed; refresh and review again"));
+    } catch (error) {
+      if (!postStarted) toast.error(getErrorMessage(error,"ar")); // The mutation hook translates POST errors.
+    } finally { setPending(false); }
+  };
+  return <div className="space-y-2 rounded-xl border border-red-200 bg-red-50/40 p-3 text-xs">
+    <h4 className="font-bold text-red-800">{t("تصحيح توزيع العجز","Correct shortage allocation")}</h4>
+    <p>{t("كامل العجز المطلوب توزيعه","Full shortage to allocate")}: <bdi>{formatShiftHalalas(shortageHalalas,lang)}</bdi> {t("ر.س","SAR")}</p>
+    {rows.map((row,i)=><VarEmpRow key={i} branchId={op.branchId} row={{empId:row.empNumber,amount:row.amountSar}}
+      disabled={pending || allocationMut.isPending} strictDecimal canRemove={rows.length>1}
+      onField={(field,value)=>setField(i,field==="empId" ? "empNumber" : "amountSar",value)}
+      onRemove={()=>setRows(current=>current.filter((_,index)=>index!==i))}/>)}
+    <button onClick={()=>setRows(current=>[...current,{empNumber:"",amountSar:""}])} disabled={pending || allocationMut.isPending}
+      className="rounded-lg border px-2 py-1.5 disabled:opacity-50">{t("إضافة موظف","Add employee")}</button>
+    {remaining !== null && <p>{t("المتبقي للتحقق فقط","Remaining for validation only")}: <bdi>{formatShiftHalalas(remaining,lang)}</bdi> {t("ر.س","SAR")}</p>}
+    {!allocations && <p className="text-red-700">{t("أدخل حصصًا صحيحة يساوي مجموعها كامل العجز","Enter valid shares totalling the full shortage")}</p>}
+    <button onClick={submit} disabled={!allocations || pending || allocationMut.isPending}
+      className="rounded-lg bg-red-700 px-3 py-1.5 font-semibold text-white disabled:opacity-50">{pending ? t("جارٍ الحفظ…","Saving…") : t("حفظ التوزيع","Save allocation")}</button>
+  </div>;
+}
+
+function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:boolean; detail?:ApiOperation; loading?:boolean; error?:boolean }) {
   const { t, lang } = useCLang();
   if (loading) return <p role="status">{t("جارٍ تحميل تفاصيل الوردية…","Loading shift details…")}</p>;
   if (error) return <p role="alert">{t("تعذر تحميل تفاصيل الوردية","Could not load shift details")}</p>;
@@ -1387,6 +1434,7 @@ function ShiftOpPanel({ detail, loading, error }:{ detail?:ApiOperation; loading
   const varianceLabel = validVariance && variance < 0 ? t("عجز","Shortage")
     : validVariance && variance > 0 ? t("فائض — للفرع","Surplus — branch") : t("الفرق","Variance");
   const liability = detail.liability;
+  const allocationEvidence = getShfAllocationEvidence(op, detail, forHead ? "head" : "accountant");
   return (
     <section aria-label={t("تفاصيل وردية الكاشير","Cashier shift details")} className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
       <div className="flex justify-between text-xs"><span>{t("حالة الجرد","Count state")}</span>
@@ -1423,6 +1471,7 @@ function ShiftOpPanel({ detail, loading, error }:{ detail?:ApiOperation; loading
           ))}
         </div>
       )}
+      {allocationEvidence && <ShiftAllocationForm op={op} shortageHalalas={allocationEvidence.shortageHalalas}/>}
       <div className="text-xs space-y-1">
         <h4 className="font-bold">{t("توزيع المسؤولية","Liability allocation")}</h4>
         {liability ? <>
@@ -1537,7 +1586,7 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
       {expanded && (
         <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-4 space-y-4">
           {op.module==="sales" && <SalesReconPanel op={op} onApprove={onApprove} onReject={onReject} onClarify={onClarify} isPending={isPending} forHead={forHead}/>}
-          {op.module==="shifts" && <ShiftOpPanel detail={detailQ.data} loading={detailQ.isLoading} error={detailQ.isError}/>}
+          {op.module==="shifts" && <ShiftOpPanel detail={detailQ.data} op={op} forHead={forHead} loading={detailQ.isLoading} error={detailQ.isError}/>}
           {op.module==="shifts" && !forHead && shiftPolicy.clarify && onClarify && <button onClick={onClarify} className="text-xs font-semibold text-purple-700 underline">{t("طلب إيضاح","Request clarification")}</button>}
           {op.module==="expenses" && (
             <p className="text-xs text-gray-400 text-center py-2">{t("افتح البيان لعرض الفواتير كاملاً مع خيار التحويل إلى أصل ثابت","Open statement to view full invoices with asset conversion option")}</p>

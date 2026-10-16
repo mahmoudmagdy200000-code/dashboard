@@ -5,6 +5,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import { formatShiftHalalas } from "./shiftCountEvidence.ts";
+import { getShfAllocationEvidence } from "./shiftAllocationCorrection.ts";
 
 const source = ts.createSourceFile("CompanyDashboard.tsx", readFileSync(new URL("CompanyDashboard.tsx", import.meta.url), "utf8"), ts.ScriptTarget.ES2022, true, ts.ScriptKind.TSX);
 const panel = source.statements.find((node): node is ts.FunctionDeclaration => ts.isFunctionDeclaration(node) && node.name?.text === "ShiftOpPanel");
@@ -12,10 +13,11 @@ assert.ok(panel?.body, "SHF detail panel must be in the existing company screen"
 const compiled = ts.transpileModule(panel.getText(source), {
   compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React, module: ts.ModuleKind.None },
 }).outputText;
-const ShiftOpPanel = new Function("React", "useCLang", "formatShiftHalalas", `${compiled}\nreturn ShiftOpPanel;`)(
-  React, () => ({ t: (ar: string) => ar, lang: "ar" }), formatShiftHalalas,
-) as React.ComponentType<{ detail?: unknown; loading?: boolean; error?: boolean }>;
-const render = (props: { detail?: unknown; loading?: boolean; error?: boolean }) =>
+const ShiftOpPanel = new Function("React", "useCLang", "formatShiftHalalas", "getShfAllocationEvidence", "ShiftAllocationForm", `${compiled}\nreturn ShiftOpPanel;`)(
+  React, () => ({ t: (ar: string) => ar, lang: "ar" }), formatShiftHalalas, getShfAllocationEvidence,
+  () => React.createElement("div", null, "allocation form"),
+) as React.ComponentType<{ op?: unknown; forHead?: boolean; detail?: unknown; loading?: boolean; error?: boolean }>;
+const render = (props: { op?: unknown; forHead?: boolean; detail?: unknown; loading?: boolean; error?: boolean }) =>
   renderToStaticMarkup(React.createElement(ShiftOpPanel, props));
 
 test("existing OpRow fetches SHF detail only when expanded and renders the read-only panel", () => {
@@ -45,6 +47,16 @@ test("SHF detail handles loading, error and absent detail separately", () => {
   assert.match(render({ error: true }), /تعذر تحميل/);
   assert.match(render({}), /تفاصيل الوردية غير متاحة/);
   assert.match(render({ detail: { moduleKey: "shifts" } }), /تفاصيل الوردية غير متاحة/);
+});
+
+test("allocation form appears only to accountant for a pending counted shortage with shiftId", () => {
+  const op = {id:"op-fin01",module:"shifts",status:"pending",reportReview:{phase:"accountant_review"}};
+  const detail = {...fin01,id:"op-fin01",status:"pending",payload:{...fin01.payload,shiftId:"admin-shift-id"}};
+  assert.match(render({op,detail}),/allocation form/);
+  assert.doesNotMatch(render({op,detail,forHead:true}),/allocation form/);
+  assert.doesNotMatch(render({op,detail:{...detail,payload:{...detail.payload,varianceHalalas:0}}}),/allocation form/);
+  assert.doesNotMatch(render({op,detail:{...detail,payload:{...detail.payload,cashCountState:"unknown"}}}),/allocation form/);
+  assert.doesNotMatch(render({op,detail:{...detail,reportReview:{phase:"head_returned"}}}),/allocation form/);
 });
 
 test("FIN-01 uses server halalas, and configured opening never becomes confirmed receipt", () => {

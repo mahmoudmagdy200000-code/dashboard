@@ -167,20 +167,25 @@ export function useShiftVarianceAllocations() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
+      operationId: _operationId,
       shiftId,
       allocations,
     }: {
+      /** Cache key only; the endpoint identifies the operation through shiftId. */
+      operationId: string;
       shiftId: string;
       allocations: Array<{ employeeId?: string; empNumber?: string; amountHalalas: number }>;
     }) => {
-      const res = await api.post<Shift>(
+      const res = await api.post<{ operationId: string; allocations: Array<{ employeeId: string; employeeName: string; amountHalalas: number }> }>(
         `/company/me/shifts/${shiftId}/variance-allocations`,
         { allocations },
       );
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (_result, vars) => {
       qc.invalidateQueries({ queryKey: ["shifts"] });
+      qc.invalidateQueries({ queryKey: ["operations"] });
+      qc.invalidateQueries({ queryKey: queryKeys.operation(vars.operationId) });
       toast.success("تم توزيع فرق الكاش");
     },
     onError: (e) => toast.error(getErrorMessage(e, "ar")),
