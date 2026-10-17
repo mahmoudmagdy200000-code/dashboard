@@ -113,6 +113,9 @@ export interface SalesBreakdown {
 export interface ShiftOpPayload {
   shiftId?: string | null;
   legacyShiftId?: string | number | null;
+  /** BD-3: report revision and shortage allocation version are independent coordinates. */
+  reportRevision?: number | null;
+  allocationVersion?: number | null;
   salesHalalas?: number | null;
   cardTotalHalalas?: number | null;
   aggregatorTotalsHalalas?: number | null;
@@ -157,6 +160,10 @@ export interface Operation {
   origin?: OperationOrigin | null;
   /** Both SHF and daily sales rows expose the server's review metadata here. */
   reportReview?: Record<string, unknown> | null;
+  /** Present on GET /operations/{id} for SHF operations. */
+  reportRevision?: number | null;
+  /** Present on GET /operations/{id}; this is not the report revision. */
+  allocationVersion?: number | null;
   originLabelAr?: string;
   originIcon?: string;
   attachmentCount?: number;
@@ -209,6 +216,42 @@ export interface Operation {
   expenses?: import("./company").ExpensesBlock | null;
   /** Purchases-module single-op detail only (T06 §2). */
   purchases?: import("./company").PurchasesBlock | null;
+}
+
+/** POST /accountant/shifts/{id}/corrections (COR-05). */
+export interface ShiftReportCorrectionRequest {
+  expected_revision: number;
+  expected_allocation_version?: number;
+  reason: string;
+  changes: {
+    card_payments?: string;
+    cash_collected?: string;
+    counted_cash?: string;
+    handover_notes?: string | null;
+    aggregators?: Array<{ aggregator_id: string; amount: string; notes?: string | null }>;
+  };
+  shortage_allocations?: Array<{
+    type: "cashier" | "employee" | "branch_manager";
+    id: string;
+    amount: number;
+  }>;
+}
+
+export interface ShiftReportCorrectionResponse {
+  revision_number: number;
+  revision_id: string;
+  evidence_id: string | null;
+  allocation_version: number | null;
+  manager_review_required: boolean;
+  financial_results: {
+    total_sales: string;
+    card_payments: string;
+    cash_collected: string;
+    variance: string;
+    variance_halalas: number | null;
+    actual_count_halalas: number | null;
+    expected_halalas: number | null;
+  };
 }
 
 export interface AuditEvent {

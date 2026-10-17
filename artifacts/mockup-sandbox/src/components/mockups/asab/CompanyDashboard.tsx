@@ -23,7 +23,7 @@ import {
   useDailyReconciliation, useSaveDailyVarianceAllocation, useExportInventory,
   useWaste, usePatchWasteProduct, usePutWasteAllocations, useApproveWaste, useRejectWaste,
   useBulkApproveWaste, useExportWaste,
-  useShiftsLive, useShiftsHistory, useShiftConfigs, useSaveShiftConfig, useExportShifts, useShiftVarianceAllocations,
+  useShiftsLive, useShiftsHistory, useShiftConfigs, useSaveShiftConfig, useExportShifts, useShiftVarianceAllocations, useAccountantShiftReportCorrection,
   useEmployees, useEmployeeMovements, useCreateEmployeeMovement, useSettleEmployeeBalance,
   useExportEmployeeStatement, useExportPayroll,
   useCashCustody, useCashTransactions, useCreateCashTransaction, useApproveCashTxn,
@@ -73,6 +73,7 @@ import {
 } from "../../../api/queries";
 import { apiOpToCOp, sumCOpAmounts, type COp, type COpStatus, type CMatch, type CModKey } from "./operationMapping";
 import { formatShiftHalalas, getShiftCountEvidence, getShiftStatusDisplay } from "./shiftCountEvidence";
+import { getShiftCorrectionEvidence, initialShiftCorrectionDraft, prepareShiftCorrectionRequest, runShiftReportCorrection, type ShiftCorrectionDraft, type ShiftCorrectionShareDraft } from "./shiftReportCorrection";
 import type {
   Asset, ExpenseInvoiceRow,
   PurchaseLine, PurchasesBlock, Supplier, PurchaseReturn, PurchaseEnumsCatalogue,
@@ -1437,6 +1438,143 @@ function ShiftAllocationForm({ op, shortageHalalas }:{ op:COp; shortageHalalas:n
   </div>;
 }
 
+function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation }) {
+  const { t, lang } = useCLang();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const correction = useAccountantShiftReportCorrection();
+  const employeeQuery = useEmployees({branchId:op.branchId,pageSize:100});
+  const initial = initialShiftCorrectionDraft(detail);
+  const [draft,setDraft] = useState<ShiftCorrectionDraft>(()=>initial);
+  const [pending,setPending] = useState(false);
+  const [completed,setCompleted] = useState(false);
+  const mounted = useRef(false);
+  const submitLock = useRef(false);
+  const pendingDirect = useRef(new Set<()=>void>());
+  const fingerprint = financialAccessFingerprint(user);
+  const currentFingerprint = useRef(fingerprint);
+  currentFingerprint.current = fingerprint;
+  useLayoutEffect(()=>{
+    mounted.current = true;
+    return ()=>{mounted.current=false;for(const abort of pendingDirect.current)abort();pendingDirect.current.clear();};
+  },[]);
+
+  const evidence = getShiftCorrectionEvidence(op,detail,"accountant");
+  const accessStillCurrent = (generation:number,expectedFingerprint:string) =>
+    mounted.current && generation === financialAccessGeneration(queryClient)
+    && expectedFingerprint === currentFingerprint.current && hasRoleGrant(user,"accountant");
+  const employees = (employeeQuery.data?.data ?? []).filter(employee=>employee.status === "active");
+  const hasDraftChanges = Boolean(evidence && prepareShiftCorrectionRequest(detail,draft));
+
+  const setField = (key:"cardPaymentsSar"|"countedCashSar"|"reason",value:string) =>
+    setDraft(current=>({...current,[key]:value}));
+  const setShare = (index:number,key:"type"|"id"|"amountSar",value:string) =>
+    setDraft(current=>({...current,shares:current.shares?.map((share,i)=>i===index?{...share,[key]:value}:share) ?? null}));
+  const submit = async () => {
+    if (!evidence || !hasRoleGrant(user,"accountant") || pending || completed || submitLock.current || !mounted.current) return;
+    const generation = financialAccessGeneration(queryClient);
+    const requestFingerprint = currentFingerprint.current;
+    setPending(true);
+    let postStarted = false;
+    try {
+      const didComplete=await runShiftReportCorrection(op,detail,"accountant",draft,async()=>{
+        const request=registerFinancialRequest(queryClient);
+        pendingDirect.current.add(request.abort);
+        try {
+          const response=await api.get<ApiOperation>(`/operations/${encodeURIComponent(op.id)}`,{signal:request.signal});
+          if(request.signal.aborted || !accessStillCurrent(generation,requestFingerprint)) throw new FinancialAccessChangedError();
+          queryClient.setQueryData(queryKeys.operation(op.id),response.data);
+          return response.data;
+        } finally {pendingDirect.current.delete(request.abort);request.release();}
+      },async(shiftId,body)=>{
+        if(!accessStillCurrent(generation,requestFingerprint)) throw new FinancialAccessChangedError();
+        postStarted = true;
+        await correction.mutateAsync({operationId:op.id,shiftId,body});
+      },submitLock);
+      if(didComplete && accessStillCurrent(generation,requestFingerprint)) setCompleted(true);
+      else if(!didComplete && accessStillCurrent(generation,requestFingerprint))
+        toast.error(t("تغير دليل التقرير أو نسخته؛ حدّث التفاصيل وأعد المراجعة","Report evidence or revision changed; refresh the details and review again"));
+    } catch(error) {
+      if(!postStarted && !(error instanceof FinancialAccessChangedError) && accessStillCurrent(generation,requestFingerprint))
+        toast.error(getErrorMessage(error,"ar"));
+    } finally {
+      if(mounted.current) setPending(false);
+    }
+  };
+
+  if(!evidence || !hasRoleGrant(user,"accountant")) return null;
+  const fieldClass="w-full rounded-lg border border-violet-200 bg-white px-2.5 py-2 font-mono text-xs";
+  const employeeOption=(employee:{id:string;name:string;empNumber:string})=>(
+    <option key={employee.id} value={`employee:${employee.id}`}>{employee.name} · {employee.empNumber}</option>
+  );
+  return <section aria-label={t("تصحيح تقرير الوردية","Shift report correction")} className="space-y-3 rounded-xl border border-violet-200 bg-violet-50/40 p-3 text-xs">
+    <div><h4 className="font-bold text-violet-900">{t("تصحيح تقرير المحاسب","Accountant report correction")}</h4>
+      <p className="mt-1 text-gray-600">{t("يُحفظ السبب وسجل المراجعة. إجمالي المبيعات غير قابل للتعديل.","The reason and audit history are retained. Gross sales cannot be changed.")}</p>
+    </div>
+    <div className="grid gap-2 sm:grid-cols-2">
+      <label className="space-y-1"><span>{t("إجمالي المبيعات — للقراءة فقط","Gross sales — read only")}</span>
+        <p className="rounded-lg border bg-gray-50 px-2.5 py-2 font-mono">{formatShiftHalalas(detail.payload?.salesHalalas,lang)}</p>
+      </label>
+      {draft.cardPaymentsSar !== null ? <label className="space-y-1"><span>{t("إجمالي الشبكة (ر.س)","Card payments (SAR)")}</span>
+        <input inputMode="decimal" value={draft.cardPaymentsSar} onChange={event=>setField("cardPaymentsSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+      </label> : <p>{t("إجمالي الشبكة غير متاح للتصحيح","Card amount unavailable for correction")}</p>}
+      {draft.countedCashSar !== null ? <label className="space-y-1"><span>{t("النقد المجرود (ر.س)","Counted cash (SAR)")}</span>
+        <input inputMode="decimal" value={draft.countedCashSar} onChange={event=>setField("countedCashSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+      </label> : <p>{t("لا يوجد مبلغ جرد صالح قابل للتصحيح","No valid counted amount is available to correct")}</p>}
+    </div>
+    <p className="text-gray-600">{t("تحصيل النقد وملاحظات التسليم غير واردين في تفاصيل العملية الحالية؛ لا يمكن تصحيحهما هنا.","Cash collected and handover notes are absent from this operation detail contract, so they are not editable here.")}</p>
+    {draft.aggregators === null ? <p className="text-gray-600">{t("تفاصيل التطبيقات غير متاحة بصيغة قابلة للتصحيح","Aggregator values are not available in a correctable contract shape")}</p>
+      : draft.aggregators.length > 0 && <div className="space-y-2">
+        <h5 className="font-semibold">{t("مبالغ تفاصيل التطبيقات (ر.س)","Aggregator detail amounts (SAR)")}</h5>
+        {draft.aggregators.map((row,index)=><label key={`${row.aggregatorId}-${index}`} className="flex items-center gap-2">
+          <span>{t("تفصيل التطبيق","Aggregator item")} {index+1}</span>
+          <input inputMode="decimal" value={row.amountSar} disabled={pending||correction.isPending} className={fieldClass}
+            onChange={event=>setDraft(current=>({...current,aggregators:current.aggregators?.map((item,i)=>i===index?{...item,amountSar:event.target.value}:item)??null}))}/>
+        </label>)}
+        <p className="text-gray-500">{t("يُعرض التفصيل بترتيبه دون ادعاء اسم التطبيق؛ لا تُعرض معرّفاته.","Items follow API order; no app name is inferred and identifiers stay hidden.")}</p>
+      </div>}
+    {draft.shares !== null && <div className="space-y-2 border-t border-violet-100 pt-2">
+      <h5 className="font-semibold">{t("تصحيح توزيع المسؤولية","Correct responsibility allocation")}</h5>
+      {employeeQuery.isLoading && <p role="status">{t("جارٍ تحميل موظفي الفرع…","Loading branch employees…")}</p>}
+      {employeeQuery.isError && <p role="alert">{t("تعذر تحميل موظفي الفرع؛ التوزيع غير متاح للتصحيح","Could not load branch employees; allocation correction is unavailable")}</p>}
+      {draft.shares.map((share,index)=>{
+        const currentKey=["cashier","employee","branch_manager"].includes(share.type)&&share.id?`${share.type}:${share.id}`:"";
+        const changeActor=(value:string)=>{
+          const [type,id]=value.split(":");
+          setDraft(current=>({...current,shares:current.shares?.map((item,i)=>i===index?{...item,type,id}:item)??null}));
+        };
+        const selectedEmployee=employees.find(employee=>employee.id===share.id);
+        const showCurrentActor=currentKey && (share.type!=="employee" || !selectedEmployee);
+        return <div key={index} className="grid gap-2 sm:grid-cols-[1fr_9rem_auto]">
+          <label className="space-y-1"><span>{t("المسؤول","Responsible person")}</span>
+            <select className={fieldClass} value={currentKey} onChange={event=>changeActor(event.target.value)} disabled={pending||correction.isPending||employeeQuery.isLoading||employeeQuery.isError}>
+              <option value="">{t("اختر موظفًا","Select an employee")}</option>
+              {showCurrentActor && <option value={currentKey}>{share.name ?? selectedEmployee?.name ?? t("المسؤول الحالي","Current responsible party")}</option>}
+              {employees.map(employeeOption)}
+            </select>
+          </label>
+          <label className="space-y-1"><span>{t("المبلغ (ر.س)","Amount (SAR)")}</span>
+            <input inputMode="decimal" className={fieldClass} value={share.amountSar} disabled={pending||correction.isPending}
+              onChange={event=>setShare(index,"amountSar",event.target.value)}/>
+          </label>
+          <button type="button" onClick={()=>setDraft(current=>({...current,shares:current.shares?.filter((_,i)=>i!==index)??null}))}
+            disabled={pending||correction.isPending} className="self-end rounded-lg border border-red-200 px-2 py-2 text-red-700 disabled:opacity-50">{t("حذف","Remove")}</button>
+        </div>;
+      })}
+      <button type="button" onClick={()=>setDraft(current=>({...current,shares:[...(current.shares??[]),{type:"employee",id:"",amountSar:""}]}))}
+        disabled={pending||correction.isPending||employeeQuery.isLoading||employeeQuery.isError} className="rounded-lg border px-2 py-1.5 disabled:opacity-50">{t("إضافة مسؤول","Add responsible person")}</button>
+      <p className="text-gray-500">{t("تُرسل حصص التوزيع كهللات صحيحة؛ يتحقق الخادم من مجموعها والفرع والنسخة، دون حساب فرق التقرير هنا.","Shares are sent as integer halalas; the server validates their total, branch and version without calculating report variance here.")}</p>
+    </div>}
+    <label className="block space-y-1"><span>{t("سبب التصحيح (إلزامي)","Correction reason (required)")}</span>
+      <textarea rows={2} value={draft.reason} onChange={event=>setField("reason",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+    </label>
+    <button type="button" onClick={submit} disabled={!hasDraftChanges||pending||completed||correction.isPending}
+      className="rounded-lg bg-violet-700 px-3 py-2 font-semibold text-white disabled:opacity-50">
+      {pending||correction.isPending?t("جارٍ حفظ التصحيح…","Saving correction…"):completed?t("تم حفظ التصحيح","Correction saved"):t("حفظ التصحيح","Save correction")}
+    </button>
+  </section>;
+}
+
 function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:boolean; detail?:ApiOperation; loading?:boolean; error?:boolean }) {
   const { t, lang } = useCLang();
   if (loading) return <p role="status">{t("جارٍ تحميل تفاصيل الوردية…","Loading shift details…")}</p>;
@@ -1503,6 +1641,8 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
         </div>
       )}
       {allocationEvidence && <ShiftAllocationForm op={op} shortageHalalas={allocationEvidence.shortageHalalas}/>}
+      {!forHead && op?.branchId && getShiftCorrectionEvidence(op,detail,"accountant") &&
+        <ShiftReportCorrectionForm key={`${detail.id}:${detail.reportRevision ?? "missing"}`} op={op} detail={detail}/>}
       <div className="text-xs space-y-1">
         <h4 className="font-bold">{t("توزيع المسؤولية","Liability allocation")}</h4>
         {liability ? <>

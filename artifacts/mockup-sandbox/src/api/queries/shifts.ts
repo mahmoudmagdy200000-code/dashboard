@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, downloadBlob } from "../client";
-import type { Page } from "../types";
+import type { Page, ShiftReportCorrectionRequest, ShiftReportCorrectionResponse } from "../types";
 import type {
   CloseShiftResponse,
   Shift,
@@ -217,6 +217,35 @@ export function useShiftVarianceAllocations() {
       qc.invalidateQueries({ queryKey: ["operations"] });
       qc.invalidateQueries({ queryKey: queryKeys.operation(vars.operationId) });
       toast.success("تم توزيع فرق الكاش");
+    },
+    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+  });
+}
+
+/** COR-05 field/allocation correction is atomic and distinct from M-8's initial allocation endpoint. */
+export function useAccountantShiftReportCorrection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      shiftId,
+      body,
+    }: {
+      operationId: string;
+      shiftId: string;
+      body: ShiftReportCorrectionRequest;
+    }) => {
+      const res = await api.post<ShiftReportCorrectionResponse>(
+        `/accountant/shifts/${encodeURIComponent(shiftId)}/corrections`,
+        body,
+      );
+      return res.data;
+    },
+    onSuccess: (_result, vars) => {
+      qc.invalidateQueries({ queryKey: ["operations"] });
+      qc.invalidateQueries({ queryKey: queryKeys.operation(vars.operationId) });
+      qc.invalidateQueries({ queryKey: ["shifts"] });
+      qc.invalidateQueries({ queryKey: queryKeys.accDashboard });
+      toast.success("تم تصحيح تقرير الوردية");
     },
     onError: (e) => toast.error(getErrorMessage(e, "ar")),
   });
