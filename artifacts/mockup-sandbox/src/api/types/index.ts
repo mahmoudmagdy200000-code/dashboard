@@ -133,7 +133,17 @@ export interface ShiftOpPayload {
   pkg6Review?: Record<string, unknown> | null;
   cashCollectedHalalas?: number | null;
   handoverNotes?: string | null;
-  lastCorrection?: Record<string, unknown> | null;
+  lastCorrection?: ShiftLastCorrection | null;
+}
+
+/** COR-05-02 authoritative correction attribution record. */
+export interface ShiftLastCorrection {
+  revisionNumber: number;
+  commandId?: string | null;
+  reason?: string | null;
+  actorType?: string | null;
+  actorId?: string | null;
+  createdAt?: string | null;
 }
 
 /** BD-2 read-only allocation evidence. `version` belongs to the allocation. */
@@ -172,7 +182,7 @@ export interface Operation {
   confirmedOpeningHalalas?: number | null;
   cashCollectedHalalas?: number | null;
   handoverNotes?: string | null;
-  lastCorrection?: Record<string, unknown> | null;
+  lastCorrection?: ShiftLastCorrection | null;
   originLabelAr?: string;
   originIcon?: string;
   attachmentCount?: number;

@@ -8,7 +8,7 @@ import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRows, shfReviewPageTarget, type ShfReviewAction, type ShfReviewGroup } from "./shiftReviewQueue";
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT } from "./headReviewGuards";
 import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocationHalalas, runShfAllocationCorrection, type ShfAllocationRow } from "./shiftAllocationCorrection";
-import { api } from "../../../api/client";
+import { api, generateCommandId } from "../../../api/client";
 import { toast } from "sonner";
 import { useState, useMemo, useEffect, useLayoutEffect, useRef, ReactNode, createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
 import {
@@ -1478,6 +1478,7 @@ function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation 
     const requestFingerprint = currentFingerprint.current;
     setPending(true);
     let postStarted = false;
+    const clientCommandId = generateCommandId();
     try {
       const didComplete=await runShiftReportCorrection(op,detail,"accountant",draft,async()=>{
         const request=registerFinancialRequest(queryClient);
@@ -1491,7 +1492,7 @@ function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation 
       },async(shiftId,body)=>{
         if(!accessStillCurrent(generation,requestFingerprint)) throw new FinancialAccessChangedError();
         postStarted = true;
-        await correction.mutateAsync({operationId:op.id,shiftId,body});
+        await correction.mutateAsync({operationId:op.id,shiftId,body,idempotencyKey:clientCommandId});
       },submitLock);
       if(didComplete && accessStillCurrent(generation,requestFingerprint)) {
         setCompleted(true);
@@ -1502,7 +1503,7 @@ function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation 
       if(postStarted) {
         // F-COR05-02: After uncertain correction POST outcome, refetch actual operation from server
         // to reconcile screen with server truth without repeating the financial POST.
-        // Requires evidence of the user's actual correction command; reportRevision > expected alone is not proof.
+        // Requires exact command identity attribution; never use reason text or actor ID as proof of success.
         try {
           const reconciled = await api.get<ApiOperation>(`/operations/${encodeURIComponent(op.id)}`);
           if (accessStillCurrent(generation, requestFingerprint)) {
@@ -1516,9 +1517,9 @@ function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation 
               freshRev > expectedRev &&
               lastCorrection &&
               typeof lastCorrection === "object" &&
-              (lastCorrection as { revisionNumber?: number }).revisionNumber === freshRev &&
-              (((lastCorrection as { reason?: string }).reason?.trim() === draft.reason.trim()) ||
-               (user?.id && String((lastCorrection as { actorId?: string }).actorId) === String(user.id)))
+              lastCorrection.revisionNumber === freshRev &&
+              clientCommandId &&
+              lastCorrection.commandId === clientCommandId
             );
             if (matchesAttribution) {
               setCompleted(true);
@@ -1526,13 +1527,13 @@ function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation 
               toast.success(t("تم تطبيق التصحيح على الخادم وتحديث التقرير","Correction applied on server and report updated"));
             } else {
               setUncertain(true);
-              toast.error(t("حالة إرسال التصحيح غير مؤكدة؛ تم التوفيق مع الخادم دون تكرار العملية","Correction outcome uncertain; reconciled with server truth without repeating submission"));
+              toast.error(t("حالة إرسال التصحيح غير مؤكدة؛ يتطلب التحقق اليدوي دون تكرار العملية","Correction outcome uncertain; manual verification required without repeating submission"));
             }
           }
         } catch {
           if (accessStillCurrent(generation, requestFingerprint)) {
             setUncertain(true);
-            toast.error(t("تعذر التحقق من حالة الخادم بعد إرسال التصحيح؛ حدّث الصفحة يدويًا","Could not verify server state after correction submission; refresh manually"));
+            toast.error(t("تعذر التحقق من حالة الخادم بعد إرسال التصحيح؛ يتطلب التحقق اليدوي","Could not verify server state after correction submission; manual verification required"));
           }
         }
       } else if(!(error instanceof FinancialAccessChangedError) && accessStillCurrent(generation,requestFingerprint)) {

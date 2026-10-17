@@ -4,7 +4,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api, downloadBlob } from "../client";
+import { api, downloadBlob, withIdempotencyKey } from "../client";
 import type { Page, ShiftReportCorrectionRequest, ShiftReportCorrectionResponse } from "../types";
 import type {
   CloseShiftResponse,
@@ -229,14 +229,17 @@ export function useAccountantShiftReportCorrection() {
     mutationFn: async ({
       shiftId,
       body,
+      idempotencyKey,
     }: {
       operationId: string;
       shiftId: string;
       body: ShiftReportCorrectionRequest;
+      idempotencyKey?: string;
     }) => {
       const res = await api.post<ShiftReportCorrectionResponse>(
         `/accountant/shifts/${encodeURIComponent(shiftId)}/corrections`,
         body,
+        idempotencyKey ? withIdempotencyKey(idempotencyKey) : undefined,
       );
       return res.data;
     },

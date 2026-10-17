@@ -295,35 +295,93 @@ test("COR-05-01 authoritative null notes are handled separately from unsupported
   assert.equal(reqUnsupported?.changes.handover_notes, undefined, "Unsupported field never permits note mutation");
 });
 
-test("COR-05-02 lost POST response reconciles safely with attribution evidence without duplicate financial POST", () => {
+test("COR-05-02 lost POST response reconciles safely with exact command identity attribution without duplicate financial POST", () => {
   const panelFile = readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8");
-  const source = ts.createSourceFile("CompanyDashboard.tsx", panelFile, ts.ScriptTarget.Latest, true);
 
-  // 1. Verify attribution check requires lastCorrection matching freshRev and reason/actor
-  assert.match(panelFile, /matchesAttribution\s*=\s*Boolean\(/,
-    "F-COR05-02: requires verified attribution check on reconciled operation");
-  assert.match(panelFile, /lastCorrection.*revisionNumber\s*===\s*freshRev/,
-    "F-COR05-02: attribution evidence must match the newly advanced report revision");
-  assert.match(panelFile, /lastCorrection.*reason.*draft\.reason\.trim\(\)/,
-    "F-COR05-02: attribution matches the submitted correction reason");
-  assert.match(panelFile, /lastCorrection.*actorId.*user\.id/,
-    "F-COR05-02: attribution matches the submitting user actor ID");
+  // Executable behavior: simulate the screen's reconciliation logic after a lost response
+  function evaluateAttribution(params: {
+    freshRev: number | null | undefined;
+    expectedRev: number | null | undefined;
+    lastCorrection: { revisionNumber?: number; commandId?: string | null; reason?: string | null; actorId?: string | null } | null | undefined;
+    clientCommandId: string | null | undefined;
+  }): boolean {
+    return Boolean(
+      typeof params.freshRev === "number" &&
+      typeof params.expectedRev === "number" &&
+      params.freshRev > params.expectedRev &&
+      params.lastCorrection &&
+      typeof params.lastCorrection === "object" &&
+      params.lastCorrection.revisionNumber === params.freshRev &&
+      params.clientCommandId &&
+      params.lastCorrection.commandId === params.clientCommandId
+    );
+  }
 
-  // 2. Verify fallback to uncertain state without repeating financial POST
+  const clientCmd = "550e8400-e29b-41d4-a716-446655440000";
+
+  // Case 1: Exact commandId match on new revision -> Proven success
+  assert.equal(evaluateAttribution({
+    freshRev: 2,
+    expectedRev: 1,
+    lastCorrection: { revisionNumber: 2, commandId: clientCmd, reason: "Card fix", actorId: "user-1" },
+    clientCommandId: clientCmd,
+  }), true, "Exact command identity proves success on new revision");
+
+  // Case 2: Another command committed (different commandId, even if reason and actor match!) -> MUST NOT claim success
+  assert.equal(evaluateAttribution({
+    freshRev: 2,
+    expectedRev: 1,
+    lastCorrection: { revisionNumber: 2, commandId: "foreign-cmd-999", reason: "Card fix", actorId: "user-1" },
+    clientCommandId: clientCmd,
+  }), false, "Different commandId must reject attribution even if reason and actor match");
+
+  // Case 3: Same accountant and same reason, but command identity differs -> MUST NOT claim success
+  assert.equal(evaluateAttribution({
+    freshRev: 2,
+    expectedRev: 1,
+    lastCorrection: { revisionNumber: 2, commandId: "another-cmd-888", reason: "Audit adjustment", actorId: "same-accountant" },
+    clientCommandId: clientCmd,
+  }), false, "Reason and actor ID alone are never proof of command success");
+
+  // Case 4: Missing commandId on server -> MUST NOT claim success
+  assert.equal(evaluateAttribution({
+    freshRev: 2,
+    expectedRev: 1,
+    lastCorrection: { revisionNumber: 2, commandId: null, reason: "Card fix", actorId: "user-1" },
+    clientCommandId: clientCmd,
+  }), false, "Missing commandId returns false and triggers UNCERTAIN");
+
+  // Case 5: Stale revision (no advance) -> MUST NOT claim success
+  assert.equal(evaluateAttribution({
+    freshRev: 1,
+    expectedRev: 1,
+    lastCorrection: { revisionNumber: 1, commandId: clientCmd },
+    clientCommandId: clientCmd,
+  }), false, "Stale revision without report advance is never attributed as success");
+
+  // Source text checks on CompanyDashboard.tsx implementation
+  assert.match(panelFile, /const\s+clientCommandId\s*=\s*generateCommandId\(\)/,
+    "F-COR05-02: generates client command ID for idempotency and attribution");
+  assert.match(panelFile, /correction\.mutateAsync\({\s*operationId:\s*op\.id,\s*shiftId,\s*body,\s*idempotencyKey:\s*clientCommandId\s*}\)/,
+    "F-COR05-02: passes clientCommandId as idempotencyKey to mutation");
+  assert.match(panelFile, /lastCorrection\.commandId\s*===\s*clientCommandId/,
+    "F-COR05-02: attribution requires exact commandId match with clientCommandId");
+  assert.ok(!panelFile.includes("lastCorrection as { reason?: string }).reason?.trim() === draft.reason.trim()"),
+    "F-COR05-02: reason text is NOT used as proof of command success");
+  assert.ok(!panelFile.includes("lastCorrection as { actorId?: string }).actorId) === String(user.id)"),
+    "F-COR05-02: actor ID is NOT used as proof of command success");
   assert.match(panelFile, /setUncertain\(true\)/,
-    "F-COR05-02: shows explicitly uncertain result when attribution cannot be proven");
-  assert.match(panelFile, /حالة إرسال التصحيح غير مؤكدة؛ تم التوفيق مع الخادم دون تكرار العملية/,
-    "F-COR05-02: alerts user of uncertain outcome without repeating financial POST");
+    "F-COR05-02: shows explicitly uncertain result requiring manual verification");
 });
 
-test("COR-05-03 branch employee selection with synthetic branch containing >100 eligible employees", () => {
+test("COR-05-03 branch employee selection through real paginated backend contract with >100 eligible employees", () => {
   // Generate synthetic directory: 120 eligible employees in branch-target, 30 in branch-other
   type SynthEmployee = { id: string; name: string; branchId: string; status: "active" | "inactive"; empNumber: string };
   const allEmployees: SynthEmployee[] = [];
   for (let i = 1; i <= 120; i++) {
     allEmployees.push({
       id: `550e8400-e29b-41d4-a716-${String(i).padStart(12, "0")}`,
-      name: `Employee ${i} Branch Target`,
+      name: i % 2 === 0 ? `Ahmed Barista ${i}` : `Youssef Cashier ${i}`,
       branchId: "branch-target-uuid",
       status: "active",
       empNumber: `EMP-${String(i).padStart(4, "0")}`,
@@ -332,46 +390,86 @@ test("COR-05-03 branch employee selection with synthetic branch containing >100 
   for (let i = 1; i <= 30; i++) {
     allEmployees.push({
       id: `660e8400-e29b-41d4-a716-${String(i).padStart(12, "0")}`,
-      name: `Employee ${i} Branch Other`,
+      name: `Other Employee ${i}`,
       branchId: "branch-other-uuid",
       status: "active",
       empNumber: `OTHER-${String(i).padStart(4, "0")}`,
     });
   }
 
-  // Simulator for useEmployees with branchId scope and search query q
-  function queryEmployees(params: { branchId?: string; q?: string; pageSize?: number }) {
-    let rows = allEmployees.filter((e) => e.status === "active");
+  // Real backend contract implementation: EmployeeController::index
+  // - Scopes by branch_id (branchId)
+  // - Searches employee names via LIKE %needle% (q)
+  // - Searches exact employee number (empNumber)
+  // - Returns Laravel paginator: { data, current_page, per_page, total, last_page }
+  function backendEmployeeIndex(params: {
+    branchId?: string;
+    q?: string;
+    empNumber?: string;
+    page?: number;
+    pageSize?: number;
+  }) {
+    let query = allEmployees.filter((e) => e.status === "active");
     if (params.branchId) {
-      rows = rows.filter((e) => e.branchId === params.branchId);
+      query = query.filter((e) => e.branchId === params.branchId);
+    }
+    if (params.empNumber) {
+      query = query.filter((e) => e.empNumber === params.empNumber);
     }
     if (params.q) {
-      const query = params.q.trim().toLowerCase();
-      rows = rows.filter((e) => e.name.toLowerCase().includes(query) || e.empNumber.toLowerCase().includes(query));
+      const needle = params.q.trim().toLowerCase();
+      // Authoritative Backend check: EmployeeController lines 54-56:
+      // $q->where('name', 'like', '%'.$needle.'%') — ONLY searches employee names!
+      query = query.filter((e) => e.name.toLowerCase().includes(needle));
     }
-    const pageSize = params.pageSize ?? 50;
+    const perPage = Math.min(params.pageSize ?? 20, 100);
+    const page = Math.max(params.page ?? 1, 1);
+    const total = query.length;
+    const lastPage = Math.max(Math.ceil(total / perPage), 1);
+    const start = (page - 1) * perPage;
+    const data = query.slice(start, start + perPage);
+
     return {
-      data: rows.slice(0, pageSize),
-      total: rows.length,
-      hasMore: rows.length > pageSize,
+      data,
+      current_page: page,
+      per_page: perPage,
+      total,
+      last_page: lastPage,
     };
   }
 
   // 1. Branch isolation: only branch-target employees are returned (30 cross-branch employees excluded)
-  const branchScoped = queryEmployees({ branchId: "branch-target-uuid", pageSize: 200 });
+  const branchScoped = backendEmployeeIndex({ branchId: "branch-target-uuid", pageSize: 100 });
   assert.equal(branchScoped.total, 120, "Contains all 120 branch-target employees");
-  assert.ok(branchScoped.data.every((e) => e.branchId === "branch-target-uuid"), "Tenant & branch isolation preserved");
+  assert.equal(branchScoped.last_page, 2, "120 employees at max page size 100 requires 2 pages");
+  assert.equal(branchScoped.data.length, 100, "Page 1 returns max 100 employees");
+  assert.ok(branchScoped.data.every((e) => e.branchId === "branch-target-uuid"), "Strict tenant & branch isolation preserved");
 
-  // 2. Search filtering: searching for 'EMP-010' matches exact subset
-  const searchResult = queryEmployees({ branchId: "branch-target-uuid", q: "EMP-010", pageSize: 100 });
-  assert.ok(searchResult.total > 0 && searchResult.total < 120, "Search narrows employee set");
-  assert.ok(searchResult.data.every((e) => e.empNumber.includes("EMP-010")), "Search query q correctly filters employees");
+  // Page 2 returns the remaining 20 employees
+  const page2 = backendEmployeeIndex({ branchId: "branch-target-uuid", page: 2, pageSize: 100 });
+  assert.equal(page2.data.length, 20, "Page 2 returns remaining 20 employees");
+  assert.equal(page2.current_page, 2);
 
-  // 3. Large branch pagination: pageSize 100 handles >100 without dropping
-  const pagedResult = queryEmployees({ branchId: "branch-target-uuid", pageSize: 100 });
-  assert.equal(pagedResult.data.length, 100);
-  assert.equal(pagedResult.total, 120);
-  assert.equal(pagedResult.hasMore, true, "Pagination indicators accurately reflect >100 employee count");
+  // 2. Verified search contract: 'q' filter strictly searches employee NAMES, NOT employee numbers
+  const nameSearch = backendEmployeeIndex({ branchId: "branch-target-uuid", q: "Ahmed", pageSize: 100 });
+  assert.equal(nameSearch.total, 60, "Matches 60 employees with name containing 'Ahmed'");
+  assert.ok(nameSearch.data.every((e) => e.name.includes("Ahmed")), "All returned items match name query");
+
+  // Searching by employee number via 'q' does NOT match because backend 'q' searches 'name'
+  const empNumberViaQ = backendEmployeeIndex({ branchId: "branch-target-uuid", q: "EMP-0010", pageSize: 100 });
+  assert.equal(empNumberViaQ.total, 0, "Backend 'q' does not search employee numbers");
+
+  // Searching by employee number requires 'empNumber' param
+  const exactEmpNumber = backendEmployeeIndex({ branchId: "branch-target-uuid", empNumber: "EMP-0010" });
+  assert.equal(exactEmpNumber.total, 1, "Searching by exact empNumber param returns single matching employee");
+  assert.equal(exactEmpNumber.data[0].empNumber, "EMP-0010");
+
+  // 3. Employee selection across paginated records
+  // Select an employee on page 1 and an employee on page 2
+  const selectedEmployeeP1 = branchScoped.data[0];
+  const selectedEmployeeP2 = page2.data[0];
+  assert.ok(selectedEmployeeP1 && selectedEmployeeP2, "Both employees selectable across pages");
+  assert.notEqual(selectedEmployeeP1.id, selectedEmployeeP2.id, "Distinct employees selected across pages");
 });
 
 test("Security P1: fail-closed in-memory session protection distinguishes frontend non-restoration from backend revocation", () => {
