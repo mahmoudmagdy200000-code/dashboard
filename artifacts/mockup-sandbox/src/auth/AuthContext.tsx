@@ -97,7 +97,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionEpoch.current++;
     refreshRequest.current++;
     if (typeof clearProvisionalTokens === "function") {
-      clearProvisionalTokens();
+      try {
+        clearProvisionalTokens();
+      } catch (err) {
+        console.error("[auth] Storage cleanup failed during session invalidation:", (err as Error)?.message || err);
+      }
     }
   }, []);
 
@@ -148,7 +152,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch {
         // Token invalid / network. Clear and route to login.
-        if (bootstrapSession === sessionEpoch.current && bootstrapRequest === refreshRequest.current) clearTokens();
+        if (bootstrapSession === sessionEpoch.current && bootstrapRequest === refreshRequest.current) {
+          try {
+            clearTokens();
+          } catch {}
+        }
       } finally {
         if (!cancelled && bootstrapSession === sessionEpoch.current && bootstrapRequest === refreshRequest.current)
           setInitializing(false);
@@ -180,11 +188,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Always purge stored tokens on forced sign-out — the no-refresh-token 401
       // path dispatches this event without performRefresh() having cleared them,
       // which would otherwise strand a stale access token in localStorage.
-      clearTokens();
+      try {
+        clearTokens();
+      } catch (err) {
+        console.error("[auth] Storage cleanup failed during forced logout:", (err as Error)?.message || err);
+      }
       // Drop the pre-login dashboard/role pick so the next login re-routes cleanly
       // (a stale selection would strand the next user in the wrong dashboard).
-      clearEntrySelection();
-      disconnectEcho();
+      try {
+        clearEntrySelection();
+      } catch (err) {
+        console.error("[auth] clearEntrySelection failed during forced logout:", err);
+      }
+      try {
+        disconnectEcho();
+      } catch (err) {
+        console.error("[auth] disconnectEcho failed during forced logout:", err);
+      }
       const previous = queryClientRef.current;
       void clearRetiredQueryClient(previous);
       const fresh = createQueryClient();
@@ -391,11 +411,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!me) return res;
         const committedSession = getTokenState().sessionId;
         if (!isCurrent()) {
-          clearSessionTokensIfCurrent(committedSession);
+          try {
+            clearSessionTokensIfCurrent(committedSession);
+          } catch {}
           return res;
         }
         if (!await applyFreshUser(me, isCurrent, true) || !isCurrent()) {
-          clearSessionTokensIfCurrent(committedSession);
+          try {
+            clearSessionTokensIfCurrent(committedSession);
+          } catch {}
           return res;
         }
         confirmSessionTokens(committedSession);
@@ -427,11 +451,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!me) return res;
         const committedSession = getTokenState().sessionId;
         if (!isCurrent()) {
-          clearSessionTokensIfCurrent(committedSession);
+          try {
+            clearSessionTokensIfCurrent(committedSession);
+          } catch {}
           return res;
         }
         if (!await applyFreshUser(me, isCurrent, true) || !isCurrent()) {
-          clearSessionTokensIfCurrent(committedSession);
+          try {
+            clearSessionTokensIfCurrent(committedSession);
+          } catch {}
           return res;
         }
         confirmSessionTokens(committedSession);
@@ -466,6 +494,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logoutPending.current = request;
     try {
       await request;
+    } catch (err) {
+      console.error("[auth] Server logout failed:", (err as Error)?.message || err);
     } finally {
       await cleanup;
       if (logoutPending.current === request) logoutPending.current = null;
@@ -475,8 +505,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setDefaultPage(null);
         // Always drop the pre-login pick — otherwise App's redirect effect would
         // immediately re-route the (now logged-out) browser back into a dashboard.
-        clearEntrySelection();
-        disconnectEcho();
+        try {
+          clearEntrySelection();
+        } catch {}
+        try {
+          disconnectEcho();
+        } catch {}
       }
     }
   }, [invalidateSessionRequests]);

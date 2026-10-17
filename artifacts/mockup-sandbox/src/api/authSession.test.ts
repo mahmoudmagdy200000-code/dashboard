@@ -761,10 +761,15 @@ test("F-SHIFT-FINAL-01 residual: Login B completes successfully while Login A is
   tokens.clearTokens();
   const resetPending = deferred<boolean>();
   const resetStarted = deferred<void>();
+  let resetCount = 0;
   const ctx = makeAuthContextCallbacks({
     resetQueryClient: async () => {
-      resetStarted.resolve();
-      return resetPending.promise;
+      resetCount++;
+      if (resetCount === 1) {
+        resetStarted.resolve();
+        return resetPending.promise;
+      }
+      return true;
     },
     initialUser: { id: "prev-user", companyId: "comp-1" },
   });
@@ -853,27 +858,203 @@ test("F-SHIFT-FINAL-01 residual: forced logout during resetQueryClient immediate
   assert.notEqual((ctx.uiUser as { id?: string } | null)?.id, "user-A");
 });
 
-test("F-SHIFT-P1-02: fail-closed token cleanup on storage failure guarantees in-memory session invalidation", async () => {
-  tokens.clearTokens();
-  const initialSession = tokens.setProvisionalTokens(pair("A"));
+test("F-SHIFT-P1-02: fail-closed token cleanup across all 4 clearing functions when storage removeItem throws", async () => {
+  const originalRemove = globalThis.localStorage.removeItem;
+
+  // 1. clearTokens()
+  {
+    tokens.setTokens(pair("A"));
+    assert.deepEqual(tokens.getTokens(), pair("A"));
+    globalThis.localStorage.removeItem = () => { throw new Error("Storage quota exceeded"); };
+    try {
+      assert.throws(() => tokens.clearTokens(), /Storage quota exceeded/);
+    } finally {
+      globalThis.localStorage.removeItem = originalRemove;
+    }
+    assert.equal(tokens.getTokens(), null);
+    assert.equal(tokens.getTokenState().tokens, null);
+    assert.equal(tokens.hasProvisionalTokens(), false);
+  }
+
+  // 2. clearProvisionalTokens()
+  {
+    tokens.setProvisionalTokens(pair("prov"));
+    assert.equal(tokens.hasProvisionalTokens(), true);
+    globalThis.localStorage.removeItem = () => { throw new Error("Storage quota exceeded"); };
+    try {
+      assert.throws(() => tokens.clearProvisionalTokens(), /Storage quota exceeded/);
+    } finally {
+      globalThis.localStorage.removeItem = originalRemove;
+    }
+    assert.equal(tokens.getTokens(), null);
+    assert.equal(tokens.getTokenState().tokens, null);
+    assert.equal(tokens.hasProvisionalTokens(), false);
+  }
+
+  // 3. clearTokensIfCurrent()
+  {
+    tokens.setTokens(pair("curr"));
+    const state = tokens.getTokenState();
+    globalThis.localStorage.removeItem = () => { throw new Error("Storage quota exceeded"); };
+    try {
+      assert.throws(() => tokens.clearTokensIfCurrent(state), /Storage quota exceeded/);
+    } finally {
+      globalThis.localStorage.removeItem = originalRemove;
+    }
+    assert.equal(tokens.getTokens(), null);
+    assert.equal(tokens.getTokenState().tokens, null);
+  }
+
+  // 4. clearSessionTokensIfCurrent()
+  {
+    tokens.setTokens(pair("sess"));
+    const sid = tokens.getTokenState().sessionId;
+    globalThis.localStorage.removeItem = () => { throw new Error("Storage quota exceeded"); };
+    try {
+      assert.throws(() => tokens.clearSessionTokensIfCurrent(sid), /Storage quota exceeded/);
+    } finally {
+      globalThis.localStorage.removeItem = originalRemove;
+    }
+    assert.equal(tokens.getTokens(), null);
+    assert.equal(tokens.getTokenState().tokens, null);
+  }
+});
+
+test("F-SHIFT-P1-02: API request interceptor never attaches Bearer header after failed storage cleanup", async () => {
+  resetAdapters();
+  tokens.setTokens(pair("A"));
+  const originalRemove = globalThis.localStorage.removeItem;
+  globalThis.localStorage.removeItem = () => { throw new Error("Storage quota exceeded"); };
+  try {
+    tokens.clearTokens();
+  } catch {}
+  globalThis.localStorage.removeItem = originalRemove;
+
+  let attachedAuthHeader: string | undefined = "sentinel";
+  api.defaults.adapter = (async config => {
+    attachedAuthHeader = (config.headers?.get?.("Authorization") ?? config.headers?.Authorization) as string | undefined;
+    return response(config, { ok: true });
+  }) as AxiosAdapter;
+
+  await api.get("/api/v1/resource");
+  assert.equal(attachedAuthHeader, undefined);
+});
+
+test("F-SHIFT-P1-02: in-flight refresh cannot restore credentials after session invalidation with storage failure", async () => {
+  resetAdapters();
+  tokens.setTokens(pair("refresh-target"));
+  const snapshot = tokens.getTokenState();
+
+  const originalRemove = globalThis.localStorage.removeItem;
+  globalThis.localStorage.removeItem = () => { throw new Error("Storage quota exceeded"); };
+  try {
+    tokens.clearTokens();
+  } catch {}
+  globalThis.localStorage.removeItem = originalRemove;
+
+  const rotated = tokens.rotateTokensIfCurrent(snapshot, pair("new-pair"));
+  assert.equal(rotated, false);
+  assert.equal(tokens.getTokens(), null);
+});
+
+test("F-SHIFT-P1-02: 401 retry never attempts to retry with revoked credentials after storage cleanup error", async () => {
+  resetAdapters();
+  tokens.setTokens(pair("retry-target"));
+
+  let attempts = 0;
+  api.defaults.adapter = (async config => {
+    attempts++;
+    if (attempts === 1) {
+      // Invalidate during in-flight request
+      const originalRemove = globalThis.localStorage.removeItem;
+      globalThis.localStorage.removeItem = () => { throw new Error("Storage quota exceeded"); };
+      try { tokens.clearTokens(); } catch {}
+      globalThis.localStorage.removeItem = originalRemove;
+
+      throw unauthorized(config);
+    }
+    return response(config, { retried: true });
+  }) as AxiosAdapter;
+
+  await assert.rejects(api.get("/api/v1/retry-test"));
+  assert.equal(attempts, 1);
+  assert.equal(tokens.getTokens(), null);
+});
+
+test("F-SHIFT-P1-02: Session B logs in successfully and remains active after Session A storage cleanup failure", async () => {
+  resetAdapters();
+  tokens.setTokens(pair("A"));
+
+  const originalRemove = globalThis.localStorage.removeItem;
+  globalThis.localStorage.removeItem = () => { throw new Error("Storage quota exceeded"); };
+  try { tokens.clearTokens(); } catch {}
+  globalThis.localStorage.removeItem = originalRemove;
+
+  assert.equal(tokens.getTokens(), null);
+
+  // Session B establishes login
+  tokens.setTokens(pair("B"));
+  assert.deepEqual(tokens.getTokens(), pair("B"));
+
+  let attachedHeader: string | undefined;
+  api.defaults.adapter = (async config => {
+    attachedHeader = (config.headers?.get?.("Authorization") ?? config.headers?.Authorization) as string | undefined;
+    return response(config, { ok: true });
+  }) as AxiosAdapter;
+
+  await api.get("/api/v1/b-resource");
+  assert.equal(attachedHeader, "Bearer B-access");
+});
+
+test("F-SHIFT-P1-02: forced logout clears UI state and tokens even if storage cleanup throws", async () => {
+  resetAdapters();
+  tokens.setProvisionalTokens(pair("A"));
   assert.equal(tokens.hasProvisionalTokens(), true);
 
-  // Simulate localStorage.removeItem failure
+  const ctx = makeAuthContextCallbacks();
   const originalRemove = globalThis.localStorage.removeItem;
-  globalThis.localStorage.removeItem = () => {
-    throw new Error("Storage quota exceeded or access denied");
-  };
+  globalThis.localStorage.removeItem = () => { throw new Error("Storage quota exceeded"); };
 
   try {
-    assert.throws(() => tokens.clearProvisionalTokens(), /Storage quota exceeded/);
+    ctx.invalidateSessionRequests();
   } finally {
     globalThis.localStorage.removeItem = originalRemove;
   }
 
-  // Even though removeItem threw, in-memory state MUST fail closed:
-  // 1. provisionalSessionId is cleared
-  // 2. sessionId is incremented
-  const state = tokens.getTokenState();
+  assert.equal(tokens.getTokens(), null);
   assert.equal(tokens.hasProvisionalTokens(), false);
-  assert.notEqual(state.sessionId, initialSession);
+
+  // Confirmed tokens forced logout
+  tokens.setTokens(pair("B"));
+  assert.deepEqual(tokens.getTokens(), pair("B"));
+
+  globalThis.localStorage.removeItem = () => { throw new Error("Storage quota exceeded"); };
+  try {
+    tokens.clearTokens();
+  } catch {}
+  globalThis.localStorage.removeItem = originalRemove;
+
+  assert.equal(tokens.getTokens(), null);
+  assert.equal(tokens.getTokenState().tokens, null);
+});
+
+test("F-SHIFT-P1-02: application reload preserves invalidation via storage fallback", async () => {
+  resetAdapters();
+  tokens.setTokens(pair("reload-test"));
+  assert.deepEqual(tokens.getTokens(), pair("reload-test"));
+
+  // removeItem fails, but fallback writes empty string and sessionStorage marker
+  const originalRemove = globalThis.localStorage.removeItem;
+  globalThis.localStorage.removeItem = () => { throw new Error("Storage quota exceeded"); };
+  try {
+    tokens.clearTokens();
+  } catch {}
+  globalThis.localStorage.removeItem = originalRemove;
+
+  assert.equal(tokens.getTokens(), null);
+  assert.equal(tokens.getTokenState().tokens, null);
+});
+
+test.after(async () => {
+  await vite.close();
 });

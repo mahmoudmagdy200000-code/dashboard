@@ -80,14 +80,16 @@ const refreshes = new Map<string, Promise<RefreshResult>>();
 
 async function performRefresh(expected: TokenState): Promise<RefreshResult> {
   const current = getTokenState();
-  if (current.sessionId !== expected.sessionId || current.revision !== expected.revision) {
+  if (current.sessionId !== expected.sessionId || current.revision !== expected.revision || !current.tokens) {
     return current.sessionId === expected.sessionId && current.tokens
       ? { accessToken: current.tokens.accessToken, sessionId: current.sessionId }
       : null;
   }
   const t = expected.tokens;
   if (!t?.refreshToken) {
-    if (clearTokensIfCurrent(expected)) window.dispatchEvent(new CustomEvent("asab:auth:logout"));
+    try {
+      if (clearTokensIfCurrent(expected)) window.dispatchEvent(new CustomEvent("asab:auth:logout"));
+    } catch {}
     return null;
   }
   try {
@@ -113,10 +115,12 @@ async function performRefresh(expected: TokenState): Promise<RefreshResult> {
       ? { accessToken: newer.tokens.accessToken, sessionId: newer.sessionId }
       : null;
   } catch {
-    if (clearTokensIfCurrent(expected)) {
-      // A stale refresh rejection must not log out a replacement session.
-      window.dispatchEvent(new CustomEvent("asab:auth:logout"));
-    }
+    try {
+      if (clearTokensIfCurrent(expected)) {
+        // A stale refresh rejection must not log out a replacement session.
+        window.dispatchEvent(new CustomEvent("asab:auth:logout"));
+      }
+    } catch {}
     return null;
   }
 }
