@@ -87,9 +87,19 @@ async function performRefresh(expected: TokenState): Promise<RefreshResult> {
   }
   const t = expected.tokens;
   if (!t?.refreshToken) {
+    let cleared = false;
     try {
-      if (clearTokensIfCurrent(expected)) window.dispatchEvent(new CustomEvent("asab:auth:logout"));
-    } catch {}
+      cleared = clearTokensIfCurrent(expected);
+    } catch {
+      // clearTokensIfCurrent clears memory in finally before rethrowing storage error.
+      // If it threw, expected was the current active session and was cleared from memory.
+      cleared = true;
+    }
+    if (cleared) {
+      try {
+        window.dispatchEvent(new CustomEvent("asab:auth:logout"));
+      } catch {}
+    }
     return null;
   }
   try {
@@ -115,12 +125,20 @@ async function performRefresh(expected: TokenState): Promise<RefreshResult> {
       ? { accessToken: newer.tokens.accessToken, sessionId: newer.sessionId }
       : null;
   } catch {
+    let cleared = false;
     try {
-      if (clearTokensIfCurrent(expected)) {
-        // A stale refresh rejection must not log out a replacement session.
+      cleared = clearTokensIfCurrent(expected);
+    } catch {
+      // clearTokensIfCurrent clears memory in finally before rethrowing storage error.
+      // If it threw, expected was the current active session and was cleared from memory.
+      cleared = true;
+    }
+    if (cleared) {
+      // A stale refresh rejection must not log out a replacement session.
+      try {
         window.dispatchEvent(new CustomEvent("asab:auth:logout"));
-      }
-    } catch {}
+      } catch {}
+    }
     return null;
   }
 }

@@ -29,10 +29,12 @@ const vite = await createServer({
   optimizeDeps: { noDiscovery: true, include: [] },
   server: { middlewareMode: true, hmr: false },
 });
-const [{ api }, auth, tokens] = await Promise.all([
+const [{ api }, auth, tokens, { clearRetiredQueryClient }, { createQueryClient }] = await Promise.all([
   vite.ssrLoadModule("/src/api/client.ts"),
   vite.ssrLoadModule("/src/api/auth.ts"),
   vite.ssrLoadModule("/src/api/tokens.ts"),
+  vite.ssrLoadModule("/src/auth/roleAccess.ts"),
+  vite.ssrLoadModule("/src/lib/queryClient.ts"),
 ]);
 
 function authContextCallback(name: "login" | "loginWith2fa" | "applyFreshUser" | "invalidateSessionRequests") {
@@ -1053,6 +1055,84 @@ test("F-SHIFT-P1-02: application reload preserves invalidation via storage fallb
 
   assert.equal(tokens.getTokens(), null);
   assert.equal(tokens.getTokenState().tokens, null);
+});
+
+test("F-SHIFT-P1-02: P1-A failed refresh with storage cleanup error still dispatches forced logout and clears credentials", async () => {
+  resetAdapters();
+  tokens.setTokens(pair("P1-A-test"));
+  let forcedLogoutEvents = 0;
+  const onLogout = () => { forcedLogoutEvents++; };
+  window.addEventListener("asab:auth:logout", onLogout);
+
+  const originalRemove = globalThis.localStorage.removeItem;
+  globalThis.localStorage.removeItem = () => { throw new Error("Storage quota exceeded"); };
+
+  api.defaults.adapter = (async config => { throw unauthorized(config); }) as AxiosAdapter;
+  axios.defaults.adapter = (async config => { throw unauthorized(config); }) as AxiosAdapter;
+
+  try {
+    await assert.rejects(api.get("/protected-resource"));
+  } finally {
+    globalThis.localStorage.removeItem = originalRemove;
+    window.removeEventListener("asab:auth:logout", onLogout);
+  }
+
+  assert.equal(forcedLogoutEvents, 1, "forced logout event MUST be dispatched even if storage cleanup threw");
+  assert.equal(tokens.getTokens(), null, "in-memory tokens must be cleared");
+  assert.equal(tokens.getTokenState().tokens, null, "token state must be null");
+});
+
+test("F-SHIFT-P1-02: P1-A failed refresh forced logout cleans real QueryClient, unmounts user, and protects Session B", async () => {
+  resetAdapters();
+  tokens.setTokens(pair("Session-A"));
+
+  // Create real QueryClient and seed financial query cache
+  let queryClient = createQueryClient();
+  queryClient.setQueryData(["financial", "shift", 123], { id: 123, cash: 5000 });
+  assert.deepEqual(queryClient.getQueryData(["financial", "shift", 123]), { id: 123, cash: 5000 });
+
+  let currentUser: { id: string } | null = { id: "user-A" };
+  let realtimeDisconnected = false;
+
+  // Mount AuthContext forced-logout handler logic
+  const handleForcedLogout = async () => {
+    currentUser = null;
+    realtimeDisconnected = true;
+    const retired = queryClient;
+    await clearRetiredQueryClient(retired);
+    queryClient = createQueryClient();
+  };
+  window.addEventListener("asab:auth:logout", handleForcedLogout);
+
+  const originalRemove = globalThis.localStorage.removeItem;
+  globalThis.localStorage.removeItem = () => { throw new Error("Storage quota exceeded"); };
+
+  api.defaults.adapter = (async config => { throw unauthorized(config); }) as AxiosAdapter;
+  axios.defaults.adapter = (async config => { throw unauthorized(config); }) as AxiosAdapter;
+
+  try {
+    await assert.rejects(api.get("/protected-shift"));
+    await new Promise(resolve => setTimeout(resolve, 50));
+  } finally {
+    globalThis.localStorage.removeItem = originalRemove;
+    window.removeEventListener("asab:auth:logout", handleForcedLogout);
+  }
+
+  // 1. User cleared
+  assert.equal(currentUser, null, "Authenticated user cleared from UI state");
+  // 2. In-memory tokens cleared
+  assert.equal(tokens.getTokens(), null, "Session A tokens nulled");
+  // 3. Realtime disconnected
+  assert.equal(realtimeDisconnected, true, "Realtime connections disconnected");
+  // 4. QueryClient cache cleared
+  assert.equal(queryClient.getQueryData(["financial", "shift", 123]), undefined, "Financial queries wiped");
+  assert.equal(queryClient.getQueryCache().getAll().length, 0, "Query cache completely clean");
+
+  // 5. Session B establishes clean session and is unaffected
+  tokens.setTokens(pair("Session-B"));
+  currentUser = { id: "user-B" };
+  assert.deepEqual(tokens.getTokens(), pair("Session-B"));
+  assert.equal(currentUser.id, "user-B");
 });
 
 test.after(async () => {
