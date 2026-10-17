@@ -133,6 +133,7 @@ export interface ShiftOpPayload {
   pkg6Review?: Record<string, unknown> | null;
   cashCollectedHalalas?: number | null;
   handoverNotes?: string | null;
+  lastCorrection?: Record<string, unknown> | null;
 }
 
 /** BD-2 read-only allocation evidence. `version` belongs to the allocation. */
@@ -169,6 +170,9 @@ export interface Operation {
   /** Present on GET /operations/{id}; this is not the report revision. */
   allocationVersion?: number | null;
   confirmedOpeningHalalas?: number | null;
+  cashCollectedHalalas?: number | null;
+  handoverNotes?: string | null;
+  lastCorrection?: Record<string, unknown> | null;
   originLabelAr?: string;
   originIcon?: string;
   attachmentCount?: number;

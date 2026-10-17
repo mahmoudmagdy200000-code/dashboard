@@ -1502,13 +1502,25 @@ function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation 
       if(postStarted) {
         // F-COR05-02: After uncertain correction POST outcome, refetch actual operation from server
         // to reconcile screen with server truth without repeating the financial POST.
+        // Requires evidence of the user's actual correction command; reportRevision > expected alone is not proof.
         try {
           const reconciled = await api.get<ApiOperation>(`/operations/${encodeURIComponent(op.id)}`);
           if (accessStillCurrent(generation, requestFingerprint)) {
             queryClient.setQueryData(queryKeys.operation(op.id), reconciled.data);
             const freshRev = reconciled.data.reportRevision ?? reconciled.data.payload?.reportRevision;
             const expectedRev = evidence.reportRevision;
-            if (typeof freshRev === "number" && typeof expectedRev === "number" && freshRev > expectedRev) {
+            const lastCorrection = reconciled.data.lastCorrection ?? reconciled.data.payload?.lastCorrection;
+            const matchesAttribution = Boolean(
+              typeof freshRev === "number" &&
+              typeof expectedRev === "number" &&
+              freshRev > expectedRev &&
+              lastCorrection &&
+              typeof lastCorrection === "object" &&
+              (lastCorrection as { revisionNumber?: number }).revisionNumber === freshRev &&
+              (((lastCorrection as { reason?: string }).reason?.trim() === draft.reason.trim()) ||
+               (user?.id && String((lastCorrection as { actorId?: string }).actorId) === String(user.id)))
+            );
+            if (matchesAttribution) {
               setCompleted(true);
               setUncertain(false);
               toast.success(t("تم تطبيق التصحيح على الخادم وتحديث التقرير","Correction applied on server and report updated"));
@@ -1691,7 +1703,7 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
       </div>
       {Array.isArray(payload.varianceAllocations) && payload.varianceAllocations.length > 0 && (
         <div className="text-xs space-y-1">
-          <h4 className="font-bold">{t("تخصيصات الفرق من العملية (تاريخية / غير معتمدة)","Operation variance allocations (historical / unapproved)")}</h4>
+          <h4 className="font-bold">{t("تخصيصات الفرق التاريخية من العملية","Historical operation variance allocations")}</h4>
           {payload.varianceAllocations.map((_,i) => (
             <p key={i}>{t("تخصيص","Allocation")} {i+1}: {t("تفاصيل التخصيص غير متاحة","Allocation details unavailable")}</p>
           ))}

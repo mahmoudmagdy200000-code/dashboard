@@ -151,8 +151,15 @@ export function initialShiftCorrectionDraft(detail: ShiftCorrectionOperation): S
   const cashCollectedSar = isSafeHalalas(rawCashCollected)
     ? halalasToSar(rawCashCollected)
     : (typeof p?.cash_collected === "string" && parseCorrectionSar(p.cash_collected) ? parseCorrectionSar(p.cash_collected)!.sar : null);
-  const rawNotes = p?.handoverNotes ?? p?.notes ?? p?.handover_notes;
-  const handoverNotes = typeof rawNotes === "string" ? rawNotes : null;
+  
+  const notesSupported = Boolean(
+    (p && ("handoverNotes" in p || "handover_notes" in p || "notes" in p)) ||
+    ("handoverNotes" in (detail as Record<string, unknown>) || "handover_notes" in (detail as Record<string, unknown>))
+  );
+  const rawNotes = p?.handoverNotes ?? p?.notes ?? p?.handover_notes ?? (detail as Record<string, unknown>).handoverNotes ?? (detail as Record<string, unknown>).handover_notes;
+  const handoverNotes = notesSupported
+    ? (typeof rawNotes === "string" ? rawNotes : "")
+    : null;
 
   return {
     cardPaymentsSar: halalasToSar(detail.payload?.cardTotalHalalas),
@@ -198,8 +205,8 @@ export function prepareShiftCorrectionRequest(
     if (!before || !value) return null;
     if (value.halalas !== before.halalas) changes.cash_collected = value.sar;
   }
-  if (initial.handoverNotes !== null && draft.handoverNotes !== initial.handoverNotes) {
-    const currentNotes = draft.handoverNotes?.trim() ?? "";
+  if (initial.handoverNotes !== null && draft.handoverNotes !== null) {
+    const currentNotes = draft.handoverNotes.trim();
     const initialNotes = initial.handoverNotes.trim();
     if (currentNotes !== initialNotes) {
       changes.handover_notes = currentNotes || null;

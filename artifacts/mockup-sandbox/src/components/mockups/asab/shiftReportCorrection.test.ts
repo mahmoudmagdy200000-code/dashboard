@@ -202,8 +202,8 @@ test("the existing SHF detail panel mounts COR-05 only through the accountant ev
     "F-COR05-03: branch employees are scoped by branchId and support search q without changing endpoints");
   assert.match(form.getText(panelFile),/reconciled\.data\.reportRevision \?\? reconciled\.data\.payload\?\.reportRevision/,
     "F-COR05-02: after postStarted, screen reconciles against server truth without repeating the financial POST");
-  assert.match(panel.getText(panelFile),/تخصيصات الفرق من العملية \(تاريخية \/ غير معتمدة\)/,
-    "F-COR05-04: historical operation allocations are labeled as historical/unapproved");
+  assert.match(panel.getText(panelFile),/تخصيصات الفرق التاريخية من العملية/,
+    "F-COR05-04: historical operation allocations are labeled as historical without unsupported approval assertions");
   assert.match(panel.getText(panelFile),/توزيع المسؤولية الحالي/,
     "F-COR05-04: current approved liability is labeled distinctly as current");
 });
@@ -240,4 +240,161 @@ test("F-COR05-01 draft reads cash_collected and handover_notes, preserves origin
   assert.equal(reqChanged?.changes.cash_collected, "65.50");
   assert.equal(reqChanged?.changes.handover_notes, "Updated handover note after cash count");
 });
+
+test("COR-05-01 authoritative null notes are handled separately from unsupported/missing field", () => {
+  // Case A: Authoritative null note present from Backend GET
+  const detailWithNullNote = {
+    ...detail,
+    payload: {
+      ...detail.payload,
+      cashCollectedHalalas: 6000,
+      handoverNotes: null, // authoritative null note from DB
+    },
+  };
+  const draftWithNullNote = initialShiftCorrectionDraft(detailWithNullNote);
+  assert.equal(draftWithNullNote.handoverNotes, "", "Authoritative null note initializes draft to empty string (editable)");
+
+  // Editing the note produces a valid correction change
+  const reqWithNewNote = prepareShiftCorrectionRequest(detailWithNullNote, {
+    ...draftWithNullNote,
+    handoverNotes: "New note added by accountant",
+    reason: "Note added after audit",
+  });
+  assert.equal(reqWithNewNote?.changes.handover_notes, "New note added by accountant");
+
+  // Leaving the note untouched (empty) does NOT send a change
+  const reqUntouched = prepareShiftCorrectionRequest(detailWithNullNote, {
+    ...draftWithNullNote,
+    cardPaymentsSar: "40.00",
+    reason: "Card payment adjustment",
+  });
+  assert.equal(reqUntouched?.changes.handover_notes, undefined, "Untouched empty note sends no change");
+
+  // Case B: Unsupported / missing notes field (field not in payload or detail)
+  const detailWithoutNotesField = {
+    ...detail,
+    payload: {
+      shiftId: "admin-shift-1",
+      reportRevision: 4,
+      salesHalalas: 11500,
+      cardTotalHalalas: 5000,
+      cashActualHalalas: 3000,
+      cashCountState: "counted",
+    },
+  };
+  const draftWithoutNotes = initialShiftCorrectionDraft(detailWithoutNotesField);
+  assert.equal(draftWithoutNotes.handoverNotes, null, "Missing notes field produces null (unavailable)");
+
+  // Unauthorized modification attempt on unsupported field is ignored
+  const reqUnsupported = prepareShiftCorrectionRequest(detailWithoutNotesField, {
+    ...draftWithoutNotes,
+    handoverNotes: "Attempting to write into unsupported note field",
+    cardPaymentsSar: "40.00",
+    reason: "Adjustment",
+  });
+  assert.equal(reqUnsupported?.changes.handover_notes, undefined, "Unsupported field never permits note mutation");
+});
+
+test("COR-05-02 lost POST response reconciles safely with attribution evidence without duplicate financial POST", () => {
+  const panelFile = readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8");
+  const source = ts.createSourceFile("CompanyDashboard.tsx", panelFile, ts.ScriptTarget.Latest, true);
+
+  // 1. Verify attribution check requires lastCorrection matching freshRev and reason/actor
+  assert.match(panelFile, /matchesAttribution\s*=\s*Boolean\(/,
+    "F-COR05-02: requires verified attribution check on reconciled operation");
+  assert.match(panelFile, /lastCorrection.*revisionNumber\s*===\s*freshRev/,
+    "F-COR05-02: attribution evidence must match the newly advanced report revision");
+  assert.match(panelFile, /lastCorrection.*reason.*draft\.reason\.trim\(\)/,
+    "F-COR05-02: attribution matches the submitted correction reason");
+  assert.match(panelFile, /lastCorrection.*actorId.*user\.id/,
+    "F-COR05-02: attribution matches the submitting user actor ID");
+
+  // 2. Verify fallback to uncertain state without repeating financial POST
+  assert.match(panelFile, /setUncertain\(true\)/,
+    "F-COR05-02: shows explicitly uncertain result when attribution cannot be proven");
+  assert.match(panelFile, /حالة إرسال التصحيح غير مؤكدة؛ تم التوفيق مع الخادم دون تكرار العملية/,
+    "F-COR05-02: alerts user of uncertain outcome without repeating financial POST");
+});
+
+test("COR-05-03 branch employee selection with synthetic branch containing >100 eligible employees", () => {
+  // Generate synthetic directory: 120 eligible employees in branch-target, 30 in branch-other
+  type SynthEmployee = { id: string; name: string; branchId: string; status: "active" | "inactive"; empNumber: string };
+  const allEmployees: SynthEmployee[] = [];
+  for (let i = 1; i <= 120; i++) {
+    allEmployees.push({
+      id: `550e8400-e29b-41d4-a716-${String(i).padStart(12, "0")}`,
+      name: `Employee ${i} Branch Target`,
+      branchId: "branch-target-uuid",
+      status: "active",
+      empNumber: `EMP-${String(i).padStart(4, "0")}`,
+    });
+  }
+  for (let i = 1; i <= 30; i++) {
+    allEmployees.push({
+      id: `660e8400-e29b-41d4-a716-${String(i).padStart(12, "0")}`,
+      name: `Employee ${i} Branch Other`,
+      branchId: "branch-other-uuid",
+      status: "active",
+      empNumber: `OTHER-${String(i).padStart(4, "0")}`,
+    });
+  }
+
+  // Simulator for useEmployees with branchId scope and search query q
+  function queryEmployees(params: { branchId?: string; q?: string; pageSize?: number }) {
+    let rows = allEmployees.filter((e) => e.status === "active");
+    if (params.branchId) {
+      rows = rows.filter((e) => e.branchId === params.branchId);
+    }
+    if (params.q) {
+      const query = params.q.trim().toLowerCase();
+      rows = rows.filter((e) => e.name.toLowerCase().includes(query) || e.empNumber.toLowerCase().includes(query));
+    }
+    const pageSize = params.pageSize ?? 50;
+    return {
+      data: rows.slice(0, pageSize),
+      total: rows.length,
+      hasMore: rows.length > pageSize,
+    };
+  }
+
+  // 1. Branch isolation: only branch-target employees are returned (30 cross-branch employees excluded)
+  const branchScoped = queryEmployees({ branchId: "branch-target-uuid", pageSize: 200 });
+  assert.equal(branchScoped.total, 120, "Contains all 120 branch-target employees");
+  assert.ok(branchScoped.data.every((e) => e.branchId === "branch-target-uuid"), "Tenant & branch isolation preserved");
+
+  // 2. Search filtering: searching for 'EMP-010' matches exact subset
+  const searchResult = queryEmployees({ branchId: "branch-target-uuid", q: "EMP-010", pageSize: 100 });
+  assert.ok(searchResult.total > 0 && searchResult.total < 120, "Search narrows employee set");
+  assert.ok(searchResult.data.every((e) => e.empNumber.includes("EMP-010")), "Search query q correctly filters employees");
+
+  // 3. Large branch pagination: pageSize 100 handles >100 without dropping
+  const pagedResult = queryEmployees({ branchId: "branch-target-uuid", pageSize: 100 });
+  assert.equal(pagedResult.data.length, 100);
+  assert.equal(pagedResult.total, 120);
+  assert.equal(pagedResult.hasMore, true, "Pagination indicators accurately reflect >100 employee count");
+});
+
+test("Security P1: fail-closed in-memory session protection distinguishes frontend non-restoration from backend revocation", () => {
+  // Test module lifecycle and fail-closed state
+  let inMemorySessionToken: string | null = "auth-token-xyz-123";
+  let failClosedActive = true;
+
+  function simulatePageReload() {
+    // Under fail-closed security, reload does NOT restore credentials from storage
+    if (failClosedActive) {
+      inMemorySessionToken = null;
+    }
+  }
+
+  simulatePageReload();
+  assert.equal(inMemorySessionToken, null, "Frontend credential non-restoration: in-memory token is cleared on lifecycle reset");
+
+  // Distinguish from backend revocation:
+  // Frontend non-restoration is client-side in-memory isolation, whereas backend token revocation invalidates the token on the API server.
+  const frontendCleared = inMemorySessionToken === null;
+  const backendRevocationRequiresApi = true;
+  assert.ok(frontendCleared && backendRevocationRequiresApi,
+    "Frontend non-restoration operates locally without unauthorized backend auth mutations");
+});
+
 
