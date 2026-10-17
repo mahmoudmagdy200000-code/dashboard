@@ -35,7 +35,7 @@ const [{ api }, auth, tokens] = await Promise.all([
   vite.ssrLoadModule("/src/api/tokens.ts"),
 ]);
 
-function authContextCallback(name: "login" | "loginWith2fa" | "applyFreshUser") {
+function authContextCallback(name: "login" | "loginWith2fa" | "applyFreshUser" | "invalidateSessionRequests") {
   const source = ts.createSourceFile("AuthContext.tsx",
     readFileSync(new URL("../auth/AuthContext.tsx", import.meta.url), "utf8"),
     ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -65,7 +65,10 @@ function makeAuthContextCallbacks() {
   const setInitializing = (_value: boolean) => {};
   const setDefaultPage = (_value: string | null) => {};
   const flushSync = (callback: () => void) => callback();
-  const invalidateSessionRequests = () => { sessionEpoch.current++; refreshRequest.current++; };
+  const invalidateSessionRequests = new Function("sessionEpoch", "refreshRequest", "clearProvisionalTokens",
+    `return ${authContextCallback("invalidateSessionRequests")};`)(
+      sessionEpoch, refreshRequest, tokens.clearProvisionalTokens,
+    ) as () => void;
   const resetQueryClient = async (_isCurrent: () => boolean) => true;
   const queryClientRef = { current: {} };
   const applyFreshUser = new Function("userRef", "setUser", "setFinancialTransition", "flushSync",
@@ -525,4 +528,169 @@ test("an A request that receives 401 after B replaces the session is never retri
   await assert.rejects(request);
   assert.equal(refreshCalls, 0);
   assert.equal(seen.length, 1);
+});
+
+test("F-SHIFT-FINAL-01: Login A provisional tokens are invalidated immediately when Login B receives 2FA challenge", async () => {
+  resetAdapters();
+  tokens.clearTokens();
+  const ctx = makeAuthContextCallbacks();
+  const meAStarted = deferred<void>();
+  const meA = deferred<ReturnType<typeof response>>();
+
+  api.defaults.adapter = (async config => {
+    if (config.url?.includes("/auth/login")) {
+      const body = JSON.parse(String(config.data)) as { email: string };
+      if (body.email === "A") {
+        return response(config, {
+          accessToken: "A-access", refreshToken: "A-refresh",
+          user: { id: "user-A", companyId: null }, defaultPage: null,
+        });
+      }
+      return response(config, { requires2fa: true, twoFactorToken: "2fa-challenge-B" });
+    }
+    if (config.url?.includes("/auth/me")) {
+      meAStarted.resolve();
+      return meA.promise.then(value => ({ ...value, config }));
+    }
+    return response(config, {});
+  }) as AxiosAdapter;
+
+  const promiseA = ctx.login("A", "pw");
+  await meAStarted.promise;
+
+  assert.equal(tokens.hasProvisionalTokens(), true);
+  assert.deepEqual(tokens.getTokens(), pair("A"));
+
+  const resB = await ctx.login("B", "pw");
+  assert.equal(resB && "requires2fa" in resB && resB.requires2fa, true);
+
+  assert.equal(tokens.getTokens(), null);
+  assert.equal(tokens.hasProvisionalTokens(), false);
+
+  meA.resolve(response({} as InternalAxiosRequestConfig, {
+    id: "user-A", companyId: null, roles: [], permissions: {},
+  }));
+  await promiseA;
+
+  assert.equal(tokens.getTokens(), null);
+  assert.equal(tokens.hasProvisionalTokens(), false);
+  assert.equal(ctx.uiUser, null);
+});
+
+test("F-SHIFT-FINAL-01: late Login A /auth/me completion cannot clear or overwrite newer successful Login B session", async () => {
+  resetAdapters();
+  tokens.clearTokens();
+  const ctx = makeAuthContextCallbacks();
+  const meAStarted = deferred<void>();
+  const meA = deferred<ReturnType<typeof response>>();
+
+  api.defaults.adapter = (async config => {
+    if (config.url?.includes("/auth/login")) {
+      const body = JSON.parse(String(config.data)) as { email: string };
+      return response(config, {
+        accessToken: `${body.email}-access`, refreshToken: `${body.email}-refresh`,
+        user: { id: `user-${body.email}`, companyId: null }, defaultPage: null,
+      });
+    }
+    if (config.url?.includes("/auth/me")) {
+      const authHeader = (config.headers?.get?.("Authorization") ?? config.headers?.Authorization) as string | undefined;
+      if (authHeader === "Bearer A-access") {
+        meAStarted.resolve();
+        return meA.promise.then(value => ({ ...value, config }));
+      }
+      return response(config, { id: "user-B", companyId: null, roles: [], permissions: {} });
+    }
+    return response(config, {});
+  }) as AxiosAdapter;
+
+  const promiseA = ctx.login("A", "pw");
+  await meAStarted.promise;
+  assert.deepEqual(tokens.getTokens(), pair("A"));
+
+  const promiseB = ctx.login("B", "pw");
+  await promiseB;
+
+  assert.deepEqual(tokens.getTokens(), pair("B"));
+  assert.equal(tokens.hasProvisionalTokens(), false);
+  assert.equal((ctx.uiUser as { id?: string } | null)?.id, "user-B");
+
+  meA.resolve(response({} as InternalAxiosRequestConfig, {
+    id: "user-A", companyId: null, roles: [], permissions: {},
+  }));
+  await promiseA;
+
+  assert.deepEqual(tokens.getTokens(), pair("B"));
+  assert.equal(tokens.hasProvisionalTokens(), false);
+  assert.equal((ctx.uiUser as { id?: string } | null)?.id, "user-B");
+});
+
+test("F-SHIFT-FINAL-01: forced logout during pending /auth/me immediately clears provisional tokens and ignores late arrival", async () => {
+  resetAdapters();
+  tokens.clearTokens();
+  const ctx = makeAuthContextCallbacks();
+  const meAStarted = deferred<void>();
+  const meA = deferred<ReturnType<typeof response>>();
+
+  api.defaults.adapter = (async config => {
+    if (config.url?.includes("/auth/login")) {
+      return response(config, {
+        accessToken: "A-access", refreshToken: "A-refresh",
+        user: { id: "user-A", companyId: null }, defaultPage: null,
+      });
+    }
+    if (config.url?.includes("/auth/me")) {
+      meAStarted.resolve();
+      return meA.promise.then(value => ({ ...value, config }));
+    }
+    return response(config, {});
+  }) as AxiosAdapter;
+
+  const promiseA = ctx.login("A", "pw");
+  await meAStarted.promise;
+  assert.deepEqual(tokens.getTokens(), pair("A"));
+  assert.equal(tokens.hasProvisionalTokens(), true);
+
+  ctx.invalidateSessionRequests();
+
+  assert.equal(tokens.getTokens(), null);
+  assert.equal(tokens.hasProvisionalTokens(), false);
+
+  meA.resolve(response({} as InternalAxiosRequestConfig, {
+    id: "user-A", companyId: null, roles: [], permissions: {},
+  }));
+  await promiseA;
+
+  assert.equal(tokens.getTokens(), null);
+  assert.equal(tokens.hasProvisionalTokens(), false);
+  assert.equal(ctx.uiUser, null);
+});
+
+test("F-SHIFT-FINAL-01: obsolete login cleanup cannot delete a newer authenticated user's tokens (compare-and-set)", async () => {
+  resetAdapters();
+  tokens.clearTokens();
+  const sessionA = tokens.setProvisionalTokens(pair("A"));
+  assert.equal(tokens.hasProvisionalTokens(), true);
+
+  const sessionB = tokens.setProvisionalTokens(pair("B"));
+  assert.equal(tokens.confirmSessionTokens(sessionB), true);
+  assert.equal(tokens.hasProvisionalTokens(), false);
+
+  assert.equal(tokens.clearSessionTokensIfCurrent(sessionA), false);
+  assert.deepEqual(tokens.getTokens(), pair("B"));
+});
+
+test("F-SHIFT-FINAL-01: /auth/me failure during login clears provisional tokens immediately", async () => {
+  resetAdapters();
+  tokens.clearTokens();
+  api.defaults.adapter = (async config => {
+    throw unauthorized(config);
+  }) as AxiosAdapter;
+
+  await assert.rejects(auth.establishLoginSession({
+    accessToken: "A-access", refreshToken: "A-refresh",
+    user: { id: "user-A", companyId: null }, companyId: null, defaultPage: null,
+  }, () => true));
+
+  assert.equal(tokens.getTokens(), null);
+  assert.equal(tokens.hasProvisionalTokens(), false);
 });

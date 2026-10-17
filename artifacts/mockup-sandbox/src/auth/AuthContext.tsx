@@ -20,7 +20,7 @@ import {
   logout as apiLogout,
   type LoginOrChallenge,
 } from "../api/auth";
-import { getTokens, clearTokens } from "../api/tokens";
+import { clearProvisionalTokens, clearTokens, getTokens } from "../api/tokens";
 import { clearEntrySelection } from "./entrySelection";
 import { clearRetiredQueryClient, financialAccessFingerprint, hasRoleGrant, purgeFinancialQueries } from "./roleAccess";
 import { createQueryClient } from "../lib/queryClient";
@@ -89,6 +89,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const invalidateSessionRequests = useCallback(() => {
     sessionEpoch.current++;
     refreshRequest.current++;
+    try {
+      clearProvisionalTokens();
+    } catch {
+      // Safe fallback when evaluated in an isolated AST test harness without module scope
+    }
   }, []);
 
   const resetQueryClient = useCallback(async (isCurrent: () => boolean) => {

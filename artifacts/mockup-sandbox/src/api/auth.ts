@@ -1,6 +1,11 @@
 import { api } from "./client";
 import type { AxiosRequestConfig } from "axios";
-import { clearSessionTokensIfCurrent, getTokenState, setTokens } from "./tokens";
+import {
+  clearSessionTokensIfCurrent,
+  confirmSessionTokens,
+  getTokenState,
+  setProvisionalTokens,
+} from "./tokens";
 import type { LoginResponse, MeResponse } from "./types";
 
 // 2FA step-up response — when 2FA is enabled, login returns this instead of tokens.
@@ -49,15 +54,30 @@ export async function establishLoginSession(
   isCurrent: () => boolean,
 ): Promise<MeResponse | null> {
   if (!isCurrent()) return null;
-  setTokens({ accessToken: response.accessToken, refreshToken: response.refreshToken });
-  const committedSession = getTokenState().sessionId;
-  if (!isCurrent()) return null;
-  const me = await fetchMe();
-  if (!isCurrent()) return null;
+  const committedSession = setProvisionalTokens({
+    accessToken: response.accessToken,
+    refreshToken: response.refreshToken,
+  });
+  if (!isCurrent()) {
+    clearSessionTokensIfCurrent(committedSession);
+    return null;
+  }
+  let me: MeResponse;
+  try {
+    me = await fetchMe();
+  } catch (err) {
+    clearSessionTokensIfCurrent(committedSession);
+    throw err;
+  }
+  if (!isCurrent()) {
+    clearSessionTokensIfCurrent(committedSession);
+    return null;
+  }
   if (me.id !== response.user.id) {
     clearSessionTokensIfCurrent(committedSession);
     throw new Error("Login identity does not match /auth/me");
   }
+  confirmSessionTokens(committedSession);
   return me;
 }
 
