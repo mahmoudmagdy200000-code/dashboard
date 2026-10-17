@@ -29,7 +29,8 @@ function validGrant(grant: Record<string, unknown>): grant is Record<string, unk
   if (grant.key === "accountant" && !(
     (grant.scope === "brand" && grant.brandIds.length > 0)
     || (grant.scope === "restaurant" && grant.restaurantIds.length > 0))) return false;
-  if (grant.key === "branch" && (grant.scope !== "branch" || grant.branchIds.length !== 1)) return false;
+  if (grant.key === "branch" && (grant.scope !== "branch" || grant.branchIds.length !== 1
+    || grant.brandIds.length !== 0 || grant.restaurantIds.length !== 0)) return false;
   if (grant.key === "admin" && (grant.scope !== "all" || grant.brandIds.length
     || grant.restaurantIds.length || grant.branchIds.length)) return false;
   // TenantBranchResolver ORs all populated hierarchy arrays, regardless of the scope label.
@@ -84,6 +85,13 @@ export function registerFinancialRequest(queryClient: QueryClient) {
   };
 }
 
+/** Begin isolation synchronously, before any cancellation can yield to a late response. */
+export function invalidateFinancialAccess(queryClient: QueryClient): void {
+  accessGenerations.set(queryClient,financialAccessGeneration(queryClient)+1);
+  for (const request of directRequests.get(queryClient) ?? []) request.abort();
+  directRequests.get(queryClient)?.clear();
+}
+
 const sensitivePrefixes: readonly (readonly string[])[] = [
   ["operations"], ["shifts"], ["asset-drafts"], ["accountant"], ["head"],
   ["platform", "accountant"], ["platform", "operations"], ["platform", "head"],
@@ -93,14 +101,29 @@ const sensitivePrefixes: readonly (readonly string[])[] = [
 ];
 
 /** Cancel before removal so a prior role's late response cannot restore financial cache. */
-export async function purgeFinancialQueries(queryClient: QueryClient): Promise<void> {
-  accessGenerations.set(queryClient,financialAccessGeneration(queryClient)+1);
-  for (const request of directRequests.get(queryClient) ?? []) request.abort();
-  directRequests.get(queryClient)?.clear();
+export async function purgeFinancialQueries(
+  queryClient: QueryClient,
+  isCurrent: () => boolean = () => true,
+): Promise<boolean> {
+  invalidateFinancialAccess(queryClient);
   const predicate = (query: {queryKey: readonly unknown[]}) => sensitivePrefixes.some(prefix =>
     prefix.every((part,index) => query.queryKey[index] === part));
   await queryClient.cancelQueries({predicate});
+  if (!isCurrent()) return false;
   queryClient.removeQueries({predicate});
+  return true;
+}
+
+/** Clear the retired tenant/session client after cancellation; callers publish a fresh client. */
+export async function clearRetiredQueryClient(
+  queryClient: QueryClient,
+  isCurrent: () => boolean = () => true,
+): Promise<boolean> {
+  invalidateFinancialAccess(queryClient);
+  await queryClient.cancelQueries();
+  if (!isCurrent()) return false;
+  queryClient.clear();
+  return true;
 }
 
 export function hasRoleGrant(identity: Identity, ...roles: RoleKey[]): boolean {

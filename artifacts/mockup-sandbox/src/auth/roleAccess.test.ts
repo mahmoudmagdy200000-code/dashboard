@@ -4,14 +4,14 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { QueryClient, QueryObserver } from "@tanstack/react-query";
+import { MutationObserver, QueryClient, QueryClientProvider, QueryObserver, useQueryClient } from "@tanstack/react-query";
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval } from "../components/mockups/asab/headReviewGuards.ts";
 import { getSalesActionPolicy } from "../components/mockups/asab/salesActionGuards.ts";
 import {
   canOpenDashboard, canRunAccountantOperations, canRunShiftConfigs, canRunShiftHistory,
   chooseGrantedRole, companyRoles, grantedRoleKeys, hasRoleGrant, pageForRole,
   preferredDashboard, prototypeRoles, purgeFinancialQueries, financialAccessFingerprint,
-  financialAccessGeneration, registerFinancialRequest,
+  financialAccessGeneration, registerFinancialRequest, clearRetiredQueryClient,
 } from "./roleAccess.ts";
 
 const grant = (key:string, scope="all", ids:string[] = []) => ({
@@ -29,6 +29,34 @@ const accountant = identity([grant("accountant","brand",[brandA])],"admin");
 const head = identity([grant("head")],"admin");
 const multi = identity([grant("admin"),grant("accountant","brand",[brandA])],"admin");
 
+function actualRefreshHarness(fetchMe:()=>Promise<unknown>) {
+  const source=ts.createSourceFile("AuthContext.tsx",
+    readFileSync(new URL("./AuthContext.tsx",import.meta.url),"utf8"),
+    ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  let callback:ts.ArrowFunction|undefined;
+  const walk=(node:ts.Node)=>{
+    if(ts.isVariableDeclaration(node)&&node.name.getText(source)==="refreshMe"
+      &&node.initializer&&ts.isCallExpression(node.initializer)&&ts.isArrowFunction(node.initializer.arguments[0]))
+      callback=node.initializer.arguments[0];
+    ts.forEachChild(node,walk);
+  };
+  walk(source);assert.ok(callback);
+  const compiled=ts.transpileModule(`const refreshMe = ${callback.getText(source)};`,{
+    compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None},
+  }).outputText;
+  const refreshRequest={current:0};
+  const sessionEpoch={current:0};
+  const writes:unknown[]=[];
+  const transitions:boolean[]=[];
+  const refreshMe=new Function("fetchMe","refreshRequest","sessionEpoch","applyFreshUser","setFinancialTransition",
+    compiled+"\nreturn refreshMe;")(
+      fetchMe,refreshRequest,sessionEpoch,
+      async(value:unknown,isCurrent:()=>boolean)=>{if(isCurrent()) writes.push(value);},
+      (value:boolean)=>transitions.push(value),
+    ) as ()=>Promise<void>;
+  return {refreshMe,refreshRequest,sessionEpoch,writes,transitions};
+}
+
 test("Backend scope rules accept valid hierarchy arrays and reject malformed grants", () => {
   assert.deepEqual(grantedRoleKeys(identity([{...grant("accountant","brand",[brandA]),
     restaurantIds:[restaurantA],branchIds:[branchA]}])),["accountant"]);
@@ -40,6 +68,8 @@ test("Backend scope rules accept valid hierarchy arrays and reject malformed gra
   for (const bad of [
     grant("accountant","branch",[branchA]), grant("branch","brand",[brandA]),
     grant("branch","branch",[]),grant("branch","branch",[branchA,restaurantA]),
+    {...grant("branch","branch",[branchA]),brandIds:[brandA]},
+    {...grant("branch","branch",[branchA]),restaurantIds:[restaurantA]},
     grant("accountant","restaurant",[]),
     {...grant("accountant","brand",[brandA]),brandIds:[" "]},
     {...grant("accountant","brand",[brandA]),brandIds:["not-a-uuid"]},
@@ -135,6 +165,42 @@ test("financial purge increments generation immediately and aborts registered di
   await purging;
   request.release();
   client.clear();
+});
+
+test("tenant client rotation isolates mounted QueryClientProvider from late query and mutation responses", async () => {
+  const defaults={queries:{retry:false,gcTime:0},mutations:{retry:false,gcTime:0}};
+  const oldClient = new QueryClient({defaultOptions:defaults});
+  let resolveMutation!: (value:unknown)=>void;
+  let resolveQuery!: (value:unknown)=>void;
+  const mutationResult = new Promise(resolve=>{resolveMutation=resolve;});
+  const queryResult = new Promise(resolve=>{resolveQuery=resolve;});
+  const mutation = new MutationObserver(oldClient,{
+    mutationFn:()=>mutationResult,
+    onSuccess:data=>oldClient.setQueryData(["company","settings"],data),
+  });
+  const observer = new QueryObserver(oldClient,{queryKey:["company","subscription"],queryFn:()=>queryResult});
+  const unsubscribe=observer.subscribe(()=>{});
+  const oldMutation=mutation.mutate();
+  oldClient.setQueryData(["company","settings"],{company:"A"});
+  const retired=clearRetiredQueryClient(oldClient);
+  const newClient=new QueryClient({defaultOptions:defaults});
+  newClient.setQueryData(["company","settings"],{company:"B"});
+  newClient.setQueryData(["company","subscription"],{company:"B"});
+  const activeClient=()=>{
+    function Probe(){return React.createElement("span",null,useQueryClient()===newClient?"client-B":"wrong-client");}
+    return renderToStaticMarkup(React.createElement(QueryClientProvider,{client:newClient,key:"company-B"},React.createElement(Probe)));
+  };
+  assert.match(activeClient(),/client-B/);
+  await retired;
+  resolveMutation({company:"A",source:"late mutation"});
+  resolveQuery({company:"A",source:"late query ignores cancellation"});
+  await oldMutation;
+  await Promise.resolve();
+  assert.deepEqual(newClient.getQueryData(["company","settings"]),{company:"B"});
+  assert.deepEqual(newClient.getQueryData(["company","subscription"]),{company:"B"});
+  assert.deepEqual(oldClient.getQueryData(["company","settings"]),{company:"A",source:"late mutation"});
+  assert.match(activeClient(),/client-B/);
+  unsubscribe();mutation.reset();oldClient.clear();newClient.clear();
 });
 
 test("actual loadFreshDetail discards a late direct response after access invalidation", async () => {
@@ -644,27 +710,182 @@ test("AuthContext grant narrowing blocks rendering until financial cache is purg
     ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
   let callback:ts.ArrowFunction|undefined;
   const walk = (node:ts.Node) => {
-    if (ts.isVariableDeclaration(node) && node.name.getText(source) === "refreshMe"
+    if (ts.isVariableDeclaration(node) && node.name.getText(source) === "applyFreshUser"
       && node.initializer && ts.isCallExpression(node.initializer)
       && ts.isArrowFunction(node.initializer.arguments[0])) callback = node.initializer.arguments[0];
     ts.forEachChild(node,walk);
   };
   walk(source);
   assert.ok(callback);
-  const compiled = ts.transpileModule(`const refreshMe = ${callback.getText(source)};`,{
+  const compiled = ts.transpileModule(`const applyFreshUser = ${callback.getText(source)};`,{
     compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None},
   }).outputText;
   const events:string[] = [];
   const previous = accountant;
   const narrowed = identity([grant("accountant","brand",[branchA])]);
-  const refreshMe = new Function("fetchMe","financialAccessFingerprint","user",
-    "setFinancialTransition","purgeFinancialQueries","queryClient","setUser",
-    compiled + "\nreturn refreshMe;",
-  )(async()=>narrowed,financialAccessFingerprint,previous,
-    (value:boolean)=>events.push(`blocked:${value}`),async()=>events.push("purge"),{},
+  const applyFreshUser = new Function("financialAccessFingerprint","userRef","flushSync",
+    "setFinancialTransition","resetQueryClient","purgeFinancialQueries","queryClientRef","setUser",
+    compiled + "\nreturn applyFreshUser;",
+  )(financialAccessFingerprint,{current:previous},(fn:()=>void)=>fn(),
+    (value:boolean)=>events.push(`blocked:${value}`),async()=>{events.push("rotate");return true;},
+    async()=>{events.push("purge");return true;},{current:{}},
     (value:unknown)=>events.push(`user:${financialAccessFingerprint(value as typeof accountant)}`),
-  ) as ()=>Promise<void>;
-  await refreshMe();
+  ) as (next:typeof narrowed,isCurrent:()=>boolean)=>Promise<boolean>;
+  assert.equal(await applyFreshUser(narrowed,()=>true),true);
   assert.deepEqual(events,["blocked:true","purge",
-    `user:${financialAccessFingerprint(narrowed)}`,"blocked:false"]);
+    `user:${financialAccessFingerprint(narrowed)}`]);
+});
+
+test("AuthContext rotates the whole client for a company change and keeps targeted purge for role changes", async () => {
+  const source=ts.createSourceFile("AuthContext.tsx",readFileSync(new URL("./AuthContext.tsx",import.meta.url),"utf8"),
+    ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  let callback:ts.ArrowFunction|undefined;
+  const walk=(node:ts.Node)=>{
+    if(ts.isVariableDeclaration(node)&&node.name.getText(source)==="applyFreshUser"
+      &&node.initializer&&ts.isCallExpression(node.initializer)&&ts.isArrowFunction(node.initializer.arguments[0]))
+      callback=node.initializer.arguments[0];
+    ts.forEachChild(node,walk);
+  };walk(source);assert.ok(callback);
+  const compiled=ts.transpileModule(`const applyFreshUser = ${callback.getText(source)};`,{
+    compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None},
+  }).outputText;
+  const make=(previous:typeof accountant)=>{
+    let client=new QueryClient({defaultOptions:{queries:{gcTime:0},mutations:{gcTime:0}}});
+    client.setQueryData(["company","settings"],{company:previous.companyId??"company-A"});
+    const userRef={current:previous};const transitions:boolean[]=[];const calls:string[]=[];
+    const apply=new Function("financialAccessFingerprint","userRef","flushSync","setFinancialTransition",
+      "resetQueryClient","purgeFinancialQueries","queryClientRef","setUser",
+      compiled+"\nreturn applyFreshUser;")(
+        financialAccessFingerprint,userRef,(fn:()=>void)=>fn(),(value:boolean)=>transitions.push(value),
+        async(isCurrent:()=>boolean)=>{calls.push("clear");const cleared=await clearRetiredQueryClient(client,isCurrent);if(cleared)client=new QueryClient({defaultOptions:{queries:{gcTime:0},mutations:{gcTime:0}}});return cleared;},
+        async(_client:QueryClient,isCurrent:()=>boolean)=>{calls.push("purge");return isCurrent();},
+        {get current(){return client;}},(value:unknown)=>calls.push(`user:${financialAccessFingerprint(value as typeof accountant)}`),
+      ) as (value:typeof accountant,isCurrent:()=>boolean)=>Promise<boolean>;
+    return {apply,calls,transitions,getClient:()=>client};
+  };
+  const companyA={...accountant,companyId:"company-A"};
+  const companyB={...accountant,companyId:"company-B"};
+  const tenant=make(companyA);
+  const oldClient=tenant.getClient();
+  assert.equal(await tenant.apply(companyB,()=>true),true);
+  assert.deepEqual(tenant.calls.slice(0,1),["clear"]);
+  assert.equal(oldClient.getQueryCache().getAll().length,0);
+  const narrowed={...identity([grant("accountant","brand",[branchA])]),companyId:"company-A"} as typeof accountant;
+  const roleChange=make(companyA);
+  assert.equal(await roleChange.apply(narrowed,()=>true),true);
+  assert.deepEqual(roleChange.calls,["purge",`user:${financialAccessFingerprint(narrowed)}`]);
+});
+
+test("newer /auth/me response wins when overlapping refreshes resolve out of order", async () => {
+  const source = ts.createSourceFile("AuthContext.tsx",
+    readFileSync(new URL("./AuthContext.tsx",import.meta.url),"utf8"),
+    ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  let callback:ts.ArrowFunction|undefined;
+  const walk=(node:ts.Node)=>{
+    if(ts.isVariableDeclaration(node)&&node.name.getText(source)==="refreshMe"
+      &&node.initializer&&ts.isCallExpression(node.initializer)&&ts.isArrowFunction(node.initializer.arguments[0]))
+      callback=node.initializer.arguments[0];
+    ts.forEachChild(node,walk);
+  };
+  walk(source); assert.ok(callback);
+  const compiled=ts.transpileModule(`const refreshMe = ${callback.getText(source)};`,{
+    compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None},
+  }).outputText;
+  const first=identity([grant("accountant","brand",[brandA])]);
+  const second={...identity([grant("accountant","brand",[restaurantA])]),companyId:"company-b"};
+  const resolvers:Array<(user:typeof first)=>void>=[];
+  const writes:unknown[]=[];
+  const refreshRequest={current:0};
+  const sessionEpoch={current:0};
+  const refreshMe=new Function("fetchMe","refreshRequest","sessionEpoch","applyFreshUser","setFinancialTransition",
+    compiled+"\nreturn refreshMe;")(
+      ()=>new Promise(resolve=>resolvers.push(resolve)),refreshRequest,sessionEpoch,
+      async(value:unknown,isCurrent:()=>boolean)=>{if(isCurrent()) writes.push(value);},
+      ()=>{},
+    ) as ()=>Promise<void>;
+  const older=refreshMe();
+  const newer=refreshMe();
+  resolvers[1](second); await newer;
+  resolvers[0](first); await older;
+  assert.equal(writes.at(-1),second);
+});
+
+test("an obsolete refresh rejection cannot replace the latest user or transition state", async () => {
+  const resolvers:Array<{resolve:(value:unknown)=>void;reject:(error:Error)=>void}>=[];
+  const harness=actualRefreshHarness(()=>new Promise((resolve,reject)=>resolvers.push({resolve,reject})));
+  const older=harness.refreshMe();
+  const newer=harness.refreshMe();
+  const current=identity([grant("accountant","restaurant",[restaurantA])]);
+  resolvers[1].resolve(current);await newer;
+  resolvers[0].reject(new Error("late old failure"));
+  await assert.doesNotReject(older);
+  assert.deepEqual(harness.writes,[current]);
+  assert.deepEqual(harness.transitions,[false]);
+});
+
+test("logout, forced logout and login session boundaries invalidate pending refresh responses", async () => {
+  const source=ts.createSourceFile("AuthContext.tsx",readFileSync(new URL("./AuthContext.tsx",import.meta.url),"utf8"),
+    ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  const declaration=source.statements.flatMap(node=>{
+    const found:ts.VariableDeclaration[]=[];
+    const walk=(child:ts.Node)=>{if(ts.isVariableDeclaration(child)&&child.name.getText(source)==="invalidateSessionRequests") found.push(child);ts.forEachChild(child,walk);};
+    walk(node);return found;
+  })[0];
+  const initializer=declaration?.initializer;
+  const invalidator=initializer&&ts.isCallExpression(initializer)&&ts.isArrowFunction(initializer.arguments[0])
+    ? initializer.arguments[0]
+    : initializer&&ts.isArrowFunction(initializer)?initializer:undefined;
+  assert.ok(invalidator);
+  const compiled=ts.transpileModule(`const invalidateSessionRequests = ${invalidator.getText(source)};`,{
+    compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None},
+  }).outputText;
+  for(const caller of ["logout","forced logout","login","loginWith2fa"]) {
+    const body=caller==="forced logout"
+      ? source.getText(source).slice(source.getText(source).indexOf('window.addEventListener("asab:auth:logout"'))
+      : (()=>{
+        let result="";
+        const walk=(node:ts.Node)=>{
+          if(ts.isVariableDeclaration(node)&&node.name.getText(source)===caller&&node.initializer) result=node.initializer.getText(source);
+          ts.forEachChild(node,walk);
+        };walk(source);return result;
+      })();
+    assert.match(body,/invalidateSessionRequests\(/,caller);
+  }
+  const requests:Array<{resolve:(value:unknown)=>void}>=[];
+  const harness=actualRefreshHarness(()=>new Promise(resolve=>requests.push({resolve})));
+  const pending=harness.refreshMe();
+  const beforeSession=harness.sessionEpoch.current;
+  const beforeRequest=harness.refreshRequest.current;
+  // Exercise the same invalidator used by logout, forced logout and both login paths.
+  const activeInvalidator=new Function("sessionEpoch","refreshRequest",compiled+"\nreturn invalidateSessionRequests;")(
+    harness.sessionEpoch,harness.refreshRequest,
+  ) as ()=>void;
+  activeInvalidator();
+  assert.equal(harness.sessionEpoch.current,beforeSession+1);
+  assert.equal(harness.refreshRequest.current,beforeRequest+1);
+  requests[0].resolve(accountant);await pending;
+  assert.deepEqual(harness.writes,[]);
+  assert.deepEqual(harness.transitions,[]);
+});
+
+test("bootstrap /auth/me response is discarded after a later session boundary", async () => {
+  const source=ts.createSourceFile("AuthContext.tsx",readFileSync(new URL("./AuthContext.tsx",import.meta.url),"utf8"),
+    ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+  let bootstrap:ts.FunctionDeclaration|undefined;
+  const walk=(node:ts.Node)=>{if(ts.isFunctionDeclaration(node)&&node.name?.text==="bootstrap")bootstrap=node;ts.forEachChild(node,walk);};
+  walk(source);assert.ok(bootstrap);
+  const compiled=ts.transpileModule(bootstrap.getText(source),{
+    compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None},
+  }).outputText;
+  const sessionEpoch={current:0};const refreshRequest={current:0};
+  let resolveFetch!:(value:unknown)=>void;const writes:string[]=[];
+  const run=new Function("sessionEpoch","refreshRequest","getTokens","fetchMe","userRef","setUser","clearTokens","setInitializing","cancelled",
+    compiled+"\nreturn bootstrap;")(
+      sessionEpoch,refreshRequest,()=>({accessToken:"old-session"}),()=>new Promise(resolve=>{resolveFetch=resolve;}),
+      {current:null},()=>writes.push("user"),()=>writes.push("clear-token"),()=>writes.push("initialized"),false,
+  ) as ()=>Promise<void>;
+  const pending=run();
+  sessionEpoch.current++;refreshRequest.current++;
+  resolveFetch(accountant);await pending;
+  assert.deepEqual(writes,[]);
 });

@@ -4,10 +4,12 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { flushSync } from "react-dom";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   fetchMe,
@@ -19,7 +21,8 @@ import {
 } from "../api/auth";
 import { getTokens, clearTokens } from "../api/tokens";
 import { clearEntrySelection } from "./entrySelection";
-import { financialAccessFingerprint, hasRoleGrant, purgeFinancialQueries } from "./roleAccess";
+import { clearRetiredQueryClient, financialAccessFingerprint, hasRoleGrant, purgeFinancialQueries } from "./roleAccess";
+import { createQueryClient } from "../lib/queryClient";
 import { disconnectEcho, getEcho } from "../api/echo";
 import { setProcurementPlatformScope } from "../api/queries/platform/procurement";
 import type {
@@ -70,28 +73,74 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<MeResponse | null>(null);
   const [financialTransition, setFinancialTransition] = useState(false);
+  const [queryClient, setQueryClient] = useState(createQueryClient);
+  const [queryClientEpoch, setQueryClientEpoch] = useState(0);
   const [initializing, setInitializing] = useState(true);
   const [loggingIn, setLoggingIn] = useState(false);
   const [defaultPage, setDefaultPage] = useState<string | null>(null);
-  const queryClient = useQueryClient();
+  const queryClientRef = useRef(queryClient);
+  queryClientRef.current = queryClient;
+  const userRef = useRef(user);
+  userRef.current = user;
+  const sessionEpoch = useRef(0);
+  const refreshRequest = useRef(0);
+  const logoutPending = useRef<Promise<void> | null>(null);
+  const invalidateSessionRequests = useCallback(() => {
+    sessionEpoch.current++;
+    refreshRequest.current++;
+  }, []);
+
+  const resetQueryClient = useCallback(async (isCurrent: () => boolean) => {
+    const previous = queryClientRef.current;
+    const cleared = await clearRetiredQueryClient(previous, isCurrent);
+    if (!cleared || !isCurrent()) return false;
+    const fresh = createQueryClient();
+    queryClientRef.current = fresh;
+    setQueryClient(fresh);
+    setQueryClientEpoch(epoch => epoch + 1);
+    return true;
+  }, []);
+
+  const applyFreshUser = useCallback(async (nextUser: MeResponse, isCurrent: () => boolean, newSession = false) => {
+    const previousUser = userRef.current;
+    if (previousUser && (newSession || previousUser.id !== nextUser.id || previousUser.companyId !== nextUser.companyId)) {
+      flushSync(() => setFinancialTransition(true));
+      if (!await resetQueryClient(isCurrent) || !isCurrent()) return false;
+    } else if (previousUser && financialAccessFingerprint(previousUser) !== financialAccessFingerprint(nextUser)) {
+      flushSync(() => setFinancialTransition(true));
+      const purged = await purgeFinancialQueries(queryClientRef.current, isCurrent);
+      if (!purged || !isCurrent()) return false;
+    }
+    if (!isCurrent()) return false;
+    userRef.current = nextUser;
+    setUser(nextUser);
+    return true;
+  }, [resetQueryClient]);
 
   // Bootstrap: if we have a stored token, try /auth/me.
   useEffect(() => {
     let cancelled = false;
     async function bootstrap() {
+      const bootstrapSession = sessionEpoch.current;
+      const bootstrapRequest = ++refreshRequest.current;
       const t = getTokens();
       if (!t?.accessToken) {
-        setInitializing(false);
+        if (bootstrapSession === sessionEpoch.current && bootstrapRequest === refreshRequest.current)
+          setInitializing(false);
         return;
       }
       try {
         const me = await fetchMe();
-        if (!cancelled) setUser(me);
+        if (!cancelled && bootstrapSession === sessionEpoch.current && bootstrapRequest === refreshRequest.current) {
+          userRef.current = me;
+          setUser(me);
+        }
       } catch {
         // Token invalid / network. Clear and route to login.
-        clearTokens();
+        if (bootstrapSession === sessionEpoch.current && bootstrapRequest === refreshRequest.current) clearTokens();
       } finally {
-        if (!cancelled) setInitializing(false);
+        if (!cancelled && bootstrapSession === sessionEpoch.current && bootstrapRequest === refreshRequest.current)
+          setInitializing(false);
       }
     }
     void bootstrap();
@@ -110,7 +159,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Listen for forced-logout signal from the axios 401 interceptor.
   useEffect(() => {
     const handler = () => {
+      invalidateSessionRequests();
+      userRef.current = null;
       setUser(null);
+      setInitializing(false);
+      setLoggingIn(false);
+      setFinancialTransition(false);
       setDefaultPage(null);
       // Always purge stored tokens on forced sign-out — the no-refresh-token 401
       // path dispatches this event without performRefresh() having cleared them,
@@ -120,11 +174,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // (a stale selection would strand the next user in the wrong dashboard).
       clearEntrySelection();
       disconnectEcho();
-      queryClient.clear();
+      const previous = queryClientRef.current;
+      void clearRetiredQueryClient(previous);
+      const fresh = createQueryClient();
+      queryClientRef.current = fresh;
+      setQueryClient(fresh);
+      setQueryClientEpoch(epoch => epoch + 1);
     };
     window.addEventListener("asab:auth:logout", handler);
     return () => window.removeEventListener("asab:auth:logout", handler);
-  }, [queryClient]);
+  }, [invalidateSessionRequests]);
 
   // ─── Realtime subscriptions (Echo + Pusher) ────────────────────────────────
   // Skips silently when VITE_PUSHER_APP_KEY is not configured (getEcho returns null).
@@ -302,7 +361,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: string,
       opts?: { code?: string; rememberMe?: boolean },
     ) => {
+      if (logoutPending.current) await logoutPending.current;
+      invalidateSessionRequests();
+      const operationEpoch = sessionEpoch.current;
+      const isCurrent = () => sessionEpoch.current === operationEpoch;
       setLoggingIn(true);
+      setInitializing(false);
+      flushSync(() => setFinancialTransition(true));
       try {
         const res = await apiLogin(email, password, opts);
         // 2FA enabled and no/invalid code yet → return the challenge; no session.
@@ -311,61 +376,94 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         // Hydrate the full me-record (with permissions) immediately.
         const me = await fetchMe();
-        setUser(me);
+        if (!isCurrent()) return res;
+        if (!await applyFreshUser(me, isCurrent, true) || !isCurrent()) return res;
         setDefaultPage(res.defaultPage || null);
         return res;
       } finally {
-        setLoggingIn(false);
+        if (isCurrent()) {
+          setLoggingIn(false);
+          setFinancialTransition(false);
+        }
       }
     },
-    [],
+    [applyFreshUser, invalidateSessionRequests],
   );
 
   const loginWith2fa = useCallback(
     async (twoFactorToken: string, code: string) => {
+      if (logoutPending.current) await logoutPending.current;
+      invalidateSessionRequests();
+      const operationEpoch = sessionEpoch.current;
+      const isCurrent = () => sessionEpoch.current === operationEpoch;
       setLoggingIn(true);
+      setInitializing(false);
+      flushSync(() => setFinancialTransition(true));
       try {
         const res = await apiLoginWithTwoFactor(twoFactorToken, code);
         const me = await fetchMe();
-        setUser(me);
+        if (!isCurrent() || !await applyFreshUser(me, isCurrent, true) || !isCurrent()) return res;
         setDefaultPage(res.defaultPage || null);
         return res;
       } finally {
-        setLoggingIn(false);
+        if (isCurrent()) {
+          setLoggingIn(false);
+          setFinancialTransition(false);
+        }
       }
     },
-    [],
+    [applyFreshUser, invalidateSessionRequests],
   );
 
   const logout = useCallback(async () => {
+    invalidateSessionRequests();
+    const operationEpoch = sessionEpoch.current;
+    userRef.current = null;
+    setUser(null);
+    setDefaultPage(null);
+    setInitializing(false);
+    setLoggingIn(false);
+    setFinancialTransition(false);
+    const previous = queryClientRef.current;
+    const cleanup = clearRetiredQueryClient(previous);
+    const fresh = createQueryClient();
+    queryClientRef.current = fresh;
+    setQueryClient(fresh);
+    setQueryClientEpoch(epoch => epoch + 1);
+    const request = apiLogout();
+    logoutPending.current = request;
     try {
-      await apiLogout();
+      await request;
     } finally {
-      setUser(null);
-      setDefaultPage(null);
-      clearTokens();
-      // Always drop the pre-login pick — otherwise App's redirect effect would
-      // immediately re-route the (now logged-out) browser back into a dashboard.
-      clearEntrySelection();
-      disconnectEcho();
-      queryClient.clear();
+      await cleanup;
+      if (logoutPending.current === request) logoutPending.current = null;
+      if (sessionEpoch.current === operationEpoch) {
+        userRef.current = null;
+        setUser(null);
+        setDefaultPage(null);
+        clearTokens();
+        // Always drop the pre-login pick — otherwise App's redirect effect would
+        // immediately re-route the (now logged-out) browser back into a dashboard.
+        clearEntrySelection();
+        disconnectEcho();
+      }
     }
-  }, [queryClient]);
+  }, [invalidateSessionRequests]);
 
   const refreshMe = useCallback(async () => {
-    const me = await fetchMe();
-    if (financialAccessFingerprint(user) !== financialAccessFingerprint(me)) {
-      setFinancialTransition(true);
-      try {
-        await purgeFinancialQueries(queryClient);
-        setUser(me);
-      } finally {
-        setFinancialTransition(false);
-      }
-      return;
+    const requestId = ++refreshRequest.current;
+    const operationEpoch = sessionEpoch.current;
+    const isCurrent = () => requestId === refreshRequest.current && operationEpoch === sessionEpoch.current;
+    try {
+      const me = await fetchMe();
+      if (!isCurrent()) return;
+      await applyFreshUser(me, isCurrent);
+    } catch (error) {
+      if (isCurrent()) throw error;
+    } finally {
+      if (isCurrent()) setFinancialTransition(false);
     }
-    setUser(me);
-  }, [queryClient, user]);
+  }, [applyFreshUser]);
 
   const hasPermission = useCallback(
     (key: string) => Boolean(user?.permissions?.[key]),
@@ -394,7 +492,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user, financialTransition, initializing, loggingIn, defaultPage, login, loginWith2fa, logout, refreshMe, hasPermission, isRole],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>
+    <QueryClientProvider key={queryClientEpoch} client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  </AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {
