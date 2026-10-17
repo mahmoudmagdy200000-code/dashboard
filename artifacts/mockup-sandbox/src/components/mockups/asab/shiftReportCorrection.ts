@@ -29,6 +29,8 @@ export type ShiftCorrectionShareDraft = { type: string; id: string; amountSar: s
 export type ShiftCorrectionDraft = {
   cardPaymentsSar: string | null;
   countedCashSar: string | null;
+  cashCollectedSar: string | null;
+  handoverNotes: string | null;
   aggregators: ShiftCorrectionAggregatorDraft[] | null;
   shares: ShiftCorrectionShareDraft[] | null;
   reason: string;
@@ -40,6 +42,8 @@ export type ShiftCorrectionRequest = {
   changes: {
     card_payments?: string;
     counted_cash?: string;
+    cash_collected?: string;
+    handover_notes?: string | null;
     aggregators?: Array<{ aggregator_id: string; amount: string; notes?: string | null }>;
   };
   shortage_allocations?: Array<{ type: "cashier" | "employee" | "branch_manager"; id: string; amount: number }>;
@@ -142,9 +146,19 @@ function correctionShares(detail: ShiftCorrectionOperation): ShiftCorrectionShar
 }
 
 export function initialShiftCorrectionDraft(detail: ShiftCorrectionOperation): ShiftCorrectionDraft {
+  const p = detail.payload as Record<string, unknown> | undefined;
+  const rawCashCollected = p?.cashCollectedHalalas ?? p?.cash_collected_halalas;
+  const cashCollectedSar = isSafeHalalas(rawCashCollected)
+    ? halalasToSar(rawCashCollected)
+    : (typeof p?.cash_collected === "string" && parseCorrectionSar(p.cash_collected) ? parseCorrectionSar(p.cash_collected)!.sar : null);
+  const rawNotes = p?.handoverNotes ?? p?.notes ?? p?.handover_notes;
+  const handoverNotes = typeof rawNotes === "string" ? rawNotes : null;
+
   return {
     cardPaymentsSar: halalasToSar(detail.payload?.cardTotalHalalas),
     countedCashSar: detail.payload?.cashCountState === "counted" ? halalasToSar(detail.payload.cashActualHalalas) : null,
+    cashCollectedSar,
+    handoverNotes,
     aggregators: correctionAggregators(detail),
     shares: detail.liability ? correctionShares(detail) : null,
     reason: "",
@@ -177,6 +191,19 @@ export function prepareShiftCorrectionRequest(
     const value = draft.countedCashSar === null ? null : parseCorrectionSar(draft.countedCashSar);
     if (!before || !value) return null;
     if (value.halalas !== before.halalas) changes.counted_cash = value.sar;
+  }
+  if (initial.cashCollectedSar !== null && draft.cashCollectedSar !== initial.cashCollectedSar) {
+    const before = parseCorrectionSar(initial.cashCollectedSar);
+    const value = draft.cashCollectedSar === null ? null : parseCorrectionSar(draft.cashCollectedSar);
+    if (!before || !value) return null;
+    if (value.halalas !== before.halalas) changes.cash_collected = value.sar;
+  }
+  if (initial.handoverNotes !== null && draft.handoverNotes !== initial.handoverNotes) {
+    const currentNotes = draft.handoverNotes?.trim() ?? "";
+    const initialNotes = initial.handoverNotes.trim();
+    if (currentNotes !== initialNotes) {
+      changes.handover_notes = currentNotes || null;
+    }
   }
   if (initial.aggregators && draft.aggregators) {
     const normalize = (rows: ShiftCorrectionAggregatorDraft[]) => {

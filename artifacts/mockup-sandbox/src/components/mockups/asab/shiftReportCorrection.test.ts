@@ -198,4 +198,46 @@ test("the existing SHF detail panel mounts COR-05 only through the accountant ev
     "the API aggregator identifier is never presented as an application name");
   assert.match(screen,/useShiftVarianceAllocations, useAccountantShiftReportCorrection/,
     "COR-05 uses its own hook and does not replace M-8's allocation mutation");
+  assert.match(form.getText(panelFile),/useEmployees\({\s*branchId:\s*op\.branchId,\s*q:\s*empSearch\.trim\(\)\s*\|\|\s*undefined,\s*pageSize:\s*100\s*}\)/,
+    "F-COR05-03: branch employees are scoped by branchId and support search q without changing endpoints");
+  assert.match(form.getText(panelFile),/reconciled\.data\.reportRevision \?\? reconciled\.data\.payload\?\.reportRevision/,
+    "F-COR05-02: after postStarted, screen reconciles against server truth without repeating the financial POST");
+  assert.match(panel.getText(panelFile),/تخصيصات الفرق من العملية \(تاريخية \/ غير معتمدة\)/,
+    "F-COR05-04: historical operation allocations are labeled as historical/unapproved");
+  assert.match(panel.getText(panelFile),/توزيع المسؤولية الحالي/,
+    "F-COR05-04: current approved liability is labeled distinctly as current");
 });
+
+test("F-COR05-01 draft reads cash_collected and handover_notes, preserves original values, and detects modifications", () => {
+  const detailWithFields = {
+    ...detail,
+    payload: {
+      ...detail.payload,
+      cashCollectedHalalas: 6000,
+      handoverNotes: "Original handover note",
+    },
+  };
+  const draft = initialShiftCorrectionDraft(detailWithFields);
+  assert.equal(draft.cashCollectedSar, "60.00");
+  assert.equal(draft.handoverNotes, "Original handover note");
+
+  // Unchanged draft sends neither cash_collected nor handover_notes
+  const reqUnchanged = prepareShiftCorrectionRequest(detailWithFields, {
+    ...draft,
+    cardPaymentsSar: "45.00",
+    reason: "Card payment adjustment",
+  });
+  assert.equal(reqUnchanged?.changes.cash_collected, undefined);
+  assert.equal(reqUnchanged?.changes.handover_notes, undefined);
+
+  // Explicit modifications are captured in changes
+  const reqChanged = prepareShiftCorrectionRequest(detailWithFields, {
+    ...draft,
+    cashCollectedSar: "65.50",
+    handoverNotes: "Updated handover note after cash count",
+    reason: "Count reconciled",
+  });
+  assert.equal(reqChanged?.changes.cash_collected, "65.50");
+  assert.equal(reqChanged?.changes.handover_notes, "Updated handover note after cash count");
+});
+

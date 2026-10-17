@@ -122,6 +122,8 @@ export interface ShiftOpPayload {
   /** Nested keys are not specified by the supplied Admin contract. */
   aggregatorBreakdown?: Record<string, unknown>[] | null;
   openingFloatHalalas?: number | null;
+  confirmedOpeningHalalas?: number | null;
+  confirmed_opening_halalas?: number | null;
   cashExpectedHalalas?: number | null;
   cashActualHalalas?: number | null;
   varianceHalalas?: number | null;
@@ -129,6 +131,8 @@ export interface ShiftOpPayload {
   pendingIncomingCountedHalalas?: number | null;
   varianceAllocations?: Record<string, unknown>[] | null;
   pkg6Review?: Record<string, unknown> | null;
+  cashCollectedHalalas?: number | null;
+  handoverNotes?: string | null;
 }
 
 /** BD-2 read-only allocation evidence. `version` belongs to the allocation. */
@@ -164,6 +168,7 @@ export interface Operation {
   reportRevision?: number | null;
   /** Present on GET /operations/{id}; this is not the report revision. */
   allocationVersion?: number | null;
+  confirmedOpeningHalalas?: number | null;
   originLabelAr?: string;
   originIcon?: string;
   attachmentCount?: number;

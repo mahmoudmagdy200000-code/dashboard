@@ -1443,11 +1443,13 @@ function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation 
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const correction = useAccountantShiftReportCorrection();
-  const employeeQuery = useEmployees({branchId:op.branchId,pageSize:100});
+  const [empSearch, setEmpSearch] = useState("");
+  const employeeQuery = useEmployees({ branchId: op.branchId, q: empSearch.trim() || undefined, pageSize: 100 });
   const initial = initialShiftCorrectionDraft(detail);
   const [draft,setDraft] = useState<ShiftCorrectionDraft>(()=>initial);
   const [pending,setPending] = useState(false);
   const [completed,setCompleted] = useState(false);
+  const [uncertain,setUncertain] = useState(false);
   const mounted = useRef(false);
   const submitLock = useRef(false);
   const pendingDirect = useRef(new Set<()=>void>());
@@ -1466,7 +1468,7 @@ function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation 
   const employees = (employeeQuery.data?.data ?? []).filter(employee=>employee.status === "active");
   const hasDraftChanges = Boolean(evidence && prepareShiftCorrectionRequest(detail,draft));
 
-  const setField = (key:"cardPaymentsSar"|"countedCashSar"|"reason",value:string) =>
+  const setField = (key:"cardPaymentsSar"|"countedCashSar"|"cashCollectedSar"|"handoverNotes"|"reason",value:string) =>
     setDraft(current=>({...current,[key]:value}));
   const setShare = (index:number,key:"type"|"id"|"amountSar",value:string) =>
     setDraft(current=>({...current,shares:current.shares?.map((share,i)=>i===index?{...share,[key]:value}:share) ?? null}));
@@ -1491,12 +1493,39 @@ function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation 
         postStarted = true;
         await correction.mutateAsync({operationId:op.id,shiftId,body});
       },submitLock);
-      if(didComplete && accessStillCurrent(generation,requestFingerprint)) setCompleted(true);
-      else if(!didComplete && accessStillCurrent(generation,requestFingerprint))
+      if(didComplete && accessStillCurrent(generation,requestFingerprint)) {
+        setCompleted(true);
+        setUncertain(false);
+      } else if(!didComplete && accessStillCurrent(generation,requestFingerprint))
         toast.error(t("تغير دليل التقرير أو نسخته؛ حدّث التفاصيل وأعد المراجعة","Report evidence or revision changed; refresh the details and review again"));
     } catch(error) {
-      if(!postStarted && !(error instanceof FinancialAccessChangedError) && accessStillCurrent(generation,requestFingerprint))
+      if(postStarted) {
+        // F-COR05-02: After uncertain correction POST outcome, refetch actual operation from server
+        // to reconcile screen with server truth without repeating the financial POST.
+        try {
+          const reconciled = await api.get<ApiOperation>(`/operations/${encodeURIComponent(op.id)}`);
+          if (accessStillCurrent(generation, requestFingerprint)) {
+            queryClient.setQueryData(queryKeys.operation(op.id), reconciled.data);
+            const freshRev = reconciled.data.reportRevision ?? reconciled.data.payload?.reportRevision;
+            const expectedRev = evidence.reportRevision;
+            if (typeof freshRev === "number" && typeof expectedRev === "number" && freshRev > expectedRev) {
+              setCompleted(true);
+              setUncertain(false);
+              toast.success(t("تم تطبيق التصحيح على الخادم وتحديث التقرير","Correction applied on server and report updated"));
+            } else {
+              setUncertain(true);
+              toast.error(t("حالة إرسال التصحيح غير مؤكدة؛ تم التوفيق مع الخادم دون تكرار العملية","Correction outcome uncertain; reconciled with server truth without repeating submission"));
+            }
+          }
+        } catch {
+          if (accessStillCurrent(generation, requestFingerprint)) {
+            setUncertain(true);
+            toast.error(t("تعذر التحقق من حالة الخادم بعد إرسال التصحيح؛ حدّث الصفحة يدويًا","Could not verify server state after correction submission; refresh manually"));
+          }
+        }
+      } else if(!(error instanceof FinancialAccessChangedError) && accessStillCurrent(generation,requestFingerprint)) {
         toast.error(getErrorMessage(error,"ar"));
+      }
     } finally {
       if(mounted.current) setPending(false);
     }
@@ -1511,6 +1540,12 @@ function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation 
     <div><h4 className="font-bold text-violet-900">{t("تصحيح تقرير المحاسب","Accountant report correction")}</h4>
       <p className="mt-1 text-gray-600">{t("يُحفظ السبب وسجل المراجعة. إجمالي المبيعات غير قابل للتعديل.","The reason and audit history are retained. Gross sales cannot be changed.")}</p>
     </div>
+    {uncertain && (
+      <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-amber-900">
+        <p className="font-semibold">{t("حالة إرسال التصحيح غير مؤكدة","Correction submission outcome is uncertain")}</p>
+        <p className="mt-0.5 text-gray-600">{t("تم التوفيق مع الخادم لمنع تكرار الإرسال المالي؛ تحقّق من نسخة التقرير أو حدّث الصفحة.","Reconciled with server to prevent duplicate financial POST; verify report revision or reload the page.")}</p>
+      </div>
+    )}
     <div className="grid gap-2 sm:grid-cols-2">
       <label className="space-y-1"><span>{t("إجمالي المبيعات — للقراءة فقط","Gross sales — read only")}</span>
         <p className="rounded-lg border bg-gray-50 px-2.5 py-2 font-mono">{formatShiftHalalas(detail.payload?.salesHalalas,lang)}</p>
@@ -1521,8 +1556,13 @@ function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation 
       {draft.countedCashSar !== null ? <label className="space-y-1"><span>{t("النقد المجرود (ر.س)","Counted cash (SAR)")}</span>
         <input inputMode="decimal" value={draft.countedCashSar} onChange={event=>setField("countedCashSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
       </label> : <p>{t("لا يوجد مبلغ جرد صالح قابل للتصحيح","No valid counted amount is available to correct")}</p>}
+      {draft.cashCollectedSar !== null ? <label className="space-y-1"><span>{t("تحصيل النقد (ر.س)","Cash collected (SAR)")}</span>
+        <input inputMode="decimal" value={draft.cashCollectedSar} onChange={event=>setField("cashCollectedSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+      </label> : <p className="text-gray-500">{t("تحصيل النقد غير متاح في تفاصيل هذه العملية","Cash collected is unavailable in this operation detail")}</p>}
+      {draft.handoverNotes !== null ? <label className="space-y-1 sm:col-span-2"><span>{t("ملاحظات التسليم","Handover notes")}</span>
+        <input type="text" value={draft.handoverNotes} onChange={event=>setField("handoverNotes",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+      </label> : <p className="text-gray-500 sm:col-span-2">{t("ملاحظات التسليم غير متاحة في تفاصيل هذه العملية","Handover notes are unavailable in this operation detail")}</p>}
     </div>
-    <p className="text-gray-600">{t("تحصيل النقد وملاحظات التسليم غير واردين في تفاصيل العملية الحالية؛ لا يمكن تصحيحهما هنا.","Cash collected and handover notes are absent from this operation detail contract, so they are not editable here.")}</p>
     {draft.aggregators === null ? <p className="text-gray-600">{t("تفاصيل التطبيقات غير متاحة بصيغة قابلة للتصحيح","Aggregator values are not available in a correctable contract shape")}</p>
       : draft.aggregators.length > 0 && <div className="space-y-2">
         <h5 className="font-semibold">{t("مبالغ تفاصيل التطبيقات (ر.س)","Aggregator detail amounts (SAR)")}</h5>
@@ -1534,7 +1574,12 @@ function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation 
         <p className="text-gray-500">{t("يُعرض التفصيل بترتيبه دون ادعاء اسم التطبيق؛ لا تُعرض معرّفاته.","Items follow API order; no app name is inferred and identifiers stay hidden.")}</p>
       </div>}
     {draft.shares !== null && <div className="space-y-2 border-t border-violet-100 pt-2">
-      <h5 className="font-semibold">{t("تصحيح توزيع المسؤولية","Correct responsibility allocation")}</h5>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h5 className="font-semibold">{t("تصحيح توزيع المسؤولية","Correct responsibility allocation")}</h5>
+        <input type="search" placeholder={t("بحث في موظفي الفرع…","Search branch employees…")} value={empSearch}
+          onChange={event=>setEmpSearch(event.target.value)} disabled={pending||correction.isPending}
+          className="rounded-lg border border-violet-200 bg-white px-2 py-1 text-xs"/>
+      </div>
       {employeeQuery.isLoading && <p role="status">{t("جارٍ تحميل موظفي الفرع…","Loading branch employees…")}</p>}
       {employeeQuery.isError && <p role="alert">{t("تعذر تحميل موظفي الفرع؛ التوزيع غير متاح للتصحيح","Could not load branch employees; allocation correction is unavailable")}</p>}
       {draft.shares.map((share,index)=>{
@@ -1604,6 +1649,15 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
     : validVariance && variance > 0 ? t("فائض — للفرع","Surplus — branch") : t("الفرق","Variance");
   const liability = detail.liability;
   const allocationEvidence = getShfAllocationEvidence(op, detail, forHead ? "head" : "accountant");
+  const confirmedOpening = (
+    typeof payload.confirmedOpeningHalalas === "number" && Number.isSafeInteger(payload.confirmedOpeningHalalas)
+      ? payload.confirmedOpeningHalalas
+      : typeof payload.confirmed_opening_halalas === "number" && Number.isSafeInteger(payload.confirmed_opening_halalas)
+      ? payload.confirmed_opening_halalas
+      : typeof detail.confirmedOpeningHalalas === "number" && Number.isSafeInteger(detail.confirmedOpeningHalalas)
+      ? detail.confirmedOpeningHalalas
+      : null
+  );
   return (
     <section aria-label={t("تفاصيل وردية الكاشير","Cashier shift details")} className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
       <div className="flex justify-between text-xs"><span>{t("حالة الجرد","Count state")}</span>
@@ -1619,7 +1673,10 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
           </div>
         ))}
         {line("الافتتاحي المهيأ (ليس إثبات استلام)","Configured opening (not receipt evidence)",payload.openingFloatHalalas)}
-        <div className="flex justify-between gap-3 text-xs border-b border-gray-100 py-1.5"><span>{t("الافتتاحي المؤكد","Confirmed opening")}</span><bdi>—</bdi></div>
+        <div className="flex justify-between gap-3 text-xs border-b border-gray-100 py-1.5">
+          <span>{t("الافتتاحي المؤكد","Confirmed opening")}</span>
+          <bdi>{confirmedOpening != null ? money(confirmedOpening) : "—"}</bdi>
+        </div>
         {line("النقد المتوقع","Expected cash",payload.cashExpectedHalalas)}
         {line("النقد المجرود","Counted cash",count === "counted" ? payload.cashActualHalalas : null)}
         <div className={`flex justify-between gap-3 text-xs border-b border-gray-100 py-1.5 ${validVariance ? variance < 0 ? "text-red-700" : variance > 0 ? "text-blue-700" : "" : ""}`}>
@@ -1634,7 +1691,7 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
       </div>
       {Array.isArray(payload.varianceAllocations) && payload.varianceAllocations.length > 0 && (
         <div className="text-xs space-y-1">
-          <h4 className="font-bold">{t("تخصيصات الفرق من العملية","Operation variance allocations")}</h4>
+          <h4 className="font-bold">{t("تخصيصات الفرق من العملية (تاريخية / غير معتمدة)","Operation variance allocations (historical / unapproved)")}</h4>
           {payload.varianceAllocations.map((_,i) => (
             <p key={i}>{t("تخصيص","Allocation")} {i+1}: {t("تفاصيل التخصيص غير متاحة","Allocation details unavailable")}</p>
           ))}
@@ -1644,7 +1701,7 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
       {!forHead && op?.branchId && getShiftCorrectionEvidence(op,detail,"accountant") &&
         <ShiftReportCorrectionForm key={`${detail.id}:${detail.reportRevision ?? "missing"}`} op={op} detail={detail}/>}
       <div className="text-xs space-y-1">
-        <h4 className="font-bold">{t("توزيع المسؤولية","Liability allocation")}</h4>
+        <h4 className="font-bold">{t("توزيع المسؤولية الحالي","Current liability allocation")}</h4>
         {liability ? <>
           <p>{t("نسخة توزيع المسؤولية","Allocation version")}: {typeof liability.version === "number" && Number.isSafeInteger(liability.version) ? liability.version : "—"}</p>
           <p>{t("اعتماد المدير","Manager approval")}: {liability.managerApprovalStatus === "approved" ? t("معتمد من المدير","Approved by manager") : liability.managerApprovalStatus === "pending" ? t("قيد الاعتماد","Pending approval") : liability.managerApprovalStatus || "—"}</p>

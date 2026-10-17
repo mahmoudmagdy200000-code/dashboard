@@ -1135,6 +1135,46 @@ test("F-SHIFT-P1-02: P1-A failed refresh forced logout cleans real QueryClient, 
   assert.equal(currentUser.id, "user-B");
 });
 
+test("F-SHIFT-P1-02: Phase A - storage failure never resurrects credentials on reload or new tab, requires fresh login", async () => {
+  resetAdapters();
+
+  // Setup: old token string stuck in localStorage, and all write/delete operations fail
+  storage.set("asab.tokens", JSON.stringify(pair("stuck-unrevoked-token")));
+  const originalRemove = globalThis.localStorage.removeItem;
+  const originalSet = globalThis.localStorage.setItem;
+  globalThis.localStorage.removeItem = () => { throw new Error("Storage failure: disk read-only"); };
+  globalThis.localStorage.setItem = () => { throw new Error("Storage failure: quota exceeded"); };
+
+  try {
+    // Simulate clean module initialization (full page reload or new browser tab)
+    tokens._resetSessionModuleForTesting();
+
+    // 1. Fresh module initialization does not auto-restore stuck tokens
+    assert.equal(tokens.getTokens(), null, "Stuck token in localStorage must NOT be auto-restored into memory");
+    assert.equal(tokens.getTokenState().tokens, null, "TokenState tokens must be null");
+
+    // 2. Interceptor never attaches old Authorization header
+    let sentHeaders: unknown = null;
+    api.defaults.adapter = (async config => {
+      sentHeaders = config.headers;
+      throw unauthorized(config);
+    }) as AxiosAdapter;
+
+    await assert.rejects(api.get("/api/v1/protected-endpoint"));
+    const authHeader = (sentHeaders as Record<string, string> | null)?.Authorization
+      ?? (sentHeaders as { get?: (k: string) => string } | null)?.get?.("Authorization");
+    assert.equal(authHeader, undefined, "No Authorization header may be attached from stuck storage tokens");
+
+    // 3. Fresh explicit login works normally in-memory
+    tokens.setTokens(pair("new-authenticated-user"));
+    assert.deepEqual(tokens.getTokens(), pair("new-authenticated-user"));
+  } finally {
+    globalThis.localStorage.removeItem = originalRemove;
+    globalThis.localStorage.setItem = originalSet;
+    tokens.clearTokens();
+  }
+});
+
 test.after(async () => {
   await vite.close();
 });

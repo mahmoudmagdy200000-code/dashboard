@@ -27,43 +27,22 @@ function initSessionFromStorage(): void {
   if (sessionInitialized) return;
   sessionInitialized = true;
 
-  try {
-    if (typeof sessionStorage !== "undefined" && sessionStorage.getItem(REVOKED_KEY) === "1") {
-      inMemoryTokens = null;
-      isSessionActive = false;
-      return;
-    }
-  } catch {}
+  // Security P1 (Mahmoud approved): Disable automatic restoration of persisted credentials
+  // after reload or in a new tab. In-memory credentials require fresh login, guaranteeing
+  // that obsolete or invalidated tokens cannot be resurrected even if browser storage write
+  // and deletion operations fail completely.
+  inMemoryTokens = null;
+  isSessionActive = false;
+}
 
-  try {
-    if (typeof localStorage === "undefined") {
-      inMemoryTokens = null;
-      isSessionActive = false;
-      return;
-    }
-    const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      inMemoryTokens = null;
-      isSessionActive = false;
-      return;
-    }
-    const parsed = JSON.parse(raw) as Partial<Tokens> & { revoked?: boolean };
-    if (
-      parsed &&
-      typeof parsed.accessToken === "string" &&
-      typeof parsed.refreshToken === "string" &&
-      !parsed.revoked
-    ) {
-      inMemoryTokens = { accessToken: parsed.accessToken, refreshToken: parsed.refreshToken };
-      isSessionActive = true;
-    } else {
-      inMemoryTokens = null;
-      isSessionActive = false;
-    }
-  } catch {
-    inMemoryTokens = null;
-    isSessionActive = false;
-  }
+/** Reset internal session state to simulate clean page reload or fresh module initialization. */
+export function _resetSessionModuleForTesting(): void {
+  sessionId = 0;
+  revision = 0;
+  provisionalSessionId = null;
+  inMemoryTokens = null;
+  isSessionActive = false;
+  sessionInitialized = false;
 }
 
 export function getTokens(): Tokens | null {
@@ -98,7 +77,11 @@ export function setTokens(t: Tokens): void {
       sessionStorage.removeItem(REVOKED_KEY);
     }
   } catch {}
-  localStorage.setItem(KEY, JSON.stringify(t));
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(KEY, JSON.stringify(t));
+    }
+  } catch {}
 }
 
 /** Store credentials provisionally during login while /auth/me hydration is pending. */
@@ -114,7 +97,11 @@ export function setProvisionalTokens(t: Tokens): number {
       sessionStorage.removeItem(REVOKED_KEY);
     }
   } catch {}
-  localStorage.setItem(KEY, JSON.stringify(t));
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(KEY, JSON.stringify(t));
+    }
+  } catch {}
   return sessionId;
 }
 
@@ -197,7 +184,11 @@ export function rotateTokensIfCurrent(expected: TokenState, next: Tokens): boole
   }
   inMemoryTokens = { accessToken: next.accessToken, refreshToken: next.refreshToken };
   revision++;
-  localStorage.setItem(KEY, JSON.stringify(next));
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(KEY, JSON.stringify(next));
+    }
+  } catch {}
   return true;
 }
 
