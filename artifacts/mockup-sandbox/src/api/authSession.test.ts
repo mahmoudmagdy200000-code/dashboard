@@ -53,12 +53,15 @@ function authContextCallback(name: "login" | "loginWith2fa" | "applyFreshUser" |
   }).outputText;
 }
 
-function makeAuthContextCallbacks() {
+function makeAuthContextCallbacks(overrides?: {
+  resetQueryClient?: (isCurrent: () => boolean) => Promise<boolean>;
+  initialUser?: unknown;
+}) {
   const sessionEpoch = { current: 0 };
   const refreshRequest = { current: 0 };
-  const userRef: { current: unknown } = { current: null };
+  const userRef: { current: unknown } = { current: overrides?.initialUser ?? null };
   const logoutPending = { current: null as Promise<void> | null };
-  let uiUser: unknown = null;
+  let uiUser: unknown = overrides?.initialUser ?? null;
   const setUser = (value: unknown) => { uiUser = value; userRef.current = value; };
   const setFinancialTransition = (_value: boolean) => {};
   const setLoggingIn = (_value: boolean) => {};
@@ -69,7 +72,7 @@ function makeAuthContextCallbacks() {
     `return ${authContextCallback("invalidateSessionRequests")};`)(
       sessionEpoch, refreshRequest, tokens.clearProvisionalTokens,
     ) as () => void;
-  const resetQueryClient = async (_isCurrent: () => boolean) => true;
+  const resetQueryClient = overrides?.resetQueryClient ?? (async (_isCurrent: () => boolean) => true);
   const queryClientRef = { current: {} };
   const applyFreshUser = new Function("userRef", "setUser", "setFinancialTransition", "flushSync",
     "queryClientRef", "resetQueryClient", "financialAccessFingerprint", "purgeFinancialQueries",
@@ -80,18 +83,22 @@ function makeAuthContextCallbacks() {
   const login = new Function("logoutPending", "invalidateSessionRequests", "sessionEpoch", "setLoggingIn",
     "setInitializing", "flushSync", "setFinancialTransition", "apiLogin", "isTwoFactorChallenge",
     "establishLoginSession", "applyFreshUser", "setDefaultPage",
+    "getTokenState", "clearSessionTokensIfCurrent", "confirmSessionTokens",
     `return ${authContextCallback("login")};`)(
       logoutPending, invalidateSessionRequests, sessionEpoch, setLoggingIn, setInitializing, flushSync,
       setFinancialTransition, auth.login, auth.isTwoFactorChallenge, auth.establishLoginSession,
       applyFreshUser, setDefaultPage,
+      tokens.getTokenState, tokens.clearSessionTokensIfCurrent, tokens.confirmSessionTokens,
     ) as typeof auth.login;
   const loginWith2fa = new Function("logoutPending", "invalidateSessionRequests", "sessionEpoch", "setLoggingIn",
     "setInitializing", "flushSync", "setFinancialTransition", "apiLoginWithTwoFactor", "isTwoFactorChallenge",
     "establishLoginSession", "applyFreshUser", "setDefaultPage",
+    "getTokenState", "clearSessionTokensIfCurrent", "confirmSessionTokens",
     `return ${authContextCallback("loginWith2fa")};`)(
       logoutPending, invalidateSessionRequests, sessionEpoch, setLoggingIn, setInitializing, flushSync,
       setFinancialTransition, auth.loginWithTwoFactor, auth.isTwoFactorChallenge, auth.establishLoginSession,
       applyFreshUser, setDefaultPage,
+      tokens.getTokenState, tokens.clearSessionTokensIfCurrent, tokens.confirmSessionTokens,
     ) as (twoFactorToken: string, code: string) => Promise<unknown>;
   return { login, loginWith2fa, invalidateSessionRequests, sessionEpoch, userRef, get uiUser() { return uiUser; } };
 }
@@ -693,4 +700,180 @@ test("F-SHIFT-FINAL-01: /auth/me failure during login clears provisional tokens 
 
   assert.equal(tokens.getTokens(), null);
   assert.equal(tokens.hasProvisionalTokens(), false);
+});
+
+test("F-SHIFT-FINAL-01 residual: Login A tokens do not survive when Login B starts during pending resetQueryClient", async () => {
+  resetAdapters();
+  tokens.clearTokens();
+  const resetPending = deferred<boolean>();
+  const resetStarted = deferred<void>();
+  const ctx = makeAuthContextCallbacks({
+    resetQueryClient: async () => {
+      resetStarted.resolve();
+      return resetPending.promise;
+    },
+    initialUser: { id: "prev-user", companyId: "comp-1" },
+  });
+
+  api.defaults.adapter = (async config => {
+    if (config.url?.includes("/auth/login")) {
+      const body = JSON.parse(String(config.data)) as { email: string };
+      if (body.email === "A") {
+        return response(config, {
+          accessToken: "A-access", refreshToken: "A-refresh",
+          user: { id: "user-A", companyId: "comp-2" }, defaultPage: null,
+        });
+      }
+      return response(config, { requires2fa: true, twoFactorToken: "2fa-challenge-B" });
+    }
+    if (config.url?.includes("/auth/me")) {
+      return response(config, { id: "user-A", companyId: "comp-2", roles: [], permissions: {} });
+    }
+    return response(config, {});
+  }) as AxiosAdapter;
+
+  const promiseA = ctx.login("A", "pw");
+  await resetStarted.promise; // Login A has verified /auth/me and is awaiting resetQueryClient
+
+  // Tokens remain provisional during applyFreshUser
+  assert.equal(tokens.hasProvisionalTokens(), true);
+  assert.deepEqual(tokens.getTokens(), pair("A"));
+
+  // Login B starts while Login A is awaiting resetQueryClient
+  const resB = await ctx.login("B", "pw");
+  assert.equal(resB && "requires2fa" in resB && resB.requires2fa, true);
+
+  // Tokens MUST be cleared immediately upon Login B invalidation
+  assert.equal(tokens.getTokens(), null);
+  assert.equal(tokens.hasProvisionalTokens(), false);
+
+  resetPending.resolve(true);
+  await promiseA;
+
+  // Stale Login A tokens do NOT survive
+  assert.equal(tokens.getTokens(), null);
+  assert.equal(tokens.hasProvisionalTokens(), false);
+  assert.notEqual((ctx.uiUser as { id?: string } | null)?.id, "user-A");
+});
+
+test("F-SHIFT-FINAL-01 residual: Login B completes successfully while Login A is obsolete during resetQueryClient", async () => {
+  resetAdapters();
+  tokens.clearTokens();
+  const resetPending = deferred<boolean>();
+  const resetStarted = deferred<void>();
+  const ctx = makeAuthContextCallbacks({
+    resetQueryClient: async () => {
+      resetStarted.resolve();
+      return resetPending.promise;
+    },
+    initialUser: { id: "prev-user", companyId: "comp-1" },
+  });
+
+  api.defaults.adapter = (async config => {
+    if (config.url?.includes("/auth/login")) {
+      const body = JSON.parse(String(config.data)) as { email: string };
+      return response(config, {
+        accessToken: `${body.email}-access`, refreshToken: `${body.email}-refresh`,
+        user: { id: `user-${body.email}`, companyId: `comp-${body.email}` }, defaultPage: null,
+      });
+    }
+    if (config.url?.includes("/auth/me")) {
+      const authHeader = (config.headers?.get?.("Authorization") ?? config.headers?.Authorization) as string | undefined;
+      const id = authHeader === "Bearer B-access" ? "user-B" : "user-A";
+      const companyId = authHeader === "Bearer B-access" ? "comp-B" : "comp-A";
+      return response(config, { id, companyId, roles: [], permissions: {} });
+    }
+    return response(config, {});
+  }) as AxiosAdapter;
+
+  const promiseA = ctx.login("A", "pw");
+  await resetStarted.promise;
+
+  // Login B starts and completes successfully
+  const promiseB = ctx.login("B", "pw");
+  await promiseB;
+
+  assert.deepEqual(tokens.getTokens(), pair("B"));
+  assert.equal(tokens.hasProvisionalTokens(), false);
+  assert.equal((ctx.uiUser as { id?: string } | null)?.id, "user-B");
+
+  // Login A finishes resetQueryClient late
+  resetPending.resolve(true);
+  await promiseA;
+
+  // Login B tokens and user identity remain intact
+  assert.deepEqual(tokens.getTokens(), pair("B"));
+  assert.equal(tokens.hasProvisionalTokens(), false);
+  assert.equal((ctx.uiUser as { id?: string } | null)?.id, "user-B");
+});
+
+test("F-SHIFT-FINAL-01 residual: forced logout during resetQueryClient immediately purges provisional tokens", async () => {
+  resetAdapters();
+  tokens.clearTokens();
+  const resetPending = deferred<boolean>();
+  const resetStarted = deferred<void>();
+  const ctx = makeAuthContextCallbacks({
+    resetQueryClient: async () => {
+      resetStarted.resolve();
+      return resetPending.promise;
+    },
+    initialUser: { id: "prev-user", companyId: "comp-1" },
+  });
+
+  api.defaults.adapter = (async config => {
+    if (config.url?.includes("/auth/login")) {
+      return response(config, {
+        accessToken: "A-access", refreshToken: "A-refresh",
+        user: { id: "user-A", companyId: "comp-A" }, defaultPage: null,
+      });
+    }
+    if (config.url?.includes("/auth/me")) {
+      return response(config, { id: "user-A", companyId: "comp-A", roles: [], permissions: {} });
+    }
+    return response(config, {});
+  }) as AxiosAdapter;
+
+  const promiseA = ctx.login("A", "pw");
+  await resetStarted.promise;
+
+  assert.equal(tokens.hasProvisionalTokens(), true);
+  assert.deepEqual(tokens.getTokens(), pair("A"));
+
+  // Invalidate / force logout during pending resetQueryClient
+  ctx.invalidateSessionRequests();
+
+  assert.equal(tokens.getTokens(), null);
+  assert.equal(tokens.hasProvisionalTokens(), false);
+
+  resetPending.resolve(true);
+  await promiseA;
+
+  assert.equal(tokens.getTokens(), null);
+  assert.equal(tokens.hasProvisionalTokens(), false);
+  assert.notEqual((ctx.uiUser as { id?: string } | null)?.id, "user-A");
+});
+
+test("F-SHIFT-P1-02: fail-closed token cleanup on storage failure guarantees in-memory session invalidation", async () => {
+  tokens.clearTokens();
+  const initialSession = tokens.setProvisionalTokens(pair("A"));
+  assert.equal(tokens.hasProvisionalTokens(), true);
+
+  // Simulate localStorage.removeItem failure
+  const originalRemove = globalThis.localStorage.removeItem;
+  globalThis.localStorage.removeItem = () => {
+    throw new Error("Storage quota exceeded or access denied");
+  };
+
+  try {
+    assert.throws(() => tokens.clearProvisionalTokens(), /Storage quota exceeded/);
+  } finally {
+    globalThis.localStorage.removeItem = originalRemove;
+  }
+
+  // Even though removeItem threw, in-memory state MUST fail closed:
+  // 1. provisionalSessionId is cleared
+  // 2. sessionId is incremented
+  const state = tokens.getTokenState();
+  assert.equal(tokens.hasProvisionalTokens(), false);
+  assert.notEqual(state.sessionId, initialSession);
 });

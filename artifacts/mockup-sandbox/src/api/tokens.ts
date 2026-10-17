@@ -57,32 +57,39 @@ export function setProvisionalTokens(t: Tokens): number {
   return sessionId;
 }
 
-/** Confirm provisional credentials once /auth/me verifies user identity for this session. */
-export function confirmSessionTokens(expectedSessionId: number): boolean {
-  if (provisionalSessionId === expectedSessionId) {
-    provisionalSessionId = null;
-    return true;
+/** Confirm provisional credentials once /auth/me and user publication complete for this session. */
+export function confirmSessionTokens(expectedSessionId?: number): boolean {
+  if (provisionalSessionId === null) return false;
+  if (expectedSessionId !== undefined && provisionalSessionId !== expectedSessionId) {
+    return false;
   }
-  return false;
+  provisionalSessionId = null;
+  return true;
 }
 
 /** Clear provisional credentials if still unconfirmed and not superseded by a newer session. */
 export function clearProvisionalTokens(): boolean {
   if (provisionalSessionId !== null && sessionId === provisionalSessionId) {
-    localStorage.removeItem(KEY);
-    sessionId++;
-    revision++;
-    provisionalSessionId = null;
+    try {
+      localStorage.removeItem(KEY);
+    } finally {
+      sessionId++;
+      revision++;
+      provisionalSessionId = null;
+    }
     return true;
   }
   return false;
 }
 
 export function clearTokens(): void {
-  localStorage.removeItem(KEY);
-  sessionId++;
-  revision++;
-  provisionalSessionId = null;
+  try {
+    localStorage.removeItem(KEY);
+  } finally {
+    sessionId++;
+    revision++;
+    provisionalSessionId = null;
+  }
 }
 
 /** Rotate tokens only if the session and token pair still match the request's snapshot. */
@@ -96,11 +103,14 @@ export function rotateTokensIfCurrent(expected: TokenState, next: Tokens): boole
 /** Clear a session only if no login or refresh has replaced its token state. */
 export function clearTokensIfCurrent(expected: TokenState): boolean {
   if (expected.sessionId !== sessionId || expected.revision !== revision || !getTokens()) return false;
-  localStorage.removeItem(KEY);
-  sessionId++;
-  revision++;
-  if (provisionalSessionId === expected.sessionId) {
-    provisionalSessionId = null;
+  try {
+    localStorage.removeItem(KEY);
+  } finally {
+    sessionId++;
+    revision++;
+    if (provisionalSessionId === expected.sessionId) {
+      provisionalSessionId = null;
+    }
   }
   return true;
 }
@@ -108,11 +118,14 @@ export function clearTokensIfCurrent(expected: TokenState): boolean {
 /** Clear during logout if its session is still active, even if that same session refreshed. */
 export function clearSessionTokensIfCurrent(expectedSessionId: number): boolean {
   if (expectedSessionId !== sessionId || !getTokens()) return false;
-  localStorage.removeItem(KEY);
-  sessionId++;
-  revision++;
-  if (provisionalSessionId === expectedSessionId) {
-    provisionalSessionId = null;
+  try {
+    localStorage.removeItem(KEY);
+  } finally {
+    sessionId++;
+    revision++;
+    if (provisionalSessionId === expectedSessionId) {
+      provisionalSessionId = null;
+    }
   }
   return true;
 }

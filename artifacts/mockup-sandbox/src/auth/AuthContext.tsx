@@ -20,7 +20,14 @@ import {
   logout as apiLogout,
   type LoginOrChallenge,
 } from "../api/auth";
-import { clearProvisionalTokens, clearTokens, getTokens } from "../api/tokens";
+import {
+  clearProvisionalTokens,
+  clearSessionTokensIfCurrent,
+  clearTokens,
+  confirmSessionTokens,
+  getTokenState,
+  getTokens,
+} from "../api/tokens";
 import { clearEntrySelection } from "./entrySelection";
 import { clearRetiredQueryClient, financialAccessFingerprint, hasRoleGrant, purgeFinancialQueries } from "./roleAccess";
 import { createQueryClient } from "../lib/queryClient";
@@ -89,10 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const invalidateSessionRequests = useCallback(() => {
     sessionEpoch.current++;
     refreshRequest.current++;
-    try {
+    if (typeof clearProvisionalTokens === "function") {
       clearProvisionalTokens();
-    } catch {
-      // Safe fallback when evaluated in an isolated AST test harness without module scope
     }
   }, []);
 
@@ -384,8 +389,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Commit credentials and hydrate /auth/me only for this active login.
         const me = await establishLoginSession(res, isCurrent);
         if (!me) return res;
-        if (!isCurrent()) return res;
-        if (!await applyFreshUser(me, isCurrent, true) || !isCurrent()) return res;
+        const committedSession = getTokenState().sessionId;
+        if (!isCurrent()) {
+          clearSessionTokensIfCurrent(committedSession);
+          return res;
+        }
+        if (!await applyFreshUser(me, isCurrent, true) || !isCurrent()) {
+          clearSessionTokensIfCurrent(committedSession);
+          return res;
+        }
+        confirmSessionTokens(committedSession);
         setDefaultPage(res.defaultPage || null);
         return res;
       } finally {
@@ -411,7 +424,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const res = await apiLoginWithTwoFactor(twoFactorToken, code);
         if (!isCurrent()) return res;
         const me = await establishLoginSession(res, isCurrent);
-        if (!me || !isCurrent() || !await applyFreshUser(me, isCurrent, true) || !isCurrent()) return res;
+        if (!me) return res;
+        const committedSession = getTokenState().sessionId;
+        if (!isCurrent()) {
+          clearSessionTokensIfCurrent(committedSession);
+          return res;
+        }
+        if (!await applyFreshUser(me, isCurrent, true) || !isCurrent()) {
+          clearSessionTokensIfCurrent(committedSession);
+          return res;
+        }
+        confirmSessionTokens(committedSession);
         setDefaultPage(res.defaultPage || null);
         return res;
       } finally {

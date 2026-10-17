@@ -52,6 +52,7 @@ export async function loginWithTwoFactor(
 export async function establishLoginSession(
   response: LoginResponse,
   isCurrent: () => boolean,
+  autoConfirm = false,
 ): Promise<MeResponse | null> {
   if (!isCurrent()) return null;
   const committedSession = setProvisionalTokens({
@@ -77,7 +78,9 @@ export async function establishLoginSession(
     clearSessionTokensIfCurrent(committedSession);
     throw new Error("Login identity does not match /auth/me");
   }
-  confirmSessionTokens(committedSession);
+  if (autoConfirm) {
+    confirmSessionTokens(committedSession);
+  }
   return me;
 }
 
