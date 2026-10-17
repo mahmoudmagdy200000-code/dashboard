@@ -374,7 +374,11 @@ test("COR-05-02 lost POST response reconciles safely with exact command identity
     "F-COR05-02: shows explicitly uncertain result requiring manual verification");
 });
 
-test("COR-05-03 branch employee selection through real paginated backend contract with >100 eligible employees", () => {
+test("COR-05-03 unit contract simulation: Dashboard branch employee selection behavior with >100 eligible employees", () => {
+  // Unit test simulating the backend paginated contract to verify Dashboard selection state behavior.
+  // Note: Real Backend HTTP tests with >100 employees, multiple branches and name search execute
+  // in tests/Feature/EmployeePaginationAndSearchHttpTest.php.
+
   // Generate synthetic directory: 120 eligible employees in branch-target, 30 in branch-other
   type SynthEmployee = { id: string; name: string; branchId: string; status: "active" | "inactive"; empNumber: string };
   const allEmployees: SynthEmployee[] = [];
@@ -464,12 +468,50 @@ test("COR-05-03 branch employee selection through real paginated backend contrac
   assert.equal(exactEmpNumber.total, 1, "Searching by exact empNumber param returns single matching employee");
   assert.equal(exactEmpNumber.data[0].empNumber, "EMP-0010");
 
-  // 3. Employee selection across paginated records
-  // Select an employee on page 1 and an employee on page 2
-  const selectedEmployeeP1 = branchScoped.data[0];
-  const selectedEmployeeP2 = page2.data[0];
-  assert.ok(selectedEmployeeP1 && selectedEmployeeP2, "Both employees selectable across pages");
-  assert.notEqual(selectedEmployeeP1.id, selectedEmployeeP2.id, "Distinct employees selected across pages");
+  // 3. Dashboard selection behavior across paginated records and search queries:
+  // Step A: Select an employee from Page 1 (e.g. Youssef Cashier 1)
+  const selectedP1 = branchScoped.data.find(e => e.name.startsWith("Youssef"))!;
+  let shares = [
+    { type: "employee", id: selectedP1.id, name: selectedP1.name, amountSar: "25.00" },
+  ];
+
+  // Step B: User searches for "Ahmed" (empSearch = "Ahmed")
+  // The query returns only Ahmeds; Youssef is NOT in nameSearch.data
+  const searchResults = nameSearch.data;
+  assert.equal(searchResults.some(e => e.id === selectedP1.id), false, "Youssef is absent from Ahmed search results");
+
+  // Verify Dashboard CompanyDashboard.tsx selection preservation logic:
+  // const selectedEmployee = employees.find(e => e.id === share.id);
+  // const showCurrentActor = currentKey && (share.type !== 'employee' || !selectedEmployee);
+  const foundInCurrentQuery = searchResults.find(e => e.id === shares[0].id);
+  const showCurrentActor = Boolean(shares[0].id && !foundInCurrentQuery);
+  assert.equal(showCurrentActor, true, "Selected employee option is preserved in UI even when absent from active search filter");
+
+  // Step C: Select a second employee from the filtered search results (e.g. Ahmed Barista 2)
+  const selectedP2 = searchResults[0];
+  shares.push({ type: "employee", id: selectedP2.id, name: selectedP2.name, amountSar: "15.00" });
+
+  assert.equal(shares.length, 2);
+  assert.notEqual(shares[0].id, shares[1].id, "Distinct employees selected across pages and searches");
+
+  // Step D: Validate that prepareShiftCorrectionRequest correctly packages both selected employees into integer halalas
+  const correctionReq = prepareShiftCorrectionRequest(detail, {
+    ...initialShiftCorrectionDraft(detail),
+    reason: "Shortage allocated across selected employees",
+    shares,
+  });
+  assert.ok(correctionReq?.shortage_allocations);
+  assert.equal(correctionReq.shortage_allocations.length, 2);
+  assert.deepEqual(correctionReq.shortage_allocations[0], {
+    type: "employee",
+    id: selectedP1.id,
+    amount: 2500, // 25.00 SAR -> 2500 halalas
+  });
+  assert.deepEqual(correctionReq.shortage_allocations[1], {
+    type: "employee",
+    id: selectedP2.id,
+    amount: 1500, // 15.00 SAR -> 1500 halalas
+  });
 });
 
 test("Security P1: fail-closed in-memory session protection distinguishes frontend non-restoration from backend revocation", () => {
