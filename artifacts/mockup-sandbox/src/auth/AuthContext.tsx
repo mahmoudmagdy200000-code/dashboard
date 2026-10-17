@@ -15,6 +15,7 @@ import {
   fetchMe,
   login as apiLogin,
   loginWithTwoFactor as apiLoginWithTwoFactor,
+  establishLoginSession,
   isTwoFactorChallenge,
   logout as apiLogout,
   type LoginOrChallenge,
@@ -370,12 +371,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       flushSync(() => setFinancialTransition(true));
       try {
         const res = await apiLogin(email, password, opts);
+        if (!isCurrent()) return res;
         // 2FA enabled and no/invalid code yet → return the challenge; no session.
         if (isTwoFactorChallenge(res)) {
           return res;
         }
-        // Hydrate the full me-record (with permissions) immediately.
-        const me = await fetchMe();
+        // Commit credentials and hydrate /auth/me only for this active login.
+        const me = await establishLoginSession(res, isCurrent);
+        if (!me) return res;
         if (!isCurrent()) return res;
         if (!await applyFreshUser(me, isCurrent, true) || !isCurrent()) return res;
         setDefaultPage(res.defaultPage || null);
@@ -401,8 +404,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       flushSync(() => setFinancialTransition(true));
       try {
         const res = await apiLoginWithTwoFactor(twoFactorToken, code);
-        const me = await fetchMe();
-        if (!isCurrent() || !await applyFreshUser(me, isCurrent, true) || !isCurrent()) return res;
+        if (!isCurrent()) return res;
+        const me = await establishLoginSession(res, isCurrent);
+        if (!me || !isCurrent() || !await applyFreshUser(me, isCurrent, true) || !isCurrent()) return res;
         setDefaultPage(res.defaultPage || null);
         return res;
       } finally {
@@ -441,7 +445,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userRef.current = null;
         setUser(null);
         setDefaultPage(null);
-        clearTokens();
         // Always drop the pre-login pick — otherwise App's redirect effect would
         // immediately re-route the (now logged-out) browser back into a dashboard.
         clearEntrySelection();

@@ -3,7 +3,7 @@ import axios, {
   type AxiosInstance,
   type InternalAxiosRequestConfig,
 } from "axios";
-import { getTokens, setTokens, clearTokens } from "./tokens";
+import { clearTokensIfCurrent, getTokenState, rotateTokensIfCurrent, type TokenState } from "./tokens";
 import { ApiError, isErrorBody, type ApiErrorBody } from "./errors";
 
 const BASE_RAW = import.meta.env.VITE_API_BASE_URL ?? "";
@@ -41,9 +41,22 @@ function generateIdempotencyKey(): string {
 }
 
 api.interceptors.request.use((config) => {
-  const t = getTokens();
-  if (t?.accessToken && config.headers) {
-    config.headers.Authorization = `Bearer ${t.accessToken}`;
+  const state = getTokenState();
+  const authConfig = config as RetriableConfig;
+  if (authConfig.__authSessionId !== undefined && authConfig.__authSessionId !== state.sessionId) {
+    throw new SessionChangedError();
+  }
+  authConfig.__authSessionId ??= state.sessionId;
+  authConfig.__authRevision = state.revision;
+
+  const url = config.url ?? "";
+  const publicAuthRequest = url.includes("/auth/login") || url.includes("/auth/refresh");
+  if (config.headers) {
+    if (!publicAuthRequest && state.tokens?.accessToken) {
+      config.headers.Authorization = `Bearer ${state.tokens.accessToken}`;
+    } else {
+      config.headers.delete("Authorization");
+    }
   }
 
   // Auto-attach Idempotency-Key on mutations unless the caller already set one.
@@ -62,11 +75,21 @@ export function withIdempotencyKey(key: string): { headers: { "Idempotency-Key":
 }
 
 // ─── Response: 401 → refresh-once → retry; normalize errors ──────────────────
-let refreshing: Promise<string | null> | null = null;
+type RefreshResult = { accessToken: string; sessionId: number } | null;
+const refreshes = new Map<string, Promise<RefreshResult>>();
 
-async function performRefresh(): Promise<string | null> {
-  const t = getTokens();
-  if (!t?.refreshToken) return null;
+async function performRefresh(expected: TokenState): Promise<RefreshResult> {
+  const current = getTokenState();
+  if (current.sessionId !== expected.sessionId || current.revision !== expected.revision) {
+    return current.sessionId === expected.sessionId && current.tokens
+      ? { accessToken: current.tokens.accessToken, sessionId: current.sessionId }
+      : null;
+  }
+  const t = expected.tokens;
+  if (!t?.refreshToken) {
+    if (clearTokensIfCurrent(expected)) window.dispatchEvent(new CustomEvent("asab:auth:logout"));
+    return null;
+  }
   try {
     const res = await axios.post<{ accessToken: string; refreshToken: string }>(
       `${BASE}/api/v1/auth/refresh`,
@@ -78,18 +101,35 @@ async function performRefresh(): Promise<string | null> {
         },
       },
     );
-    setTokens({
+    const rotated = {
       accessToken: res.data.accessToken,
       refreshToken: res.data.refreshToken,
-    });
-    return res.data.accessToken;
+    };
+    if (rotateTokensIfCurrent(expected, rotated)) {
+      return { accessToken: rotated.accessToken, sessionId: expected.sessionId };
+    }
+    const newer = getTokenState();
+    return newer.sessionId === expected.sessionId && newer.tokens
+      ? { accessToken: newer.tokens.accessToken, sessionId: newer.sessionId }
+      : null;
   } catch {
-    clearTokens();
+    if (clearTokensIfCurrent(expected)) {
+      // A stale refresh rejection must not log out a replacement session.
+      window.dispatchEvent(new CustomEvent("asab:auth:logout"));
+    }
     return null;
   }
 }
 
-type RetriableConfig = InternalAxiosRequestConfig & { __retried?: boolean };
+type RetriableConfig = InternalAxiosRequestConfig & {
+  __retried?: boolean;
+  __authSessionId?: number;
+  __authRevision?: number;
+};
+
+class SessionChangedError extends Error {
+  constructor() { super("Authentication session changed before request dispatch"); }
+}
 
 api.interceptors.response.use(
   (res) => res,
@@ -106,16 +146,33 @@ api.interceptors.response.use(
       !url.includes("/auth/refresh") &&
       !url.includes("/auth/login")
     ) {
-      cfg.__retried = true;
-      refreshing ??= performRefresh();
-      const newToken = await refreshing;
-      refreshing = null;
-      if (newToken) {
-        if (cfg.headers) cfg.headers.Authorization = `Bearer ${newToken}`;
-        return api(cfg);
+      const originalSessionId = cfg.__authSessionId;
+      const current = getTokenState();
+      if (originalSessionId !== undefined && current.sessionId === originalSessionId && current.tokens) {
+        let newToken: string | null = null;
+        if (cfg.__authRevision !== undefined && current.revision !== cfg.__authRevision) {
+          // Another request already rotated this same session's token pair.
+          newToken = current.tokens.accessToken;
+        } else {
+          const expected = current;
+          const key = `${expected.sessionId}:${expected.revision}`;
+          let pending = refreshes.get(key);
+          if (!pending) {
+            pending = performRefresh(expected).finally(() => refreshes.delete(key));
+            refreshes.set(key, pending);
+          }
+          const refreshed = await pending;
+          const afterRefresh = getTokenState();
+          if (refreshed?.sessionId === originalSessionId && afterRefresh.sessionId === originalSessionId) {
+            newToken = afterRefresh.tokens?.accessToken ?? null;
+          }
+        }
+        if (newToken && getTokenState().sessionId === originalSessionId) {
+          cfg.__retried = true;
+          if (cfg.headers) cfg.headers.Authorization = `Bearer ${newToken}`;
+          return api(cfg);
+        }
       }
-      // Refresh failed — broadcast a logout so AuthContext clears state and routes to /login.
-      window.dispatchEvent(new CustomEvent("asab:auth:logout"));
     }
 
     if (isErrorBody(body)) {
