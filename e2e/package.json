@@ -1,0 +1,24 @@
+{
+  "name": "@assab/e2e-shift-cycle",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ASSAB ERP shift-cycle Playwright E2E suite (Business Rules v3.4). Deliberately outside the pnpm workspace.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:unit": "playwright test --project=unit",
+    "test:preflight": "ASSAB_E2E_MODE=preflight playwright test --project=preflight",
+    "test:isolated": "bash scripts/isolated/run-isolated.sh",
+    "test:staging-financial": "ASSAB_E2E_MODE=staging-financial playwright test --project=lifecycle",
+    "traceability": "node scripts/build-traceability.mjs",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.0",
+    "@types/node": "^22.10.0",
+    "typescript": "5.9.2"
+  }
+}
