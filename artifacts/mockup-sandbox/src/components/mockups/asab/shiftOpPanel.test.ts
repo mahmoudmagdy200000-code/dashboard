@@ -126,11 +126,31 @@ test("BD-2 liability preserves redacted identities and treats version as allocat
 });
 
 test("operation variance allocations are shown only when the API supplies rows", () => {
-  assert.doesNotMatch(render({ detail: fin01 }), /تخصيصات الفرق من العملية/);
+  assert.doesNotMatch(render({ detail: fin01 }), /تخصيصات الفرق التاريخية من العملية/);
   const detail = { ...fin01, payload: { ...fin01.payload, varianceAllocations: [{ amountHalalas: 500, employeeId: "private-employee-id", internalField: "hidden-allocation" }] } };
   const html = render({ detail });
-  assert.match(html, /تخصيصات الفرق من العملية/);
+  assert.match(html, /تخصيصات الفرق التاريخية من العملية/);
   assert.match(html, /تفاصيل التخصيص غير متاحة/);
   assert.doesNotMatch(html, /private-employee-id|hidden-allocation|employeeId|internalField|amountHalalas/);
   assert.equal(html.includes(`>${formatShiftHalalas(500, "ar")}</bdi>`), false);
 });
+
+test("FIN-01 confirmed receipt of 10.00 SAR (1,000 halalas) is displayed correctly with no double counting in Expected Cash", () => {
+  const withConfirmedReceipt = {
+    ...fin01,
+    payload: {
+      ...fin01.payload,
+      confirmedOpeningHalalas: 1000,
+      openingFloatHalalas: 5000,
+      cashExpectedHalalas: 5000,
+    },
+  };
+  const html = render({ detail: withConfirmedReceipt });
+  assert.match(html, /الافتتاحي المهيأ/);
+  assert.ok(html.includes(formatShiftHalalas(5000, "ar")), "Configured opening 50.00 SAR (5000 halalas) displayed");
+  assert.match(html, /الافتتاحي المؤكد/);
+  assert.ok(html.includes(formatShiftHalalas(1000, "ar")), "Confirmed opening 10.00 SAR (1000 halalas) displayed");
+  assert.ok(html.includes(formatShiftHalalas(5000, "ar")), "Expected cash remains exact server value (50.00 SAR)");
+  assert.doesNotMatch(html, /60\.00|6,000/, "Opening cash is never double counted into Expected Cash in React");
+});
+

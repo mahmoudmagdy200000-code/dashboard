@@ -2,15 +2,15 @@ import "./_group.css";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
-import { chooseGrantedRole, companyRoles, grantedRoleKeys, pageForRole, purgeFinancialQueries } from "../../../auth/roleAccess";
+import { chooseGrantedRole, companyRoles, financialAccessFingerprint, financialAccessGeneration, grantedRoleKeys, hasRoleGrant, pageForRole, purgeFinancialQueries, registerFinancialRequest } from "../../../auth/roleAccess";
 import { historyBranchOptions, historyPageTarget } from "../../../api/queries/shifts";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRows, shfReviewPageTarget, type ShfReviewAction, type ShfReviewGroup } from "./shiftReviewQueue";
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT } from "./headReviewGuards";
 import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocationHalalas, runShfAllocationCorrection, type ShfAllocationRow } from "./shiftAllocationCorrection";
-import { api } from "../../../api/client";
+import { api, generateCommandId } from "../../../api/client";
 import { toast } from "sonner";
-import { useState, useMemo, useEffect, useRef, ReactNode, createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
+import { useState, useMemo, useEffect, useLayoutEffect, useRef, ReactNode, createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
 import {
   useOperations, useApproveOperation, useRejectOperation, useBulkApprove, useFinalApprove, useBulkFinalApprove,
   useVerifyExpenseInvoice, useUnverifyExpenseInvoice, useReviewExpenseInvoice,
@@ -23,7 +23,7 @@ import {
   useDailyReconciliation, useSaveDailyVarianceAllocation, useExportInventory,
   useWaste, usePatchWasteProduct, usePutWasteAllocations, useApproveWaste, useRejectWaste,
   useBulkApproveWaste, useExportWaste,
-  useShiftsLive, useShiftsHistory, useShiftConfigs, useSaveShiftConfig, useExportShifts, useShiftVarianceAllocations,
+  useShiftsLive, useShiftsHistory, useShiftConfigs, useSaveShiftConfig, useExportShifts, useShiftVarianceAllocations, useAccountantShiftReportCorrection,
   useEmployees, useEmployeeMovements, useCreateEmployeeMovement, useSettleEmployeeBalance,
   useExportEmployeeStatement, useExportPayroll,
   useCashCustody, useCashTransactions, useCreateCashTransaction, useApproveCashTxn,
@@ -73,6 +73,7 @@ import {
 } from "../../../api/queries";
 import { apiOpToCOp, sumCOpAmounts, type COp, type COpStatus, type CMatch, type CModKey } from "./operationMapping";
 import { formatShiftHalalas, getShiftCountEvidence, getShiftStatusDisplay } from "./shiftCountEvidence";
+import { getShiftCorrectionEvidence, initialShiftCorrectionDraft, prepareShiftCorrectionRequest, runShiftReportCorrection, type ShiftCorrectionDraft, type ShiftCorrectionShareDraft } from "./shiftReportCorrection";
 import type {
   Asset, ExpenseInvoiceRow,
   PurchaseLine, PurchasesBlock, Supplier, PurchaseReturn, PurchaseEnumsCatalogue,
@@ -1372,7 +1373,20 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
 // ═══════════════════════════════════════════════════
 function ShiftAllocationForm({ op, shortageHalalas }:{ op:COp; shortageHalalas:number }) {
   const { t, lang } = useCLang();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+  const mounted = useRef(false);
+  const pendingDirect = useRef(new Set<()=>void>());
+  const fingerprint = financialAccessFingerprint(user);
+  const currentFingerprint = useRef(fingerprint);
+  currentFingerprint.current = fingerprint;
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; for (const abort of pendingDirect.current) abort(); pendingDirect.current.clear(); };
+  }, []);
+  const accessStillCurrent = (generation:number, expectedFingerprint:string) =>
+    mounted.current && generation === financialAccessGeneration(queryClient)
+    && expectedFingerprint === currentFingerprint.current && hasRoleGrant(user,"accountant");
   const allocationMut = useShiftVarianceAllocations();
   const submitLock = useRef(false);
   const [pending, setPending] = useState(false);
@@ -1382,23 +1396,31 @@ function ShiftAllocationForm({ op, shortageHalalas }:{ op:COp; shortageHalalas:n
   const setField = (index:number,field:keyof ShfAllocationRow,value:string) =>
     setRows(current=>current.map((row,i)=>i===index?{...row,[field]:value}:row));
   const submit = async () => {
-    if (!allocations || pending || submitLock.current) return;
+    if (!allocations || pending || submitLock.current || !mounted.current || !hasRoleGrant(user,"accountant")) return;
+    const generation = financialAccessGeneration(queryClient);
+    const requestFingerprint = currentFingerprint.current;
     setPending(true);
     let postStarted = false;
     try {
       const completed = await runShfAllocationCorrection(op, "accountant", rows, async () => {
-        const response = await api.get<ApiOperation>(`/operations/${op.id}`);
-        queryClient.setQueryData(queryKeys.operation(op.id), response.data);
-        return response.data;
+        const request = registerFinancialRequest(queryClient);
+        pendingDirect.current.add(request.abort);
+        try {
+          const response = await api.get<ApiOperation>(`/operations/${op.id}`,{signal:request.signal});
+          if (request.signal.aborted || !accessStillCurrent(generation,requestFingerprint)) throw new FinancialAccessChangedError();
+          queryClient.setQueryData(queryKeys.operation(op.id), response.data);
+          return response.data;
+        } finally { pendingDirect.current.delete(request.abort); request.release(); }
       }, async (shiftId, currentAllocations) => {
+        if (!accessStillCurrent(generation,requestFingerprint)) throw new FinancialAccessChangedError();
         postStarted = true;
         await allocationMut.mutateAsync({operationId:op.id,shiftId,allocations:currentAllocations});
       }, submitLock);
-      if (completed) setRows([{empNumber:"",amountSar:""}]);
-      else toast.error(t("تغير دليل الوردية؛ حدّث القائمة وأعد المراجعة","Shift evidence changed; refresh and review again"));
+      if (completed && accessStillCurrent(generation,requestFingerprint)) setRows([{empNumber:"",amountSar:""}]);
+      else if (accessStillCurrent(generation,requestFingerprint)) toast.error(t("تغير دليل الوردية؛ حدّث القائمة وأعد المراجعة","Shift evidence changed; refresh and review again"));
     } catch (error) {
-      if (!postStarted) toast.error(getErrorMessage(error,"ar")); // The mutation hook translates POST errors.
-    } finally { setPending(false); }
+      if (!postStarted && !(error instanceof FinancialAccessChangedError)) toast.error(getErrorMessage(error,"ar")); // The mutation hook translates POST errors.
+    } finally { if (mounted.current) setPending(false); }
   };
   return <div className="space-y-2 rounded-xl border border-red-200 bg-red-50/40 p-3 text-xs">
     <h4 className="font-bold text-red-800">{t("تصحيح توزيع العجز","Correct shortage allocation")}</h4>
@@ -1414,6 +1436,201 @@ function ShiftAllocationForm({ op, shortageHalalas }:{ op:COp; shortageHalalas:n
     <button onClick={submit} disabled={!allocations || pending || allocationMut.isPending}
       className="rounded-lg bg-red-700 px-3 py-1.5 font-semibold text-white disabled:opacity-50">{pending ? t("جارٍ الحفظ…","Saving…") : t("حفظ التوزيع","Save allocation")}</button>
   </div>;
+}
+
+function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation }) {
+  const { t, lang } = useCLang();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const correction = useAccountantShiftReportCorrection();
+  const [empSearch, setEmpSearch] = useState("");
+  const employeeQuery = useEmployees({ branchId: op.branchId, q: empSearch.trim() || undefined, pageSize: 100 });
+  const initial = initialShiftCorrectionDraft(detail);
+  const [draft,setDraft] = useState<ShiftCorrectionDraft>(()=>initial);
+  const [pending,setPending] = useState(false);
+  const [completed,setCompleted] = useState(false);
+  const [uncertain,setUncertain] = useState(false);
+  const mounted = useRef(false);
+  const submitLock = useRef(false);
+  const pendingDirect = useRef(new Set<()=>void>());
+  const fingerprint = financialAccessFingerprint(user);
+  const currentFingerprint = useRef(fingerprint);
+  currentFingerprint.current = fingerprint;
+  useLayoutEffect(()=>{
+    mounted.current = true;
+    return ()=>{mounted.current=false;for(const abort of pendingDirect.current)abort();pendingDirect.current.clear();};
+  },[]);
+
+  const evidence = getShiftCorrectionEvidence(op,detail,"accountant");
+  const accessStillCurrent = (generation:number,expectedFingerprint:string) =>
+    mounted.current && generation === financialAccessGeneration(queryClient)
+    && expectedFingerprint === currentFingerprint.current && hasRoleGrant(user,"accountant");
+  const employees = (employeeQuery.data?.data ?? []).filter(employee=>employee.status === "active");
+  const hasDraftChanges = Boolean(evidence && prepareShiftCorrectionRequest(detail,draft));
+
+  const setField = (key:"cardPaymentsSar"|"countedCashSar"|"cashCollectedSar"|"handoverNotes"|"reason",value:string) =>
+    setDraft(current=>({...current,[key]:value}));
+  const setShare = (index:number,key:"type"|"id"|"amountSar",value:string) =>
+    setDraft(current=>({...current,shares:current.shares?.map((share,i)=>i===index?{...share,[key]:value}:share) ?? null}));
+  const submit = async () => {
+    if (!evidence || !hasRoleGrant(user,"accountant") || pending || completed || submitLock.current || !mounted.current) return;
+    const generation = financialAccessGeneration(queryClient);
+    const requestFingerprint = currentFingerprint.current;
+    setPending(true);
+    let postStarted = false;
+    const clientCommandId = generateCommandId();
+    try {
+      const didComplete=await runShiftReportCorrection(op,detail,"accountant",draft,async()=>{
+        const request=registerFinancialRequest(queryClient);
+        pendingDirect.current.add(request.abort);
+        try {
+          const response=await api.get<ApiOperation>(`/operations/${encodeURIComponent(op.id)}`,{signal:request.signal});
+          if(request.signal.aborted || !accessStillCurrent(generation,requestFingerprint)) throw new FinancialAccessChangedError();
+          queryClient.setQueryData(queryKeys.operation(op.id),response.data);
+          return response.data;
+        } finally {pendingDirect.current.delete(request.abort);request.release();}
+      },async(shiftId,body)=>{
+        if(!accessStillCurrent(generation,requestFingerprint)) throw new FinancialAccessChangedError();
+        postStarted = true;
+        await correction.mutateAsync({operationId:op.id,shiftId,body,idempotencyKey:clientCommandId});
+      },submitLock);
+      if(didComplete && accessStillCurrent(generation,requestFingerprint)) {
+        setCompleted(true);
+        setUncertain(false);
+      } else if(!didComplete && accessStillCurrent(generation,requestFingerprint))
+        toast.error(t("تغير دليل التقرير أو نسخته؛ حدّث التفاصيل وأعد المراجعة","Report evidence or revision changed; refresh the details and review again"));
+    } catch(error) {
+      if(postStarted) {
+        // F-COR05-02: After uncertain correction POST outcome, refetch actual operation from server
+        // to reconcile screen with server truth without repeating the financial POST.
+        // Requires exact command identity attribution; never use reason text or actor ID as proof of success.
+        try {
+          const reconciled = await api.get<ApiOperation>(`/operations/${encodeURIComponent(op.id)}`);
+          if (accessStillCurrent(generation, requestFingerprint)) {
+            queryClient.setQueryData(queryKeys.operation(op.id), reconciled.data);
+            const freshRev = reconciled.data.reportRevision ?? reconciled.data.payload?.reportRevision;
+            const expectedRev = evidence.reportRevision;
+            const lastCorrection = reconciled.data.lastCorrection ?? reconciled.data.payload?.lastCorrection;
+            const matchesAttribution = Boolean(
+              typeof freshRev === "number" &&
+              typeof expectedRev === "number" &&
+              freshRev > expectedRev &&
+              lastCorrection &&
+              typeof lastCorrection === "object" &&
+              lastCorrection.revisionNumber === freshRev &&
+              clientCommandId &&
+              lastCorrection.commandId === clientCommandId
+            );
+            if (matchesAttribution) {
+              setCompleted(true);
+              setUncertain(false);
+              toast.success(t("تم تطبيق التصحيح على الخادم وتحديث التقرير","Correction applied on server and report updated"));
+            } else {
+              setUncertain(true);
+              toast.error(t("حالة إرسال التصحيح غير مؤكدة؛ يتطلب التحقق اليدوي دون تكرار العملية","Correction outcome uncertain; manual verification required without repeating submission"));
+            }
+          }
+        } catch {
+          if (accessStillCurrent(generation, requestFingerprint)) {
+            setUncertain(true);
+            toast.error(t("تعذر التحقق من حالة الخادم بعد إرسال التصحيح؛ يتطلب التحقق اليدوي","Could not verify server state after correction submission; manual verification required"));
+          }
+        }
+      } else if(!(error instanceof FinancialAccessChangedError) && accessStillCurrent(generation,requestFingerprint)) {
+        toast.error(getErrorMessage(error,"ar"));
+      }
+    } finally {
+      if(mounted.current) setPending(false);
+    }
+  };
+
+  if(!evidence || !hasRoleGrant(user,"accountant")) return null;
+  const fieldClass="w-full rounded-lg border border-violet-200 bg-white px-2.5 py-2 font-mono text-xs";
+  const employeeOption=(employee:{id:string;name:string;empNumber:string})=>(
+    <option key={employee.id} value={`employee:${employee.id}`}>{employee.name} · {employee.empNumber}</option>
+  );
+  return <section aria-label={t("تصحيح تقرير الوردية","Shift report correction")} className="space-y-3 rounded-xl border border-violet-200 bg-violet-50/40 p-3 text-xs">
+    <div><h4 className="font-bold text-violet-900">{t("تصحيح تقرير المحاسب","Accountant report correction")}</h4>
+      <p className="mt-1 text-gray-600">{t("يُحفظ السبب وسجل المراجعة. إجمالي المبيعات غير قابل للتعديل.","The reason and audit history are retained. Gross sales cannot be changed.")}</p>
+    </div>
+    {uncertain && (
+      <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-amber-900">
+        <p className="font-semibold">{t("حالة إرسال التصحيح غير مؤكدة","Correction submission outcome is uncertain")}</p>
+        <p className="mt-0.5 text-gray-600">{t("تم التوفيق مع الخادم لمنع تكرار الإرسال المالي؛ تحقّق من نسخة التقرير أو حدّث الصفحة.","Reconciled with server to prevent duplicate financial POST; verify report revision or reload the page.")}</p>
+      </div>
+    )}
+    <div className="grid gap-2 sm:grid-cols-2">
+      <label className="space-y-1"><span>{t("إجمالي المبيعات — للقراءة فقط","Gross sales — read only")}</span>
+        <p className="rounded-lg border bg-gray-50 px-2.5 py-2 font-mono">{formatShiftHalalas(detail.payload?.salesHalalas,lang)}</p>
+      </label>
+      {draft.cardPaymentsSar !== null ? <label className="space-y-1"><span>{t("إجمالي الشبكة (ر.س)","Card payments (SAR)")}</span>
+        <input inputMode="decimal" value={draft.cardPaymentsSar} onChange={event=>setField("cardPaymentsSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+      </label> : <p>{t("إجمالي الشبكة غير متاح للتصحيح","Card amount unavailable for correction")}</p>}
+      {draft.countedCashSar !== null ? <label className="space-y-1"><span>{t("النقد المجرود (ر.س)","Counted cash (SAR)")}</span>
+        <input inputMode="decimal" value={draft.countedCashSar} onChange={event=>setField("countedCashSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+      </label> : <p>{t("لا يوجد مبلغ جرد صالح قابل للتصحيح","No valid counted amount is available to correct")}</p>}
+      {draft.cashCollectedSar !== null ? <label className="space-y-1"><span>{t("تحصيل النقد (ر.س)","Cash collected (SAR)")}</span>
+        <input inputMode="decimal" value={draft.cashCollectedSar} onChange={event=>setField("cashCollectedSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+      </label> : <p className="text-gray-500">{t("تحصيل النقد غير متاح في تفاصيل هذه العملية","Cash collected is unavailable in this operation detail")}</p>}
+      {draft.handoverNotes !== null ? <label className="space-y-1 sm:col-span-2"><span>{t("ملاحظات التسليم","Handover notes")}</span>
+        <input type="text" value={draft.handoverNotes} onChange={event=>setField("handoverNotes",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+      </label> : <p className="text-gray-500 sm:col-span-2">{t("ملاحظات التسليم غير متاحة في تفاصيل هذه العملية","Handover notes are unavailable in this operation detail")}</p>}
+    </div>
+    {draft.aggregators === null ? <p className="text-gray-600">{t("تفاصيل التطبيقات غير متاحة بصيغة قابلة للتصحيح","Aggregator values are not available in a correctable contract shape")}</p>
+      : draft.aggregators.length > 0 && <div className="space-y-2">
+        <h5 className="font-semibold">{t("مبالغ تفاصيل التطبيقات (ر.س)","Aggregator detail amounts (SAR)")}</h5>
+        {draft.aggregators.map((row,index)=><label key={`${row.aggregatorId}-${index}`} className="flex items-center gap-2">
+          <span>{t("تفصيل التطبيق","Aggregator item")} {index+1}</span>
+          <input inputMode="decimal" value={row.amountSar} disabled={pending||correction.isPending} className={fieldClass}
+            onChange={event=>setDraft(current=>({...current,aggregators:current.aggregators?.map((item,i)=>i===index?{...item,amountSar:event.target.value}:item)??null}))}/>
+        </label>)}
+        <p className="text-gray-500">{t("يُعرض التفصيل بترتيبه دون ادعاء اسم التطبيق؛ لا تُعرض معرّفاته.","Items follow API order; no app name is inferred and identifiers stay hidden.")}</p>
+      </div>}
+    {draft.shares !== null && <div className="space-y-2 border-t border-violet-100 pt-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h5 className="font-semibold">{t("تصحيح توزيع المسؤولية","Correct responsibility allocation")}</h5>
+        <input type="search" placeholder={t("بحث في موظفي الفرع…","Search branch employees…")} value={empSearch}
+          onChange={event=>setEmpSearch(event.target.value)} disabled={pending||correction.isPending}
+          className="rounded-lg border border-violet-200 bg-white px-2 py-1 text-xs"/>
+      </div>
+      {employeeQuery.isLoading && <p role="status">{t("جارٍ تحميل موظفي الفرع…","Loading branch employees…")}</p>}
+      {employeeQuery.isError && <p role="alert">{t("تعذر تحميل موظفي الفرع؛ التوزيع غير متاح للتصحيح","Could not load branch employees; allocation correction is unavailable")}</p>}
+      {draft.shares.map((share,index)=>{
+        const currentKey=["cashier","employee","branch_manager"].includes(share.type)&&share.id?`${share.type}:${share.id}`:"";
+        const changeActor=(value:string)=>{
+          const [type,id]=value.split(":");
+          setDraft(current=>({...current,shares:current.shares?.map((item,i)=>i===index?{...item,type,id}:item)??null}));
+        };
+        const selectedEmployee=employees.find(employee=>employee.id===share.id);
+        const showCurrentActor=currentKey && (share.type!=="employee" || !selectedEmployee);
+        return <div key={index} className="grid gap-2 sm:grid-cols-[1fr_9rem_auto]">
+          <label className="space-y-1"><span>{t("المسؤول","Responsible person")}</span>
+            <select className={fieldClass} value={currentKey} onChange={event=>changeActor(event.target.value)} disabled={pending||correction.isPending||employeeQuery.isLoading||employeeQuery.isError}>
+              <option value="">{t("اختر موظفًا","Select an employee")}</option>
+              {showCurrentActor && <option value={currentKey}>{share.name ?? selectedEmployee?.name ?? t("المسؤول الحالي","Current responsible party")}</option>}
+              {employees.map(employeeOption)}
+            </select>
+          </label>
+          <label className="space-y-1"><span>{t("المبلغ (ر.س)","Amount (SAR)")}</span>
+            <input inputMode="decimal" className={fieldClass} value={share.amountSar} disabled={pending||correction.isPending}
+              onChange={event=>setShare(index,"amountSar",event.target.value)}/>
+          </label>
+          <button type="button" onClick={()=>setDraft(current=>({...current,shares:current.shares?.filter((_,i)=>i!==index)??null}))}
+            disabled={pending||correction.isPending} className="self-end rounded-lg border border-red-200 px-2 py-2 text-red-700 disabled:opacity-50">{t("حذف","Remove")}</button>
+        </div>;
+      })}
+      <button type="button" onClick={()=>setDraft(current=>({...current,shares:[...(current.shares??[]),{type:"employee",id:"",amountSar:""}]}))}
+        disabled={pending||correction.isPending||employeeQuery.isLoading||employeeQuery.isError} className="rounded-lg border px-2 py-1.5 disabled:opacity-50">{t("إضافة مسؤول","Add responsible person")}</button>
+      <p className="text-gray-500">{t("تُرسل حصص التوزيع كهللات صحيحة؛ يتحقق الخادم من مجموعها والفرع والنسخة، دون حساب فرق التقرير هنا.","Shares are sent as integer halalas; the server validates their total, branch and version without calculating report variance here.")}</p>
+    </div>}
+    <label className="block space-y-1"><span>{t("سبب التصحيح (إلزامي)","Correction reason (required)")}</span>
+      <textarea rows={2} value={draft.reason} onChange={event=>setField("reason",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+    </label>
+    <button type="button" onClick={submit} disabled={!hasDraftChanges||pending||completed||correction.isPending}
+      className="rounded-lg bg-violet-700 px-3 py-2 font-semibold text-white disabled:opacity-50">
+      {pending||correction.isPending?t("جارٍ حفظ التصحيح…","Saving correction…"):completed?t("تم حفظ التصحيح","Correction saved"):t("حفظ التصحيح","Save correction")}
+    </button>
+  </section>;
 }
 
 function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:boolean; detail?:ApiOperation; loading?:boolean; error?:boolean }) {
@@ -1445,6 +1662,15 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
     : validVariance && variance > 0 ? t("فائض — للفرع","Surplus — branch") : t("الفرق","Variance");
   const liability = detail.liability;
   const allocationEvidence = getShfAllocationEvidence(op, detail, forHead ? "head" : "accountant");
+  const confirmedOpening = (
+    typeof payload.confirmedOpeningHalalas === "number" && Number.isSafeInteger(payload.confirmedOpeningHalalas)
+      ? payload.confirmedOpeningHalalas
+      : typeof payload.confirmed_opening_halalas === "number" && Number.isSafeInteger(payload.confirmed_opening_halalas)
+      ? payload.confirmed_opening_halalas
+      : typeof detail.confirmedOpeningHalalas === "number" && Number.isSafeInteger(detail.confirmedOpeningHalalas)
+      ? detail.confirmedOpeningHalalas
+      : null
+  );
   return (
     <section aria-label={t("تفاصيل وردية الكاشير","Cashier shift details")} className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
       <div className="flex justify-between text-xs"><span>{t("حالة الجرد","Count state")}</span>
@@ -1460,7 +1686,10 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
           </div>
         ))}
         {line("الافتتاحي المهيأ (ليس إثبات استلام)","Configured opening (not receipt evidence)",payload.openingFloatHalalas)}
-        <div className="flex justify-between gap-3 text-xs border-b border-gray-100 py-1.5"><span>{t("الافتتاحي المؤكد","Confirmed opening")}</span><bdi>—</bdi></div>
+        <div className="flex justify-between gap-3 text-xs border-b border-gray-100 py-1.5">
+          <span>{t("الافتتاحي المؤكد","Confirmed opening")}</span>
+          <bdi>{confirmedOpening != null ? money(confirmedOpening) : "—"}</bdi>
+        </div>
         {line("النقد المتوقع","Expected cash",payload.cashExpectedHalalas)}
         {line("النقد المجرود","Counted cash",count === "counted" ? payload.cashActualHalalas : null)}
         <div className={`flex justify-between gap-3 text-xs border-b border-gray-100 py-1.5 ${validVariance ? variance < 0 ? "text-red-700" : variance > 0 ? "text-blue-700" : "" : ""}`}>
@@ -1475,15 +1704,17 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
       </div>
       {Array.isArray(payload.varianceAllocations) && payload.varianceAllocations.length > 0 && (
         <div className="text-xs space-y-1">
-          <h4 className="font-bold">{t("تخصيصات الفرق من العملية","Operation variance allocations")}</h4>
+          <h4 className="font-bold">{t("تخصيصات الفرق التاريخية من العملية","Historical operation variance allocations")}</h4>
           {payload.varianceAllocations.map((_,i) => (
             <p key={i}>{t("تخصيص","Allocation")} {i+1}: {t("تفاصيل التخصيص غير متاحة","Allocation details unavailable")}</p>
           ))}
         </div>
       )}
       {allocationEvidence && <ShiftAllocationForm op={op} shortageHalalas={allocationEvidence.shortageHalalas}/>}
+      {!forHead && op?.branchId && getShiftCorrectionEvidence(op,detail,"accountant") &&
+        <ShiftReportCorrectionForm key={`${detail.id}:${detail.reportRevision ?? "missing"}`} op={op} detail={detail}/>}
       <div className="text-xs space-y-1">
-        <h4 className="font-bold">{t("توزيع المسؤولية","Liability allocation")}</h4>
+        <h4 className="font-bold">{t("توزيع المسؤولية الحالي","Current liability allocation")}</h4>
         {liability ? <>
           <p>{t("نسخة توزيع المسؤولية","Allocation version")}: {typeof liability.version === "number" && Number.isSafeInteger(liability.version) ? liability.version : "—"}</p>
           <p>{t("اعتماد المدير","Manager approval")}: {liability.managerApprovalStatus === "approved" ? t("معتمد من المدير","Approved by manager") : liability.managerApprovalStatus === "pending" ? t("قيد الاعتماد","Pending approval") : liability.managerApprovalStatus || "—"}</p>
@@ -3028,8 +3259,16 @@ function cBrandNamesFromOps(ops: COp[]): string[] {
   return [...seen];
 }
 
-function useSharedOps(role: CRole | null) {
+class FinancialAccessChangedError extends Error {}
+
+function useSharedOps(role: CRole | null, fingerprint: string) {
   const queryClient = useQueryClient();
+  const mounted = useRef(false);
+  const pendingDirect = useRef(new Set<()=>void>());
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; for (const abort of pendingDirect.current) abort(); pendingDirect.current.clear(); };
+  }, []);
   const financialRole = role === "accountant" || role === "head";
   const opsQuery = useQuery({
     queryKey: [...queryKeys.operations({ pageSize: 100 }), role],
@@ -3056,14 +3295,32 @@ function useSharedOps(role: CRole | null) {
   currentOps.current = ops;
   const currentRole = useRef(role);
   currentRole.current = role;
+  const currentFingerprint = useRef(fingerprint);
+  currentFingerprint.current = fingerprint;
+  const captureAccess = () => {
+    const activeRole = currentRole.current;
+    if (!mounted.current || (activeRole !== "accountant" && activeRole !== "head")) return null;
+    return {generation:financialAccessGeneration(queryClient),role:activeRole,fingerprint:currentFingerprint.current};
+  };
+  const accessStillCurrent = (context:NonNullable<ReturnType<typeof captureAccess>>) =>
+    mounted.current && context.generation === financialAccessGeneration(queryClient)
+    && context.role === currentRole.current && context.fingerprint === currentFingerprint.current;
   const operationFor = (id: string) =>
     queryClient.getQueryData<{data:ApiOperation[]}>(queryKeys.operations({ moduleKey:"shifts", pageSize:100, page:shiftReviewPage }))?.data
       ?.find(op => op.id === id) ?? currentOps.current.find(op => op.id === id);
   const detailFor = (op: { id: string }) => queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id));
   const loadFreshDetail = async (id:string) => {
-    const response = await api.get<ApiOperation>(`/operations/${id}`);
-    queryClient.setQueryData(queryKeys.operation(id), response.data);
-    return response.data;
+    const context = captureAccess();
+    if (!context) throw new FinancialAccessChangedError();
+    const request = registerFinancialRequest(queryClient);
+    pendingDirect.current.add(request.abort);
+    try {
+      const response = await api.get<ApiOperation>(`/operations/${id}`,{signal:request.signal});
+      if (request.signal.aborted || request.generation !== context.generation || !accessStillCurrent(context))
+        throw new FinancialAccessChangedError();
+      queryClient.setQueryData(queryKeys.operation(id), response.data);
+      return response.data;
+    } finally { pendingDirect.current.delete(request.abort); request.release(); }
   };
   const salesContextFor = (id: string) => {
     const operation = operationFor(id);
@@ -3102,36 +3359,44 @@ function useSharedOps(role: CRole | null) {
     if (actionLock.current) return;
     const operation = operationFor(id);
     if (!getHeadReviewPolicy(operation, currentRole.current, operation && detailFor(operation)).finalApprove) return;
+    const context = captureAccess();
+    if (!context) return;
     setActionsPending(true);
     let mutationStarted = false;
     try {
       const completed = await runHeadFinalApproval(operation, currentRole.current, loadFreshDetail, async operationId => {
+        if (!accessStillCurrent(context)) throw new FinancialAccessChangedError();
         mutationStarted = true;
         await finalMut.mutateAsync({ id:operationId });
       }, actionLock);
-      if (!completed) toast.error("تغيرت حالة العملية؛ حدّث القائمة وأعد المراجعة");
+      if (!completed && accessStillCurrent(context)) toast.error("تغيرت حالة العملية؛ حدّث القائمة وأعد المراجعة");
     } catch (error) {
-      if (!mutationStarted) toast.error(getErrorMessage(error, "ar")); // mutation hook already translates its errors
-    } finally { setActionsPending(false); }
+      if (!mutationStarted && !(error instanceof FinancialAccessChangedError) && accessStillCurrent(context))
+        toast.error(getErrorMessage(error, "ar")); // mutation hook already translates its errors
+    } finally { if (mounted.current) setActionsPending(false); }
   };
   const bulkApprove        = (ids:string[]) => { runSalesBulkApproval(currentOps.current, ids, currentRole.current, eligible => bulkMut.mutate({ operationIds: eligible }), detailFor); };
   const bulkFinalApprove = async (ids:string[]) => {
     if (actionLock.current || ids.length===0 || headLegacyBulkIds(currentOps.current, ids, currentRole.current, detailFor).length !== new Set(ids).size) return;
+    const context = captureAccess();
+    if (!context) return;
     actionLock.current = true;
     setActionsPending(true);
     let mutationStarted = false;
     try {
       const fresh = await Promise.all(ids.map(id => loadFreshDetail(id)));
+      if (!accessStillCurrent(context)) throw new FinancialAccessChangedError();
       const freshById = new Map(fresh.map(op => [op.id, op]));
       if (headLegacyBulkIds(currentOps.current, ids, currentRole.current, op => freshById.get(op.id)).length !== new Set(ids).size) {
         toast.error("تغيرت حالة العمليات؛ راجع القائمة قبل الاعتماد الجماعي");
         return;
       }
+      if (!accessStillCurrent(context)) throw new FinancialAccessChangedError();
       mutationStarted = true;
       await bulkFinalMut.mutateAsync({ operationIds:ids });
     } catch (error) {
-      if (!mutationStarted) toast.error(getErrorMessage(error, "ar"));
-    } finally { actionLock.current = false; setActionsPending(false); }
+      if (!mutationStarted && !(error instanceof FinancialAccessChangedError) && accessStillCurrent(context)) toast.error(getErrorMessage(error, "ar"));
+    } finally { actionLock.current = false; if (mounted.current) setActionsPending(false); }
   };
 
   const rejectModalProps = {
@@ -3157,7 +3422,7 @@ function useSharedOps(role: CRole | null) {
               mutationStarted = true;
               await rejectMut.mutateAsync({ id:rejectingId, reason, notes });
             } else toast.error("تغيرت حالة العملية؛ حدّث القائمة وأعد المراجعة");
-          } catch (error) { if (!mutationStarted) toast.error(getErrorMessage(error, "ar")); }
+          } catch (error) { if (!mutationStarted && !(error instanceof FinancialAccessChangedError)) toast.error(getErrorMessage(error, "ar")); }
           finally { actionLock.current = false; setActionsPending(false); }
         }
       } else if (rejectingId && (rejectingModule !== "shifts" || rejectReasons?.some(r => r.key === reason)))
@@ -6904,7 +7169,7 @@ function CompanyDashboardInner() {
   const allowedRoles = grantedRoleKeys(user).filter(r => companyRoles.includes(r)) as CRole[];
   const currentRole = role && allowedRoles.includes(role) ? role : allowedRoles[0] ?? null;
   const currentPage = currentRole ? pageForRole(currentRole,page,DEFAULT_PAGE[currentRole]) : "";
-  const { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, actionsPending, shiftReviewPage, setShiftReviewPage, rejectModalProps, clarifyModalProps, clearDialogs } = useSharedOps(switchingRole ? null : currentRole);
+  const { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, actionsPending, shiftReviewPage, setShiftReviewPage, rejectModalProps, clarifyModalProps, clearDialogs } = useSharedOps(switchingRole ? null : currentRole, financialAccessFingerprint(user));
 
   // Tag the current history entry with a page so Back/Forward can restore it.
   const tagHistory = (p:string, replace=false) => {
