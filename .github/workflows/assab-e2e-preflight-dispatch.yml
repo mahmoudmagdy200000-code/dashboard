@@ -1,0 +1,95 @@
+name: ASSAB E2E staging read-only preflight
+
+# Dispatcher bootstrap only; the full E2E implementation is pinned to a
+# separately published, exact Git commit. No push/PR/schedule triggers.
+on:
+  workflow_dispatch:
+    inputs:
+      attested_deployed_backend_sha:
+        description: "Full backend SHA checked directly in the successful Coolify deployment"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assab-readonly-preflight
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Mode A - read-only staging checks
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment: assab-staging-readonly
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: e2e
+
+    env:
+      ASSAB_E2E_API_ORIGIN: https://szkrjqiuo9s6d6nsy5fldc0j.62.72.19.141.sslip.io
+      ASSAB_E2E_FRONTEND_URL: https://assab-dashboard-staging.vercel.app
+      ASSAB_E2E_MODE: preflight
+      ASSAB_E2E_UI: 'true'
+      ASSAB_E2E_EXPECTED_BACKEND_SHA: 289fe09d15cc91bbe4d9877a51482b80abb4c7bf
+      ASSAB_E2E_ATTESTED_DEPLOYED_BACKEND_SHA: ${{ inputs.attested_deployed_backend_sha }}
+
+    steps:
+      - name: Check out the exact reviewed Playwright commit (not main)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: mahmoudmagdy200000-code/dashboard
+          ref: 6b66486345a347d33f156e6e3f439980e6b24229
+          persist-credentials: false
+
+      - name: Fail closed if source, deployment attestation, or secret is missing
+        env:
+          EXPECTED_E2E_COMMIT: 6b66486345a347d33f156e6e3f439980e6b24229
+          ASSAB_E2E_FIXTURE_PASSWORD: ${{ secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test "$(git -C .. rev-parse HEAD)" = "$EXPECTED_E2E_COMMIT" || { echo "::error::Unexpected E2E source commit"; exit 1; }
+          test "$ASSAB_E2E_ATTESTED_DEPLOYED_BACKEND_SHA" = "$ASSAB_E2E_EXPECTED_BACKEND_SHA" || { echo "::error::Coolify deployment SHA is missing or mismatched"; exit 1; }
+          test -n "$ASSAB_E2E_FIXTURE_PASSWORD" || { echo "::error::Configure ASSAB_E2E_FIXTURE_PASSWORD in assab-staging-readonly environment"; exit 1; }
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+
+      - name: Install E2E dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Run offline unit safety checks
+        env:
+          ASSAB_E2E_MODE: unit
+        run: npx playwright test --project=unit
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run staging read-only preflight (Mode A)
+        env:
+          ASSAB_E2E_FIXTURE_PASSWORD: ${{ secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
+        run: npx playwright test --project=preflight
+
+      - name: Generate traceability report
+        if: always()
+        run: node scripts/build-traceability.mjs
+
+      - name: Upload read-only test evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: assab-readonly-preflight-${{ github.run_id }}
+          path: |
+            e2e/reports/
+            e2e/traceability/TRACEABILITY.md
+          retention-days: 14
