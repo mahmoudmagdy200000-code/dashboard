@@ -37,7 +37,6 @@ jobs:
       ASSAB_E2E_UI: 'true'
       ASSAB_E2E_EXPECTED_BACKEND_SHA: 289fe09d15cc91bbe4d9877a51482b80abb4c7bf
       ASSAB_E2E_ATTESTED_DEPLOYED_BACKEND_SHA: ${{ inputs.attested_deployed_backend_sha }}
-      ASSAB_E2E_FIXTURE_PASSWORD: ${{ secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
 
     steps:
       - name: Check out the exact reviewed Playwright commit (not main)
@@ -50,6 +49,7 @@ jobs:
       - name: Fail closed if source, deployment attestation, or secret is missing
         env:
           EXPECTED_E2E_COMMIT: 6b66486345a347d33f156e6e3f439980e6b24229
+          ASSAB_E2E_FIXTURE_PASSWORD: ${{ secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
         run: |
           set -euo pipefail
           test "$(git -C .. rev-parse HEAD)" = "$EXPECTED_E2E_COMMIT" || { echo "::error::Unexpected E2E source commit"; exit 1; }
@@ -76,6 +76,8 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run staging read-only preflight (Mode A)
+        env:
+          ASSAB_E2E_FIXTURE_PASSWORD: ${{ secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
         run: npx playwright test --project=preflight
 
       - name: Generate traceability report
