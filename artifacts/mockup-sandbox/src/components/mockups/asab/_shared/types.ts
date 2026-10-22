@@ -6,6 +6,31 @@ export type OpStatus = "pending" | "approved" | "rejected" | "final-approved";
 export type MatchStatus = "exact" | "review" | "diff";
 export type ModuleKey = "sales" | "expenses" | "purchases" | "inventory" | "shifts" | "employees" | "cash";
 
+export interface Filters {
+  branch: string;
+  status: string;
+  match: string;
+  search: string;
+}
+
+export type PipelineStageId = "submit" | "review" | "approved" | "final" | "erp" | "reports";
+
+export type ExceptionSeverity = "critical" | "high" | "medium";
+
+export interface ExceptionItem {
+  severity: ExceptionSeverity;
+  icon: string;
+  label: string;
+  count: number;
+  owner: string;
+  action: string;
+  age: string;
+  impact: string;
+  navTarget: PageId;
+  navLabel: string;
+  detail?: string;
+}
+
 export interface Op {
   id: string;
   branch: string;

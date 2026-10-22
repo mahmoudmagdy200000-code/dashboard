@@ -13,7 +13,38 @@ import { Card } from "./components/Card";
 import { PageHeader } from "./components/PageHeader";
 import { Breadcrumb } from "./components/Breadcrumb";
 import { LangContext, useLang, type Lang, type LangCtxType } from "./_shared/LangContext";
-import { fmtAmt } from "./_shared/formatters";
+import {
+  fmtAmt,
+  opDetailPage,
+  AR_MONTHS_LONG,
+  EN_MONTHS_LONG,
+  AR_WEEKDAYS,
+  EN_WEEKDAYS,
+  formatTodayLong,
+  formatMonthLong,
+  formatDateLong,
+} from "./_shared/formatters";
+import {
+  MATCH_CFG,
+  STATUS_CFG,
+  ORIGIN_CFG,
+  EN_MATCH_CFG,
+  EN_STATUS_CFG,
+  EN_ORIGIN,
+  EN_PIPELINE,
+  PIPELINE_STAGES,
+  getPipelineStage,
+  getPipelineLabel,
+  EN_SEV_LABEL,
+  EN_EXCEPTION_UI,
+  EN_EXCEPTION_ITEMS,
+  EXCEPTION_SEV_CFG,
+} from "./_shared/displayConfig";
+import { applyFilters, BRANCHES, topModulePage } from "./_shared/filterOps";
+import { PipelineBar, OpStagePill, PipelineOverview } from "./_shared/PipelineOverview";
+import { OpRow } from "./_shared/OpRow";
+import { deriveExceptions, ExceptionPanel } from "./_shared/ExceptionPanel";
+import type { Filters, ExceptionItem, ExceptionSeverity, PipelineStageId } from "./_shared/types";
 import { ProcOverview } from "./_pages/procurement/ProcOverview";
 import { ProcReports } from "./_pages/procurement/ProcReports";
 import { ProcSent } from "./_pages/procurement/ProcSent";
@@ -486,24 +517,6 @@ const EN_ROLE_LABELS: Record<string, { name: string; label: string }> = {
   procurement: { name: "Saeed Ahmed", label: "Procurement Manager" },
   supplier: { name: "Mohammed Al-Ali", label: "Al-Wataniyya Poultry Co." },
 };
-const EN_MATCH_CFG: Record<string, string> = {
-  exact: "Matched", review: "Needs Review", diff: "Quantity Difference",
-};
-const EN_STATUS_CFG: Record<string, string> = {
-  "pending": "Pending", "approved": "Approved", "rejected": "Rejected",
-  "final-approved": "Final Approved",
-};
-const EN_PIPELINE: Record<string, { label: string; labelShort: string }> = {
-  submit: { label: "Submitted from Branch", labelShort: "Submitted" },
-  review: { label: "Under Review", labelShort: "Review" },
-  approved: { label: "Approved", labelShort: "Approval" },
-  final: { label: "Final Approved", labelShort: "Final" },
-  erp: { label: "Posted to ERP", labelShort: "ERP" },
-  reports: { label: "ERP Reports (Read)", labelShort: "Reports" },
-};
-const EN_ORIGIN: Record<string, string> = {
-  mobile: "Branch App", procurement: "Procurement Flow", system: "System Import",
-};
 const EN_PAGE_LABELS: Record<string, string> = {
   "acc-sales-detail": "Sales Operation Details",
   "acc-inventory-items": "Select Daily Inventory Items",
@@ -524,71 +537,6 @@ const EN_MODULE_AGG: Record<string, { label: string; sublabel: string }> = {
   ready_erp: { label: "Ready for ERP", sublabel: "Batch ready to send" },
   exported: { label: "Exported", sublabel: "Posted to ERP — awaiting confirmation" },
   erp_imported: { label: "Imported in ERP ★", sublabel: "ERP acknowledged receipt — future stage" },
-};
-// ── English for EXCEPTION_SEV_CFG labels ────────────────────────────────────
-const EN_SEV_LABEL: Record<string, string> = {
-  critical: "Critical", high: "High", medium: "Medium",
-};
-// ── English for static ExceptionPanel UI strings ────────────────────────────
-const EN_EXCEPTION_UI = {
-  noExceptions: "No exceptions found — system running normally",
-  panelTitle: "Exceptions Requiring Action",
-  responsible: "Responsible",
-  since: "Since",
-  requiredAction: "Required Action",
-  financialImpact: "Financial / Operational Impact",
-  context: "Context",
-  navigateCTA: "Navigate directly to affected records",
-  collapse: "▲ Collapse",
-  expand: "▼ Expand",
-};
-// ── English for deriveExceptions dynamic strings ─────────────────────────────
-const EN_EXCEPTION_ITEMS = {
-  stuck: {
-    label: "Entries pending for more than 2 days without review",
-    ownerHead: "Assigned branch accountant",
-    ownerAcc: "You — these are within your branches",
-    action: "Open each pending entry and complete review or reject with clear reason",
-    agePrefix: "Longest delay: ",
-    ageSuffix: " — exceeded acceptable limit",
-    impactSuffix: " SAR not entered approval cycle — blocks monthly consolidation",
-    navLabelHead: "View Pending",
-    navLabelAcc: "Open Module",
-  },
-  diffs: {
-    label: "Quantity or price differences unresolved",
-    ownerHead: "Assigned accountant — requires head accountant for complex cases",
-    ownerAcc: "You — the difference requires your decision",
-    action: "Review the difference, issue a corrective entry, or account for it and close the entry",
-    impactSuffix: " SAR in entries with differences — cannot be consolidated until resolved",
-    navLabel: "View Mismatched Entries",
-  },
-  pendingErp: {
-    label: "Final-approved entries not yet posted to ERP",
-    owner: "Head Accountant — has posting batch authority",
-    action: "Go to ERP Export and create a posting batch for these entries",
-    age: "Final-approved — awaiting batch",
-    impactSuffix: " SAR missing from ERP — owner reports incomplete",
-    navLabel: "Open ERP Export Page",
-  },
-  corrections: {
-    label: "Corrective entries linked to previous entries awaiting review",
-    ownerHead: "Accountant who issued the correction",
-    ownerAcc: "You — this correction is linked to an entry you issued",
-    action: "Review the corrective entry and verify corrected amounts before approving",
-    impact: "Not approving the correction leaves the original balance incorrect in the accounting entry",
-    navLabel: "Open Corrective Entries",
-  },
-  problemBranches: {
-    label: "Branches showing repeated rejection patterns",
-    ownerSuffix_head: "Head Accountant",
-    ownerSuffix_acc: "You",
-    ownerPrefix: "Branch Manager + ",
-    action: "Contact the branch manager to identify the cause of recurring errors and correct upload methodology",
-    age: "Recurring pattern — not an isolated incident",
-    impactSuffix: " SAR in rejected entries — indicator of a structural problem",
-    navLabel: "View Rejected",
-  },
 };
 
 interface PageProps {
@@ -750,16 +698,6 @@ const MODULE_TO_NAV: Record<ModuleKey, string> = {
   inventory: "acc-inventory", shifts: "acc-shifts", employees: "acc-employees", cash: "acc-cash",
 };
 
-// Destination for the "View" action on an inbox row — routed by the op's module so a
-// purchase/inventory/shift row lands on ITS screen, not the sales-reconciliation view.
-const opDetailPage = (mk: string): string => {
-  if (mk === "sales") return "acc-sales-detail";
-  const map: Record<string, string> = {
-    expenses: "acc-expenses", purchases: "acc-purchases", inventory: "acc-inventory",
-    shifts: "acc-shifts", waste: "acc-waste", cash: "acc-cash", employees: "acc-employees",
-  };
-  return map[mk] ?? "acc-sales-detail";
-};
 
 // Two-letter avatar from a real name ("أحمد محمد" → "أم"); falls back to the first two chars.
 const nameInitials = (n: string) => {
@@ -768,20 +706,6 @@ const nameInitials = (n: string) => {
   return String(n || "").trim().slice(0, 2);
 };
 
-// Gregorian month/day names — used to render the REAL system date (the prototype
-// used to pin "today" to 14 Oct 2025, which hid live data behind month filters).
-const AR_MONTHS_LONG = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
-const EN_MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const AR_WEEKDAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
-const EN_WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-/** "الاثنين، 14 أكتوبر 2025" / "Monday, October 14, 2025" from the real clock. */
-const formatTodayLong = (lang: "ar" | "en", d: Date = new Date()) =>
-  lang === "ar"
-    ? `${AR_WEEKDAYS[d.getDay()]}، ${d.getDate()} ${AR_MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`
-    : `${EN_WEEKDAYS[d.getDay()]}, ${EN_MONTHS_LONG[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
-/** "أكتوبر 2025" / "October 2025" for the current month. */
-const formatMonthLong = (lang: "ar" | "en", d: Date = new Date()) =>
-  lang === "ar" ? `${AR_MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}` : `${EN_MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
 // Top-bar period filter → server-side dateFrom/dateTo (inclusive, YYYY-MM-DD) over
 // the real clock. "all" sends nothing (default), so nothing is hidden.
 type OpPeriod = "all" | "month" | "week" | "today";
@@ -799,190 +723,6 @@ function periodRange(period: OpPeriod): { dateFrom?: string; dateTo?: string } {
   return { dateFrom: isoDay(new Date(now.getFullYear(), now.getMonth(), 1)), dateTo: today }; // month
 }
 
-/** "14 أكتوبر 2025" / "October 14, 2025" — no weekday. Returns "" for a bad/empty date. */
-const formatDateLong = (lang: "ar" | "en", iso?: string | null) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  return lang === "ar"
-    ? `${d.getDate()} ${AR_MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`
-    : `${EN_MONTHS_LONG[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
-};
-
-// ─────────────────────────────────────────────
-// SHARED DISPLAY CONFIG
-// ─────────────────────────────────────────────
-const MATCH_CFG: Record<MatchStatus, { label: string; cls: string; dot: string }> = {
-  exact: { label: "متطابق", cls: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
-  review: { label: "يحتاج مراجعة", cls: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500" },
-  diff: { label: "فرق في الكمية", cls: "bg-red-50 text-red-700 border-red-200", dot: "bg-red-500" },
-};
-const STATUS_CFG: Record<OpStatus, { label: string; cls: string }> = {
-  "pending": { label: "معلق", cls: "bg-amber-50 text-amber-700" },
-  "approved": { label: "موافق عليه", cls: "bg-blue-50 text-blue-700" },
-  "rejected": { label: "مرفوض", cls: "bg-red-50 text-red-700" },
-  "final-approved": { label: "معتمد نهائياً", cls: "bg-emerald-50 text-emerald-700" },
-};
-
-// ─────────────────────────────────────────────
-// LIFECYCLE PIPELINE  — the 6 stages of every operation in ASAB
-// Branch (mobile) → Review → Approval → Final → ERP Export → ERP Reports
-// ─────────────────────────────────────────────
-const PIPELINE_STAGES = [
-  { id: "submit", icon: "📱", label: "رُفع من الفرع", labelShort: "الرفع", color: "blue", bg: "bg-blue-100", text: "text-blue-700", border: "border-blue-300", fill: "bg-blue-500" },
-  { id: "review", icon: "🔍", label: "قيد المراجعة", labelShort: "المراجعة", color: "amber", bg: "bg-amber-100", text: "text-amber-700", border: "border-amber-300", fill: "bg-amber-500" },
-  { id: "approved", icon: "✓", label: "موافق عليه", labelShort: "الموافقة", color: "sky", bg: "bg-sky-100", text: "text-sky-700", border: "border-sky-300", fill: "bg-sky-500" },
-  { id: "final", icon: "🔒", label: "معتمد نهائياً", labelShort: "الاعتماد", color: "emerald", bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-300", fill: "bg-emerald-500" },
-  { id: "erp", icon: "🔗", label: "مُرحَّل لـ ERP", labelShort: "ERP", color: "indigo", bg: "bg-indigo-100", text: "text-indigo-700", border: "border-indigo-300", fill: "bg-indigo-500" },
-  { id: "reports", icon: "📊", label: "تقارير ERP (قراءة)", labelShort: "التقارير", color: "slate", bg: "bg-slate-100", text: "text-slate-700", border: "border-slate-300", fill: "bg-slate-500" },
-] as const;
-
-type PipelineStageId = typeof PIPELINE_STAGES[number]["id"];
-
-function getPipelineStage(op: Op): number {
-  // Returns the 0-based index of the current pipeline stage
-  if (op.status === "rejected") return -1; // special: not on the forward path
-  if (op.erpPosted) return 4;                               // stage 5: ERP posted
-  if (op.status === "final-approved") return 3;             // stage 4: final approved, awaiting ERP
-  if (op.status === "approved") return 2;                   // stage 3: accountant approved, awaiting head
-  return 1;                                                 // stage 2: submitted from branch, under review
-}
-
-function getPipelineLabel(op: Op): string {
-  if (op.status === "rejected") return "مرفوض";
-  const idx = getPipelineStage(op);
-  return PIPELINE_STAGES[idx]?.label || "";
-}
-
-// Horizontal 6-step pipeline indicator — used in detail pages
-function PipelineBar({ op }: { op: Op }) {
-  const { lang, t } = useLang();
-  const stage = getPipelineStage(op);
-  const isRejected = op.status === "rejected";
-  const origin = ORIGIN_CFG[op.origin];
-  const originLabel = lang === "ar" ? origin.label : (EN_ORIGIN[op.origin] || origin.label);
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t("دورة حياة العملية", "Operation Lifecycle")}</span>
-          <Badge className={`${origin.cls} border text-[10px] font-semibold`}>
-            {origin.icon} {originLabel}
-          </Badge>
-        </div>
-        {isRejected
-          ? <Badge className="bg-red-50 text-red-700 border border-red-200 text-xs">✕ {t("مرفوض", "Rejected")}{op.rejectReason ? ` — ${op.rejectReason}` : ""}</Badge>
-          : <Badge className={`${PIPELINE_STAGES[stage]?.bg} ${PIPELINE_STAGES[stage]?.text} border ${PIPELINE_STAGES[stage]?.border} text-xs font-bold`}>
-            {t(`المرحلة ${stage + 1}/6 · ${PIPELINE_STAGES[stage]?.label}`, `Stage ${stage + 1}/6 · ${EN_PIPELINE[PIPELINE_STAGES[stage]?.id]?.label || PIPELINE_STAGES[stage]?.label}`)}
-          </Badge>
-        }
-      </div>
-      <div className="flex items-center gap-0">
-        {PIPELINE_STAGES.map((s, i) => {
-          const isComplete = !isRejected && i < stage;
-          const isCurrent = !isRejected && i === stage;
-          const shortLabel = lang === "ar" ? s.labelShort : (EN_PIPELINE[s.id]?.labelShort || s.labelShort);
-          return (
-            <div key={s.id} className="flex items-center flex-1 min-w-0">
-              <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs border-2 transition-all
-                  ${isComplete ? `${s.fill} border-transparent text-white` :
-                    isCurrent ? `bg-white ${s.border} ${s.text} shadow-sm font-bold` :
-                      "bg-gray-50 border-gray-200 text-gray-300"}`}>
-                  {isComplete ? "✓" : s.icon}
-                </div>
-                <span className={`text-[9px] font-medium leading-tight text-center max-w-[44px] truncate
-                  ${isComplete ? "text-gray-600" : isCurrent ? `${s.text} font-bold` : "text-gray-300"}`}>
-                  {shortLabel}
-                </span>
-              </div>
-              {i < PIPELINE_STAGES.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-1 mt-[-10px] ${isComplete ? s.fill : "bg-gray-150"}`}
-                  style={{ backgroundColor: isComplete ? "" : "#e5e7eb" }} />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// Compact inline pill — used in OpRow and lists
-function OpStagePill({ op }: { op: Op }) {
-  const { lang, t } = useLang();
-  if (op.status === "rejected") {
-    return <Badge className="bg-red-50 text-red-600 border border-red-200 text-[10px]">✕ {t("مرفوض", "Rejected")}</Badge>;
-  }
-  const idx = getPipelineStage(op);
-  const s = PIPELINE_STAGES[idx];
-  const shortLabel = lang === "ar" ? s.labelShort : (EN_PIPELINE[s.id]?.labelShort || s.labelShort);
-  return (
-    <Badge className={`${s.bg} ${s.text} border ${s.border} text-[10px] font-semibold`}>
-      {s.icon} {lang === "ar" ? `م${idx + 1}` : `S${idx + 1}`} · {shortLabel}
-    </Badge>
-  );
-}
-
-// Pipeline overview widget — summary counts by stage
-function PipelineOverview({ ops, navigate }: { ops: Op[]; navigate: (p: PageId) => void }) {
-  const { lang, t } = useLang();
-  const stageCounts = PIPELINE_STAGES.map((s, i) => ({
-    ...s,
-    count: ops.filter(o => getPipelineStage(o) === i).length,
-    shortLabel: lang === "ar" ? s.labelShort : (EN_PIPELINE[s.id]?.labelShort || s.labelShort),
-  }));
-  const rejected = ops.filter(o => o.status === "rejected").length;
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
-        <h3 className="font-bold text-gray-900 text-sm tracking-tight">{t("مسار العمليات — رؤية شاملة للخط الزمني", "Operations Pipeline — Full Timeline View")}</h3>
-        <span className="text-xs text-gray-400">{ops.length} {t("عملية إجمالاً", "operations total")}</span>
-      </div>
-      <div className="grid grid-cols-6 divide-x divide-x-reverse divide-gray-100">
-        {stageCounts.map((s, i) => {
-          const isAspirational = i === 5; // stage-6: ERP Reports — future state, never set by getPipelineStage
-          return (
-            <div key={s.id} className={`px-3 py-4 text-center transition-colors
-              ${isAspirational ? "bg-slate-50/60" : "hover:bg-gray-50/80"}`}>
-              <div className="text-lg mb-1">{s.icon}</div>
-              {isAspirational ? (
-                <>
-                  <p className="text-[10px] font-bold text-slate-400 font-mono">—</p>
-                  <p className="text-[9px] text-slate-400 mt-0.5 leading-tight">{s.shortLabel}</p>
-                  <p className="text-[8px] text-slate-300 mt-1 leading-tight">{t("مرحلة مستقبلية", "Future Stage")}</p>
-                </>
-              ) : (
-                <>
-                  <p className={`text-2xl font-extrabold font-mono ${s.count > 0 ? s.text : "text-gray-200"}`}>{s.count}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{s.shortLabel}</p>
-                  {i < 4 && (
-                    <div className={`mx-auto mt-2 h-1 w-6 rounded-full ${s.count > 0 ? s.fill : "bg-gray-100"}`} />
-                  )}
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      <div className="px-5 py-2 border-t border-gray-100 bg-slate-50/30 flex items-center justify-between flex-wrap gap-2">
-        {rejected > 0 && (
-          <span className="text-xs text-red-500 font-medium">✕ {rejected} {t("مرفوضة — خارج المسار", "rejected — off pipeline")}</span>
-        )}
-        <span className="text-[10px] text-slate-400 mr-auto">
-          {t("م1–م5: مدارة بواسطة آلة الحالة · م6 (تقارير ERP): بيانات مرجعية مُستوردة — مرحلة مستقبلية", "S1–S5: Managed by state machine · S6 (ERP Reports): Imported reference data — Future stage")}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// Operation origin — where did this op enter the system?
-const ORIGIN_CFG: Record<Op["origin"], { icon: string; label: string; cls: string }> = {
-  "mobile": { icon: "📱", label: "تطبيق الفرع", cls: "bg-blue-50 text-blue-700 border-blue-200" },
-  "procurement": { icon: "🛒", label: "سير المشتريات", cls: "bg-orange-50 text-orange-700 border-orange-200" },
-  "system": { icon: "⚙", label: "استيراد النظام", cls: "bg-gray-50 text-gray-600 border-gray-200" },
-};
 
 // ─────────────────────────────────────────────
 // MODULE AGGREGATION STATES — accounting export package readiness
@@ -1894,97 +1634,10 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
   );
 }
 
-// ─────────────────────────────────────────────
-// OPERATION ROW  (reflects live status)
-// ─────────────────────────────────────────────
-function OpRow({ op, onView, onApprove, onReject }: {
-  op: Op; onView: () => void; onApprove: () => void; onReject: () => void;
-}) {
-  const { lang, t } = useLang();
-  const match = MATCH_CFG[op.match];
-  const statusCfg = STATUS_CFG[op.status];
-  const matchLabel = lang === "ar" ? match.label : (EN_MATCH_CFG[op.match] || match.label);
-  const statusLabel = lang === "ar" ? statusCfg.label : (EN_STATUS_CFG[op.status] || statusCfg.label);
-  const originLabel = lang === "ar" ? ORIGIN_CFG[op.origin].label : (EN_ORIGIN[op.origin] || ORIGIN_CFG[op.origin].label);
-  const isPending = op.status === "pending";
-  const isLocked = op.status === "final-approved";
-  const isRejected = op.status === "rejected";
-  return (
-    <div className={`px-5 py-4 flex items-start gap-4 hover:bg-gray-50/60 transition-colors border-b border-gray-100 last:border-0
-      ${op.match === "diff" ? "border-r-4 border-r-red-400" : op.match === "review" ? "border-r-4 border-r-amber-400" : ""}
-      ${isLocked ? "bg-slate-50/60" : isRejected ? "opacity-55" : ""}`}>
-      <span className="mt-0.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-100 flex-shrink-0">{op.moduleLabel}</span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-bold text-gray-800 text-sm">{op.branch}</span>
-          {op.brandName && op.brandName !== "—" && op.brandName !== op.branch && (
-            <><span className="text-gray-200">·</span><span className="text-xs text-gray-500">{op.brandName}</span></>
-          )}
-          <span className="text-gray-200">·</span>
-          <span className="text-xs text-gray-400 font-mono tracking-tight">{op.id}</span>
-          <span className="text-gray-200">·</span>
-          <span className="text-xs text-gray-400">⏰ {op.timeAgo}</span>
-          <Badge className={`${ORIGIN_CFG[op.origin].cls} border text-[9px]`}>
-            {ORIGIN_CFG[op.origin].icon} {originLabel}
-          </Badge>
-        </div>
-        <div className="flex items-center gap-2 mt-2 flex-wrap">
-          <Badge className={`${match.cls} border`}>
-            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${match.dot}`}></span>
-            {matchLabel}
-          </Badge>
-          {op.diff && <span className="text-xs text-red-600 font-semibold bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">⚠ {op.diff}</span>}
-          <span className="flex items-center gap-1 text-xs text-gray-400"><Paperclip size={10} /> {op.attachments}</span>
-          <Badge className={`${statusCfg.cls} border ${isLocked ? "border-slate-200" : ""}`}>
-            {isLocked && <Lock size={10} />}
-            {statusLabel}
-          </Badge>
-          <OpStagePill op={op} />
-          {op.isCorrection && op.correctiveRef && (
-            <Badge className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px]">{t("تعديل", "Correction")} ← {op.correctiveRef}</Badge>
-          )}
-          {isRejected && op.rejectReason && <span className="text-xs text-red-500 font-medium">{t("سبب:", "Reason:")} {op.rejectReason}</span>}
-        </div>
-        {/* Sales matching breakdown (T04 §8) — cash/card/apps + collected/variance */}
-        {op.moduleKey === "sales" && (
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap text-[11px]">
-            {op.salesBreakdown ? (<>
-              <span className="text-gray-500">💵 {t("نقدي", "Cash")}: <span className="font-mono text-gray-700">{fmtAmt(Math.round(op.salesBreakdown.cashHalalas / 100))}</span></span>
-              <span className="text-gray-500">🏦 {t("كارت", "Card")}: <span className="font-mono text-gray-700">{fmtAmt(Math.round(op.salesBreakdown.cardHalalas / 100))}</span></span>
-              <span className="text-gray-500">🛵 {t("تطبيقات", "Apps")}: <span className="font-mono text-gray-700">{fmtAmt(Math.round(op.salesBreakdown.appsHalalas / 100))}</span></span>
-              <span className="text-gray-300">·</span>
-              <span className="text-gray-500">{t("محصّل", "Collected")}: <span className="font-mono text-gray-700">{fmtAmt(Math.round(op.salesBreakdown.collectedHalalas / 100))}</span></span>
-              <span className={`font-mono font-bold ${op.salesBreakdown.varianceHalalas === 0 ? "text-emerald-600" : "text-red-600"}`}>
-                {op.salesBreakdown.varianceHalalas === 0 ? "✓ 0" : `${op.salesBreakdown.varianceHalalas > 0 ? "+" : ""}${fmtAmt(Math.round(op.salesBreakdown.varianceHalalas / 100))}`}
-              </span>
-            </>) : (
-              <span className="text-gray-300">{t("لم تتم التسوية بعد — «—»", "Not reconciled — «—»")}</span>
-            )}
-          </div>
-        )}
-      </div>
-      <div className="font-extrabold text-gray-800 font-mono text-sm flex-shrink-0 tabular-nums">{fmtAmt(op.amount)} {t("ر.س", "SAR")}</div>
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        <Btn size="sm" onClick={onView}><Eye size={12} /> {t("عرض", "View")}</Btn>
-        {isPending && <>
-          <Btn size="sm" variant="success" onClick={onApprove}><ThumbsUp size={12} /></Btn>
-          {!isPkg6SalesReport(op) && <Btn size="sm" variant="danger" onClick={onReject}><ThumbsDown size={12} /></Btn>}
-        </>}
-        {isPkg6SalesReport(op) && <span className="text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</span>}
-        {isLocked && (
-          <span className="flex items-center gap-1 text-xs text-slate-400 bg-slate-100 border border-slate-200 px-2 py-1.5 rounded-lg">
-            <Lock size={11} /> {t("مُغلق", "Locked")}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────
 // FILTER BAR  (shared by all ops list pages)
 // ─────────────────────────────────────────────
-interface Filters { branch: string; status: string; match: string; search: string; }
 
 function FilterBar({ filters, onChange, branches }: { filters: Filters; onChange: (f: Filters) => void; branches: string[] }) {
   const { t } = useLang();
@@ -2018,19 +1671,6 @@ function FilterBar({ filters, onChange, branches }: { filters: Filters; onChange
   );
 }
 
-function applyFilters(ops: Op[], f: Filters, moduleKey?: ModuleKey): Op[] {
-  return ops.filter(op => {
-    if (moduleKey && op.moduleKey !== moduleKey) return false;
-    if (f.branch && op.branch !== f.branch) return false;
-    if (f.status && op.status !== f.status) return false;
-    if (f.match && op.match !== f.match) return false;
-    if (f.search && !op.branch.includes(f.search) && !op.id.includes(f.search) && !op.moduleLabel.includes(f.search) && !(op.supplierName ?? "").includes(f.search) && !(op.brandName ?? "").includes(f.search)) return false;
-    return true;
-  });
-}
-
-// Branch list is derived from live operations at point of use; no static seed.
-const BRANCHES: string[] = [];
 
 // ─────────────────────────────────────────────
 // PAGE ROUTER
@@ -2115,33 +1755,6 @@ function PageRouter({ state, pageProps, adminUsers, setAdminUsers }: {
   return <SimplePage title="قيد التطوير" icon="🚧" desc="هذه الصفحة قيد التطوير" />;
 }
 
-// ─────────────────────────────────────────────
-// EXCEPTION PANEL  — action-oriented risk & intervention layer
-// Each exception surfaces: who owns it, what action is required,
-// how long it has been unresolved, and what the financial impact is.
-// ─────────────────────────────────────────────
-type ExceptionSeverity = "critical" | "high" | "medium";
-interface ExceptionItem {
-  severity: ExceptionSeverity;
-  icon: string;
-  label: string;
-  count: number;
-  owner: string;
-  action: string;
-  age: string;
-  impact: string;
-  navTarget: PageId;   // exact page to navigate to for resolution
-  navLabel: string;   // CTA label on the navigate button
-  detail?: string;
-}
-
-// derive the module key with the most matching ops, return a nav page
-function topModulePage(targetOps: Op[], prefix: string, fallback: string): PageId {
-  const freq: Record<string, number> = {};
-  targetOps.forEach(o => { freq[o.moduleKey] = (freq[o.moduleKey] || 0) + 1; });
-  const top = Object.entries(freq).sort(([, a], [, b]) => b - a)[0];
-  return (top ? `${prefix}${top[0]}` : fallback) as PageId;
-}
 
 // ── API Operation → local Op mapping ─────────────────────────────────────────
 // The platform API returns a different shape (branchName, amountHalalas in integer
@@ -2246,270 +1859,6 @@ function brandOptionsFromOps(ops: Op[]): { id: string; name: string }[] {
   return [...seen.entries()].map(([id, name]) => ({ id, name }));
 }
 
-function deriveExceptions(ops: Op[], forRole: "accountant" | "head", lang: Lang = "ar"): ExceptionItem[] {
-  const en = lang === "en";
-  const items: ExceptionItem[] = [];
-
-  // 1. Ops stuck too long in review (pending > 2 days)
-  const stuck = ops.filter(o =>
-    o.status === "pending" &&
-    ((o.timeAgo ?? "").includes("3 أيام") || (o.timeAgo ?? "").includes("4 أيام") || (o.timeAgo ?? "").includes("أسبوع"))
-  );
-  if (stuck.length > 0) {
-    const oldestAge = stuck.map(o => o.timeAgo).sort().pop() || "";
-    const totalAmt = stuck.some(o => o.amount == null) ? null : stuck.reduce((s, o) => s + (o.amount ?? 0), 0);
-    const navTarget = forRole === "head" ? "head-pending" as PageId : topModulePage(stuck, "acc-", "acc-sales");
-    items.push({
-      severity: "high", icon: "⏰",
-      label: en ? EN_EXCEPTION_ITEMS.stuck.label : "بيانات معلقة منذ أكثر من يومين بدون مراجعة",
-      count: stuck.length,
-      owner: en
-        ? (forRole === "head" ? EN_EXCEPTION_ITEMS.stuck.ownerHead : EN_EXCEPTION_ITEMS.stuck.ownerAcc)
-        : (forRole === "head" ? "المحاسب المُكلَّف بالفرع" : "أنت — هذه ضمن فروعك"),
-      action: en ? EN_EXCEPTION_ITEMS.stuck.action : "افتح كل عملية معلقة وأكمل المراجعة أو ارفضها بسبب واضح",
-      age: en
-        ? `${EN_EXCEPTION_ITEMS.stuck.agePrefix}${oldestAge}${EN_EXCEPTION_ITEMS.stuck.ageSuffix}`
-        : `أطول تأخير: ${oldestAge} — تجاوز الحد المقبول`,
-      impact: en
-        ? `${totalAmt != null ? fmtAmt(totalAmt) : "—"}${EN_EXCEPTION_ITEMS.stuck.impactSuffix}`
-        : `${fmtAmt(totalAmt)} ر.س لم تدخل دورة الاعتماد — تعطل التجميع الشهري`,
-      navTarget,
-      navLabel: en
-        ? (forRole === "head" ? EN_EXCEPTION_ITEMS.stuck.navLabelHead : EN_EXCEPTION_ITEMS.stuck.navLabelAcc)
-        : (forRole === "head" ? "عرض المعلقة" : "فتح الموديول"),
-      detail: stuck.map(o => `${o.branch} · ${o.moduleLabel}`).slice(0, 3).join(" | "),
-    });
-  }
-
-  // 2. Unresolved quantity/price differences — critical risk (blocks consolidation)
-  const diffs = ops.filter(o => o.match === "diff" && o.status === "pending");
-  if (diffs.length > 0) {
-    const totalDiff = diffs.some(o => o.amount == null) ? null : diffs.reduce((s, o) => s + (o.amount ?? 0), 0);
-    const navTarget = forRole === "head" ? "head-pending" as PageId : topModulePage(diffs, "acc-", "acc-purchases");
-    items.push({
-      severity: "critical", icon: "⚠",
-      label: en ? EN_EXCEPTION_ITEMS.diffs.label : "فروق في الكميات أو الأسعار لم تُحل بعد",
-      count: diffs.length,
-      owner: en
-        ? (forRole === "head" ? EN_EXCEPTION_ITEMS.diffs.ownerHead : EN_EXCEPTION_ITEMS.diffs.ownerAcc)
-        : (forRole === "head" ? "المحاسب المُكلَّف — يتطلب تدخل رئيس الحسابات للحالات المعقدة" : "أنت — الفرق يستوجب قرارك"),
-      action: en ? EN_EXCEPTION_ITEMS.diffs.action : "راجع الفرق، أصدر عملية تعديل، أو احتسب الفرق وأقفل البيان",
-      age: diffs.map(o => o.timeAgo).join(" · "),
-      impact: en
-        ? `${fmtAmt(totalDiff)}${EN_EXCEPTION_ITEMS.diffs.impactSuffix}`
-        : `${fmtAmt(totalDiff)} ر.س في بيانات مع فروق — لا يمكن تجميعها حتى تُحل`,
-      navTarget,
-      navLabel: en ? EN_EXCEPTION_ITEMS.diffs.navLabel : "عرض البيانات المُختلفة",
-      detail: diffs.map(o => o.diff || "").filter(Boolean).slice(0, 2).join(" | "),
-    });
-  }
-
-  // 3. Final-approved items still waiting ERP export — head only
-  if (forRole === "head") {
-    const pendingErp = ops.filter(o => o.status === "final-approved" && !o.erpPosted);
-    if (pendingErp.length > 0) {
-      const pendingAmt = pendingErp.some(o => o.amount == null) ? null : pendingErp.reduce((s, o) => s + (o.amount ?? 0), 0);
-      items.push({
-        severity: "medium", icon: "🔗",
-        label: en ? EN_EXCEPTION_ITEMS.pendingErp.label : "عمليات مُعتمدة نهائياً لم تُرحَّل لـ ERP بعد",
-        count: pendingErp.length,
-        owner: en ? EN_EXCEPTION_ITEMS.pendingErp.owner : "رئيس الحسابات — يملك صلاحية تشغيل دفعة الترحيل",
-        action: en ? EN_EXCEPTION_ITEMS.pendingErp.action : "انتقل إلى التصدير لـ ERP وأنشئ دفعة ترحيل لهذه العمليات",
-        age: en ? EN_EXCEPTION_ITEMS.pendingErp.age : "مُعتمدة — في انتظار الدفعة",
-        impact: en
-          ? `${fmtAmt(pendingAmt)}${EN_EXCEPTION_ITEMS.pendingErp.impactSuffix}`
-          : `${fmtAmt(pendingAmt)} ر.س غائبة عن ERP — تقارير المالك ناقصة`,
-        navTarget: "head-erp",
-        navLabel: en ? EN_EXCEPTION_ITEMS.pendingErp.navLabel : "فتح صفحة التصدير لـ ERP",
-      });
-    }
-  }
-
-  // 4. Corrective operations pending review
-  const corrections = ops.filter(o => o.isCorrection && o.status === "pending");
-  if (corrections.length > 0) {
-    const navTarget = forRole === "head" ? "head-pending" as PageId : topModulePage(corrections, "acc-", "acc-sales");
-    items.push({
-      severity: "medium", icon: "🔄",
-      label: en ? EN_EXCEPTION_ITEMS.corrections.label : "عمليات تعديل مُرتبطة بعمليات سابقة تنتظر المراجعة",
-      count: corrections.length,
-      owner: en
-        ? (forRole === "head" ? EN_EXCEPTION_ITEMS.corrections.ownerHead : EN_EXCEPTION_ITEMS.corrections.ownerAcc)
-        : (forRole === "head" ? "المحاسب المُصدِر للتعديل" : "أنت — التعديل مرتبط ببيان أصدرته"),
-      action: en ? EN_EXCEPTION_ITEMS.corrections.action : "راجع عملية التعديل وتحقق من صحة المبالغ المُصحَّحة قبل الموافقة",
-      age: corrections.map(o => o.timeAgo).slice(0, 2).join(" · "),
-      impact: en ? EN_EXCEPTION_ITEMS.corrections.impact : "عدم الموافقة على التعديل يُبقي الرصيد الأصلي مغلوطاً في القيد المحاسبي",
-      navTarget,
-      navLabel: en ? EN_EXCEPTION_ITEMS.corrections.navLabel : "فتح عمليات التعديل",
-      detail: corrections.map(o => `${o.id} ← ${o.correctiveRef || ""}`).slice(0, 2).join(" | "),
-    });
-  }
-
-  // 5. Branches with repeated rejection patterns (≥2 rejections)
-  const rejByBranch: Record<string, { count: number; total: number }> = {};
-  ops.filter(o => o.status === "rejected").forEach(o => {
-    if (!rejByBranch[o.branch]) rejByBranch[o.branch] = { count: 0, total: 0 };
-    rejByBranch[o.branch].count++; rejByBranch[o.branch].total += (o.amount ?? 0);
-  });
-  const problemBranches = Object.entries(rejByBranch).filter(([, v]) => v.count >= 2);
-  if (problemBranches.length > 0) {
-    const totalRejected = problemBranches.reduce((s, [, v]) => s + v.total, 0);
-    items.push({
-      severity: "medium", icon: "📍",
-      label: en ? EN_EXCEPTION_ITEMS.problemBranches.label : "فروع تظهر نمط رفض متكرر للبيانات",
-      count: problemBranches.length,
-      owner: en
-        ? `${EN_EXCEPTION_ITEMS.problemBranches.ownerPrefix}${forRole === "head" ? EN_EXCEPTION_ITEMS.problemBranches.ownerSuffix_head : EN_EXCEPTION_ITEMS.problemBranches.ownerSuffix_acc}`
-        : "مدير الفرع + " + (forRole === "head" ? "رئيس الحسابات" : "أنت"),
-      action: en ? EN_EXCEPTION_ITEMS.problemBranches.action : "تواصل مع مدير الفرع لتحديد سبب الأخطاء المتكررة وتصحيح منهجية الرفع",
-      age: en ? EN_EXCEPTION_ITEMS.problemBranches.age : "نمط متكرر — ليس حادثة معزولة",
-      impact: en
-        ? `${fmtAmt(totalRejected)}${EN_EXCEPTION_ITEMS.problemBranches.impactSuffix}`
-        : `${fmtAmt(totalRejected)} ر.س في بيانات مرفوضة — مؤشر على مشكلة هيكلية`,
-      navTarget: forRole === "head" ? "head-rejected" : "acc-sales" as PageId,
-      navLabel: en ? EN_EXCEPTION_ITEMS.problemBranches.navLabel : "عرض المرفوضة",
-      detail: problemBranches.map(([b, v]) => `${b} (${v.count} ${en ? "rejected" : "مرفوضة"})`).join(" | "),
-    });
-  }
-
-  return items;
-}
-
-const EXCEPTION_SEV_CFG: Record<ExceptionSeverity, { cls: string; barCls: string; dot: string; badgeCls: string; titleCls: string; label: string }> = {
-  critical: { cls: "border-red-200 bg-red-50/60", barCls: "bg-red-500", dot: "bg-red-500", badgeCls: "bg-red-100 text-red-700 border-red-200", titleCls: "text-red-800", label: "حرج" },
-  high: { cls: "border-amber-200 bg-amber-50/60", barCls: "bg-amber-500", dot: "bg-amber-500", badgeCls: "bg-amber-100 text-amber-700 border-amber-200", titleCls: "text-amber-800", label: "عالي" },
-  medium: { cls: "border-sky-200 bg-sky-50/60", barCls: "bg-sky-400", dot: "bg-sky-400", badgeCls: "bg-sky-100 text-sky-700 border-sky-200", titleCls: "text-sky-800", label: "متوسط" },
-};
-
-function ExceptionPanel({ ops, forRole, navigate }: { ops: Op[]; forRole: "accountant" | "head"; navigate: (p: PageId) => void }) {
-  const { lang, dir } = useLang();
-  const eui = lang === "en" ? EN_EXCEPTION_UI : {
-    noExceptions: "لا استثناءات مكتشفة — النظام يعمل بشكل طبيعي",
-    panelTitle: "استثناءات تستوجب التدخل",
-    responsible: "المسؤول", since: "منذ",
-    requiredAction: "الإجراء المطلوب",
-    financialImpact: "الأثر المالي / التشغيلي إذا لم يُحل",
-    context: "السياق",
-    navigateCTA: "انتقل مباشرةً إلى السجلات المُتأثرة للتدخل",
-    collapse: "▲ طي", expand: "▼ توسيع",
-  };
-  const [open, setOpen] = useState(true);
-  const [expanded, setExpanded] = useState<number | null>(null);
-  const exceptions = deriveExceptions(ops, forRole, lang);
-  const criticalCount = exceptions.filter(e => e.severity === "critical").length;
-  const highCount = exceptions.filter(e => e.severity === "high").length;
-
-  if (exceptions.length === 0) {
-    return (
-      <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-5 py-3.5 flex items-center gap-3" dir={dir}>
-        <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0" />
-        <span className="text-sm font-semibold text-emerald-800">{eui.noExceptions}</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden" dir={dir}>
-      <button onClick={() => setOpen(o => !o)}
-        className="w-full px-5 py-3.5 border-b border-gray-100 flex items-center justify-between hover:bg-gray-50/80 transition-colors">
-        <div className="flex items-center gap-3">
-          <AlertTriangle size={15} className={criticalCount > 0 ? "text-red-500" : "text-amber-500"} />
-          <span className="font-bold text-gray-900 text-sm">{eui.panelTitle}</span>
-          <div className="flex items-center gap-1.5">
-            {criticalCount > 0 && <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-200">{criticalCount} {lang === "en" ? "Critical" : "حرج"}</span>}
-            {highCount > 0 && <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200">{highCount} {lang === "en" ? "High" : "عالي"}</span>}
-            {exceptions.filter(e => e.severity === "medium").length > 0 &&
-              <span className="bg-sky-100 text-sky-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-sky-200">{exceptions.filter(e => e.severity === "medium").length} {lang === "en" ? "Medium" : "متوسط"}</span>}
-          </div>
-        </div>
-        <span className="text-[11px] text-gray-400 font-medium">{open ? eui.collapse : eui.expand}</span>
-      </button>
-
-      {open && (
-        <div className="divide-y divide-gray-100">
-          {exceptions.map((ex, i) => {
-            const sev = EXCEPTION_SEV_CFG[ex.severity];
-            const sevLabel = lang === "en" ? (EN_SEV_LABEL[ex.severity] || sev.label) : sev.label;
-            const isExp = expanded === i;
-            return (
-              <div key={i} className={`${sev.cls} transition-colors`}>
-                <button onClick={() => setExpanded(isExp ? null : i)}
-                  className={`w-full px-5 py-3.5 flex items-start gap-4 ${dir === "ltr" ? "text-left" : "text-right"} hover:brightness-95 transition-all`}>
-                  <div className={`w-1 self-stretch rounded-full flex-shrink-0 ${sev.barCls}`} />
-                  <span className="text-xl flex-shrink-0 mt-0.5">{ex.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className={`font-bold text-sm ${sev.titleCls}`}>{ex.label}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${sev.badgeCls}`}>{sevLabel}</span>
-                      <span className={`font-mono font-extrabold text-base ${sev.titleCls}`}>{ex.count}</span>
-                    </div>
-                    <div className="flex items-center gap-4 flex-wrap text-[11px]">
-                      <span className="flex items-center gap-1 text-gray-600">
-                        <span className="font-semibold text-gray-500">{eui.responsible}</span>
-                        <span>{ex.owner}</span>
-                      </span>
-                      <span className="text-gray-300">·</span>
-                      <span className="flex items-center gap-1 text-gray-600">
-                        <span className="font-semibold text-gray-500">{eui.since}</span>
-                        <span>{ex.age}</span>
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] text-gray-400 flex-shrink-0 mt-1">{isExp ? "▲" : "▼"}</span>
-                </button>
-
-                {isExp && (
-                  <div className="px-5 pb-4 pr-12 space-y-2.5">
-                    <div className="bg-white/70 rounded-xl border border-white/80 p-4 space-y-3">
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center">
-                          <span className="text-[10px] font-bold text-amber-700">!</span>
-                        </div>
-                        <div>
-                          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-0.5">{eui.requiredAction}</p>
-                          <p className="text-sm font-semibold text-gray-800">{ex.action}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full bg-red-100 border border-red-200 flex items-center justify-center">
-                          <span className="text-[10px] font-bold text-red-700">{lang === "en" ? "R" : "ر"}</span>
-                        </div>
-                        <div>
-                          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-0.5">{eui.financialImpact}</p>
-                          <p className="text-sm text-gray-700">{ex.impact}</p>
-                        </div>
-                      </div>
-                      {ex.detail && (
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center">
-                            <span className="text-[10px] font-bold text-gray-500">i</span>
-                          </div>
-                          <div>
-                            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-0.5">{eui.context}</p>
-                            <p className="text-xs text-gray-500 font-mono">{ex.detail}</p>
-                          </div>
-                        </div>
-                      )}
-                      <div className="pt-2 border-t border-white/60 flex items-center justify-between">
-                        <p className="text-[10px] text-gray-400">{eui.navigateCTA}</p>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); navigate(ex.navTarget); }}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${sev.badgeCls} border hover:opacity-80`}>
-                          <ChevronsRight size={12} />
-                          {ex.navLabel}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────
 // MODULE AGGREGATION GRID  — module-level export readiness
