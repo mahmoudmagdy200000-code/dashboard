@@ -85,7 +85,7 @@ import { getErrorMessage, isApiError } from "../../../api/errors";
 import { isUnassignedAsset, buildAssignPatch, branchPatchPart } from "./assetAssignment";
 import { initialCompanySettingsState, runCompanySettingsSave, type CompanySettingsFormState } from "./companySettingsGuards";
 import { SUPPORT_TICKET_CATEGORIES, runSupportTicketSubmit } from "./supportTicketGuards";
-import { validateBranchCreate, validateUserEdit, parseInvoice, calculateBillingKpis, parseSupportChannel, formatPlanPrice, formatQuota, canToggleModule } from "./companyAdminGuards";
+import { validateBranchCreate, validateUserEdit, parseInvoice, calculateBillingKpis, parseSupportChannel, formatPlanPrice, formatQuota, canToggleModule, DESKTOP_BREAKPOINT_PX, trapDrawerFocus } from "./companyAdminGuards";
 import { NotificationBell } from "../../shared/NotificationBell";
 import { RejectModal } from "../../shared/RejectModal";
 import { ClarifyModal } from "../../shared/ClarifyModal";
@@ -961,9 +961,29 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, a
     if (mobileOpen) {
       closeBtnRef.current?.focus();
     } else if (prevMobileOpenRef.current) {
-      menuBtnRef.current?.focus();
+      // Do not attempt to focus hamburger button if hidden on desktop breakpoint (>= 768px)
+      const isDesktop = typeof window !== "undefined" && window.matchMedia(`(min-width: ${DESKTOP_BREAKPOINT_PX}px)`).matches;
+      if (!isDesktop && menuBtnRef.current) {
+        menuBtnRef.current.focus();
+      }
     }
     prevMobileOpenRef.current = mobileOpen;
+  }, [mobileOpen]);
+
+  // Close mobile drawer and release background inert when viewport scales up to desktop (md: 768px)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia(`(min-width: ${DESKTOP_BREAKPOINT_PX}px)`);
+    const onBreakpoint = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (e.matches && mobileOpen) {
+        setMobileOpen(false);
+      }
+    };
+    if (mql.matches && mobileOpen) {
+      setMobileOpen(false);
+    }
+    mql.addEventListener("change", onBreakpoint);
+    return () => mql.removeEventListener("change", onBreakpoint);
   }, [mobileOpen]);
 
   useEffect(() => {
@@ -980,27 +1000,15 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, a
         const drawerEl = drawerRef.current;
         if (!drawerEl) return;
 
-        const focusable = drawerEl.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        const focusable = Array.from(
+          drawerEl.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
         );
-        if (focusable.length === 0) {
+        const targetEl = trapDrawerFocus(focusable, document.activeElement, e.shiftKey);
+        if (targetEl) {
           e.preventDefault();
-          return;
-        }
-
-        const firstEl = focusable[0];
-        const lastEl = focusable[focusable.length - 1];
-
-        if (e.shiftKey) {
-          if (document.activeElement === firstEl || !drawerEl.contains(document.activeElement)) {
-            e.preventDefault();
-            lastEl.focus();
-          }
-        } else {
-          if (document.activeElement === lastEl || !drawerEl.contains(document.activeElement)) {
-            e.preventDefault();
-            firstEl.focus();
-          }
+          targetEl.focus();
         }
       }
     };
@@ -2739,16 +2747,18 @@ function CABilling() {
             kpis.companyTotalDue != null
               ? t("إجمالي المستحقات (الشركة)", "Total Outstanding (Company)")
               : kpis.isMultiPage
-                ? t("مستحقات الصفحة الحالية", "Current Page Due")
-                : t("المبالغ المستحقة", "Outstanding Due")
+                ? t("فواتير معلقة (الصفحة)", "Pending Invoices (Page)")
+                : t("مستحقات فواتير الصفحة", "Page Invoices Due")
           }
           value={fmt(kpis.companyTotalDue != null ? kpis.companyTotalDue : kpis.pageDue)}
           sub={
             kpis.companyTotalDue != null
               ? t("مستحقات الشركة الإجمالية من ملخص الفوترة", "Company total from billing summary")
               : kpis.isMultiPage
-                ? t(`${kpis.dueCount} فواتير معلقة بالصفحة (إجمالي الشركة غير متوفر في الـ API)`, `${kpis.dueCount} pending on page (company total unavailable in API)`)
-                : t(`${kpis.dueCount} فواتير معلقة (كامل السجلات)`, `${kpis.dueCount} pending invoices (all records)`)
+                ? t(`${kpis.dueCount} فواتير غير مسددة بالصفحة (إجمالي المبالغ؛ إجمالي الشركة غير متوفر بالـ API)`, `${kpis.dueCount} unpaid on page (total amounts; company total unavailable in API)`)
+                : kpis.isSinglePageComplete
+                  ? t(`${kpis.dueCount} فواتير غير مسددة (إجمالي مبالغ فواتير الشركة)`, `${kpis.dueCount} unpaid invoices (sum of company invoice totals)`)
+                  : t(`${kpis.dueCount} فواتير غير مسددة بالصفحة (إجمالي مبالغ الفواتير)`, `${kpis.dueCount} unpaid on page (sum of invoice totals)`)
           }
           icon={<CreditCard size={18} className="text-amber-600"/>}
           accent="amber"
@@ -2756,7 +2766,13 @@ function CABilling() {
         <KpiCard
           label={t("إجمالي الفواتير","Total Invoices")}
           value={String(kpis.totalCount)}
-          sub={kpis.isMultiPage ? t(`إجمالي الشركة (${invoices.length} معروضة بالصفحة)`, `Company total (${invoices.length} shown on page)`) : t("سجل الفواتير الكامل", "All invoice records")}
+          sub={
+            kpis.isMultiPage
+              ? t(`إجمالي الشركة (${invoices.length} معروضة بالصفحة)`, `Company total (${invoices.length} shown on page)`)
+              : kpis.isSinglePageComplete
+                ? t("سجل الفواتير الكامل", "All invoice records")
+                : t(`${invoices.length} فواتير معروضة بالصفحة`, `${invoices.length} invoices shown on page`)
+          }
           icon={<FileText size={18} className="text-blue-600"/>}
           accent="blue"
         />

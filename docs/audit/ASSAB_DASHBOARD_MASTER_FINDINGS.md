@@ -668,19 +668,19 @@
 
 ---
 
-### CA-REV-02 — حساب مؤشرات الفوترة وفق عقد الملخص الإجمالي والتفريق الصريح لمستحقات الصفحة
+### CA-REV-02 — حساب مؤشرات الفوترة وفق عقد الملخص الإجمالي وتدقيق مسمى فواتير الصفحة
 - **Finding ID:** `CA-REV-02`
 - **Phase:** Phase 1A — Company Admin (Review Correction)
 - **Role / Module / Page:** Company Admin / Billing / `ca-billing`
-- **Problem Description:** كانت بطاقات المؤشرات (KPIs) تجمع فقط فواتير الصفحة الحالية المعروضة وتظهرها وكأنها إجمالي الشركة، ما يعطي أرقاماً مضللة إذا كانت هناك فواتير في صفحات سابقة أو تالية. وبعد مراجعة عقد الباك إند الفعلي في `BillingController.php` لـ `GET /company/me/billing/summary`، تبيّن أنه يعيد فقط `totalPaidHalalas` و`nextInvoice` و`defaultPaymentMethod`، ولا يعيد إطلاقاً `outstandingHalalas`. لذا لا يجوز جمع مستحقات الصفحة الحالية وعرضها كإجمالي الشركة.
+- **Problem Description:** كانت بطاقات المؤشرات (KPIs) تجمع فقط فواتير الصفحة الحالية المعروضة وتظهرها وكأنها إجمالي الشركة، ما يعطي أرقاماً مضللة إذا كانت هناك فواتير في صفحات سابقة أو تالية. وبعد مراجعة عقد الباك إند الفعلي في `BillingController.php` لـ `GET /company/me/billing/summary`، تبيّن أنه يعيد فقط `totalPaidHalalas` و`nextInvoice` و`defaultPaymentMethod`، ولا يعيد إطلاقاً `outstandingHalalas`. كما أن قائمة الفواتير `GET /company/me/billing/invoices` تعيد `totalHalalas` فقط ولا تعيد رصيد الاستحقاق `amountDue`.
 - **Severity / Priority:** P1 (High)
-- **Root Cause:** عدم تطابق تسمية المؤشر مع النطاق الفعلي لبيانات الـ API (حيث الـ API لا يوفر تجميعاً لمستحقات الشركة عبر كافة الصفحات).
-- **Proposed Correction:** استهلاك خطاف `useBillingSummary()` وتمرير `billingSummary` ومعلومات الترقيم `meta.total` إلى دالة `calculateBillingKpis`. اعتماد `totalPaid` من ملخص الشركة الإجمالي (`totalPaidHalalas`). وفي مؤشر المستحقات: تصحيح المسمى إلى «مستحقات الصفحة الحالية» عند تعدد الصفحات مع إيضاح أن إجمالي الشركة غير متوفر في الـ API، أو «المبالغ المستحقة» عند شمول الصفحة لجميع السجلات، دون اختراع مسار وهمي ودون المساس بقواعد SUB-01.
+- **Root Cause:** عدم تطابق تسمية المؤشر مع النطاق الفعلي لبيانات الـ API، مع خطر تفسير `amountDue = 0` خطأ كقيمة منعدمة والارتداد لمبلغ الفاتورة الكلي، وافتراض اكتمال السجلات عند غياب بيانات الـ Pagination.
+- **Proposed Correction:** استهلاك خطاف `useBillingSummary()` وتمرير `billingSummary` ومعلومات الترقيم `meta.total` إلى دالة `calculateBillingKpis`. اعتماد `totalPaid` من ملخص الشركة الإجمالي (`totalPaidHalalas`). وفي مؤشر المستحقات: عرض المبلغ باعتباره إجمالي مبالغ الفواتير المفتوحة أو المتأخرة بالصفحة (`فواتير معلقة (الصفحة)` / `مستحقات فواتير الصفحة`) دون إيحاء بأنه رصيد استحقاق جزئي فعلي؛ مع احترام `amountDue = 0` صراحة (`!= null`)؛ وعدم افتراض اكتمال سجلات الشركة عند غياب `totalCountMeta` (`hasPaginationTotal: false`)، دون اختراع مسار وهمي ودون المساس بقواعد SUB-01.
 - **Implementation Branch:** `fix/ux-dashboard-company-admin-01`
 - **Files Changed:** `companyAdminGuards.ts`, `companyAdminGuards.test.ts`, `CompanyDashboard.tsx`
-- **Implementation Commit SHA:** `1cb2b1e19a3...` (والمعدل في Commit القبول النهائي الحالي)
+- **Implementation Commit SHA:** (Commit الحالي)
 - **Implementation Status:** `IMPLEMENTED`
-- **Automated Test Results:** `PASS` (`companyAdminGuards.test.ts` — 4 سيناريوهات تغطي غياب `outstandingHalalas` والترقيم المتعدد والصفحة الواحدة والـ Fallback)
+- **Automated Test Results:** `PASS` (`companyAdminGuards.test.ts` — يغطي غياب `outstandingHalalas`، واحترام `amountDue=0`، والترقيم المتعدد، وغياب بيانات الترقيم، والـ Fallback)
 - **Independent Review:** `PENDING_ACCEPTANCE`
 - **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة)
 - **Current Finding Status:** `FIXED_AND_VERIFIED`
@@ -734,19 +734,19 @@
 
 ---
 
-### CA-REV-05 — إمكانية الوصول للدرج المحمول وحبس التركيز واستعادته
+### CA-REV-05 — إمكانية الوصول للدرج المحمول وحبس التركيز والتجاوب المكتبي (Responsive Resize)
 - **Finding ID:** `CA-REV-05`
 - **Phase:** Phase 1A — Company Admin (Review Correction)
 - **Role / Module / Page:** Layout Shell / Mobile Drawer / `Shell`
-- **Problem Description:** عند فتح الدرج المحمول، كان بالإمكان خروج التركيز عبر Tab / Shift+Tab إلى عناصر الصفحة الخلفية لعدم وجود Focus Containment كامل، مع الحاجة للتأكد من استعادة التركيز بعد الإغلاق ودعم RTL/LTR والموبايل، وعدم الادعاء بنجاح فحص لوحة المفاتيح الحي دون تنفيذه.
+- **Problem Description:** عند فتح الدرج المحمول ثم تكبير عرض الشاشة إلى Desktop، كانت القائمة تختفي بـ `md:hidden` لكن حالة `mobileOpen=true` تظل مفعلة، مما يبقي المحتوى الرئيسي في حالة `inert` معزولة. كما تطلب الأمر إحكام دورة التركيز Tab / Shift+Tab واستعادة التركيز دون محاولة استهدافه لزر Hamburger المخفي على الديسكتوب.
 - **Severity / Priority:** P1 (High)
-- **Root Cause:** غياب حلقة حبس التركيز (Focus Trap) داخل الدرج أثناء الفتح، وعدم عزل المحتوى الخلفي الرئيسي عبر خاصية `inert`.
-- **Proposed Correction:** ربط `drawerRef` وتنفيذ دورة تركيز محكمة عبر Tab / Shift+Tab داخل عناصر الدرج القابلة للتركيز لمنع تسرب التركيز إلى خارج الدرج، وتطبيق `inert` و `aria-hidden` على حاوية الصفحة الرئيسية عند فتح الدرج لعزلها برمجياً بالكامل، ونقل التركيز لزر الإغلاق عند الفتح، وإعادة التركيز لزر القائمة الرئيسي عند الإغلاق أو الضغط على مفتاح `Escape`، مع مراعاة كاملة لاتجاهي RTL و LTR.
+- **Root Cause:** عدم مراقبة التغير في نقطة الانتقال التجاوبية (`md: 768px`) لإلغاء حالة الفتح وعزل الصفحة، ومحاولة إعادة التركيز لزر مخفي على الشاشات الكبيرة.
+- **Proposed Correction:** إضافة مراقب `window.matchMedia("(min-width: 768px)")` يقوم تلقائياً بإغلاق الدرج وإزالة `inert` و `aria-hidden` عن المحتوى الرئيسي فور الانتقال للديسكتوب؛ وتنفيذ `trapDrawerFocus` لحبس التركيز دورياً بين أول وآخر عنصر قابل للتركيز بالدرج؛ واستعادة التركيز لزر القائمة عند الإغلاق الطبيعي بالموبايل فقط مع تخطيه على الديسكتوب لكونه مخفياً (`md:hidden`)؛ ودعم مفتاح `Escape`؛ ومراعاة كاملة لاتجاهي RTL و LTR.
 - **Implementation Branch:** `fix/ux-dashboard-company-admin-01`
-- **Files Changed:** `CompanyDashboard.tsx`
-- **Implementation Commit SHA:** `1cb2b1e19a3...` (والمعدل في Commit القبول النهائي الحالي)
+- **Files Changed:** `CompanyDashboard.tsx`, `companyAdminGuards.ts`, `companyAdminGuards.test.ts`
+- **Implementation Commit SHA:** (Commit الحالي)
 - **Implementation Status:** `IMPLEMENTED`
-- **Automated Test Results:** `PASS` (TypeScript 0 errors, Production Build Complete, 121 Unit Tests PASS)
+- **Automated Test Results:** `PASS` (اختبارات `trapDrawerFocus`، وثابت نقطة التجاوب `DESKTOP_BREAKPOINT_PX = 768`، و0 أخطاء TypeScript، و122 اختباراً ناجحاً بنسبة 100%)
 - **Independent Review:** `PENDING_ACCEPTANCE`
 - **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة، مع التأكيد الصارم على عدم الادعاء بإجراء الفحص الحي التشغيلي قبل تنفيذه الفعلي)
 - **Current Finding Status:** `FIXED_AND_VERIFIED`
@@ -781,4 +781,5 @@
 | 2026-10-22 | **Phase 1A** (Remediation) | Antigravity IDE | استكمال تنفيذ جميع إصلاحات Phase 1A المعتمدة الـ 20 واجتياز 118 فحصاً آلياً و 0 أخطاء TypeScript وتجميد 4 بنود تتطلب موافقة. | `fix/ux-dashboard-company-admin-01` | `0fe15e46b...` | `CODE_COMPLETE_VERIFIED` |
 | 2026-10-22 | **Phase 1A** (Register) | Antigravity IDE | اعتماد ونشر النسخة الرسمية الدائمة من Master Findings Register مع التوثيق الكامل وتفعيل المزامنة الثنائية. | `fix/ux-dashboard-company-admin-01` | `c28bab9f9...` | `GOVERNED_AND_PUBLISHED` |
 | 2026-10-22 | **Phase 1A** (Review Fixes) | Antigravity IDE | معالجة تصحيحات مراجعة المرحلة 1A الخمسة (PDF ID, Billing KPIs, Invoice Date, Settings Nullable, Drawer Focus) وتحديث السجل الدائم بالمزامنة الثنائية. | `fix/ux-dashboard-company-admin-01` | `1cb2b1e19...` | `REVIEW_FIXES_PUSHED` |
-| 2026-10-22 | **Phase 1A** (Final Blockers) | Antigravity IDE | حل معوقات القبول الفني النهائي: تصحيح نطاق مستحقات الفوترة وفق عقد Backend الفعلي، وإحكام حبس التركيز للدرج المحمول (Focus Containment & Inert Background)، وتفصيل محاور الحوكمة الأربعة. | `fix/ux-dashboard-company-admin-01` | (Commit الحالي) | `READY_FOR_FINAL_ACCEPTANCE` |
+| 2026-10-22 | **Phase 1A** (Final Blockers) | Antigravity IDE | حل معوقات القبول الفني: تصحيح نطاق مستحقات الفوترة وفق عقد Backend الفعلي، وإحكام حبس التركيز للدرج المحمول (Focus Containment & Inert Background)، وتفصيل محاور الحوكمة الأربعة. | `fix/ux-dashboard-company-admin-01` | `ca2fc89a9...` | `FINAL_BLOCKERS_PUSHED` |
+| 2026-10-22 | **Phase 1A** (Responsive & Billing) | Antigravity IDE | معالجة سيناريو انتقال العرض (Responsive Resize) بإغلاق الدرج التلقائي وإزالة inert عن Desktop، وتخطي زر Hamburger المخفي، وتدقيق مسميات الفواتير غير المسددة عند غياب amountDue واحترام amountDue=0، واجتياز 122 اختباراً. | `fix/ux-dashboard-company-admin-01` | (Commit الحالي) | `READY_FOR_INDEPENDENT_REVIEW` |

@@ -10,6 +10,8 @@ import {
   formatQuota,
   attemptChatSend,
   canToggleModule,
+  DESKTOP_BREAKPOINT_PX,
+  trapDrawerFocus,
 } from "./companyAdminGuards.ts";
 
 test("CA-F07: validateBranchCreate requires explicit restaurantId and at least 2 char name", () => {
@@ -89,7 +91,7 @@ test("CA-REV-01: parseInvoice separates internal id (for PDF download) and publi
   assert.equal(invFallback.displayId, "uuid-fallback-only", "Fallback to id when publicId is absent");
 });
 
-test("CA-REV-02: calculateBillingKpis handles backend reality when outstandingHalalas is absent and invoices are paginated", () => {
+test("CA-REV-02: calculateBillingKpis handles backend reality when outstandingHalalas is absent, respects amountDue=0, and handles pagination", () => {
   // Page with only 2 invoices (e.g., current page of 150 total records)
   const pageInvoices = [
     parseInvoice({ id: "inv_1", totalHalalas: 10000, status: "paid" }),  // 100 SAR paid
@@ -109,30 +111,35 @@ test("CA-REV-02: calculateBillingKpis handles backend reality when outstandingHa
   assert.equal(kpisActual.isSummaryBasedPaid, true);
   assert.equal(kpisActual.companyTotalDue, null, "companyTotalDue MUST be null because backend summary does not provide outstandingHalalas");
   assert.equal(kpisActual.pageDue, 200, "pageDue must accurately represent open/overdue on current page only");
+  assert.equal(kpisActual.hasPaginationTotal, true);
   assert.equal(kpisActual.isMultiPage, true, "isMultiPage must be true when totalCountMeta (150) exceeds page invoices (2)");
   assert.equal(kpisActual.isSinglePageComplete, false);
   assert.equal(kpisActual.totalCount, 150);
 
   // Scenario 2: Single-page company (all invoices fit in current page)
   const kpisSinglePage = calculateBillingKpis(pageInvoices, actualBackendSummary, 2);
+  assert.equal(kpisSinglePage.hasPaginationTotal, true);
   assert.equal(kpisSinglePage.isMultiPage, false);
   assert.equal(kpisSinglePage.isSinglePageComplete, true);
   assert.equal(kpisSinglePage.pageDue, 200);
 
-  // Scenario 3: Future-proof if backend adds outstandingHalalas to summary
-  const futureSummary = {
-    totalPaidHalalas: 8500000,
-    outstandingHalalas: 450000, // 4,500 SAR
-  };
-  const kpisFuture = calculateBillingKpis(pageInvoices, futureSummary, 150);
-  assert.equal(kpisFuture.companyTotalDue, 4500, "companyTotalDue should be parsed if backend ever returns it");
+  // Scenario 3: Respect amountDue = 0 explicitly without treating 0 as falsy fallback to i.amount
+  const zeroDueInvoices = [
+    parseInvoice({ id: "inv_z1", totalHalalas: 10000, amountDue: 0, status: "open" }),
+    parseInvoice({ id: "inv_z2", totalHalalas: 30000, status: "open" }), // amountDue absent (null) -> falls back to 300
+  ];
+  const kpisZeroDue = calculateBillingKpis(zeroDueInvoices);
+  assert.equal(kpisZeroDue.pageDue, 300, "pageDue must add 0 for amountDue=0, not fallback to 100");
 
-  // Scenario 4: Fallback behavior when summary is absent
+  // Scenario 4: Unknown pagination metadata (must NOT assume single page is complete)
   const fallbackKpis = calculateBillingKpis(pageInvoices);
   assert.equal(fallbackKpis.totalPaid, 100);
   assert.equal(fallbackKpis.isSummaryBasedPaid, false);
   assert.equal(fallbackKpis.companyTotalDue, null);
   assert.equal(fallbackKpis.pageDue, 200);
+  assert.equal(fallbackKpis.hasPaginationTotal, false);
+  assert.equal(fallbackKpis.isSinglePageComplete, false, "Must NOT assume single page is complete when totalCountMeta is absent");
+  assert.equal(fallbackKpis.isMultiPage, false);
   assert.equal(fallbackKpis.totalCount, 2);
 });
 
@@ -261,4 +268,38 @@ test("CA-F16 / CA-F22: canToggleModule allows toggle only if module is in plan a
   assert.equal(canToggleModule(false, true), false);
   // In plan and idle (allowed)
   assert.equal(canToggleModule(true, false), true);
+});
+
+test("CA-REV-05: trapDrawerFocus and breakpoint constants ensure accessible focus loop and resize safety", () => {
+  // 1. Breakpoint constant test
+  assert.equal(DESKTOP_BREAKPOINT_PX, 768, "Desktop breakpoint must strictly be 768px matching Tailwind md");
+
+  // 2. Focus trap with mock DOM elements
+  const el1 = { id: "close-btn" } as unknown as HTMLElement;
+  const el2 = { id: "nav-link-1" } as unknown as HTMLElement;
+  const el3 = { id: "nav-link-2" } as unknown as HTMLElement;
+  const focusable = [el1, el2, el3];
+
+  // Tab on last element -> wraps to first element
+  const tabWrap = trapDrawerFocus(focusable, el3, false);
+  assert.equal(tabWrap, el1, "Tab on last element must cycle back to first element");
+
+  // Shift+Tab on first element -> wraps to last element
+  const shiftTabWrap = trapDrawerFocus(focusable, el1, true);
+  assert.equal(shiftTabWrap, el3, "Shift+Tab on first element must cycle back to last element");
+
+  // Tab on middle element -> returns null (allows native interior tab progression)
+  const tabMiddle = trapDrawerFocus(focusable, el2, false);
+  assert.equal(tabMiddle, null, "Tab on middle element must allow natural interior browser tab order");
+
+  // Active element outside drawer -> wraps into drawer
+  const outsideEl = { id: "outside-btn" } as unknown as HTMLElement;
+  const tabOutside = trapDrawerFocus(focusable, outsideEl, false);
+  assert.equal(tabOutside, el1, "Tab from outside drawer must focus first drawer element");
+
+  const shiftTabOutside = trapDrawerFocus(focusable, outsideEl, true);
+  assert.equal(shiftTabOutside, el3, "Shift+Tab from outside drawer must focus last drawer element");
+
+  // Empty focusable list -> returns null safely without throwing
+  assert.equal(trapDrawerFocus([], el1, false), null);
 });

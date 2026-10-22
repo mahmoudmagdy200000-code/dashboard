@@ -90,7 +90,7 @@ export interface ParsedInvoice {
   displayId: string;
   date: string;
   amount: number;
-  amountDue: number;
+  amountDue: number | null;
   status: InvoiceStatus;
 }
 
@@ -100,7 +100,11 @@ export function parseInvoice(raw: RawInvoice): ParsedInvoice {
   // Matches issueDate from Backend first, falling back to issuedAt / createdAt
   const date = raw.issueDate || raw.issuedAt || raw.createdAt || raw.date || "";
   const amount = raw.totalHalalas != null ? raw.totalHalalas / 100 : raw.amount != null ? Number(raw.amount) : 0;
-  const amountDue = raw.amountDueHalalas != null ? raw.amountDueHalalas / 100 : raw.amountDue != null ? Number(raw.amountDue) : 0;
+  const amountDue = raw.amountDueHalalas != null
+    ? raw.amountDueHalalas / 100
+    : raw.amountDue != null
+      ? Number(raw.amountDue)
+      : null;
   let status: InvoiceStatus = "unknown";
   const s = (raw.status || "").toLowerCase().trim();
   if (s === "paid") status = "paid";
@@ -118,6 +122,33 @@ export interface BillingSummaryKpiInput {
   nextInvoiceAmountHalalas?: number | null;
 }
 
+export const DESKTOP_BREAKPOINT_PX = 768;
+
+/**
+ * Traps Tab and Shift+Tab keyboard focus inside drawer dialog elements.
+ * Returns the element that should receive focus, or null if natural interior tab order should proceed.
+ */
+export function trapDrawerFocus(
+  focusableElements: HTMLElement[],
+  activeElement: Element | null,
+  isShiftTab: boolean
+): HTMLElement | null {
+  if (focusableElements.length === 0) return null;
+  const firstEl = focusableElements[0];
+  const lastEl = focusableElements[focusableElements.length - 1];
+
+  if (isShiftTab) {
+    if (activeElement === firstEl || !focusableElements.some((el) => el === activeElement)) {
+      return lastEl;
+    }
+  } else {
+    if (activeElement === lastEl || !focusableElements.some((el) => el === activeElement)) {
+      return firstEl;
+    }
+  }
+  return null;
+}
+
 export interface BillingKpisResult {
   totalPaid: number;
   isSummaryBasedPaid: boolean;
@@ -126,6 +157,7 @@ export interface BillingKpisResult {
   paidCount: number;
   dueCount: number;
   totalCount: number;
+  hasPaginationTotal: boolean;
   isMultiPage: boolean;
   isSinglePageComplete: boolean;
 }
@@ -145,17 +177,21 @@ export function calculateBillingKpis(
 
   const isSummaryBasedPaid = summary?.totalPaidHalalas != null;
 
-  // Outstanding due on the currently loaded page
-  const pageDue = openOrOverdue.reduce((sum, i) => sum + (i.amountDue || i.amount), 0);
+  // Sum of open/overdue invoice totals on current page, respecting amountDue = 0 when explicitly present
+  const pageDue = openOrOverdue.reduce(
+    (sum, i) => sum + (i.amountDue != null ? i.amountDue : i.amount),
+    0
+  );
 
   // If backend ever provides company-wide outstandingHalalas in summary, use it:
   const companyTotalDue = summary?.outstandingHalalas != null
     ? Math.round(summary.outstandingHalalas / 100)
     : null;
 
-  const totalCount = totalCountMeta != null ? totalCountMeta : invoices.length;
-  const isMultiPage = totalCountMeta != null && totalCountMeta > invoices.length;
-  const isSinglePageComplete = totalCountMeta != null ? totalCountMeta <= invoices.length : true;
+  const hasPaginationTotal = totalCountMeta != null;
+  const totalCount = hasPaginationTotal ? totalCountMeta : invoices.length;
+  const isMultiPage = hasPaginationTotal && totalCountMeta > invoices.length;
+  const isSinglePageComplete = hasPaginationTotal && totalCountMeta <= invoices.length;
 
   return {
     totalPaid,
@@ -165,6 +201,7 @@ export function calculateBillingKpis(
     paidCount: paid.length,
     dueCount: openOrOverdue.length,
     totalCount,
+    hasPaginationTotal,
     isMultiPage,
     isSinglePageComplete,
   };
