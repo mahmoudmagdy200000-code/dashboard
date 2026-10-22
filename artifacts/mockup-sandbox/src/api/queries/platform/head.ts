@@ -93,6 +93,8 @@ export function useMarkAllHeadRemindersDonePlatform() {
   });
 }
 
+import { fetchAllHeadOpsPages as fetchAllHeadOpsPagesBase } from "../../../components/mockups/asab/headReviewGuards";
+
 // ─── Operations queues (HA-F10: multi-page fetching & metadata preservation) ─
 export async function fetchAllHeadOpsPages(
   url: string,
@@ -101,31 +103,7 @@ export async function fetchAllHeadOpsPages(
     get: <T = any>(u: string, cfg?: any) => Promise<{ data: T }>;
   } = api,
 ): Promise<Operation[]> {
-  const res = await apiClient.get<Page<Operation> | Operation[]>(url, {
-    params: filter,
-  });
-  const d = res.data;
-  if (Array.isArray(d)) return d;
-  const firstData = d.data ?? [];
-  const meta = d.meta;
-  // If caller specifically requested an explicit page, return that page with meta
-  if (filter.page !== undefined || !meta || meta.totalPages <= 1) {
-    return Object.assign(firstData, { meta });
-  }
-  // Otherwise, fetch all remaining pages so Head queues are never silently truncated
-  const remaining = await Promise.all(
-    Array.from({ length: meta.totalPages - 1 }, (_, i) =>
-      apiClient
-        .get<Page<Operation> | Operation[]>(url, {
-          params: { ...filter, page: i + 2 },
-        })
-        .then((r) => (Array.isArray(r.data) ? r.data : (r.data.data ?? []))),
-    ),
-  );
-  const all = [firstData, ...remaining].flat();
-  return Object.assign(all, {
-    meta: { ...meta, total: meta.total ?? all.length },
-  });
+  return fetchAllHeadOpsPagesBase<Operation>(url, filter, apiClient);
 }
 
 export function usePendingOperations(

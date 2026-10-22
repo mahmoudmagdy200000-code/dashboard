@@ -149,9 +149,9 @@ export function isOpWithinPeriod(
   now: Date = new Date(),
 ): boolean {
   if (period === "all" || !period) return true;
-  if (!opDateStr) return true;
+  if (!opDateStr) return false;
   const opDate = new Date(opDateStr);
-  if (isNaN(opDate.getTime())) return true;
+  if (isNaN(opDate.getTime())) return false;
   const isoDayStr = (d: Date) =>
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   if (period === "day") {
@@ -169,6 +169,41 @@ export function isOpWithinPeriod(
     return opDate >= startOfMonth && opDate <= now;
   }
   return true;
+}
+
+export interface HeadOpsApiClient {
+  get: <T = any>(url: string, config?: any) => Promise<{ data: T }>;
+}
+
+export async function fetchAllHeadOpsPages<T = any>(
+  url: string,
+  filter: Record<string, any> = {},
+  apiClient?: HeadOpsApiClient,
+): Promise<T[]> {
+  if (!apiClient) {
+    throw new Error("apiClient must be provided to fetchAllHeadOpsPages");
+  }
+  const res = await apiClient.get<any>(url, { params: filter });
+  const d = res.data;
+  if (Array.isArray(d)) return d;
+  const firstData = (d.data ?? []) as T[];
+  const meta = d.meta;
+  if (filter.page !== undefined || !meta || meta.totalPages <= 1) {
+    return Object.assign(firstData, { meta });
+  }
+  const remaining = await Promise.all(
+    Array.from({ length: meta.totalPages - 1 }, (_, i) =>
+      apiClient
+        .get<any>(url, {
+          params: { ...filter, page: i + 2 },
+        })
+        .then((r) => (Array.isArray(r.data) ? (r.data as T[]) : ((r.data.data ?? []) as T[]))),
+    ),
+  );
+  const all = [firstData, ...remaining].flat();
+  return Object.assign(all, {
+    meta: { ...meta, total: meta.total ?? all.length },
+  });
 }
 
 export function filterErpOperations<

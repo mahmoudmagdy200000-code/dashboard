@@ -13,9 +13,9 @@ import {
   shouldUpdateHeadOps,
   isOpWithinPeriod,
   validateConditionalApproval,
+  fetchAllHeadOpsPages,
 } from "./headReviewGuards.ts";
 import { sumCOpAmounts } from "./operationMapping.ts";
-import { fetchAllHeadOpsPages } from "../../../api/queries/platform/head.ts";
 
 const shift = {
   id: "shf",
