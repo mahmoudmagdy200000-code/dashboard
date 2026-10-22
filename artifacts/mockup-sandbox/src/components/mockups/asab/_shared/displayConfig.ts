@@ -134,3 +134,13 @@ export const EXCEPTION_SEV_CFG: Record<ExceptionSeverity, { cls: string; barCls:
   high: { cls: "border-amber-200 bg-amber-50/60", barCls: "bg-amber-500", dot: "bg-amber-500", badgeCls: "bg-amber-100 text-amber-700 border-amber-200", titleCls: "text-amber-800", label: "عالي" },
   medium: { cls: "border-sky-200 bg-sky-50/60", barCls: "bg-sky-400", dot: "bg-sky-400", badgeCls: "bg-sky-100 text-sky-700 border-sky-200", titleCls: "text-sky-800", label: "متوسط" },
 };
+
+export const OP_MODULE_LABELS: Record<string, string> = {
+  sales: "المبيعات",
+  expenses: "المصروفات",
+  purchases: "المشتريات",
+  inventory: "المخزون",
+  shifts: "الشفتات",
+  employees: "الموظفون",
+  cash: "العهد النقدية",
+};
