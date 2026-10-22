@@ -4,6 +4,14 @@ import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
 import { headLegacyBulkIds, filterErpOperations, canProceedPreflight, aggregateOpsAmount, shouldUpdateHeadOps, runFinancialMutation, validateConditionalApproval, getLocalDateString, executeMixedBulkApproval } from "./headReviewGuards";
+import { EmptyState } from "./components/EmptyState";
+import { SimplePage } from "./components/SimplePage";
+import { Badge } from "./components/Badge";
+import { Btn } from "./components/Btn";
+import { KpiCard } from "./components/KpiCard";
+import { Card } from "./components/Card";
+import { PageHeader } from "./components/PageHeader";
+import { Breadcrumb } from "./components/Breadcrumb";
 import { toast } from "sonner";
 import { useState, useEffect, useMemo, ReactNode, createContext, useContext, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import {
@@ -1021,107 +1029,6 @@ const fmtAmt = (n: number | null | undefined) => {
   if (n == null || isNaN(n)) return "—";
   return n.toLocaleString("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
-// MICRO-COMPONENTS
-// ─────────────────────────────────────────────
-function Badge({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide ${className}`}>{children}</span>;
-}
-
-function Btn({ children, onClick, variant = "ghost", size = "md", className = "", disabled = false }: {
-  children: ReactNode; onClick?: (e: ReactMouseEvent<HTMLButtonElement>) => void;
-  variant?: "primary" | "success" | "danger" | "ghost" | "outline" | "amber";
-  size?: "sm" | "md"; className?: string; disabled?: boolean
-}) {
-  const base = "inline-flex items-center gap-1.5 font-semibold cursor-pointer border transition-all rounded-lg whitespace-nowrap";
-  const sizes = { sm: "px-3 py-1.5 text-xs", md: "px-4 py-2 text-sm" };
-  const variants = {
-    primary: "bg-purple-600 text-white border-purple-600 hover:bg-purple-700 shadow-sm",
-    success: "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 shadow-sm",
-    danger: "bg-red-50 text-red-700 border-red-200 hover:bg-red-100",
-    amber: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
-    ghost: "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100",
-    outline: "bg-white text-gray-700 border-gray-300 hover:bg-gray-50",
-  };
-  return <button onClick={onClick} disabled={disabled} className={`${base} ${sizes[size]} ${variants[variant]} ${className}`}>{children}</button>;
-}
-
-function KpiCard({ label, value, sub, icon, accent = "purple", onClick }: {
-  label: string; value: string; sub?: string; icon: ReactNode; accent?: string; onClick?: () => void
-}) {
-  const accents: Record<string, string> = {
-    purple: "border-t-purple-500 bg-purple-500",
-    emerald: "border-t-emerald-500 bg-emerald-500",
-    amber: "border-t-amber-500 bg-amber-500",
-    blue: "border-t-blue-500 bg-blue-500",
-    red: "border-t-red-500 bg-red-500",
-    orange: "border-t-orange-500 bg-orange-500",
-  };
-  const borderCls = accents[accent]?.split(" ")[0] || "border-t-purple-500";
-  const iconBg = accents[accent]?.split(" ")[1] || "bg-purple-500";
-  return (
-    <div onClick={onClick} className={`bg-white rounded-xl shadow-sm border border-gray-100 border-t-2 ${borderCls} p-5 flex items-start gap-4 ${onClick ? "cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all" : ""}`}>
-      <div className={`w-10 h-10 rounded-xl ${iconBg} bg-opacity-10 flex items-center justify-center flex-shrink-0`}>{icon}</div>
-      <div className="min-w-0">
-        <p className="text-gray-500 text-xs font-medium uppercase tracking-wider leading-tight">{label}</p>
-        <p className="text-gray-900 font-extrabold text-3xl mt-1 leading-none font-mono">{value}</p>
-        {sub && <p className="text-gray-400 text-xs mt-1.5">{sub}</p>}
-        {onClick && <p className="text-[10px] text-purple-500 mt-1">← اضغط للتفاصيل</p>}
-      </div>
-    </div>
-  );
-}
-
-function Card({ title, children, actions, className = "" }: { title?: string; children: ReactNode; actions?: ReactNode; className?: string }) {
-  return (
-    <div className={`bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden ${className}`}>
-      {title && (
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 bg-gray-50/60">
-          <h3 className="font-bold text-gray-900 text-sm tracking-tight">{title}</h3>
-          {actions && <div className="flex items-center gap-2">{actions}</div>}
-        </div>
-      )}
-      <div>{children}</div>
-    </div>
-  );
-}
-
-function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
-  return (
-    <div className="flex items-start justify-between mb-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-gray-900 leading-tight tracking-tight">{title}</h1>
-        {subtitle && <p className="text-gray-400 text-sm mt-1 font-normal">{subtitle}</p>}
-      </div>
-      {actions && <div className="flex items-center gap-2 flex-shrink-0">{actions}</div>}
-    </div>
-  );
-}
-
-function Breadcrumb({ items }: { items: { label: string; onClick?: () => void }[] }) {
-  return (
-    <div className="flex items-center gap-1.5 text-sm mb-5 bg-white rounded-xl border border-gray-100 px-4 py-2.5 w-fit shadow-sm" dir="rtl">
-      {items.map((item, i) => (
-        <div key={i} className="flex items-center gap-1.5">
-          {i > 0 && <ChevronRight size={13} className="text-gray-300 rotate-180" />}
-          {item.onClick
-            ? <button onClick={item.onClick} className="text-purple-600 hover:text-purple-800 font-medium hover:underline">{item.label}</button>
-            : <span className="font-semibold text-gray-700">{item.label}</span>
-          }
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function EmptyState({ icon, title, desc }: { icon: string; title: string; desc: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-3xl mb-4 shadow-sm">{icon}</div>
-      <p className="font-bold text-gray-700 mb-1">{title}</p>
-      {desc && <p className="text-gray-400 text-sm max-w-xs">{desc}</p>}
-    </div>
-  );
-}
 
 function LockBanner({ op }: { op?: Op }) {
   const isErpPosted = op?.erpPosted === true;
@@ -3339,16 +3246,6 @@ function OwnerReportsPage({ ops }: PageProps) {
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function SimplePage({ title, icon, desc }: { title: string; icon: string; desc: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
-      <div className="text-6xl mb-4">{icon}</div>
-      <h2 className="text-xl font-bold text-gray-700 mb-2">{title}</h2>
-      {desc && <p className="text-gray-400 text-sm">{desc}</p>}
     </div>
   );
 }

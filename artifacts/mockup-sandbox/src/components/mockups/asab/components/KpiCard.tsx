@@ -1,0 +1,46 @@
+import type { ReactNode } from "react";
+
+export interface KpiCardProps {
+  label: string;
+  value: string;
+  sub?: string;
+  icon: ReactNode;
+  accent?: string;
+  onClick?: () => void;
+}
+
+export function KpiCard({
+  label,
+  value,
+  sub,
+  icon,
+  accent = "purple",
+  onClick,
+}: KpiCardProps) {
+  const accents: Record<string, string> = {
+    purple: "border-t-purple-500 bg-purple-500",
+    emerald: "border-t-emerald-500 bg-emerald-500",
+    amber: "border-t-amber-500 bg-amber-500",
+    blue: "border-t-blue-500 bg-blue-500",
+    red: "border-t-red-500 bg-red-500",
+    orange: "border-t-orange-500 bg-orange-500",
+  };
+  const borderCls = accents[accent]?.split(" ")[0] || "border-t-purple-500";
+  const iconBg = accents[accent]?.split(" ")[1] || "bg-purple-500";
+  return (
+    <div
+      onClick={onClick}
+      className={`bg-white rounded-xl shadow-sm border border-gray-100 border-t-2 ${borderCls} p-5 flex items-start gap-4 ${onClick ? "cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all" : ""}`}
+    >
+      <div className={`w-10 h-10 rounded-xl ${iconBg} bg-opacity-10 flex items-center justify-center flex-shrink-0`}>
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-gray-500 text-xs font-medium uppercase tracking-wider leading-tight">{label}</p>
+        <p className="text-gray-900 font-extrabold text-3xl mt-1 leading-none font-mono">{value}</p>
+        {sub && <p className="text-gray-400 text-xs mt-1.5">{sub}</p>}
+        {onClick && <p className="text-[10px] text-purple-500 mt-1">← اضغط للتفاصيل</p>}
+      </div>
+    </div>
+  );
+}
