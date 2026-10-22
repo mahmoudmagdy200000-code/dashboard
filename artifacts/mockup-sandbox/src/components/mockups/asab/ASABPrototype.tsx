@@ -320,7 +320,7 @@ interface Op {
   branch: string;
   moduleKey: ModuleKey;
   moduleLabel: string;
-  amount: number;
+  amount: number | null;
   timeAgo: string;
   match: MatchStatus;
   attachments: number;
@@ -2297,7 +2297,7 @@ function mapApiOpToOp(a: any): Op {
     moduleLabel: OP_MODULE_LABELS[a.moduleKey] ?? a.moduleKey ?? "",
     // Money always arrives in halalas (amountHalalas, or amount as the halalas int) —
     // HA-F11: preserve exact halalas without Math.round truncation.
-    amount: typeof a.amountHalalas === "number" ? a.amountHalalas / 100 : (typeof a.amount === "number" ? a.amount / 100 : 0),
+    amount: typeof a.amountHalalas === "number" ? a.amountHalalas / 100 : (typeof a.amount === "number" ? a.amount / 100 : null),
     supplierName: a.supplierName ?? undefined,
     timeAgo: relativeTimeAr(a.operationDate ?? a.createdAt),
     operationDate: a.operationDate ?? a.createdAt ?? undefined,
@@ -2353,7 +2353,7 @@ function deriveExceptions(ops: Op[], forRole: "accountant"|"head", lang: Lang = 
   );
   if(stuck.length > 0) {
     const oldestAge = stuck.map(o=>o.timeAgo).sort().pop() || "";
-    const totalAmt  = stuck.reduce((s,o)=>s+o.amount,0);
+    const totalAmt  = stuck.some(o=>o.amount==null) ? null : stuck.reduce((s,o)=>s+(o.amount??0),0);
     const navTarget = forRole==="head" ? "head-pending" as PageId : topModulePage(stuck,"acc-","acc-sales");
     items.push({
       severity:"high", icon:"⏰",
@@ -2367,7 +2367,7 @@ function deriveExceptions(ops: Op[], forRole: "accountant"|"head", lang: Lang = 
         ? `${EN_EXCEPTION_ITEMS.stuck.agePrefix}${oldestAge}${EN_EXCEPTION_ITEMS.stuck.ageSuffix}`
         : `أطول تأخير: ${oldestAge} — تجاوز الحد المقبول`,
       impact: en
-        ? `${fmtAmt(totalAmt)}${EN_EXCEPTION_ITEMS.stuck.impactSuffix}`
+        ? `${totalAmt != null ? fmtAmt(totalAmt) : "—"}${EN_EXCEPTION_ITEMS.stuck.impactSuffix}`
         : `${fmtAmt(totalAmt)} ر.س لم تدخل دورة الاعتماد — تعطل التجميع الشهري`,
       navTarget,
       navLabel: en
@@ -2380,7 +2380,7 @@ function deriveExceptions(ops: Op[], forRole: "accountant"|"head", lang: Lang = 
   // 2. Unresolved quantity/price differences — critical risk (blocks consolidation)
   const diffs = ops.filter(o=>o.match==="diff" && o.status==="pending");
   if(diffs.length > 0) {
-    const totalDiff = diffs.reduce((s,o)=>s+o.amount,0);
+    const totalDiff = diffs.some(o=>o.amount==null) ? null : diffs.reduce((s,o)=>s+(o.amount??0),0);
     const navTarget = forRole==="head" ? "head-pending" as PageId : topModulePage(diffs,"acc-","acc-purchases");
     items.push({
       severity:"critical", icon:"⚠",
@@ -2404,7 +2404,7 @@ function deriveExceptions(ops: Op[], forRole: "accountant"|"head", lang: Lang = 
   if(forRole==="head") {
     const pendingErp = ops.filter(o=>o.status==="final-approved" && !o.erpPosted);
     if(pendingErp.length > 0) {
-      const pendingAmt = pendingErp.reduce((s,o)=>s+o.amount,0);
+      const pendingAmt = pendingErp.some(o=>o.amount==null) ? null : pendingErp.reduce((s,o)=>s+(o.amount??0),0);
       items.push({
         severity:"medium", icon:"🔗",
         label: en ? EN_EXCEPTION_ITEMS.pendingErp.label : "عمليات مُعتمدة نهائياً لم تُرحَّل لـ ERP بعد",
@@ -2445,7 +2445,7 @@ function deriveExceptions(ops: Op[], forRole: "accountant"|"head", lang: Lang = 
   const rejByBranch: Record<string,{count:number; total:number}> = {};
   ops.filter(o=>o.status==="rejected").forEach(o=>{
     if(!rejByBranch[o.branch]) rejByBranch[o.branch]={count:0,total:0};
-    rejByBranch[o.branch].count++; rejByBranch[o.branch].total+=o.amount;
+    rejByBranch[o.branch].count++; rejByBranch[o.branch].total+=(o.amount??0);
   });
   const problemBranches = Object.entries(rejByBranch).filter(([,v])=>v.count>=2);
   if(problemBranches.length > 0) {
@@ -2674,7 +2674,7 @@ function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate:(p:PageI
             final:    mOps.filter(o=>o.status==="final-approved").length,
             erp:      mOps.filter(o=>o.erpPosted).length,
           };
-          const total    = mOps.reduce((s,o)=>s+o.amount,0);
+          const total    = mOps.some(o=>o.amount==null) ? null : mOps.reduce((s,o)=>s+(o.amount??0),0);
           const stepNum  = cfg.step;
           const maxStep  = 5;
           const isSelected = selectedKey===cardKey;
@@ -2702,7 +2702,7 @@ function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate:(p:PageI
                       {counts.final    > 0 && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-semibold">{counts.final} {t("مُجمَّع","Consolidated")}</span>}
                       {counts.erp      > 0 && <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-semibold">{counts.erp} ERP</span>}
                     </div>
-                    {total>0 && <p className="text-[10px] font-mono font-bold text-gray-600">{(total/1000).toFixed(1)}K {t("ر.س","SAR")}</p>}
+                    {total != null && total > 0 && <p className="text-[10px] font-mono font-bold text-gray-600">{(total/1000).toFixed(1)}K {t("ر.س","SAR")}</p>}
                   </div>
                 ) : (
                   <span className="text-[10px] text-gray-300">{t("لا توجد بيانات","No data")}</span>
@@ -2748,7 +2748,7 @@ function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate:(p:PageI
                       <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                       <span className="text-[11px] font-bold text-emerald-800">{t("مُدرَجة في الحزمة — قيود مُعتمدة نهائياً","Included in Package — Final-approved entries")}</span>
                       <span className="text-[10px] text-emerald-600 mr-auto font-mono font-bold">
-                        {fmtAmt(selectedOps.filter(o=>o.status==="final-approved").reduce((s,o)=>s+o.amount,0))} {t("ر.س","SAR")}
+                        {fmtAmt(selectedOps.filter(o=>o.status==="final-approved").reduce((s,o)=>s+(o.amount??0),0))} {t("ر.س","SAR")}
                       </span>
                     </div>
                     <div className="divide-y divide-gray-50">
@@ -2775,7 +2775,7 @@ function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate:(p:PageI
                       <span className="w-2 h-2 rounded-full bg-red-500"></span>
                       <span className="text-[11px] font-bold text-red-800">{t("معلقة — تمنع اكتمال التجميع","Pending — Blocking consolidation")}</span>
                       <span className="text-[10px] text-red-600 mr-auto font-mono font-bold">
-                        {fmtAmt(selectedOps.filter(o=>o.status==="pending").reduce((s,o)=>s+o.amount,0))} {t("ر.س","SAR")}
+                        {fmtAmt(selectedOps.filter(o=>o.status==="pending").reduce((s,o)=>s+(o.amount??0),0))} {t("ر.س","SAR")}
                       </span>
                     </div>
                     <div className="divide-y divide-gray-50">
@@ -2804,7 +2804,7 @@ function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate:(p:PageI
                         <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                         <span className="text-[11px] font-bold text-emerald-800">{t("جاهز للإرسال لـ ERP","Ready to Send to ERP")}</span>
                         <span className="text-[10px] text-emerald-600 mr-auto font-mono font-bold">
-                          {fmtAmt(readyForErp.reduce((s,o)=>s+o.amount,0))} {t("ر.س","SAR")}
+                          {fmtAmt(readyForErp.reduce((s,o)=>s+(o.amount??0),0))} {t("ر.س","SAR")}
                         </span>
                       </div>
                       <div className="px-4 py-3">
@@ -2819,14 +2819,14 @@ function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate:(p:PageI
                   const posted = selectedOps.filter(o=>o.erpPosted);
                   if(posted.length === 0) return null;
                   const bm: Record<string,{total:number;count:number}> = {};
-                  posted.forEach(o=>{ const b=o.erpBatchId||"—"; if(!bm[b]) bm[b]={total:0,count:0}; bm[b].total+=o.amount; bm[b].count++; });
+                  posted.forEach(o=>{ const b=o.erpBatchId||"—"; if(!bm[b]) bm[b]={total:0,count:0}; bm[b].total+=(o.amount??0); bm[b].count++; });
                   return (
                     <div className="bg-white rounded-xl border border-indigo-100 overflow-hidden">
                       <div className="px-4 py-2 bg-indigo-50 border-b border-indigo-100 flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
                         <span className="text-[11px] font-bold text-indigo-800">{t("مُرحَّلة في ERP — دفعات مُغلقة","Posted to ERP — Closed Batches")}</span>
                         <span className="text-[10px] text-indigo-600 mr-auto font-mono font-bold">
-                          {fmtAmt(posted.reduce((s,o)=>s+o.amount,0))} {t("ر.س","SAR")}
+                          {fmtAmt(posted.reduce((s,o)=>s+(o.amount??0),0))} {t("ر.س","SAR")}
                         </span>
                       </div>
                       <div className="divide-y divide-gray-50">
@@ -2893,9 +2893,9 @@ function OwnerReportsPage({ ops }: PageProps) {
 
   // — Owner layer data source: ERP-posted only — the verified financial record
   const postedOps    = ops.filter(o=>o.erpPosted);
-  const salesPosted  = postedOps.filter(o=>o.moduleKey==="sales").reduce((s,o)=>s+o.amount,0);
-  const expPosted    = postedOps.filter(o=>o.moduleKey==="expenses").reduce((s,o)=>s+o.amount,0);
-  const purPosted    = postedOps.filter(o=>o.moduleKey==="purchases").reduce((s,o)=>s+o.amount,0);
+  const salesPosted  = postedOps.filter(o=>o.moduleKey==="sales").reduce((s,o)=>s+(o.amount??0),0);
+  const expPosted    = postedOps.filter(o=>o.moduleKey==="expenses").reduce((s,o)=>s+(o.amount??0),0);
+  const purPosted    = postedOps.filter(o=>o.moduleKey==="purchases").reduce((s,o)=>s+(o.amount??0),0);
   const netPosition  = salesPosted - expPosted - purPosted;
 
   // B-H5 / HA-F14: previous-month baseline + netPctChange come from /head/reports/owner without fake fallbacks
@@ -2906,7 +2906,7 @@ function OwnerReportsPage({ ops }: PageProps) {
 
   // Branch rankings from ERP-posted ops — descending by amount
   const branchAmts: Record<string,number> = {};
-  postedOps.forEach(o=>{ branchAmts[o.branch]=(branchAmts[o.branch]||0)+o.amount; });
+  postedOps.forEach(o=>{ branchAmts[o.branch]=(branchAmts[o.branch]||0)+(o.amount??0); });
   const branchRankings = Object.entries(branchAmts).sort(([,a],[,b])=>b-a).slice(0,5);
 
   // Category breakdown for owner — ERP-posted amounts only, with honest period comparison
@@ -2919,7 +2919,7 @@ function OwnerReportsPage({ ops }: PageProps) {
     { key:"employees" as ModuleKey, label:t("مستحقات الموظفين","Payroll"),   icon:"👥", color:"bg-indigo-500",  textColor:"text-indigo-700",  isIncome:false },
     { key:"cash"      as ModuleKey, label:t("العهد النقدية","Cash Custody"), icon:"💼", color:"bg-purple-500",  textColor:"text-purple-700",  isIncome:false },
   ].map(c=>{
-    const amt  = postedOps.filter(o=>o.moduleKey===c.key).reduce((s,o)=>s+o.amount,0);
+    const amt  = postedOps.filter(o=>o.moduleKey===c.key).reduce((s,o)=>s+(o.amount??0),0);
     const prev = (ownerApi as any)?.previousMonthByCategory?.[c.key] != null ? Math.round((ownerApi as any).previousMonthByCategory[c.key] / 100) : 0;
     const pct  = prev > 0 ? Math.round(((amt-prev)/prev)*100) : null;
     return {...c, amount:amt, prev, pct};
@@ -2941,7 +2941,7 @@ function OwnerReportsPage({ ops }: PageProps) {
   postedOps.forEach(o=>{
     const b = o.erpBatchId||t("دفعة غير مُسمَّاة","Unnamed batch");
     if(!batchMap[b]) batchMap[b]={id:b,total:0,modules:new Set()};
-    batchMap[b].total+=o.amount; batchMap[b].modules.add(o.moduleLabel);
+    batchMap[b].total+=(o.amount??0); batchMap[b].modules.add(o.moduleLabel);
   });
   const batches = Object.values(batchMap);
 
@@ -9773,7 +9773,7 @@ function HeadApprovalTab({ ops, finalApproveOp, rejectOp, setModal, setDetailId,
               </div>
               <p className="text-xs text-gray-400 mt-0.5">{g.ops.length} {t("عمليات موافق عليها","approved operations")}</p>
             </div>
-            <span className="font-mono font-bold text-purple-700">{fmtAmt(g.ops.reduce((s,o)=>s+o.amount,0))} {t("ر.س","SAR")}</span>
+            <span className="font-mono font-bold text-purple-700">{fmtAmt(g.ops.reduce((s,o)=>s+(o.amount??0),0))} {t("ر.س","SAR")}</span>
             <div className="flex items-center gap-2">
               <Btn size="sm" variant="success" onClick={e=>{ e.stopPropagation(); bulkApprove(g.ops.map(o=>o.id)); }}><CheckCircle2 size={13}/> {t("اعتماد الكل","Approve All")}</Btn>
               {expanded===g.key?<ChevronUp size={16} className="text-gray-400"/>:<ChevronDown size={16} className="text-gray-400"/>}
@@ -9815,6 +9815,7 @@ function HeadPending({ navigate, setModal, setDetailId, ops, finalApproveOp, rej
   const [conditionalId, setConditionalId] = useState<string|null>(null);
   const [approvalComment, setApprovalComment] = useState("");
   const [conditionalApproved, setConditionalApproved] = useState<Set<string>>(new Set());
+  const [isSubmittingCond, setIsSubmittingCond] = useState(false);
   const REJECT_REASONS = [t("يوجد فرق في المبالغ","Amount discrepancy"),t("مستندات ناقصة","Missing documents"),t("يحتاج مراجعة المورد","Needs supplier review"),t("تكرار في القيد","Duplicate entry"),t("خطأ في الفرع","Wrong branch"),t("أخرى","Other")];
   const [selectedRejectReason, setSelectedRejectReason] = useState("");
   // HA-F15: Real accountant names from the API only; display "غير متاح" when missing without fake placeholders.
@@ -9828,7 +9829,7 @@ function HeadPending({ navigate, setModal, setDetailId, ops, finalApproveOp, rej
   const allVal = t("الكل","All");
   if(accFilter!==allVal) filtered = filtered.filter(o=>getAcc(o)===accFilter);
   if(brandFilter!==allVal) filtered = filtered.filter(o=>o.brandName===brandFilter);
-  const totalAmt = filtered.reduce((s,o)=>s+o.amount,0);
+  const totalAmt = filtered.some(o=>o.amount==null) ? null : filtered.reduce((s,o)=>s+(o.amount??0),0);
   const hasFilters = accFilter!==allVal||brandFilter!==allVal||!!filters.branch||!!filters.match||!!filters.search;
 
   const toggleGroup = (key:string) => setCollapsedGroups(prev=>{
@@ -9878,7 +9879,7 @@ function HeadPending({ navigate, setModal, setDetailId, ops, finalApproveOp, rej
             </button>
             {isPkg6SalesReport(op) && <span className="text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</span>}
             {returnForReview && !isPkg6SalesReport(op) && (
-              <button onClick={()=>{ const note = window.prompt(t("ملاحظة الإرجاع (اختياري)","Return note (optional)")) ?? undefined; returnForReview(op.id, note || undefined); }}
+              <button onClick={()=>{ const note = window.prompt(t("ملاحظة الإرجاع (اختياري)","Return note (optional)")); if (note === null) return; void returnForReview(op.id, note.trim() || undefined); }}
                 className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 font-semibold hover:bg-blue-100">
                 <RotateCcw size={11}/> {t("إرجاع للمراجعة","Return")}
               </button>
@@ -9904,11 +9905,26 @@ function HeadPending({ navigate, setModal, setDetailId, ops, finalApproveOp, rej
               placeholder={t("اكتب الشروط أو الملاحظات المطلوبة من الفرع قبل التنفيذ النهائي...","Write conditions or notes required from the branch before final execution...")}
               className="w-full text-sm border border-amber-200 rounded-lg px-3 py-2 resize-none h-20 bg-white focus:outline-none focus:border-amber-400"/>
             <div className="flex gap-2 mt-2">
-              <button onClick={()=>{ setConditionalApproved(p=>new Set(p).add(op.id)); finalApproveOp(op.id, { note: approvalComment }); setConditionalId(null); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-all">
-                <CheckCircle2 size={11}/> {t("تأكيد الاعتماد المشروط","Confirm Conditional Approval")}
+              <button disabled={isSubmittingCond || !approvalComment.trim()}
+                onClick={async ()=>{
+                  const trimmed = approvalComment.trim();
+                  if (!trimmed || isSubmittingCond) return;
+                  setIsSubmittingCond(true);
+                  try {
+                    await finalApproveOp(op.id, { note: trimmed });
+                    setConditionalApproved(p=>new Set(p).add(op.id));
+                    setConditionalId(null);
+                    setApprovalComment("");
+                  } catch {
+                    // Do not mark conditional approved if server call fails
+                  } finally {
+                    setIsSubmittingCond(false);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 disabled:opacity-50 transition-all">
+                <CheckCircle2 size={11}/> {isSubmittingCond ? t("جارٍ الحفظ...","Saving...") : t("تأكيد الاعتماد المشروط","Confirm Conditional Approval")}
               </button>
-              <button onClick={()=>setConditionalId(null)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50">{t("إلغاء","Cancel")}</button>
+              <button disabled={isSubmittingCond} onClick={()=>{ setConditionalId(null); setApprovalComment(""); }} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50">{t("إلغاء","Cancel")}</button>
             </div>
           </div>
         )}
@@ -9935,7 +9951,7 @@ function HeadPending({ navigate, setModal, setDetailId, ops, finalApproveOp, rej
 
       <div className="grid grid-cols-3 gap-4">
         <KpiCard label={t("بانتظار الاعتماد","Awaiting Approval")} value={String(filtered.length)} sub={t("جميع الموديولات","All modules")} icon={<Clock size={18} className="text-amber-600"/>} accent="amber"/>
-        <KpiCard label={t("الإجمالي","Total")} value={`${(totalAmt/1000).toFixed(0)}K`} sub={t("ر.س","SAR")} icon={<TrendingUp size={18} className="text-purple-600"/>} accent="purple"/>
+        <KpiCard label={t("الإجمالي","Total")} value={totalAmt != null ? `${(totalAmt/1000).toFixed(0)}K` : "—"} sub={t("ر.س","SAR")} icon={<TrendingUp size={18} className="text-purple-600"/>} accent="purple"/>
         <KpiCard label={t("يوجد فروقات","Has Differences")} value={String(filtered.filter(o=>o.match==="diff").length)} sub={t("تحتاج مراجعة إضافية","Needs further review")} icon={<AlertTriangle size={18} className="text-red-600"/>} accent="red"/>
       </div>
 
@@ -10015,7 +10031,7 @@ function HeadPending({ navigate, setModal, setDetailId, ops, finalApproveOp, rej
           : (
             <div className="space-y-3">
               {groups.map(grp=>{
-                const grpAmt = grp.ops.reduce((s,o)=>s+o.amount,0);
+                const grpAmt = grp.ops.reduce((s,o)=>s+(o.amount??0),0);
                 const isCollapsed = collapsedGroups.has(grp.key);
                 const diffCount = grp.ops.filter(o=>o.match==="diff").length;
                 return (
@@ -10222,7 +10238,7 @@ function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops, final
   // B-H3: apply the from/to date range (was previously dead UI — applyFilters ignores dates).
   if(dateFrom) filtered = filtered.filter(o=>(o.operationDate ?? "").slice(0,10) >= dateFrom);
   if(dateTo)   filtered = filtered.filter(o=>(o.operationDate ?? "").slice(0,10) <= dateTo);
-  const totalAmt = filtered.reduce((s,o)=>s+o.amount,0);
+  const totalAmt = filtered.some(o=>o.amount==null) ? null : filtered.reduce((s,o)=>s+(o.amount??0),0);
   const diffCount = filtered.filter(o=>o.match==="diff").length;
   const exactCount = filtered.filter(o=>o.match==="exact").length;
   const hasFilters = accFilter!==allVal||brandFilter!==allVal||!!filters.branch||!!filters.match||!!filters.search||!!dateFrom||!!dateTo;
@@ -10254,7 +10270,7 @@ function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops, final
 
       <div className="grid grid-cols-4 gap-3">
         <KpiCard label={t("بانتظار الاعتماد","Awaiting Approval")} value={String(filtered.length)} sub={t("عملية موافق عليها","approved operations")} icon={<Clock size={18} className="text-amber-600"/>} accent="amber"/>
-        <KpiCard label={t("الإجمالي","Total")} value={`${(totalAmt/1000).toFixed(0)}K`} sub={t("ر.س","SAR")} icon={<TrendingUp size={18} className="text-purple-600"/>} accent="purple"/>
+        <KpiCard label={t("الإجمالي","Total")} value={totalAmt != null ? `${(totalAmt/1000).toFixed(0)}K` : "—"} sub={t("ر.س","SAR")} icon={<TrendingUp size={18} className="text-purple-600"/>} accent="purple"/>
         <KpiCard label={t("يوجد فروقات","Has Differences")} value={String(diffCount)} sub={t("تحتاج مراجعة","Needs review")} icon={<AlertTriangle size={18} className="text-red-600"/>} accent="red"/>
         <KpiCard label={t("متطابقة","Matched")} value={String(exactCount)} sub={t("مطابقة تامة","Exact match")} icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
       </div>
@@ -10529,12 +10545,37 @@ function HeadERP({ ops, markErpPosted }:PageProps) {
   const [step, setStep] = useState<0|1|2>(0);
   const [tab, setTab] = useState<"export"|"reports">("export");
   const [postedBatchId, setPostedBatchId] = useState("");
+  const [isPosting, setIsPosting] = useState(false);
+
+  // Filters connected to reactive state (HA-F07)
+  const [moduleFilter, setModuleFilter] = useState<string>("all");
+  const [periodFilter, setPeriodFilter] = useState<string>("day");
+  const [restaurantFilter, setRestaurantFilter] = useState<string>("all");
+  const [branchFilter, setBranchFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("approved_only");
+
   // Only show ops that are final-approved but NOT yet ERP-posted
   const pendingErp = ops.filter(o=>o.status==="final-approved" && !o.erpPosted);
   const postedOps = ops.filter(o=>o.erpPosted);
   const finalApproved = ops.filter(o=>o.status==="final-approved");
-  const toPost = pendingErp;
-  const totalAmt = toPost.reduce((s,o)=>s+o.amount,0);
+
+  // Real dynamic counts from operations, no hardcoded counts
+  const availableRestaurants = [...new Set(pendingErp.map(o => o.brandName || o.branch).filter(Boolean))];
+  const availableBranches = [...new Set(pendingErp.map(o => o.branch).filter(Boolean))];
+
+  // Derive toPost from reactive filters and exclude unknown money (HA-F07, HA-F11)
+  const toPost = useMemo(() => {
+    return pendingErp.filter(o => {
+      if (moduleFilter !== "all" && o.moduleKey !== moduleFilter) return false;
+      if (branchFilter !== "all" && o.branch !== branchFilter) return false;
+      if (restaurantFilter !== "all" && (o.brandName !== restaurantFilter && o.branch !== restaurantFilter)) return false;
+      if (statusFilter === "approved_only" && o.status !== "final-approved") return false;
+      if (o.amount == null) return false;
+      return true;
+    });
+  }, [pendingErp, moduleFilter, branchFilter, restaurantFilter, statusFilter]);
+
+  const totalAmt = toPost.some(o=>o.amount==null) ? null : toPost.reduce((s,o)=>s+(o.amount??0),0);
   // B-H4: preflight shape { checks:[{ok,labelAr,labelEn,severity}], canProceed, warningCount }
   const preflightChecks = (((erpPreflight as any)?.checks ?? []) as { ok:boolean; labelAr?:string; labelEn?:string; severity?:string }[]);
   const preflightWarnings = (erpPreflight as any)?.warningCount ?? preflightChecks.filter(c=>!c.ok).length;
@@ -10544,7 +10585,7 @@ function HeadERP({ ops, markErpPosted }:PageProps) {
   const reportsByModule = postedOps.reduce<Record<string,{label:string;count:number;total:number;batchIds:string[]}>>((acc,op)=>{
     if(!acc[op.moduleKey]){ acc[op.moduleKey]={label:op.moduleLabel,count:0,total:0,batchIds:[]}; }
     acc[op.moduleKey].count++;
-    acc[op.moduleKey].total+=op.amount;
+    acc[op.moduleKey].total+=(op.amount??0);
     if(op.erpBatchId && !acc[op.moduleKey].batchIds.includes(op.erpBatchId)) acc[op.moduleKey].batchIds.push(op.erpBatchId);
     return acc;
   }, {});
@@ -10602,7 +10643,7 @@ function HeadERP({ ops, markErpPosted }:PageProps) {
                   <p className="text-xs text-slate-500 mt-1">{t("عملية مُعالَجة في ERP","Operations processed in ERP")}</p>
                 </div>
                 <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-                  <p className="text-3xl font-extrabold font-mono text-indigo-700">{(postedOps.reduce((s,o)=>s+o.amount,0)/1000).toFixed(1)}K</p>
+                  <p className="text-3xl font-extrabold font-mono text-indigo-700">{(postedOps.reduce((s,o)=>s+(o.amount??0),0)/1000).toFixed(1)}K</p>
                   <p className="text-xs text-slate-500 mt-1">{t("ر.س إجمالي المُرحَّل","SAR total posted")}</p>
                 </div>
                 <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
@@ -10655,7 +10696,7 @@ function HeadERP({ ops, markErpPosted }:PageProps) {
                       <td className="px-5 py-3 font-bold text-slate-700 text-sm">{t("الإجمالي الكلي","Grand Total")}</td>
                       <td></td>
                       <td className="px-5 py-3 text-center font-bold text-slate-700 font-mono">{postedOps.length}</td>
-                      <td className="px-5 py-3 text-center font-extrabold text-slate-900 font-mono tabular-nums">{(postedOps.reduce((s,o)=>s+o.amount,0)/1000).toFixed(1)}K {t("ر.س","SAR")}</td>
+                      <td className="px-5 py-3 text-center font-extrabold text-slate-900 font-mono tabular-nums">{(postedOps.reduce((s,o)=>s+(o.amount??0),0)/1000).toFixed(1)}K {t("ر.س","SAR")}</td>
                       <td colSpan={2}></td>
                     </tr>
                   </tfoot>
@@ -10736,7 +10777,14 @@ function HeadERP({ ops, markErpPosted }:PageProps) {
         <div className="flex items-center gap-0 mb-6">
           {[{n:1,label:`1. ${t("اختيار الفترة","Select Period")}`,icon:"📅"},{n:2,label:`2. ${t("معاينة البيانات","Preview Data")}`,icon:"👁"},{n:3,label:`3. ${t("تأكيد الإرسال","Confirm Send")}`,icon:"✅"}].map((s,i)=>(
             <div key={i} className="flex items-center flex-1">
-              <button onClick={()=>setStep((s.n-1) as 0|1|2)} className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all ${step===s.n-1?"bg-purple-600 text-white":step>s.n-1?"bg-emerald-100 text-emerald-700":"bg-gray-100 text-gray-400"}`}>
+              <button
+                disabled={(s.n === 3 && !postedBatchId) || (s.n === 2 && toPost.length === 0 && !postedBatchId)}
+                onClick={()=>{
+                  if (s.n === 3 && !postedBatchId) return;
+                  if (s.n === 2 && toPost.length === 0 && !postedBatchId) return;
+                  setStep((s.n-1) as 0|1|2);
+                }}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all ${step===s.n-1?"bg-purple-600 text-white":step>s.n-1?"bg-emerald-100 text-emerald-700":"bg-gray-100 text-gray-400"} ${((s.n === 3 && !postedBatchId) || (s.n === 2 && toPost.length === 0 && !postedBatchId)) ? "opacity-50 cursor-not-allowed" : ""}`}>
                 <span>{step>=s.n?"✓":s.icon}</span>
                 <span className="text-xs font-semibold whitespace-nowrap">{s.label}</span>
               </button>
@@ -10755,7 +10803,7 @@ function HeadERP({ ops, markErpPosted }:PageProps) {
                 <div className="space-y-2">
                   {[{k:"all",l:t("الكل","All")},{k:"sales",l:t("المبيعات","Sales")},{k:"expenses",l:t("المصروفات","Expenses")},{k:"purchases",l:t("المشتريات","Purchases")},{k:"inventory",l:t("المخزون","Inventory")}].map(m=>(
                     <label key={m.k} className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="erp-module" defaultChecked={m.k==="all"} className="accent-purple-600"/>
+                      <input type="radio" name="erp-module" checked={moduleFilter===m.k} onChange={()=>setModuleFilter(m.k)} className="accent-purple-600"/>
                       <span className="text-sm text-gray-700">{m.l}</span>
                     </label>
                   ))}
@@ -10766,9 +10814,9 @@ function HeadERP({ ops, markErpPosted }:PageProps) {
                 <div className="bg-gray-50 rounded-xl border border-gray-200 p-3">
                   <p className="text-xs font-bold text-gray-600 mb-2">📅 {t("الفترة الزمنية","Time Period")}</p>
                   <div className="space-y-1.5">
-                    {[{k:"day",l:t("يوم محدد","Specific day")},{k:"range",l:t("نطاق: من — إلى","Range: from — to")},{k:"week",l:t("الأسبوع الحالي","Current week")},{k:"month",l:t("الشهر الحالي","Current month")}].map((p,pi)=>(
+                    {[{k:"day",l:t("يوم محدد","Specific day")},{k:"range",l:t("نطاق: من — إلى","Range: from — to")},{k:"week",l:t("الأسبوع الحالي","Current week")},{k:"month",l:t("الشهر الحالي","Current month")}].map((p)=>(
                       <label key={p.k} className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="erp-period" defaultChecked={pi===0} className="accent-purple-600"/>
+                        <input type="radio" name="erp-period" checked={periodFilter===p.k} onChange={()=>setPeriodFilter(p.k)} className="accent-purple-600"/>
                         <span className="text-xs text-gray-700">{p.l}</span>
                       </label>
                     ))}
@@ -10780,10 +10828,14 @@ function HeadERP({ ops, markErpPosted }:PageProps) {
                   <div>
                     <p className="text-xs font-bold text-gray-600 mb-1.5">🏢 {t("المطعم","Restaurant")}</p>
                     <div className="flex gap-3">
-                      {[t("الكل (25 مطعم)","All (25 restaurants)"),t("مطعم محدد","Specific restaurant")].map((o,oi)=>(
-                        <label key={o} className="flex items-center gap-1.5 cursor-pointer">
-                          <input type="radio" name="erp-rest" defaultChecked={oi===0} className="accent-purple-600"/>
-                          <span className="text-xs text-gray-700">{o}</span>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="radio" name="erp-rest" checked={restaurantFilter==="all"} onChange={()=>setRestaurantFilter("all")} className="accent-purple-600"/>
+                        <span className="text-xs text-gray-700">{t("الكل","All")} ({availableRestaurants.length})</span>
+                      </label>
+                      {availableRestaurants.slice(0, 2).map(r => (
+                        <label key={r} className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" name="erp-rest" checked={restaurantFilter===r} onChange={()=>setRestaurantFilter(r)} className="accent-purple-600"/>
+                          <span className="text-xs text-gray-700">{r}</span>
                         </label>
                       ))}
                     </div>
@@ -10791,10 +10843,14 @@ function HeadERP({ ops, markErpPosted }:PageProps) {
                   <div>
                     <p className="text-xs font-bold text-gray-600 mb-1.5">🏪 {t("الفرع","Branch")}</p>
                     <div className="flex gap-3">
-                      {[t("الكل (100 فرع)","All (100 branches)"),t("فرع محدد","Specific branch")].map((o,oi)=>(
-                        <label key={o} className="flex items-center gap-1.5 cursor-pointer">
-                          <input type="radio" name="erp-branch" defaultChecked={oi===0} className="accent-purple-600"/>
-                          <span className="text-xs text-gray-700">{o}</span>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="radio" name="erp-branch" checked={branchFilter==="all"} onChange={()=>setBranchFilter("all")} className="accent-purple-600"/>
+                        <span className="text-xs text-gray-700">{t("الكل","All")} ({availableBranches.length})</span>
+                      </label>
+                      {availableBranches.slice(0, 2).map(b => (
+                        <label key={b} className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" name="erp-branch" checked={branchFilter===b} onChange={()=>setBranchFilter(b)} className="accent-purple-600"/>
+                          <span className="text-xs text-gray-700">{b}</span>
                         </label>
                       ))}
                     </div>
@@ -10802,12 +10858,14 @@ function HeadERP({ ops, markErpPosted }:PageProps) {
                   <div>
                     <p className="text-xs font-bold text-gray-600 mb-1.5">🔄 {t("الحالة","Status")}</p>
                     <div className="flex gap-3">
-                      {[t("معتمدة فقط","Approved only"),t("الكل","All")].map((o,oi)=>(
-                        <label key={o} className="flex items-center gap-1.5 cursor-pointer">
-                          <input type="radio" name="erp-status" defaultChecked={oi===0} className="accent-purple-600"/>
-                          <span className="text-xs text-gray-700">{o}</span>
-                        </label>
-                      ))}
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="radio" name="erp-status" checked={statusFilter==="approved_only"} onChange={()=>setStatusFilter("approved_only")} className="accent-purple-600"/>
+                        <span className="text-xs text-gray-700">{t("معتمدة فقط","Approved only")}</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="radio" name="erp-status" checked={statusFilter==="all"} onChange={()=>setStatusFilter("all")} className="accent-purple-600"/>
+                        <span className="text-xs text-gray-700">{t("الكل","All")}</span>
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -10816,7 +10874,7 @@ function HeadERP({ ops, markErpPosted }:PageProps) {
 
             <div className="bg-blue-50 rounded-xl p-4 grid grid-cols-3 gap-3 text-center border border-blue-100">
               <div><p className="text-2xl font-bold text-blue-700 font-mono">{toPost.length}</p><p className="text-xs text-blue-600">{t("تنتظر الترحيل","Awaiting posting")}</p></div>
-              <div><p className="text-2xl font-bold text-blue-700 font-mono">{(totalAmt/1000).toFixed(1)}K</p><p className="text-xs text-blue-600">{t("ر.س إجمالي","SAR total")}</p></div>
+              <div><p className="text-2xl font-bold text-blue-700 font-mono">{totalAmt != null ? (totalAmt/1000).toFixed(1) + "K" : "—"}</p><p className="text-xs text-blue-600">{t("ر.س إجمالي","SAR total")}</p></div>
               <div><p className="text-2xl font-bold text-blue-700 font-mono">{new Set(toPost.map(o=>o.branch)).size}</p><p className="text-xs text-blue-600">{t("فرع مشارك","branches")}</p></div>
             </div>
             {finalApproved.length !== toPost.length && (
@@ -10852,16 +10910,26 @@ function HeadERP({ ops, markErpPosted }:PageProps) {
             <div className="flex gap-3">
               <Btn onClick={()=>setStep(0)}>← {t("رجوع","Back")}</Btn>
               <Btn variant="primary"
+                disabled={toPost.length === 0 || isPosting}
                 onClick={async ()=>{
-                  if(toPost.length > 0 && markErpPosted) {
-                    // B-H4: use the batchId returned by POST /erp/batches instead of a client-made one.
-                    const serverId = await markErpPosted(toPost.map(o=>o.id));
-                    if(typeof serverId === "string") setPostedBatchId(serverId);
+                  if(toPost.length === 0 || isPosting) return;
+                  setIsPosting(true);
+                  try {
+                    if (markErpPosted) {
+                      const serverId = await markErpPosted(toPost.map(o=>o.id));
+                      if(typeof serverId === "string" && serverId.trim().length > 0) {
+                        setPostedBatchId(serverId);
+                        setStep(2);
+                      }
+                    }
+                  } catch {
+                    // Posting failed — do NOT advance to step 2!
+                  } finally {
+                    setIsPosting(false);
                   }
-                  setStep(2);
                 }}
                 className="flex-1 justify-center">
-                {t("تأكيد وإرسال للـ ERP","Confirm & Send to ERP")} →
+                {isPosting ? t("جارٍ الترحيل...","Posting...") : `${t("تأكيد وإرسال للـ ERP","Confirm & Send to ERP")} →`}
               </Btn>
             </div>
           </div>
@@ -16902,19 +16970,31 @@ export function ASABPrototype() {
   useEffect(() => {
     if (switchingRole || !currentRole) return;
     if (isHead) {
-      const merged = [
-        ...(queryClient.getQueryData(queryKeys.platformPendingOperations(opsRange)) === headPendingOps ? (headPendingOps ?? []) : []),
-        ...(queryClient.getQueryData(queryKeys.platformFinalApprovedOperations(opsRange)) === headFinalOps ? (headFinalOps ?? []) : []),
-        ...(queryClient.getQueryData(queryKeys.platformRejectedOperations(opsRange)) === headRejectedOps ? (headRejectedOps ?? []) : []),
-      ];
-      if (merged.length > 0) setOps(merged.map(mapApiOpToOp));
-    } else if (currentRole === "accountant" && canRunAccountantOperations(user,currentRole)
-      && queryClient.getQueryData(queryKeys.platformAccountantOperations({pageSize:100,...opsRange})) === apiOps
-      && ((apiOps as unknown[]) ?? []).length > 0) {
-      setOps((apiOps as any[]).map(mapApiOpToOp));
+      const pendingState = queryClient.getQueryState(queryKeys.platformPendingOperations(opsRange));
+      const finalState   = queryClient.getQueryState(queryKeys.platformFinalApprovedOperations(opsRange));
+      const rejectState  = queryClient.getQueryState(queryKeys.platformRejectedOperations(opsRange));
+
+      // Only synchronize when all active queries have settled with success.
+      // Do NOT clear during initial pending loading or replace an error with an empty state!
+      const allSuccess = pendingState?.status === "success" && finalState?.status === "success" && rejectState?.status === "success";
+
+      if (allSuccess) {
+        const merged = [
+          ...(headPendingOps ?? []),
+          ...(headFinalOps ?? []),
+          ...(headRejectedOps ?? []),
+        ];
+        // HA-F22: Clear stale rows from previous period/filters even when merged has 0 records
+        setOps(merged.map(mapApiOpToOp));
+      }
+    } else if (currentRole === "accountant" && canRunAccountantOperations(user,currentRole)) {
+      const accState = queryClient.getQueryState(queryKeys.platformAccountantOperations({pageSize:100,...opsRange}));
+      if (accState?.status === "success") {
+        setOps(((apiOps as any[]) ?? []).map(mapApiOpToOp));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiOps, headPendingOps, headFinalOps, headRejectedOps, isHead, switchingRole, currentRole]);
+  }, [apiOps, headPendingOps, headFinalOps, headRejectedOps, isHead, switchingRole, currentRole, opsRange]);
 
   // Reconcile a changed /auth/me grant before any role-specific child mounts.
   useEffect(() => {
@@ -17002,38 +17082,70 @@ export function ASABPrototype() {
   const returnReviewMut  = useReturnForReview();
   const erpBatchMut      = useCreateERPBatch();
 
-  const approveOp = (id:string) => {
-    setOps(p=>p.map(o=>
-      o.id===id && o.status==="pending"
-        ? { ...o, status:"approved" as OpStatus,
-            approvedBy: appState.role==="head" ? "رئيس الحسابات" : "المحاسب المختص",
-            approvedAt: now() }
-        : o
-    ));
-    approveMut.mutate({ id });
-  };
-  const rejectOp = (id:string, reason:string) => {
-    runSalesAction(() => salesContextFor(id), "return", () => {
+  const approveOp = async (id:string) => {
+    try {
+      if (typeof (approveMut as any).mutateAsync === "function") {
+        await (approveMut as any).mutateAsync({ id });
+      } else if (typeof approveMut.mutate === "function") {
+        approveMut.mutate({ id });
+      }
       setOps(p=>p.map(o=>
-        o.id===id && (o.status==="pending" || o.status==="approved")
-          ? { ...o, status:"rejected" as OpStatus, rejectReason:reason,
-              rejectedBy: appState.role==="head" ? "رئيس الحسابات" : "المحاسب المختص",
-              rejectedAt: now() }
+        o.id===id && o.status==="pending"
+          ? { ...o, status:"approved" as OpStatus,
+              approvedBy: appState.role==="head" ? "رئيس الحسابات" : "المحاسب المختص",
+              approvedAt: now() }
           : o
       ));
-      rejectMut.mutate({ id, reason });
+      if (typeof salesQueryClient !== "undefined" && typeof salesQueryClient?.invalidateQueries === "function") {
+        void salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
+      }
+    } catch (err) {
+      console.error("approveOp failed", err);
+    }
+  };
+  const rejectOp = (id:string, reason:string) => {
+    runSalesAction(() => salesContextFor(id), "return", async () => {
+      try {
+        if (typeof (rejectMut as any).mutateAsync === "function") {
+          await (rejectMut as any).mutateAsync({ id, reason });
+        } else if (typeof rejectMut.mutate === "function") {
+          rejectMut.mutate({ id, reason });
+        }
+        setOps(p=>p.map(o=>
+          o.id===id && (o.status==="pending" || o.status==="approved")
+            ? { ...o, status:"rejected" as OpStatus, rejectReason:reason,
+                rejectedBy: appState.role==="head" ? "رئيس الحسابات" : "المحاسب المختص",
+                rejectedAt: now() }
+            : o
+        ));
+        if (typeof salesQueryClient !== "undefined" && typeof salesQueryClient?.invalidateQueries === "function") {
+          void salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
+        }
+      } catch (err) {
+        console.error("rejectOp failed", err);
+      }
     });
   };
-  const finalApproveOp = (id:string, conditional?: { note: string }) => {
-    setOps(p=>p.map(o=>
-      o.id===id && o.status==="approved"
-        ? { ...o, status:"final-approved" as OpStatus,
-            finalApprovedBy: "رئيس الحسابات",
-            finalApprovedAt: now() }
-        : o
-    ));
-    // B-H / section أ #8: carry the conditional-approval note through to the API instead of dropping it.
-    finalMut.mutate({ id, isConditional: !!conditional, conditionalNote: conditional?.note });
+  const finalApproveOp = async (id:string, conditional?: { note: string }) => {
+    try {
+      if (typeof (finalMut as any).mutateAsync === "function") {
+        await (finalMut as any).mutateAsync({ id, isConditional: !!conditional, conditionalNote: conditional?.note });
+      } else if (typeof finalMut.mutate === "function") {
+        finalMut.mutate({ id, isConditional: !!conditional, conditionalNote: conditional?.note });
+      }
+      setOps(p=>p.map(o=>
+        o.id===id && o.status==="approved"
+          ? { ...o, status:"final-approved" as OpStatus,
+              finalApprovedBy: "رئيس الحسابات",
+              finalApprovedAt: now() }
+          : o
+      ));
+      if (typeof salesQueryClient !== "undefined" && typeof salesQueryClient?.invalidateQueries === "function") {
+        void salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
+      }
+    } catch (err) {
+      console.error("finalApproveOp failed", err);
+    }
   };
   const bulkApprove = (ids:string[]) => {
     const eligible = salesBulkApprovalIds(currentSalesOps.current, ids.filter(id =>
@@ -17050,27 +17162,68 @@ export function ASABPrototype() {
       if(o.status==="pending")  pendingIds.push(o.id);
       if(o.status==="approved") approvedIds.push(o.id);
     });
-    setOps(p=>p.map(o=>{
-      if(!set.has(o.id)) return o;
-      if(o.status==="pending")  return {...o, status:"approved" as OpStatus, approvedBy:"المحاسب المختص", approvedAt:ts};
-      if(o.status==="approved") return {...o, status:"final-approved" as OpStatus, finalApprovedBy:"رئيس الحسابات", finalApprovedAt:ts};
-      return o;
-    }));
-    // T10 §A4: pending → stage-1 bulk-approve; approved → one bulk-final-approve call.
-    runSalesBulkApproval(currentSalesOps.current, pendingIds, currentSalesRole.current, eligibleIds =>
-      bulkApproveMut.mutate({ operationIds: eligibleIds }), salesDetailFor);
-    if (approvedIds.length > 0) bulkFinalMut.mutate({ operationIds: approvedIds });
+
+    if (pendingIds.length > 0) {
+      runSalesBulkApproval(currentSalesOps.current, pendingIds, currentSalesRole.current, async (eligibleIds) => {
+        try {
+          if (typeof (bulkApproveMut as any).mutateAsync === "function") {
+            await (bulkApproveMut as any).mutateAsync({ operationIds: eligibleIds });
+          } else if (typeof bulkApproveMut.mutate === "function") {
+            bulkApproveMut.mutate({ operationIds: eligibleIds });
+          }
+          setOps(p=>p.map(o=>
+            eligibleIds.includes(o.id) && o.status==="pending"
+              ? {...o, status:"approved" as OpStatus, approvedBy:"المحاسب المختص", approvedAt:ts}
+              : o
+          ));
+        } catch (err) {
+          console.error("bulkApprove failed", err);
+        }
+      }, salesDetailFor);
+    }
+    if (approvedIds.length > 0) {
+      void (async () => {
+        try {
+          if (typeof (bulkFinalMut as any).mutateAsync === "function") {
+            await (bulkFinalMut as any).mutateAsync({ operationIds: approvedIds });
+          } else if (typeof bulkFinalMut.mutate === "function") {
+            bulkFinalMut.mutate({ operationIds: approvedIds });
+          }
+          setOps(p=>p.map(o=>
+            approvedIds.includes(o.id) && o.status==="approved"
+              ? {...o, status:"final-approved" as OpStatus, finalApprovedBy:"رئيس الحسابات", finalApprovedAt:ts}
+              : o
+          ));
+        } catch (err) {
+          console.error("bulkFinalMut failed", err);
+        }
+      })();
+    }
+    if (typeof salesQueryClient !== "undefined" && typeof salesQueryClient?.invalidateQueries === "function") {
+      void salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
+    }
   };
 
   // T10 §A4 — return an approved op to the accountant for review (op → pending).
   const returnForReview = (id:string, note?:string) => {
-    runSalesAction(() => salesContextFor(id), "returnForReview", () => {
-      setOps(p=>p.map(o=>
-        o.id===id && o.status==="approved"
-          ? { ...o, status:"pending" as OpStatus, approvedBy:undefined, approvedAt:undefined }
-          : o
-      ));
-      returnReviewMut.mutate({ id, note });
+    runSalesAction(() => salesContextFor(id), "returnForReview", async () => {
+      try {
+        if (typeof (returnReviewMut as any).mutateAsync === "function") {
+          await (returnReviewMut as any).mutateAsync({ id, note });
+        } else if (typeof returnReviewMut.mutate === "function") {
+          returnReviewMut.mutate({ id, note });
+        }
+        setOps(p=>p.map(o=>
+          o.id===id && o.status==="approved"
+            ? { ...o, status:"pending" as OpStatus, approvedBy:undefined, approvedAt:undefined }
+            : o
+        ));
+        if (typeof salesQueryClient !== "undefined" && typeof salesQueryClient?.invalidateQueries === "function") {
+          void salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
+        }
+      } catch (err) {
+        console.error("returnForReview failed", err);
+      }
     });
   };
 
@@ -17102,6 +17255,10 @@ export function ASABPrototype() {
   // B-H4: create the batch on the backend and adopt the server-issued batchId (uuid/human id)
   // instead of generating one on the client.
   const markErpPosted = async (ids:string[]): Promise<string> => {
+    const opsToPost = ops.filter(o => ids.includes(o.id));
+    if (opsToPost.some(o => o.amount == null)) {
+      throw new Error("لا يمكن ترحيل عمليات ذات مبالغ مالية مفقودة أو غير محددة");
+    }
     const set = new Set(ids);
     const postedAt = now();
     const res = await erpBatchMut.mutateAsync({ operationIds: ids });
@@ -17114,6 +17271,7 @@ export function ASABPrototype() {
         ? { ...o, erpPosted:true, erpBatchId:serverBatchId, erpPostedAt:postedAt }
         : o
     ));
+    await salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
     return serverBatchId;
   };
 

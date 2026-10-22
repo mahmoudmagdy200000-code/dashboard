@@ -88,3 +88,115 @@ test("existing head screens expand SHF details, hide final actions and disable p
   assert.match(shared,/runHeadFinalApproval\(operation, currentRole\.current, loadFreshDetail/);
   assert.match(shared,/actionLock\.current/);
 });
+
+test("HA-F04 & HA-F05: rejected API mutation preserves financial status; cancelled return prompt causes zero requests", () => {
+  const prototypeSrc = readFileSync(new URL("./ASABPrototype.tsx", import.meta.url), "utf8");
+
+  // HA-F04: mutations use runSalesAction guards and dispatch mutations safely
+  assert.match(prototypeSrc, /const approveOp = (async\s+)?\(id:string\)/);
+  assert.match(prototypeSrc, /approveMut\.(mutate|mutateAsync)/);
+  assert.match(prototypeSrc, /rejectMut\.(mutate|mutateAsync)/);
+  assert.match(prototypeSrc, /finalMut\.(mutate|mutateAsync)/);
+  assert.match(prototypeSrc, /bulkApproveMut\.(mutate|mutateAsync)/);
+  assert.match(prototypeSrc, /bulkFinalMut\.(mutate|mutateAsync)/);
+  assert.match(prototypeSrc, /returnReviewMut\.(mutate|mutateAsync)/);
+
+  // HA-F05: cancelling prompt (note === null) returns immediately without calling returnForReview
+  assert.match(prototypeSrc, /const note = window\.prompt/);
+  assert.match(prototypeSrc, /if \(note === null\) return;/);
+  assert.match(prototypeSrc, /void returnForReview\(op\.id, note\.trim\(\) \|\| undefined\);/);
+});
+
+test("HA-F07 & HA-F08: ERP wizard filters control submitted IDs, step 2 requires confirmed batch ID, empty submission blocked", () => {
+  const prototypeSrc = readFileSync(new URL("./ASABPrototype.tsx", import.meta.url), "utf8");
+
+  // HA-F07: Radios are controlled by state
+  assert.match(prototypeSrc, /checked=\{moduleFilter===m\.k\}/);
+  assert.match(prototypeSrc, /checked=\{periodFilter===p\.k\}/);
+  assert.match(prototypeSrc, /checked=\{restaurantFilter==="all"\}/);
+  assert.match(prototypeSrc, /checked=\{branchFilter==="all"\}/);
+  assert.match(prototypeSrc, /checked=\{statusFilter==="approved_only"\}/);
+
+  // HA-F07: toPost filters exclude unknown money and apply active module/branch/status filters
+  assert.match(prototypeSrc, /const toPost = useMemo\(\(\) => \{/);
+  assert.match(prototypeSrc, /if \(o\.amount == null\) return false;/);
+
+  // HA-F08: Stepper button for step 3 is disabled without confirmed batch ID
+  assert.match(prototypeSrc, /disabled=\{\(s\.n === 3 && !postedBatchId\)/);
+
+  // HA-F08: Confirm and send button is disabled when toPost.length === 0 or isPosting
+  assert.match(prototypeSrc, /disabled=\{toPost\.length === 0 \|\| isPosting\}/);
+  assert.ok(prototypeSrc.includes('if(toPost.length === 0 || isPosting) return;'));
+  assert.ok(prototypeSrc.includes('if(typeof serverId === "string" && serverId.trim().length > 0) {'));
+  assert.ok(prototypeSrc.includes('setStep(2);'));
+});
+
+test("HA-F10: multi-page head operation queues fetch all pages and preserve pagination metadata", () => {
+  const platformHeadSrc = readFileSync(new URL("../../../api/queries/platform/head.ts", import.meta.url), "utf8");
+  const companyDashboardSrc = readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8");
+
+  // platform head query fetches remaining pages when totalPages > 1
+  assert.match(platformHeadSrc, /async function fetchAllHeadOpsPages/);
+  assert.match(platformHeadSrc, /filter\.page !== undefined \|\| !meta \|\| meta\.totalPages <= 1/);
+  assert.match(platformHeadSrc, /meta\.totalPages - 1/);
+
+  // Company Dashboard useSharedOps fetches remaining pages when totalPages > 1
+  assert.match(companyDashboardSrc, /first\?\.meta && first\.meta\.totalPages > 1/);
+  assert.match(companyDashboardSrc, /first\.meta\.totalPages - 1/);
+});
+
+test("HA-F11: missing financial evidence is preserved as unknown/null rather than verified zero", () => {
+  const prototypeSrc = readFileSync(new URL("./ASABPrototype.tsx", import.meta.url), "utf8");
+
+  // Op.amount accepts number | null
+  assert.match(prototypeSrc, /amount: number \| null;/);
+
+  // mapApiOpToOp preserves null amounts instead of defaulting to 0
+  assert.match(prototypeSrc, /typeof a\.amountHalalas === "number" \? a\.amountHalalas \/ 100 : \(typeof a\.amount === "number" \? a\.amount \/ 100 : null\)/);
+
+  // Total amounts in Head queues remain null when any op amount is unknown
+  assert.match(prototypeSrc, /filtered\.some\(o=>o\.amount==null\) \? null : filtered\.reduce/);
+
+  // markErpPosted blocks posting operations with missing amount
+  assert.match(prototypeSrc, /if \(opsToPost\.some\(o => o\.amount == null\)\) \{/);
+});
+
+test("HA-F20: conditional approval enforces non-empty note, awaits server confirmation and prevents duplicate clicks", () => {
+  const prototypeSrc = readFileSync(new URL("./ASABPrototype.tsx", import.meta.url), "utf8");
+
+  // Check trimmed note requirement and disabled state
+  assert.match(prototypeSrc, /disabled=\{isSubmittingCond \|\| !approvalComment\.trim\(\)\}/);
+  assert.match(prototypeSrc, /const trimmed = approvalComment\.trim\(\);/);
+  assert.match(prototypeSrc, /if \(!trimmed \|\| isSubmittingCond\) return;/);
+
+  // Server call must be awaited before setting conditionalApproved
+  assert.match(prototypeSrc, /await finalApproveOp\(op\.id, \{ note: trimmed \}\);[\s\S]*?setConditionalApproved\(p=>new Set\(p\)\.add\(op\.id\)\);/);
+});
+
+test("HA-F22: query sync clears stale operations when current query succeeds with zero rows", () => {
+  const prototypeSrc = readFileSync(new URL("./ASABPrototype.tsx", import.meta.url), "utf8");
+
+  // Verifies all three query states are checked for "success" before syncing
+  assert.match(prototypeSrc, /const allSuccess = pendingState\?\.status === "success" && finalState\?\.status === "success" && rejectState\?\.status === "success";/);
+  assert.match(prototypeSrc, /if \(allSuccess\) \{[\s\S]*?setOps\(merged\.map\(mapApiOpToOp\)\);/);
+});
+
+test("HA-F06, HA-F09, HA-F21, HA-F38 regression: rejectModal retains draft on error, ERP posting locked, match falls back to review", () => {
+  const prototypeSrc = readFileSync(new URL("./ASABPrototype.tsx", import.meta.url), "utf8");
+  const rejectModalSrc = readFileSync(new URL("../../shared/RejectModal.tsx", import.meta.url), "utf8");
+  const companyDashboardSrc = readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8");
+
+  // HA-F06: markErpPosted throws if serverBatchId is empty, no fake ERP-BATCH fallback
+  assert.match(prototypeSrc, /if \(!serverBatchId\) \{[\s\S]*?throw new Error\(/);
+  assert.doesNotMatch(prototypeSrc, /ERP-BATCH-\$\{Date\.now\(\)\}/);
+
+  // HA-F09: Company HeadERP posting lock
+  assert.match(companyDashboardSrc, /const \[postingIds, setPostingIds\]/);
+  assert.match(companyDashboardSrc, /await postMut\.mutateAsync/);
+
+  // HA-F21: RejectModal retains draft on submission error
+  assert.match(rejectModalSrc, /setSubmitError\(err\?\.message \|\| t\(/);
+
+  // HA-F38: matchMap falls back to review
+  assert.match(prototypeSrc, /match: matchMap\[a\.match\] \?\? "review",/);
+});

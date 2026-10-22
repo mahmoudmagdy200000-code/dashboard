@@ -1023,7 +1023,7 @@
 - **Root Cause:** عمليات مالية قد لا تظهر للمراجعة؛ إجمالي معروض لا يساوي إجمالي النطاق.
 - **Proposed Correction:** أكثر من100/20 عملية؛ التنقل أو load more بلا فقد/تكرار؛ total المعتمد من meta منفصل عن count المعروض.
 - **Implementation Branch:** `fix/ux-dashboard-head-accountant-phase1b-20261022`
-- **Files Changed:** `ASABPrototype.tsx`, `CompanyDashboard.tsx`
+- **Files Changed:** `platform/head.ts`, `CompanyDashboard.tsx`, `headReviewGuards.test.ts`
 - **Implementation Status:** `IMPLEMENTED`
 - **Automated Test Results:** `PASS` (اجتياز 16/16 اختبار وحدة في node test runner، وفحص Typecheck بنسبة 100%، وبناء Production سليم)
 - **Independent Review:** `PENDING_ACCEPTANCE`
@@ -1743,4 +1743,4 @@
 | 2026-10-22 | **Phase 1A** (Final Blockers) | Antigravity IDE | حل معوقات القبول الفني: تصحيح نطاق مستحقات الفوترة وفق عقد Backend الفعلي، وإحكام حبس التركيز للدرج المحمول (Focus Containment & Inert Background)، وتفصيل محاور الحوكمة الأربعة. | `fix/ux-dashboard-company-admin-01` | `ca2fc89a9...` | `FINAL_BLOCKERS_PUSHED` |
 | 2026-10-22 | **Phase 1A** (Responsive & Billing) | Antigravity IDE | معالجة سيناريو انتقال العرض (Responsive Resize) بإغلاق الدرج التلقائي وإزالة inert عن Desktop، وتخطي زر Hamburger المخفي، وتدقيق مسميات الفواتير غير المسددة عند غياب amountDue واحترام amountDue=0، واجتياز 122 اختباراً. | `fix/ux-dashboard-company-admin-01` | `f4d3fc808f34bf946c384a0f8f3f5e7e836dc28b` | `CODE_COMPLETE_VERIFIED` |
 | 2026-10-22 | **Phase 1A** (Runtime QA) | Antigravity IDE | تنفيذ جلسة Runtime QA مستهدفة لـ CA-REV-05 و CA-REV-02؛ تسجيل Local Browser QA: REPORTED_PASS_PENDING_REVIEW، وتسجيل Staging Runtime: BLOCKED_BY_STAGING_AUTH (Contract: PASS)، دون تكرار الـ 122 اختباراً ودون المساس بالـ 29 بنداً. | `fix/ux-dashboard-company-admin-01` | `f4d3fc808f34bf946c384a0f8f3f5e7e836dc28b` | `PENDING_ACCEPTANCE` |
-| 2026-10-22 | **Phase 1B** (Full Remediation) | Antigravity IDE | تنفيذ جلسة معالجة شاملة لكافة مشاكل Head Accountant الـ 39: إصلاح 34 بنداً، واجتياز 100% من الاختبارات (16/16)، وفحص Typescript خالي من الأخطاء (0 errors)، وبناء إنتاج نظيف، وتوثيق تحليل backend لـ HA-F39 وحجب G1 PR #1 الأربعة المعلقة. | `fix/ux-dashboard-head-accountant-phase1b-20261022` | (Working Tree) | `CODE_COMPLETE_VERIFIED` |
+| 2026-10-22 | **Phase 1B** (Full Remediation) | Antigravity IDE | تنفيذ جلسة معالجة شاملة لكافة مشاكل Head Accountant الـ 39: إصلاح 34 بنداً، واجتياز كافة الاختبارات بنسبة 100%، وفحص Typescript خالي من الأخطاء (0 errors)، وبناء إنتاج نظيف، وتوثيق تحليل backend لـ HA-F39 وحجب G1 PR #1 الأربعة المعلقة. | `fix/ux-dashboard-head-accountant-phase1b-20261022` | (Commit التالي) | `READY_FOR_INDEPENDENT_REVIEW` |

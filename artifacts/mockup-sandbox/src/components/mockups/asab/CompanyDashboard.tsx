@@ -3990,7 +3990,27 @@ function useSharedOps(role: CRole | null, fingerprint: string) {
   const opsQuery = useQuery({
     queryKey: [...queryKeys.operations({ pageSize: 100 }), role],
     enabled: financialRole,
-    queryFn: async () => (await api.get<{data:ApiOperation[]}>("/operations", {params:{pageSize:100}})).data,
+    queryFn: async () => {
+      const res = await api.get<{ data: ApiOperation[]; meta?: { total: number; totalPages: number; page: number; pageSize: number } }>(
+        "/operations",
+        { params: { pageSize: 100 } },
+      );
+      const first = res.data;
+      if (first?.meta && first.meta.totalPages > 1) {
+        const remaining = await Promise.all(
+          Array.from({ length: first.meta.totalPages - 1 }, (_, i) =>
+            api.get<{ data: ApiOperation[] }>("/operations", {
+              params: { pageSize: 100, page: i + 2 },
+            }).then((r) => r.data.data ?? []),
+          ),
+        );
+        return {
+          data: [...(first.data ?? []), ...remaining.flat()],
+          meta: { ...first.meta, total: first.meta.total },
+        };
+      }
+      return first;
+    },
   });
   const approveMut = useApproveOperation();
   const rejectMut  = useRejectOperation();
@@ -4137,25 +4157,37 @@ function useSharedOps(role: CRole | null, fingerprint: string) {
             if (getHeadReviewPolicy(operation, currentRole.current, detail).returnForReview &&
               getSalesActionPolicy({ operation, detail, role:currentRole.current }).return) {
               mutationStarted = true;
-              await rejectMut.mutateAsync({ id:rejectingId, reason, notes });
+              if (typeof rejectMut.mutateAsync === "function") {
+                await rejectMut.mutateAsync({ id:rejectingId, reason, notes });
+              } else {
+                rejectMut.mutate({ id:rejectingId, reason, notes });
+              }
             } else {
               const err = "تغيرت حالة العملية؛ حدّث القائمة وأعد المراجعة";
-              toast.error(err);
+              if (typeof toast !== "undefined") toast.error(err);
               throw new Error(err);
             }
           } catch (error) {
-            if (!mutationStarted && !(error instanceof FinancialAccessChangedError)) toast.error(getErrorMessage(error, "ar"));
+            if (!mutationStarted && !(error instanceof FinancialAccessChangedError) && typeof toast !== "undefined") toast.error(getErrorMessage(error, "ar"));
             throw error;
           }
           finally { actionLock.current = false; setActionsPending(false); }
         }
       } else if (rejectingId && (rejectingModule !== "shifts" || rejectReasons?.some(r => r.key === reason))) {
-        try {
-          await rejectMut.mutateAsync({ id: rejectingId, reason, notes });
-        } catch (error) {
-          toast.error(getErrorMessage(error, "ar"));
-          throw error;
-        }
+        runOperationAction(rejectingId, "returnToManager", () =>
+          runSalesAction(() => salesContextFor(rejectingId), "return", async () => {
+            try {
+              if (typeof rejectMut.mutateAsync === "function") {
+                await rejectMut.mutateAsync({ id: rejectingId, reason, notes });
+              } else {
+                rejectMut.mutate({ id: rejectingId, reason, notes });
+              }
+            } catch (error) {
+              if (typeof toast !== "undefined") toast.error(getErrorMessage(error, "ar"));
+              throw error;
+            }
+          })
+        );
       }
       setRejectingId(null);
     },

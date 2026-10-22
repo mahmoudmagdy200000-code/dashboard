@@ -96,7 +96,32 @@ export function useMarkAllHeadRemindersDonePlatform() {
   });
 }
 
-// ─── Operations queues ──────────────────────────────────────────────────────
+// ─── Operations queues (HA-F10: multi-page fetching & metadata preservation) ─
+async function fetchAllHeadOpsPages(
+  url: string,
+  filter: PlatformOpsFilter,
+): Promise<Operation[]> {
+  const res = await api.get<Page<Operation> | Operation[]>(url, { params: filter });
+  const d = res.data;
+  if (Array.isArray(d)) return d;
+  const firstData = d.data ?? [];
+  const meta = d.meta;
+  // If caller specifically requested an explicit page, return that page with meta
+  if (filter.page !== undefined || !meta || meta.totalPages <= 1) {
+    return Object.assign(firstData, { meta });
+  }
+  // Otherwise, fetch all remaining pages so Head queues are never silently truncated
+  const remaining = await Promise.all(
+    Array.from({ length: meta.totalPages - 1 }, (_, i) =>
+      api.get<Page<Operation> | Operation[]>(url, {
+        params: { ...filter, page: i + 2 },
+      }).then((r) => (Array.isArray(r.data) ? r.data : (r.data.data ?? []))),
+    ),
+  );
+  const all = [firstData, ...remaining].flat();
+  return Object.assign(all, { meta: { ...meta, total: meta.total ?? all.length } });
+}
+
 export function usePendingOperations(
   filter: PlatformOpsFilter = {},
   options: { enabled?: boolean } = {},
@@ -104,14 +129,7 @@ export function usePendingOperations(
   return useQuery({
     queryKey: queryKeys.platformPendingOperations(filter),
     enabled: options.enabled ?? true,
-    queryFn: async () => {
-      const res = await api.get<Page<Operation> | Operation[]>(
-        "/head/operations/pending",
-        { params: filter },
-      );
-      const d = res.data;
-      return Array.isArray(d) ? d : (d.data ?? []);
-    },
+    queryFn: () => fetchAllHeadOpsPages("/head/operations/pending", filter),
   });
 }
 
@@ -122,14 +140,7 @@ export function useFinalApprovedOperations(
   return useQuery({
     queryKey: queryKeys.platformFinalApprovedOperations(filter),
     enabled: options.enabled ?? true,
-    queryFn: async () => {
-      const res = await api.get<Page<Operation> | Operation[]>(
-        "/head/operations/final-approved",
-        { params: filter },
-      );
-      const d = res.data;
-      return Array.isArray(d) ? d : (d.data ?? []);
-    },
+    queryFn: () => fetchAllHeadOpsPages("/head/operations/final-approved", filter),
   });
 }
 
@@ -140,14 +151,7 @@ export function useRejectedOperations(
   return useQuery({
     queryKey: queryKeys.platformRejectedOperations(filter),
     enabled: options.enabled ?? true,
-    queryFn: async () => {
-      const res = await api.get<Page<Operation> | Operation[]>(
-        "/head/operations/rejected",
-        { params: filter },
-      );
-      const d = res.data;
-      return Array.isArray(d) ? d : (d.data ?? []);
-    },
+    queryFn: () => fetchAllHeadOpsPages("/head/operations/rejected", filter),
   });
 }
 
