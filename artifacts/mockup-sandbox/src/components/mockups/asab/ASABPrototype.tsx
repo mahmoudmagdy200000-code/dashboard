@@ -12,6 +12,10 @@ import { KpiCard } from "./components/KpiCard";
 import { Card } from "./components/Card";
 import { PageHeader } from "./components/PageHeader";
 import { Breadcrumb } from "./components/Breadcrumb";
+import { LangContext, useLang, type Lang, type LangCtxType } from "./_shared/LangContext";
+import { fmtAmt } from "./_shared/formatters";
+import { ProcOverview } from "./_pages/procurement/ProcOverview";
+import { ProcReports } from "./_pages/procurement/ProcReports";
 import { toast } from "sonner";
 import { useState, useEffect, useMemo, ReactNode, createContext, useContext, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import {
@@ -413,17 +417,7 @@ const AssetDraftContext = createContext<AssetDraftCtxType>({
 // ─────────────────────────────────────────────
 // LANGUAGE CONTEXT  (Arabic / English)
 // ─────────────────────────────────────────────
-type Lang = "ar" | "en";
-interface LangCtxType {
-  lang: Lang;
-  setLang: (l: Lang) => void;
-  t: <T>(ar: T, en: T) => T;
-  dir: "rtl" | "ltr";
-}
-const LangContext = createContext<LangCtxType>({
-  lang: "ar", setLang: () => { }, t: <T,>(ar: T, _en: T): T => ar, dir: "rtl",
-});
-const useLang = () => useContext(LangContext);
+// (Imported from ./_shared/LangContext)
 
 // ── English translations for static configs ─────────────────────────────────
 const EN_NAV_SECTIONS: Record<string, string> = {
@@ -1024,11 +1018,6 @@ function getModuleAggState(moduleOps: Op[]): ModuleAggState {
   if (hasPending) return "incomplete";
   return "consolidated";
 }
-
-const fmtAmt = (n: number | null | undefined) => {
-  if (n == null || isNaN(n)) return "—";
-  return n.toLocaleString("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
 
 function LockBanner({ op }: { op?: Op }) {
   const isErpPosted = op?.erpPosted === true;
@@ -15438,51 +15427,6 @@ function BranchUpload({ }: PageProps) {
 // ════════════════════════════════════════════════════════════
 // PROCUREMENT PAGES
 // ════════════════════════════════════════════════════════════
-function ProcOverview({ navigate }: PageProps) {
-  const { t } = useLang();
-  const { data: apiOverview } = useProcurementOverviewPlatform();
-  // Real branch orders (bridge). meta.total = live "from branches" count.
-  const { data: incomingPage } = usePurchaseOrders({ status: "incoming", pageSize: 5 });
-  const approveMut = useApprovePurchaseOrder();
-  const kpis = (apiOverview as any)?.kpis ?? {};
-  const savings = (apiOverview as any)?.monthlySavings;
-  // Headline cards use the REAL bridge pipeline (T11.1), falling back to bridge meta / Operations counts.
-  const fromBranches = kpis.incoming ?? (incomingPage as any)?.meta?.total ?? kpis.newOrders ?? 0;
-  const readyToSend = kpis.readyToSend ?? kpis.consolidated ?? 0;
-  const awaitingConf = kpis.sentAwaitingConfirmation ?? kpis.sentToSuppliers ?? 0;
-  const incomingRows = ((incomingPage as any)?.data ?? []) as any[];
-  const trendPct = savings?.trendPct ?? 0;
-  return (
-    <div className="space-y-5">
-      <div><h2 className="text-xl font-bold text-gray-800">{t("لوحة تحكم المشتريات", "Procurement Dashboard")}</h2><p className="text-gray-400 text-sm mt-0.5">{t("تجميع الطلبات والتنسيق مع الموردين", "Consolidate orders and coordinate with suppliers")}</p></div>
-      <div className="grid grid-cols-4 gap-4">
-        <KpiCard label={t("طلبات جديدة من الفروع", "New Branch Orders")} value={String(fromBranches)} sub={t("بانتظار القرار", "awaiting decision")} icon={<ShoppingCart size={18} className="text-red-600" />} accent="red" />
-        <KpiCard label={t("جاهزة للإرسال", "Ready to Send")} value={String(readyToSend)} sub={t("مؤكدة وغير مجمعة", "confirmed & ungrouped")} icon={<Package size={18} className="text-blue-600" />} accent="blue" />
-        <KpiCard label={t("مرسلة بانتظار التأكيد", "Sent — Awaiting")} value={String(awaitingConf)} sub={t("لم يتصرف المورد بعد", "supplier not acting yet")} icon={<Truck size={18} className="text-amber-600" />} accent="amber" />
-        <KpiCard label={t("التوفير الشهري", "Monthly Savings")}
-          value={savings?.amount != null ? `${fmtAmt(savings.amount)} ${t("ر.س", "SAR")}` : "—"}
-          sub={savings ? `${savings.pctOfPurchases ?? 0}% ${t("من المشتريات", "of purchases")}${trendPct ? ` · ${trendPct > 0 ? "▲" : "▼"}${Math.abs(trendPct)}%` : ""}` : t("من التجميع", "from consolidation")}
-          icon={<TrendingUp size={18} className="text-emerald-600" />} accent="emerald" />
-      </div>
-      <Card title={t("الطلبات الجديدة من الفروع", "New Orders from Branches")} actions={<Btn size="sm" variant="primary" onClick={() => navigate("proc-new")}><Package size={12} /> {t("تجميع الطلبات", "Consolidate Orders")}</Btn>}>
-        {incomingRows.length === 0 && <div className="px-5 py-8 text-center text-sm text-gray-400">{t("لا توجد طلبات جديدة من الفروع", "No new branch orders")}</div>}
-        {incomingRows.map((r) => {
-          const urgent = r.priority === "high";
-          return (
-            <div key={r.id} className={`px-5 py-4 flex items-center gap-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 ${urgent ? "border-r-4 border-r-red-400" : ""}`}>
-              <div className="flex-1"><p className="font-semibold text-sm text-gray-800">{r.branchName ?? r.branchId ?? "—"}</p><div className="flex items-center gap-2 mt-1"><span className="text-xs text-gray-400">{r.totalItems ?? 0} {t("أصناف", "items")}</span><Badge className={urgent ? "bg-red-50 text-red-700" : "bg-gray-50 text-gray-600"}>{urgent ? t("عاجل", "Urgent") : t("عادي", "Normal")}</Badge><span className="text-[11px] text-gray-300 font-mono">{r.orderNumber}</span></div></div>
-              <span className="font-mono font-bold text-gray-800">{fmtAmt(r.totalAmount ?? 0)} {t("ر.س", "SAR")}</span>
-              <div className="flex gap-1.5">
-                <Btn size="sm" onClick={() => navigate("proc-new")}><Eye size={12} /> {t("تفاصيل", "Details")}</Btn>
-                <Btn size="sm" variant="primary" disabled={approveMut.isPending} onClick={() => approveMut.mutate(r.id)}><CheckCircle2 size={12} /> {t("اعتماد", "Approve")}</Btn>
-              </div>
-            </div>
-          );
-        })}
-      </Card>
-    </div>
-  );
-}
 
 function ProcNewOrders({ }: PageProps) {
   const { t } = useLang();
@@ -16641,35 +16585,6 @@ function ProcSuppliers({ }: PageProps) {
           </div>
         );
       })()}
-    </div>
-  );
-}
-
-// Procurement reports — catalog + download (backend deferred the content by product decision).
-function ProcReports({ }: PageProps) {
-  const { t } = useLang();
-  const { data: apiReports } = useProcurementReports();
-  const dlMut = useDownloadProcurementReport();
-  const reports = ((apiReports as any[]) ?? []) as any[];
-  return (
-    <div className="space-y-5">
-      <h2 className="text-xl font-bold text-gray-800">{t("التقارير", "Reports")}</h2>
-      {reports.length === 0 && <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-10 text-center text-sm text-gray-400">{t("لا توجد تقارير متاحة حالياً", "No reports available yet")}</div>}
-      <div className="grid grid-cols-3 gap-4">
-        {reports.map((r: any, i: number) => {
-          const key = r.key ?? r.reportKey ?? r.id; const label = r.labelAr ?? r.label ?? r.name ?? key; return (
-            <div key={i} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-              <div className="text-3xl mb-3">📊</div>
-              <p className="font-semibold text-gray-800 text-sm">{label}</p>
-              {r.description && <p className="text-xs text-gray-400 mt-1">{r.description}</p>}
-              <div className="flex items-center gap-2 mt-3">
-                <Btn size="sm" disabled={dlMut.isPending || !key} onClick={() => dlMut.mutate({ key, format: "pdf" })}><Download size={11} /> PDF</Btn>
-                <Btn size="sm" disabled={dlMut.isPending || !key} onClick={() => dlMut.mutate({ key, format: "xlsx" })}><FileText size={11} /> Excel</Btn>
-              </div>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
