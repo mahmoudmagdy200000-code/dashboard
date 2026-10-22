@@ -38,6 +38,16 @@ test("mixed and protected bulk are blocked while independent Legacy bulk stays a
   assert.deepEqual(headLegacyBulkIds([legacy], ["legacy"], "head", () => ({...legacy,reportReview:day.reportReview})),[]);
 });
 
+test("EXP-06 / HA-F19: expenses require brand owner decision and are blocked from head approval and bulk", () => {
+  const expense = { id:"exp", module:"expenses", status:"approved", reportReview:null };
+  const policy = getHeadReviewPolicy(expense, "head");
+  assert.equal(policy.finalApprove, false);
+  assert.equal(policy.returnForReview, false);
+  assert.equal(policy.blockedReason, "expense_owner_decision_required");
+  assert.deepEqual(headLegacyBulkIds([expense], ["exp"], "head"), []);
+  assert.deepEqual(headLegacyBulkIds([legacy, expense], ["legacy", "exp"], "head"), []);
+});
+
 test("fresh SHF failure stops before day; a double click cannot launch a second request", async () => {
   const lock = { current:false };
   const sent:string[] = [];

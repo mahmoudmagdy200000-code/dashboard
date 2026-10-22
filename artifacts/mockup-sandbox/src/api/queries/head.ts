@@ -24,6 +24,19 @@ export interface HeadDashboardResponse {
     monthlySalesHalalas?: number;
     branchesCount?: number;
   }>;
+  brandPerformance?: Array<{
+    brandId?: string;
+    id?: string;
+    name: string;
+    color?: string;
+    abbr?: string;
+    salesHalalas?: number;
+    expensesHalalas?: number;
+    netHalalas?: number;
+    pctOfTarget?: number;
+    sales?: number;
+    target?: number;
+  }>;
 }
 
 export interface AccountantPerformanceRow {
@@ -41,12 +54,18 @@ export interface AccountantPerformanceRow {
 export interface HeadReminder {
   id: string;
   type: string;
-  title: string;
+  title?: string;
+  titleAr?: string;
+  titleEn?: string;
   body?: string;
+  bodyAr?: string;
+  bodyEn?: string;
   priority?: "low" | "normal" | "high" | string;
   refType?: string;
   refId?: string;
-  isDone: boolean;
+  isDone?: boolean;
+  done?: boolean;
+  timeAr?: string;
   dueAt?: string;
   createdAt: string;
 }

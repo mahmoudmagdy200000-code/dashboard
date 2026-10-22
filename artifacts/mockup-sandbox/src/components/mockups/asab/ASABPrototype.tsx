@@ -1017,9 +1017,10 @@ function getModuleAggState(moduleOps: Op[]): ModuleAggState {
   return "consolidated";
 }
 
-const fmtAmt = (n: number) => n.toLocaleString("ar-SA");
-
-// ─────────────────────────────────────────────
+const fmtAmt = (n: number | null | undefined) => {
+  if (n == null || isNaN(n)) return "—";
+  return n.toLocaleString("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 // MICRO-COMPONENTS
 // ─────────────────────────────────────────────
 function Badge({ children, className="" }:{ children:ReactNode; className?:string }) {
@@ -2295,8 +2296,8 @@ function mapApiOpToOp(a: any): Op {
     moduleKey: a.moduleKey,
     moduleLabel: OP_MODULE_LABELS[a.moduleKey] ?? a.moduleKey ?? "",
     // Money always arrives in halalas (amountHalalas, or amount as the halalas int) —
-    // divide in BOTH branches so a row without amountHalalas is never shown ×100.
-    amount: typeof a.amountHalalas === "number" ? Math.round(a.amountHalalas / 100) : Math.round((a.amount ?? 0) / 100),
+    // HA-F11: preserve exact halalas without Math.round truncation.
+    amount: typeof a.amountHalalas === "number" ? a.amountHalalas / 100 : (typeof a.amount === "number" ? a.amount / 100 : 0),
     supplierName: a.supplierName ?? undefined,
     timeAgo: relativeTimeAr(a.operationDate ?? a.createdAt),
     operationDate: a.operationDate ?? a.createdAt ?? undefined,
@@ -2305,7 +2306,8 @@ function mapApiOpToOp(a: any): Op {
     brandId: a.brandId ?? undefined,
     brandName: a.brandName ?? undefined,
     branchId: a.branchId ?? undefined,
-    match: matchMap[a.match] ?? "exact",
+    // HA-F38: unknown/missing match falls back safely to "review", never "exact"
+    match: matchMap[a.match] ?? "review",
     salesBreakdown: a.salesBreakdown ?? null,
     attachments: typeof a.attachmentCount === "number" ? a.attachmentCount : (typeof a.attachments === "number" ? a.attachments : 0),
     status: a.status,
@@ -2874,17 +2876,8 @@ function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate:(p:PageI
 // The owner layer has zero workflow elements, zero action buttons,
 // and presents the financial position as a closed, unambiguous statement.
 // ─────────────────────────────────────────────
-// September 2025 baseline — simulated previous-period ERP-verified amounts for comparison
-const SEPT_BASELINE: Partial<Record<ModuleKey,number>> = {
-  sales:     185000,
-  expenses:   42000,
-  purchases:  88000,
-  inventory:  31000,
-  shifts:     22000,
-  employees:  54000,
-  cash:        8500,
-};
-const SEPT_NET = (SEPT_BASELINE.sales||0) - (SEPT_BASELINE.expenses||0) - (SEPT_BASELINE.purchases||0);
+// HA-F14: removed static fake SEPT_BASELINE and SEPT_NET.
+// Previous-period comparison is derived purely from real API data when available.
 
 function OwnerReportsPage({ ops }: PageProps) {
   const { t, lang, dir } = useLang();
@@ -2905,19 +2898,18 @@ function OwnerReportsPage({ ops }: PageProps) {
   const purPosted    = postedOps.filter(o=>o.moduleKey==="purchases").reduce((s,o)=>s+o.amount,0);
   const netPosition  = salesPosted - expPosted - purPosted;
 
-  // B-H5: previous-month baseline + netPctChange now come from /head/reports/owner
-  // (currentMonthNet/previousMonthNet/netPctChange, halalas). September constants are a fallback only.
+  // B-H5 / HA-F14: previous-month baseline + netPctChange come from /head/reports/owner without fake fallbacks
   const baselineNet = (ownerApi as any)?.previousMonthNet != null
     ? Math.round((ownerApi as any).previousMonthNet / 100)
-    : SEPT_NET;
-  const netPctChange = (ownerApi as any)?.netPctChange ?? (baselineNet > 0 ? Math.round(((netPosition - baselineNet) / baselineNet) * 100) : null);
+    : null;
+  const netPctChange = (ownerApi as any)?.netPctChange ?? (baselineNet != null && baselineNet > 0 ? Math.round(((netPosition - baselineNet) / baselineNet) * 100) : null);
 
   // Branch rankings from ERP-posted ops — descending by amount
   const branchAmts: Record<string,number> = {};
   postedOps.forEach(o=>{ branchAmts[o.branch]=(branchAmts[o.branch]||0)+o.amount; });
   const branchRankings = Object.entries(branchAmts).sort(([,a],[,b])=>b-a).slice(0,5);
 
-  // Category breakdown for owner — ERP-posted amounts only, with period comparison
+  // Category breakdown for owner — ERP-posted amounts only, with honest period comparison
   const ownerCategories = [
     { key:"sales"     as ModuleKey, label:t("الإيرادات","Revenue"),          icon:"💰", color:"bg-emerald-500", textColor:"text-emerald-700", isIncome:true  },
     { key:"expenses"  as ModuleKey, label:t("المصروفات","Expenses"),         icon:"💸", color:"bg-red-500",     textColor:"text-red-700",     isIncome:false },
@@ -2928,28 +2920,21 @@ function OwnerReportsPage({ ops }: PageProps) {
     { key:"cash"      as ModuleKey, label:t("العهد النقدية","Cash Custody"), icon:"💼", color:"bg-purple-500",  textColor:"text-purple-700",  isIncome:false },
   ].map(c=>{
     const amt  = postedOps.filter(o=>o.moduleKey===c.key).reduce((s,o)=>s+o.amount,0);
-    const prev = SEPT_BASELINE[c.key]||0;
+    const prev = (ownerApi as any)?.previousMonthByCategory?.[c.key] != null ? Math.round((ownerApi as any).previousMonthByCategory[c.key] / 100) : 0;
     const pct  = prev > 0 ? Math.round(((amt-prev)/prev)*100) : null;
     return {...c, amount:amt, prev, pct};
   }).filter(c=>c.amount>0 || c.prev>0);
 
   const maxCatAmt = Math.max(...ownerCategories.map(c=>Math.max(c.amount,c.prev)), 1);
 
-  // Auto-commentary: 3-4 insight bullets derived from ERP-verified data only
+  // Auto-commentary: derived from ERP-verified data only without fake September constants
   const commentary: {icon:string; text:string; color:string}[] = [];
-  const incomeChange = SEPT_BASELINE.sales ? salesPosted - (SEPT_BASELINE.sales||0) : null;
-  if(incomeChange !== null) {
-    if(incomeChange > 0) commentary.push({icon:"↑", text:en?`Revenue increased by ${fmtAmt(incomeChange)} SAR vs September 2025`:`ارتفعت الإيرادات بمقدار ${fmtAmt(incomeChange)} ر.س مقارنةً بسبتمبر 2025`, color:"text-emerald-700"});
-    else if(incomeChange < 0) commentary.push({icon:"↓", text:en?`Revenue decreased by ${fmtAmt(Math.abs(incomeChange))} SAR vs September 2025`:`انخفضت الإيرادات بمقدار ${fmtAmt(Math.abs(incomeChange))} ر.س مقارنةً بسبتمبر 2025`, color:"text-red-700"});
-  }
   if(netPctChange !== null) {
     if(netPctChange >= 0) commentary.push({icon:"✓", text:en?`Net financial position improved ${netPctChange}% vs prior month`:`صافي المركز المالي تحسَّن ${netPctChange}% مقارنةً بالشهر السابق`, color:"text-emerald-700"});
     else commentary.push({icon:"⚠", text:en?`Net financial position declined ${Math.abs(netPctChange)}% vs prior month — requires attention`:`صافي المركز المالي تراجع ${Math.abs(netPctChange)}% مقارنةً بالشهر السابق — يستوجب المتابعة`, color:"text-amber-700"});
   }
   const topBranch = branchRankings[0];
   if(topBranch) commentary.push({icon:"🏆", text:en?`${topBranch[0]} is the highest-revenue branch in ERP at ${fmtAmt(topBranch[1])} SAR`:`${topBranch[0]} هو الفرع الأعلى إيراداً في ERP بمقدار ${fmtAmt(topBranch[1])} ر.س`, color:"text-indigo-700"});
-  const highExpPct = SEPT_BASELINE.expenses && expPosted > (SEPT_BASELINE.expenses||0)*1.1;
-  if(highExpPct) commentary.push({icon:"!", text:en?"Expenses exceeded September baseline by more than 10% — review of spending items recommended":"المصروفات تجاوزت مستوى سبتمبر بأكثر من 10% — يُوصى بمراجعة بنود الإنفاق", color:"text-red-700"});
 
   // ERP batch log — source of truth
   const batchMap: Record<string,{id:string; total:number; modules:Set<string>}> = {};
@@ -3164,25 +3149,26 @@ function OwnerReportsPage({ ops }: PageProps) {
                         </div>
                       );
                     })}
-                    <p className="text-[10px] text-gray-300 pt-1">{t("الشريط العلوي: أكتوبر 2025 · الشريط السفلي: سبتمبر 2025 (للمقارنة)","Upper bar: October 2025 · Lower bar: September 2025 (comparison)")}</p>
+                    <p className="text-[10px] text-gray-300 pt-1">{t("الشريط العلوي: الفترة الحالية · الشريط السفلي: مقارنة الفترة السابقة (عند توفرها)","Upper bar: Current period · Lower bar: Prior period (comparison when available)")}</p>
                   </div>
                 </div>
               </div>
 
-              {/* ─── Period comparison summary ─── */}
-              {netPctChange !== null && (
+              {/* ─── Period comparison summary (HA-F14: shown only when real baselineNet exists) ─── */}
+              {baselineNet !== null && (
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                   <div className="px-6 py-4 border-b border-gray-100">
-                    <h3 className="font-bold text-gray-900">{t("مقارنة الفترة — أكتوبر مقابل سبتمبر 2025","Period Comparison — October vs September 2025")}</h3>
+                    <h3 className="font-bold text-gray-900">{t("مقارنة الفترة السابقة","Prior Period Comparison")}</h3>
                     <p className="text-xs text-gray-400 mt-0.5">{t("مبنية على بيانات ERP المُعتمدة في كلا الفترتين · أرقام غير مُعتمدة مُستبعدة","Built on approved ERP data for both periods · Unapproved figures excluded")}</p>
                   </div>
                   <div className="px-6 py-4 grid grid-cols-4 gap-4">
                     {[
                       { label:t("صافي المركز المالي","Net Position"), oct:netPosition, sep:baselineNet, isIncome:true },
-                      { label:t("الإيرادات","Revenue"),               oct:salesPosted, sep:SEPT_BASELINE.sales||0, isIncome:true  },
-                      { label:t("المصروفات","Expenses"),              oct:expPosted,   sep:SEPT_BASELINE.expenses||0, isIncome:false },
-                      { label:t("المشتريات","Purchases"),             oct:purPosted,   sep:SEPT_BASELINE.purchases||0, isIncome:false },
+                      { label:t("الإيرادات","Revenue"),               oct:salesPosted, sep:(ownerApi as any)?.previousMonthSales != null ? Math.round((ownerApi as any).previousMonthSales/100) : null, isIncome:true  },
+                      { label:t("المصروفات","Expenses"),              oct:expPosted,   sep:(ownerApi as any)?.previousMonthExpenses != null ? Math.round((ownerApi as any).previousMonthExpenses/100) : null, isIncome:false },
+                      { label:t("المشتريات","Purchases"),             oct:purPosted,   sep:(ownerApi as any)?.previousMonthPurchases != null ? Math.round((ownerApi as any).previousMonthPurchases/100) : null, isIncome:false },
                     ].map((row,i)=>{
+                      if (row.sep == null) return null;
                       const diff    = row.oct - row.sep;
                       const pct     = row.sep > 0 ? Math.round((diff/row.sep)*100) : null;
                       const isPos   = diff > 0;
@@ -3192,7 +3178,7 @@ function OwnerReportsPage({ ops }: PageProps) {
                         <div key={i} className="text-center">
                           <p className="text-[10px] font-semibold text-gray-400 mb-2">{row.label}</p>
                           <p className="text-lg font-black tabular-nums text-gray-900">{(row.oct/1000).toFixed(1)}K</p>
-                          <p className="text-[10px] text-gray-400 mb-1">{t("سبتمبر:","Sep:")} {(row.sep/1000).toFixed(1)}K</p>
+                          <p className="text-[10px] text-gray-400 mb-1">{t("السابق:","Prior:")} {(row.sep/1000).toFixed(1)}K</p>
                           {pct !== null && (
                             <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full
                               ${isGood?"bg-emerald-50 text-emerald-700 border border-emerald-100":isPos?"bg-red-50 text-red-700 border border-red-100":"bg-amber-50 text-amber-700 border border-amber-100"}`}>
@@ -9831,12 +9817,10 @@ function HeadPending({ navigate, setModal, setDetailId, ops, finalApproveOp, rej
   const [conditionalApproved, setConditionalApproved] = useState<Set<string>>(new Set());
   const REJECT_REASONS = [t("يوجد فرق في المبالغ","Amount discrepancy"),t("مستندات ناقصة","Missing documents"),t("يحتاج مراجعة المورد","Needs supplier review"),t("تكرار في القيد","Duplicate entry"),t("خطأ في الفرع","Wrong branch"),t("أخرى","Other")];
   const [selectedRejectReason, setSelectedRejectReason] = useState("");
-  // B-H1: prefer the real accountantName from /head/operations/*; fall back to a deterministic
-  // placeholder only when the API hasn't supplied one.
-  const HEAD_ACCS_FALLBACK = ["أحمد الشهري","سارة العمري","محمد الحربي","فاطمة السالم"];
-  const getAcc = (op:Op) => op.accountantName ?? HEAD_ACCS_FALLBACK[parseInt(op.id.replace(/\D/g,"").slice(-2)||"0") % HEAD_ACCS_FALLBACK.length];
+  // HA-F15: Real accountant names from the API only; display "غير متاح" when missing without fake placeholders.
+  const getAcc = (op:Op) => op.accountantName || t("غير متاح","Unavailable");
   const realAccs = [...new Set(ops.map(o=>o.accountantName).filter(Boolean))] as string[];
-  const HEAD_ACCS = realAccs.length ? realAccs : HEAD_ACCS_FALLBACK;
+  const HEAD_ACCS = realAccs;
   // B-H1: brand & branch filter options come from the enriched ops rows.
   const BRAND_OPTS  = [...new Set(ops.map(o=>o.brandName).filter(Boolean))] as string[];
   const BRANCH_OPTS = [...new Set(ops.map(o=>o.branch).filter(Boolean))] as string[];
@@ -9940,7 +9924,8 @@ function HeadPending({ navigate, setModal, setDetailId, ops, finalApproveOp, rej
           <p className="text-gray-400 text-sm mt-0.5">{filtered.length} {t("عملية وافق عليها المحاسبون","operations approved by accountants")} · {fmtAmt(totalAmt)} {t("ر.س إجمالياً","SAR total")}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={()=>exportHeadOpsMut.mutate({status:"pending", format:"xlsx"})}
+          {/* HA-F23: Export matches head queue status (approved) */}
+          <button onClick={()=>exportHeadOpsMut.mutate({status:"approved", format:"xlsx"})}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 transition-all">
             <FileText size={11}/> Excel
           </button>
@@ -10224,11 +10209,10 @@ function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops, final
   const labels: Record<string,string> = {sales:t("المبيعات","Sales"),expenses:t("المصروفات","Expenses"),purchases:t("المشتريات","Purchases"),inventory:t("المخزون","Inventory"),shifts:t("الشفتات","Shifts"),employees:t("كشف الحساب","Employees"),cash:t("العهد النقدية","Petty Cash"),waste:t("الهدر والتالف","Waste"),assets:t("الأصول الثابتة","Assets")};
   const moduleEmoji: Record<string,string> = {sales:"💰",expenses:"🧾",purchases:"🛒",inventory:"📦",shifts:"🕐",employees:"👥",cash:"💵",waste:"🗑️",assets:"🏢"};
   const label = labels[moduleKey]||moduleKey;
-  // B-H1: real accountant names from the API, with a deterministic fallback.
-  const HEAD_ACCS_FALLBACK = ["أحمد الشهري","سارة العمري","محمد الحربي","فاطمة السالم"];
-  const getAcc = (op:Op) => op.accountantName ?? HEAD_ACCS_FALLBACK[parseInt(op.id.replace(/\D/g,"").slice(-2)||"0") % HEAD_ACCS_FALLBACK.length];
+  // HA-F15: Real accountant names from the API only; display "غير متاح" when missing without fake placeholders.
+  const getAcc = (op:Op) => op.accountantName || t("غير متاح","Unavailable");
   const realAccs = [...new Set(ops.map(o=>o.accountantName).filter(Boolean))] as string[];
-  const HEAD_ACCS = realAccs.length ? realAccs : HEAD_ACCS_FALLBACK;
+  const HEAD_ACCS = realAccs;
   // B-H1: brand & branch filter options from the enriched ops rows.
   const BRAND_OPTS  = [...new Set(ops.map(o=>o.brandName).filter(Boolean))] as string[];
   const BRANCH_OPTS = [...new Set(ops.map(o=>o.branch).filter(Boolean))] as string[];
@@ -10259,7 +10243,8 @@ function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops, final
           <p className="text-gray-400 text-sm mt-0.5">{t("العمليات الموافق عليها من المحاسبين — تنتظر اعتمادك النهائي","Operations approved by accountants — awaiting your final approval")}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={()=>exportHeadOpsMut.mutate({status:"pending", moduleKey, format:"xlsx"})}
+          {/* HA-F23: Export matches head module queue status (approved) */}
+          <button onClick={()=>exportHeadOpsMut.mutate({status:"approved", moduleKey, format:"xlsx"})}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 transition-all">
             <FileText size={11}/> Excel
           </button>
@@ -10396,8 +10381,8 @@ function HeadAccountants({}: PageProps) {
   return (
     <div className="space-y-4" dir={dir}>
       <div className="flex items-center justify-between">
-        <h3 className="font-bold text-gray-800">{t("أداء المحاسبين","Accountant Performance")}</h3>
-        <Btn size="sm" onClick={()=>exportHeadOpsMut.mutate({ format:"xlsx" })}><Download size={12}/> {t("تصدير التقرير","Export Report")}</Btn>
+        {/* HA-F23: Honest label - this exports accountant operations, not performance breakdown */}
+        <Btn size="sm" onClick={()=>exportHeadOpsMut.mutate({ format:"xlsx" })}><Download size={12}/> {t("تصدير عمليات المحاسبين","Export Accountant Operations")}</Btn>
       </div>
 
       <div className="grid grid-cols-4 gap-3">
@@ -17119,20 +17104,17 @@ export function ASABPrototype() {
   const markErpPosted = async (ids:string[]): Promise<string> => {
     const set = new Set(ids);
     const postedAt = now();
-    let serverBatchId = "";
-    try {
-      const res = await erpBatchMut.mutateAsync({ operationIds: ids });
-      serverBatchId = (res as any)?.batchId ?? (res as any)?.id ?? "";
-    } catch {
-      // mutation surfaces its own error toast; fall through to an optimistic id
+    const res = await erpBatchMut.mutateAsync({ operationIds: ids });
+    const serverBatchId = (res as any)?.batchId ?? (res as any)?.id ?? "";
+    if (!serverBatchId) {
+      throw new Error("لم يتم استلام معرّف الدفعة من الخادم");
     }
-    const finalBatchId = serverBatchId || `ERP-BATCH-${ids.length}-${ids[0] ?? ""}`;
     setOps(p=>p.map(o=>
       set.has(o.id) && o.status==="final-approved" && !o.erpPosted
-        ? { ...o, erpPosted:true, erpBatchId:finalBatchId, erpPostedAt:postedAt }
+        ? { ...o, erpPosted:true, erpBatchId:serverBatchId, erpPostedAt:postedAt }
         : o
     ));
-    return finalBatchId;
+    return serverBatchId;
   };
 
   if(!currentRole) return (

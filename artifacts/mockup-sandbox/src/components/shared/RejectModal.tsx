@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { X } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { X, RefreshCw } from "lucide-react";
 
 /** Static fallback (Arabic labels, keyed by themselves) used when no API list is supplied. */
 const PRESET_REASONS: ReasonOption[] = [
@@ -31,7 +31,7 @@ interface Props {
   returnToManager?: boolean;
   returnToAccountant?: boolean;
   onClose: () => void;
-  onSubmit: (payload: { reason: string; notes?: string }) => void;
+  onSubmit: (payload: { reason: string; notes?: string }) => void | Promise<unknown>;
   /** Optional translate function. */
   t?: (ar: string, en: string) => string;
 }
@@ -52,25 +52,86 @@ export function RejectModal({
   const [reasonKey, setReasonKey] = useState<string>(options[0]?.key ?? "");
   const [customReason, setCustomReason] = useState("");
   const [notes, setNotes] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Sync reasonKey if options change
+  useEffect(() => {
+    if (!reasonKey && options[0]?.key) {
+      setReasonKey(options[0].key);
+    }
+  }, [options, reasonKey]);
+
+  // Escape key support
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isSubmitting) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, isSubmitting, onClose]);
+
+  // Focus trap
+  useEffect(() => {
+    if (!open || !modalRef.current) return;
+    const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    const firstEl = focusable[0];
+    const lastEl = focusable[focusable.length - 1];
+    firstEl?.focus();
+
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      if (e.shiftKey) {
+        if (document.activeElement === firstEl) {
+          e.preventDefault();
+          lastEl?.focus();
+        }
+      } else {
+        if (document.activeElement === lastEl) {
+          e.preventDefault();
+          firstEl?.focus();
+        }
+      }
+    };
+    const node = modalRef.current;
+    node.addEventListener("keydown", handleTab);
+    return () => node.removeEventListener("keydown", handleTab);
+  }, [open]);
 
   if (!open) return null;
 
   const isOther = !requireReasons && hasOther && (reasonKey === OTHER_KEY || reasonKey === "أخرى");
   const finalReason = isOther ? customReason.trim() : reasonKey;
-  const canSubmit = finalReason.length > 0 && (isOther || options.some(option => option.key === reasonKey));
+  const canSubmit = finalReason.length > 0 && (isOther || options.some(option => option.key === reasonKey)) && !isSubmitting;
 
-  function handleSubmit() {
-    if (!canSubmit) return;
-    onSubmit({ reason: finalReason, notes: notes.trim() || undefined });
-    setReasonKey(options[0]?.key ?? "");
-    setCustomReason("");
-    setNotes("");
-    onClose();
+  async function handleSubmit() {
+    if (!canSubmit || isSubmitting) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      await onSubmit({ reason: finalReason, notes: notes.trim() || undefined });
+      // HA-F21: Reset state and close modal ONLY upon confirmed success!
+      setReasonKey(options[0]?.key ?? "");
+      setCustomReason("");
+      setNotes("");
+      onClose();
+    } catch (err: any) {
+      // HA-F21: Retain draft on failure, do NOT wipe fields and do NOT close modal!
+      setSubmitError(err?.message || t("فشل إرسال الطلب، يرجى التحقق وإعادة المحاولة", "Submission failed. Please check and try again"));
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
     <div
-      onClick={onClose}
+      onClick={() => { if (!isSubmitting) onClose(); }}
       style={{
         position: "fixed",
         inset: 0,
@@ -83,6 +144,10 @@ export function RejectModal({
       }}
     >
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reject-modal-title"
         onClick={(e) => e.stopPropagation()}
         dir="rtl"
         style={{
@@ -105,7 +170,7 @@ export function RejectModal({
           }}
         >
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>
+            <div id="reject-modal-title" style={{ fontSize: 18, fontWeight: 700, color: "#1e293b" }}>
               {returnToManager ? t("إرجاع لمدير الفرع", "Return to branch manager") : returnToAccountant ? t("إعادة للمحاسب للتعديل", "Return to accountant for changes") : t("رفض العملية", "Reject Operation")}
             </div>
             {subject && (
@@ -132,11 +197,13 @@ export function RejectModal({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={() => { if (!isSubmitting) onClose(); }}
+            disabled={isSubmitting}
+            aria-label={t("إغلاق", "Close")}
             style={{
               background: "transparent",
               border: "none",
-              cursor: "pointer",
+              cursor: isSubmitting ? "not-allowed" : "pointer",
               color: "#94a3b8",
               padding: 4,
             }}
@@ -145,8 +212,28 @@ export function RejectModal({
           </button>
         </div>
 
+        {/* Error alert */}
+        {submitError && (
+          <div
+            role="alert"
+            style={{
+              padding: "10px 14px",
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              borderRadius: 8,
+              color: "#b91c1c",
+              fontSize: 12,
+              marginBottom: 14,
+              lineHeight: 1.4,
+            }}
+          >
+            {submitError}
+          </div>
+        )}
+
         {/* Reason select */}
         <label
+          htmlFor="reject-reason-select"
           style={{
             display: "block",
             fontSize: 12,
@@ -158,15 +245,17 @@ export function RejectModal({
           {t("سبب الرفض", "Reason")} <span style={{ color: "#ef4444" }}>*</span>
         </label>
         <select
+          id="reject-reason-select"
           value={reasonKey}
           onChange={(e) => setReasonKey(e.target.value)}
+          disabled={isSubmitting}
           style={{
             width: "100%",
             padding: "10px 12px",
             borderRadius: 8,
             border: "1px solid #e2e8f0",
             fontSize: 14,
-            background: "white",
+            background: isSubmitting ? "#f8fafc" : "white",
             color: "#1e293b",
             fontFamily: "inherit",
             marginBottom: 12,
@@ -182,25 +271,42 @@ export function RejectModal({
         {requireReasons && options.length===0 && <p role="status" style={{ fontSize: 12, color: "#b45309", marginBottom: 12 }}>{t("أسباب الإرجاع غير متاحة حاليًا", "Return reasons are currently unavailable")}</p>}
 
         {isOther && (
-          <input
-            value={customReason}
-            onChange={(e) => setCustomReason(e.target.value)}
-            placeholder={t("اكتب السبب", "Type the reason")}
-            autoFocus
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              borderRadius: 8,
-              border: "1px solid #e2e8f0",
-              fontSize: 14,
-              fontFamily: "inherit",
-              marginBottom: 12,
-            }}
-          />
+          <div>
+            <label
+              htmlFor="reject-custom-reason"
+              style={{
+                display: "block",
+                fontSize: 12,
+                fontWeight: 700,
+                color: "#475569",
+                marginBottom: 6,
+              }}
+            >
+              {t("اكتب السبب", "Type the reason")} <span style={{ color: "#ef4444" }}>*</span>
+            </label>
+            <input
+              id="reject-custom-reason"
+              value={customReason}
+              onChange={(e) => setCustomReason(e.target.value)}
+              placeholder={t("اكتب السبب", "Type the reason")}
+              autoFocus
+              disabled={isSubmitting}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+                fontSize: 14,
+                fontFamily: "inherit",
+                marginBottom: 12,
+              }}
+            />
+          </div>
         )}
 
         {/* Notes */}
         <label
+          htmlFor="reject-notes-textarea"
           style={{
             display: "block",
             fontSize: 12,
@@ -212,8 +318,10 @@ export function RejectModal({
           {t("ملاحظات (اختياري)", "Notes (optional)")}
         </label>
         <textarea
+          id="reject-notes-textarea"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
+          disabled={isSubmitting}
           rows={3}
           placeholder={t("تفاصيل إضافية...", "Additional details...")}
           style={{
@@ -243,21 +351,26 @@ export function RejectModal({
               fontWeight: 700,
               cursor: canSubmit ? "pointer" : "not-allowed",
               fontFamily: "inherit",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
-            {returnToManager || returnToAccountant ? t("تأكيد الإرجاع", "Confirm return") : t("تأكيد الرفض", "Confirm Reject")}
+            {isSubmitting && <RefreshCw size={13} className="animate-spin" />}
+            <span>{returnToManager || returnToAccountant ? t("تأكيد الإرجاع", "Confirm return") : t("تأكيد الرفض", "Confirm Reject")}</span>
           </button>
           <button
             onClick={onClose}
+            disabled={isSubmitting}
             style={{
               padding: "10px 20px",
               background: "white",
-              color: "#475569",
+              color: isSubmitting ? "#94a3b8" : "#475569",
               border: "1px solid #e2e8f0",
               borderRadius: 8,
               fontSize: 13,
               fontWeight: 600,
-              cursor: "pointer",
+              cursor: isSubmitting ? "not-allowed" : "pointer",
               fontFamily: "inherit",
             }}
           >

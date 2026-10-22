@@ -740,37 +740,8 @@ const INITIAL_OPS:COp[] = [
   { id:"I-0599",branch:"فرع الورود",  brandName:"مطعم التاج الراقي",brandColor:"#805AD5",module:"inventory",moduleLabel:"مخزون",  amount:0,    timeAgo:"أمس",         status:"approved",      attachments:1,match:"exact",  submittedBy:"منى الزهراني", date:"20 مارس",refNum:"INV-0599" },
 ];
 
-// Inventory branch data
-const INV_BRANCH_DATA: Record<string,{ name:string; unit:string; prev:number; curr:number; cat:string }[]> = {
-  "فرع العليا": [
-    { name:"دجاج طازج",   unit:"كجم",   prev:120, curr:89,  cat:"بروتين"   },
-    { name:"لحم برجر",    unit:"كجم",   prev:85,  curr:72,  cat:"بروتين"   },
-    { name:"خبز برجر",    unit:"قطعة",  prev:500, curr:340, cat:"مخبوزات"  },
-    { name:"جبنة شيدر",   unit:"شريحة", prev:300, curr:215, cat:"ألبان"    },
-    { name:"بطاطس",       unit:"كجم",   prev:80,  curr:51,  cat:"خضروات"   },
-    { name:"زيت قلي",     unit:"لتر",   prev:40,  curr:27,  cat:"زيوت"     },
-    { name:"مايونيز",     unit:"كجم",   prev:15,  curr:19,  cat:"صوصات"    },
-    { name:"كاتشب",       unit:"كجم",   prev:20,  curr:13,  cat:"صوصات"    },
-  ],
-  "فرع الحمراء": [
-    { name:"دجاج طازج",   unit:"كجم",   prev:95,  curr:71,  cat:"بروتين"   },
-    { name:"لحم برجر",    unit:"كجم",   prev:70,  curr:58,  cat:"بروتين"   },
-    { name:"خبز برجر",    unit:"قطعة",  prev:400, curr:290, cat:"مخبوزات"  },
-    { name:"بطاطس",       unit:"كجم",   prev:65,  curr:43,  cat:"خضروات"   },
-  ],
-  "فرع الملقا": [
-    { name:"عجينة البيتزا",unit:"كجم",  prev:60,  curr:39,  cat:"مخبوزات"  },
-    { name:"جبنة موزاريلا",unit:"كجم",  prev:25,  curr:11,  cat:"ألبان"    },
-    { name:"صوص الطماطم", unit:"كجم",   prev:18,  curr:13,  cat:"صوصات"    },
-    { name:"دجاج مشوي",   unit:"كجم",   prev:30,  curr:24,  cat:"بروتين"   },
-  ],
-  "فرع الورود": [
-    { name:"أرز بسمتي",   unit:"كجم",   prev:80,  curr:62,  cat:"حبوب"     },
-    { name:"لحم ضأن",     unit:"كجم",   prev:45,  curr:33,  cat:"بروتين"   },
-    { name:"دجاج طازج",   unit:"كجم",   prev:55,  curr:41,  cat:"بروتين"   },
-    { name:"خبز تنور",    unit:"قطعة",  prev:300, curr:210, cat:"مخبوزات"  },
-  ],
-};
+// HA-F13: Inventory branch static mocks removed. Live payload or clear unavailable status is rendered.
+const INV_BRANCH_DATA: Record<string,{ name:string; unit:string; prev:number; curr:number; cat:string }[]> = {};
 
 type CRole = "company-admin"|"head"|"accountant"|"branch"|"procurement";
 
@@ -1961,50 +1932,72 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
             {headPolicy.returnForReview && salesPolicy.return && <button disabled={actionsPending} onClick={()=>runSalesAction(salesContext, "return", onReject)} title={op.module === "shifts" ? t("إعادة للمحاسب للتعديل","Return to accountant for changes") : t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all disabled:opacity-50"><ThumbsDown size={13}/></button>}
           </>}
           {isLocked && <span className="flex items-center gap-1 text-xs text-slate-400 bg-slate-100 border border-slate-200 px-2 py-1.5 rounded-lg"><Lock size={11}/> {t("مُغلق","Locked")}</span>}
-          <button className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 flex items-center justify-center transition-all" onClick={onToggle}>
+          <button
+            type="button"
+            className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 flex items-center justify-center transition-all"
+            onClick={onToggle}
+            aria-expanded={expanded}
+            aria-label={expanded ? t("طي التفاصيل","Collapse details") : t("توسيع التفاصيل","Expand details")}
+          >
             {expanded?<ChevronUp size={13}/>:<ChevronDown size={13}/>}
           </button>
         </div>
       </div>
       {salesPolicy.pkg6 && <p className="px-5 pb-2 text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</p>}
-      {forHead && headPolicy.blockedReason && <p className="px-5 pb-2 text-xs text-amber-700">{t(HEAD_DAY_EVIDENCE_HINT.ar, HEAD_DAY_EVIDENCE_HINT.en)}</p>}
+      {forHead && headPolicy.blockedReason === "day_evidence_missing" && <p className="px-5 pb-2 text-xs text-amber-700">{t(HEAD_DAY_EVIDENCE_HINT.ar, HEAD_DAY_EVIDENCE_HINT.en)}</p>}
+      {forHead && headPolicy.blockedReason === "expense_owner_decision_required" && <p className="px-5 pb-2 text-xs text-amber-700">{t("قرار اعتماد المصروف محجوز للمالك أو مدير العلامة التجارية وفق القاعدة EXP-06","Expense approval decision is reserved for the brand owner or manager per rule EXP-06")}</p>}
       {expanded && (
         <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-4 space-y-4">
           {op.module==="sales" && <SalesReconPanel op={op} onApprove={onApprove} onReject={onReject} onClarify={onClarify} isPending={isPending} forHead={forHead}/>}
           {op.module==="shifts" && <ShiftOpPanel detail={detailQ.data} op={op} forHead={forHead} loading={detailQ.isLoading} error={detailQ.isError}/>}
           {op.module==="shifts" && !forHead && shiftPolicy.clarify && onClarify && <button onClick={onClarify} className="text-xs font-semibold text-purple-700 underline">{t("طلب إيضاح","Request clarification")}</button>}
           {op.module==="expenses" && (
-            <p className="text-xs text-gray-400 text-center py-2">{t("افتح البيان لعرض الفواتير كاملاً مع خيار التحويل إلى أصل ثابت","Open statement to view full invoices with asset conversion option")}</p>
+            forHead ? (
+              <div className="bg-amber-50/60 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                <p className="font-semibold">{t("تفاصيل المصروف","Expense Details")}</p>
+                <p className="text-[11px] text-amber-700 mt-1">{t("قرار اعتماد المصروف وصلاحية التحويل مخصصة لمالك المنشأة أو مدير العلامة التجارية وفق القاعدة EXP-06","Expense approval and asset conversion decisions are reserved for the Brand Owner/Manager per rule EXP-06")}</p>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 text-center py-2">{t("افتح البيان لعرض الفواتير كاملاً مع خيار التحويل إلى أصل ثابت","Open statement to view full invoices with asset conversion option")}</p>
+            )
           )}
           {op.module==="purchases" && (
             <PurchaseMatchPanel op={op} isPending={isPending} forHead={forHead}
               onApprove={onApprove} onReject={onReject} onClarify={onClarify}/>
           )}
-          {op.module==="inventory" && (()=>{
-            const items = INV_BRANCH_DATA[op.branch] || [];
-            return items.length>0 ? (
-              <div>
-                <p className="text-xs font-bold text-gray-600 mb-2">{t("تفاصيل جرد المخزون","Inventory Count Details")} — {op.branch}</p>
-                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                  <div className="grid grid-cols-5 px-4 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-500">
-                    <span>{t("الصنف","Item")}</span><span className="text-center">{t("الوحدة","Unit")}</span><span className="text-center">{t("الأمس","Yesterday")}</span><span className="text-center">{t("اليوم","Today")}</span><span className="text-center">{t("الفرق","Diff")}</span>
-                  </div>
-                  {items.map(it=>{
-                    const diff = it.curr - it.prev;
-                    return (
-                      <div key={it.name} className={`grid grid-cols-5 px-4 py-2.5 border-b border-gray-50 last:border-0 text-xs items-center ${diff<-(it.prev*0.3)?"bg-amber-50/40":""}`}>
-                        <span className="font-medium text-gray-800">{it.name}</span>
-                        <span className="text-center text-gray-500">{it.unit}</span>
-                        <span className="text-center font-mono text-gray-500">{it.prev}</span>
-                        <span className="text-center font-mono font-bold text-gray-800">{it.curr}</span>
-                        <span className={`text-center font-mono font-bold ${diff<0?"text-red-600":"text-emerald-600"}`}>{diff>0?"+":""}{diff}</span>
-                      </div>
-                    );
-                  })}
+          {op.module==="inventory" && (
+            <div className="bg-white rounded-xl border border-gray-100 p-4">
+              <p className="text-xs font-bold text-gray-700 mb-2">{t("تفاصيل جرد المخزون","Inventory Count Details")} — {op.branch}</p>
+              {Array.isArray((op as any).payload?.items) && (op as any).payload.items.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-gray-50 text-[10px] text-gray-500 font-bold border-b border-gray-100">
+                        <th className="px-3 py-2 text-right">{t("الصنف","Item")}</th>
+                        <th className="px-3 py-2 text-center">{t("الوحدة","Unit")}</th>
+                        <th className="px-3 py-2 text-center">{t("المتوقع","Expected")}</th>
+                        <th className="px-3 py-2 text-center">{t("الفعلي","Actual")}</th>
+                        <th className="px-3 py-2 text-center">{t("الفرق","Diff")}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {(op as any).payload.items.map((it: any, idx: number) => (
+                        <tr key={idx}>
+                          <td className="px-3 py-2 font-medium text-gray-800">{it.name ?? it.itemName ?? "—"}</td>
+                          <td className="px-3 py-2 text-center text-gray-500">{it.unit ?? "—"}</td>
+                          <td className="px-3 py-2 text-center font-mono">{it.prev ?? it.expectedQty ?? "—"}</td>
+                          <td className="px-3 py-2 text-center font-mono font-bold text-gray-800">{it.curr ?? it.actualQty ?? "—"}</td>
+                          <td className="px-3 py-2 text-center font-mono">{it.diff ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            ) : null;
-          })()}
+              ) : (
+                <p className="text-xs text-gray-400 py-3 text-center">{t("تفاصيل جرد المخزون غير متاحة لهذه العملية في السجل الحالي","Inventory count details are not available for this operation in current record")}</p>
+              )}
+            </div>
+          )}
           {(op.module!=="sales"&&op.module!=="shifts"&&op.module!=="expenses"&&op.module!=="purchases"&&op.module!=="inventory") && (
             <p className="text-xs text-gray-400 text-center">{t("انقر على زر العرض للتفاصيل الكاملة","Click view for full details")}</p>
           )}
@@ -3316,22 +3309,41 @@ function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove, 
   const { t, dir } = useCLang();
   const queryClient = useQueryClient();
   const { data: apiHeadDash } = useHeadDashboard();
-  const { data: apiCompanyDash } = useCompanyAdminDashboard();
   const apiKpis = (apiHeadDash?.kpis ?? {}) as Record<string, number | string>;
   const awaitingHead  = ops.filter(o=>o.status==="approved");
   const dashboardBulkIds = awaitingHead.map(op=>op.id);
   const dashboardBulkAllowed = headLegacyBulkIds(ops, dashboardBulkIds, "head", op=>queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id))).length===dashboardBulkIds.length;
   const finalApproved = ops.filter(o=>o.status==="final-approved");
   const rejected      = ops.filter(o=>o.status==="rejected");
-  // Brand performance comes from GET /company/me/dashboard. No static fallback.
-  const headBrands = (Array.isArray(apiCompanyDash?.brands) ? apiCompanyDash!.brands! : []).map(b=>({
-    id: b.id, name: b.name, abbr: b.abbr ?? (b.name ?? "؟").toString().slice(0,2), color: b.color ?? "#7C3AED",
-    sales: Math.round((b.monthlySalesHalalas ?? 0)/100),
-    target: Math.round((b.monthlyTargetHalalas ?? 0)/100),
-  }));
-  const totalSalesM   = (apiKpis.totalSalesHalalas as number | undefined) != null
-    ? Math.round(((apiKpis.totalSalesHalalas as number) / 100))
-    : headBrands.reduce((s,b)=>s+b.sales,0);
+
+  // Brand performance comes from Head dashboard API (brandPerformance or brandSummary). No static fallback.
+  const rawBrands = apiHeadDash?.brandPerformance ?? apiHeadDash?.brandSummary ?? [];
+  const headBrands = (Array.isArray(rawBrands) ? rawBrands : []).map((b: any) => {
+    const rawSales = (b.salesHalalas ?? b.monthlySalesHalalas ?? b.sales ?? 0) as number;
+    const rawTarget = (b.target ?? 0) as number;
+    const sales = Math.round(rawSales / 100);
+    const target = rawTarget > 0 ? Math.round(rawTarget / 100) : 0;
+    const pct = b.pctOfTarget != null && b.pctOfTarget > 0 ? Math.round(b.pctOfTarget) : target > 0 ? Math.round((sales / target) * 100) : 0;
+    return {
+      id: b.brandId ?? b.id ?? b.name,
+      name: b.name,
+      abbr: b.abbr ?? (b.name ?? "؟").toString().slice(0, 2),
+      color: b.color ?? "#7C3AED",
+      sales,
+      target,
+      pct,
+    };
+  });
+
+  const rawMonthlyHalalas = (apiKpis.monthlySalesHalalas as number | undefined) ?? (apiKpis.totalSalesHalalas as number | undefined);
+  const totalSalesM = rawMonthlyHalalas != null
+    ? Math.round(rawMonthlyHalalas / 100)
+    : headBrands.reduce((s, b) => s + b.sales, 0);
+
+  const salesDelta = apiKpis.salesDeltaPct != null
+    ? `${Number(apiKpis.salesDeltaPct) > 0 ? "+" : ""}${apiKpis.salesDeltaPct}%`
+    : undefined;
+
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-start justify-between">
@@ -3345,11 +3357,11 @@ function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove, 
         </button>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard label={t("بانتظار اعتمادي","Awaiting My Approval")}  value={String(awaitingHead.length)}  sub={t("📱 من المحاسبين · م3","📱 From accountants · S3")}      icon={<Clock size={18} className="text-amber-600"/>}   accent="amber"/>
         <KpiCard label={t("معتمدة نهائياً","Final Approved")}          value={String(finalApproved.length)} sub={t("مُغلقة · تنتظر ERP · م4","Closed · Awaiting ERP · S4")} icon={<Lock size={18} className="text-emerald-600"/>}  accent="emerald"/>
         <KpiCard label={t("مرفوضة","Rejected")}                        value={String(rejected.length)}      sub={t("خارج المسار","Off Pipeline")}                           icon={<XCircle size={18} className="text-red-600"/>}    accent="red"/>
-        <KpiCard label={t("إجمالي المبيعات","Total Sales")}            value={`${fmt(Math.round(totalSalesM/1000))}K`} sub={t("ر.س هذا الشهر","SAR this month")}             icon={<TrendingUp size={18} className="text-blue-600"/>} accent="blue" delta="+8.2%"/>
+        <KpiCard label={t("إجمالي المبيعات","Total Sales")}            value={`${fmt(Math.round(totalSalesM/1000))}K`} sub={t("ر.س هذا الشهر","SAR this month")}             icon={<TrendingUp size={18} className="text-blue-600"/>} accent="blue" delta={salesDelta}/>
       </div>
 
       <CPipelineOverview ops={ops}/>
@@ -3363,7 +3375,7 @@ function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove, 
           {headBrands.map(b=>{
             const sales=b.sales;
             const target=b.target;
-            const pct=target>0?Math.round((sales/target)*100):0;
+            const pct=b.pct;
             return (
               <div key={b.id} className="flex items-center gap-4">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{background:b.color}}>{b.abbr}</div>
@@ -3691,7 +3703,15 @@ function HeadRejected({ ops }:{ ops:COp[] }) {
             <div key={op.id} className="px-5 py-4 border-b border-gray-50 last:border-0 border-r-4 border-r-red-400">
               <div className="flex items-center gap-3">
                 <div className="w-1 h-10 rounded-full bg-red-400 flex-shrink-0"/>
-                <div className="flex-1"><p className="font-semibold text-gray-800 text-sm">{op.branch}</p><p className="text-xs text-gray-400">{op.moduleLabel} · {op.refNum} · {op.timeAgo}</p></div>
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-800 text-sm">{op.branch}</p>
+                  <p className="text-xs text-gray-400">{op.moduleLabel} · {op.refNum} · {op.timeAgo}</p>
+                  {op.diff ? (
+                    <p className="text-xs text-red-600 mt-1 font-mono">⚠️ {t("سبب الرفض:","Rejection reason:")} {op.diff}</p>
+                  ) : (
+                    <p className="text-xs text-gray-400 mt-1 italic">{t("لم يتم تسجيل سبب رفض محدد","No rejection reason specified")}</p>
+                  )}
+                </div>
                 <span className="font-mono font-bold text-gray-800">{fmt(op.amount)} {t("ر.س","SAR")}</span>
                 <Badge className="bg-red-50 text-red-700 border border-red-200 text-[10px]">✕ {t("مرفوض","Rejected")}</Badge>
               </div>
@@ -3744,7 +3764,7 @@ function HeadShiftHistory() {
       const evidence = getShiftCountEvidence(shift,lang);
       return <div key={shift.id} className="flex flex-wrap gap-4 border-t py-2 text-xs">
         <span>{shift.branchName}</span><span>{shift.cashierName}</span>
-        <span>{shift.endedAt ? new Date(shift.endedAt).toLocaleDateString("ar-SA") : "—"}</span>
+        <span>{shift.endedAt ? new Date(shift.endedAt).toLocaleDateString(lang === "ar" ? "ar-SA" : "en-US") : "—"}</span>
         <span>{t("الفرق","Variance")}: <bdi>{evidence.variance.text}</bdi></span>
       </div>;
     })}
@@ -3819,21 +3839,21 @@ function HeadReminders() {
   // Reminders come from the platform API (apiList below); no static seed.
   const apiList: RemItem[] = apiReminders.map((r): RemItem => ({
     id: r.id,
-    titleAr: r.title,
-    titleEn: r.title,
-    bodyAr: r.body || "",
-    bodyEn: r.body || "",
-    timeAr: r.dueAt || r.createdAt,
-    timeEn: r.dueAt || r.createdAt,
+    titleAr: r.titleAr || r.title || "",
+    titleEn: r.titleEn || r.title || "",
+    bodyAr: r.bodyAr || r.body || "",
+    bodyEn: r.bodyEn || r.body || "",
+    timeAr: r.timeAr || r.dueAt || r.createdAt,
+    timeEn: (r as any).timeEn || r.dueAt || r.createdAt,
     type: r.type,
-    done: r.isDone,
+    done: Boolean(r.done ?? r.isDone),
   }));
   const [localList, setLocalList] = useState<RemItem[]>([]);
   const list: RemItem[] = apiList;
   const toggle = (id: string | number) => {
     if (apiList.length > 0) {
       const r = list.find(x => x.id === id);
-      if (r) patchMut.mutate({ id: String(id), isDone: !r.done });
+      if (r) patchMut.mutate({ id: String(id), done: !r.done });
     } else {
       setLocalList(p=>p.map(r=>r.id===id?{...r,done:!r.done}:r));
     }
@@ -3870,22 +3890,40 @@ function HeadERP({ ops }:{ ops:COp[] }) {
   const { t, dir } = useCLang();
   const postMut = usePostToERP();
   const [posted, setPosted] = useState<string[]>([]);
+  const [postingIds, setPostingIds] = useState<string[]>([]);
   const ready = ops.filter(o=>o.status==="final-approved");
-  const postAll = () => {
-    const unposted = ready.filter(o => !posted.includes(o.id));
-    unposted.forEach(op => postMut.mutate(op.id));
-    setPosted(ready.map(o=>o.id));
+
+  const postOne = async (id: string) => {
+    if (postingIds.includes(id) || posted.includes(id)) return;
+    setPostingIds(prev => [...prev, id]);
+    try {
+      await postMut.mutateAsync(id);
+      setPosted(prev => Array.from(new Set([...prev, id])));
+    } catch {
+      // error toast is handled by postMut.onError; do NOT set as posted
+    } finally {
+      setPostingIds(prev => prev.filter(x => x !== id));
+    }
   };
-  const postOne = (id: string) => { postMut.mutate(id); setPosted(p=>[...p,id]); };
+
+  const postAll = async () => {
+    const unposted = ready.filter(o => !posted.includes(o.id) && !postingIds.includes(o.id));
+    for (const op of unposted) {
+      await postOne(op.id);
+    }
+  };
+
+  const isPostingAny = postingIds.length > 0;
+
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
         <div><h2 className="text-xl font-bold text-gray-800">{t("التصدير لـ ERP","ERP Export")}</h2><p className="text-gray-400 text-sm">{t("الترحيل يتم بعد الاعتماد النهائي","Posting occurs after final approval")}</p></div>
         {ready.length>0&&posted.length<ready.length&&(
-          <Btn variant="primary" onClick={postAll}><Zap size={13}/> {t("ترحيل الكل","Post All")} ({ready.filter(o=>!posted.includes(o.id)).length})</Btn>
+          <Btn variant="primary" disabled={isPostingAny} onClick={postAll}><Zap size={13}/> {t("ترحيل الكل","Post All")} ({ready.filter(o=>!posted.includes(o.id)).length})</Btn>
         )}
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard label={t("جاهزة للترحيل","Ready to Post")}   value={String(ready.filter(o=>!posted.includes(o.id)).length)} sub={t("معتمدة نهائياً","Final approved")} icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
         <KpiCard label={t("تم ترحيلها","Posted")}             value={String(posted.length)} sub={t("هذه الجلسة","This session")} icon={<Zap size={18} className="text-purple-600"/>} accent="purple"/>
         <KpiCard label={t("بانتظار الاعتماد","Awaiting Approval")} value={String(ops.filter(o=>o.status==="approved").length)} sub={t("لم تُعتمد نهائياً بعد","Not yet final-approved")} icon={<Clock size={18} className="text-amber-600"/>} accent="amber"/>
@@ -3894,18 +3932,24 @@ function HeadERP({ ops }:{ ops:COp[] }) {
         <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60"><h3 className="font-bold text-gray-900 text-sm">{t("العمليات المعتمدة نهائياً","Final-Approved Operations")}</h3></div>
         {ready.length===0?(
           <div className="p-8 text-center text-gray-400 text-sm">{t("لا توجد عمليات معتمدة نهائياً للترحيل حتى الآن","No final-approved operations ready to post")}</div>
-        ):ready.map(op=>(
-          <div key={op.id} className="px-5 py-3.5 flex items-center gap-3 border-b border-gray-50 last:border-0">
-            <div className="w-1 h-8 rounded-full flex-shrink-0" style={{background:op.brandColor}}/>
-            <div className="flex-1"><p className="font-semibold text-gray-800 text-sm">{op.branch} · {op.moduleLabel}</p><p className="text-xs text-gray-400">{op.refNum}</p></div>
-            <span className="font-mono font-bold text-gray-800">{fmt(op.amount)} {t("ر.س","SAR")}</span>
-            {posted.includes(op.id)?(
-              <Badge className="bg-purple-50 text-purple-700 border border-purple-200 text-[10px]">🔗 {t("مُرحَّل","Posted")}</Badge>
-            ):(
-              <button onClick={()=>postOne(op.id)} className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-bold hover:bg-purple-700"><Zap size={10}/> {t("ترحيل","Post")}</button>
-            )}
-          </div>
-        ))}
+        ):ready.map(op=>{
+          const isPosting = postingIds.includes(op.id);
+          const isPosted = posted.includes(op.id);
+          return (
+            <div key={op.id} className="px-5 py-3.5 flex items-center gap-3 border-b border-gray-50 last:border-0">
+              <div className="w-1 h-8 rounded-full flex-shrink-0" style={{background:op.brandColor}}/>
+              <div className="flex-1"><p className="font-semibold text-gray-800 text-sm">{op.branch} · {op.moduleLabel}</p><p className="text-xs text-gray-400">{op.refNum}</p></div>
+              <span className="font-mono font-bold text-gray-800">{fmt(op.amount)} {t("ر.س","SAR")}</span>
+              {isPosting ? (
+                <Badge className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] animate-pulse">⏳ {t("جارٍ الترحيل…","Posting…")}</Badge>
+              ) : isPosted ? (
+                <Badge className="bg-purple-50 text-purple-700 border border-purple-200 text-[10px]">🔗 {t("مُرحَّل","Posted")}</Badge>
+              ) : (
+                <button disabled={isPostingAny} onClick={()=>postOne(op.id)} className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 disabled:opacity-50"><Zap size={10}/> {t("ترحيل","Post")}</button>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -4094,12 +4138,25 @@ function useSharedOps(role: CRole | null, fingerprint: string) {
               getSalesActionPolicy({ operation, detail, role:currentRole.current }).return) {
               mutationStarted = true;
               await rejectMut.mutateAsync({ id:rejectingId, reason, notes });
-            } else toast.error("تغيرت حالة العملية؛ حدّث القائمة وأعد المراجعة");
-          } catch (error) { if (!mutationStarted && !(error instanceof FinancialAccessChangedError)) toast.error(getErrorMessage(error, "ar")); }
+            } else {
+              const err = "تغيرت حالة العملية؛ حدّث القائمة وأعد المراجعة";
+              toast.error(err);
+              throw new Error(err);
+            }
+          } catch (error) {
+            if (!mutationStarted && !(error instanceof FinancialAccessChangedError)) toast.error(getErrorMessage(error, "ar"));
+            throw error;
+          }
           finally { actionLock.current = false; setActionsPending(false); }
         }
-      } else if (rejectingId && (rejectingModule !== "shifts" || rejectReasons?.some(r => r.key === reason)))
-        runOperationAction(rejectingId, "returnToManager", () => runSalesAction(() => salesContextFor(rejectingId), "return", () => rejectMut.mutate({ id: rejectingId, reason, notes })));
+      } else if (rejectingId && (rejectingModule !== "shifts" || rejectReasons?.some(r => r.key === reason))) {
+        try {
+          await rejectMut.mutateAsync({ id: rejectingId, reason, notes });
+        } catch (error) {
+          toast.error(getErrorMessage(error, "ar"));
+          throw error;
+        }
+      }
       setRejectingId(null);
     },
   };
@@ -4894,7 +4951,7 @@ function PurchaseMatchPanel({ op, isPending, forHead, onApprove, onReject, onCla
   const { purchases: pb, isLoading } = usePurchaseDetail(op.id);
   const docMut = useDocumentOperation();
   const [note, setNote] = useState("");
-  const locked = op.status==="final-approved" || op.status==="rejected";
+  const locked = forHead || op.status==="final-approved" || op.status==="rejected";
 
   if (isLoading) return <p className="text-xs text-gray-400 text-center py-3">{t("جارٍ تحميل تفاصيل الطلب…","Loading order details…")}</p>;
   if (!pb) return <p className="text-xs text-gray-400 text-center py-3">{t("لا توجد تفاصيل مشتريات لهذا الطلب","No purchase details for this order")}</p>;
@@ -4953,9 +5010,9 @@ function PurchaseMatchPanel({ op, isPending, forHead, onApprove, onReject, onCla
       <OperationAttachmentsPanel operationId={op.id}/>
 
       {/* Document + actions */}
-      {!locked && (
+      {(!locked || forHead) && (
         <div className="flex flex-wrap items-end gap-2 justify-between">
-          {!pb.isDocumented && (
+          {!forHead && !pb.isDocumented && (
             <div className="flex items-end gap-2 flex-1 min-w-[240px]">
               <div className="flex-1">
                 <label className="text-[10px] font-semibold text-gray-500 block mb-1">{t("ملاحظة التوثيق (اختياري)","Documentation note (optional)")}</label>
@@ -6223,7 +6280,7 @@ function WasteAllocRow({ branchId, row, remainingH, onField, onQuick, onRemove, 
 }
 
 // One waste product row: classify (هدر/تالف) · responsibility (موظف/مطعم) · employee allocation.
-function WasteProductCard({ entry, product, pi }:{ entry:WasteEntry; product:WasteProduct; pi:number }) {
+function WasteProductCard({ entry, product, pi, isHead }:{ entry:WasteEntry; product:WasteProduct; pi:number; isHead?:boolean }) {
   const { t } = useCLang();
   const patchMut = usePatchWasteProduct();
   const putMut   = usePutWasteAllocations();
@@ -6237,7 +6294,7 @@ function WasteProductCard({ entry, product, pi }:{ entry:WasteEntry; product:Was
   const isDamage= product.classification==="تالف";
   const allocTotalH = rows.reduce((s,r)=>s+Math.round((parseFloat(r.amount)||0)*100),0);
   const remainingH  = (product.value ?? 0) - allocTotalH;
-  const locked = entry.status==="final-approved" || entry.status==="rejected" || entry.status==="approved";
+  const locked = isHead || entry.status==="final-approved" || entry.status==="rejected" || entry.status==="approved";
 
   const setField = (i:number,f:"empNumber"|"amount",v:string)=> setRows(p=>p.map((r,idx)=>idx===i?{...r,[f]:v}:r));
   const quick    = (i:number)=> setRows(p=>p.map((r,idx)=>idx===i?{...r,amount:String(Math.max(0,(remainingH+Math.round((parseFloat(r.amount)||0)*100))/100))}:r));
@@ -6257,11 +6314,11 @@ function WasteProductCard({ entry, product, pi }:{ entry:WasteEntry; product:Was
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button disabled={locked} onClick={()=>patchMut.mutate({ entryId:entry.id, productIdx:pi, patch:{ classification: isDamage?"هدر":"تالف" } })}
+          <button disabled={locked} onClick={()=>{ if (!isHead) patchMut.mutate({ entryId:entry.id, productIdx:pi, patch:{ classification: isDamage?"هدر":"تالف" } }); }}
             className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all disabled:opacity-50 ${isDamage?"bg-rose-100 text-rose-700 border-rose-300":"bg-amber-100 text-amber-700 border-amber-300"}`}>
             {product.classification}
           </button>
-          <button disabled={locked} onClick={()=>patchMut.mutate({ entryId:entry.id, productIdx:pi, patch:{ responsibility: isEmp?"مطعم":"موظف" } })}
+          <button disabled={locked} onClick={()=>{ if (!isHead) patchMut.mutate({ entryId:entry.id, productIdx:pi, patch:{ responsibility: isEmp?"مطعم":"موظف" } }); }}
             className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all disabled:opacity-50 ${isEmp?"bg-orange-100 text-orange-700 border-orange-300":"bg-blue-100 text-blue-700 border-blue-300"}`}>
             {isEmp?t("على موظف","On employee"):t("على المطعم","On restaurant")}
           </button>
@@ -6283,13 +6340,15 @@ function WasteProductCard({ entry, product, pi }:{ entry:WasteEntry; product:Was
           </div>
           {rows.map((r,ai)=>(
             <WasteAllocRow key={ai} branchId={entry.branchId} row={r} remainingH={remainingH}
-              onField={(f,v)=>setField(ai,f,v)} onQuick={()=>quick(ai)} onRemove={()=>removeRow(ai)} canRemove={rows.length>1}/>
+              onField={(f,v)=>setField(ai,f,v)} onQuick={()=>quick(ai)} onRemove={()=>removeRow(ai)} canRemove={!isHead && rows.length>1}/>
           ))}
-          <div className="flex items-center justify-between">
-            <button onClick={addRow} className="flex items-center gap-1 text-[10px] text-orange-600 hover:underline font-semibold"><Plus size={10}/> {t("إضافة موظف","Add employee")}</button>
-            <button onClick={save} disabled={putMut.isPending || locked}
-              className="px-3 py-1.5 rounded-lg bg-orange-500 text-white text-[10px] font-bold hover:bg-orange-600 disabled:opacity-50">💾 {t("حفظ التوزيع","Save allocation")}</button>
-          </div>
+          {!isHead && (
+            <div className="flex items-center justify-between">
+              <button onClick={addRow} className="flex items-center gap-1 text-[10px] text-orange-600 hover:underline font-semibold"><Plus size={10}/> {t("إضافة موظف","Add employee")}</button>
+              <button onClick={save} disabled={putMut.isPending || locked}
+                className="px-3 py-1.5 rounded-lg bg-orange-500 text-white text-[10px] font-bold hover:bg-orange-600 disabled:opacity-50">💾 {t("حفظ التوزيع","Save allocation")}</button>
+            </div>
+          )}
           <p className="text-[9px] text-orange-500">{t("يجب أن يساوي مجموع التخصيصات قيمة الهدر للمنتج «موظف».","Allocations must sum to the product value for a «موظف» product.")}</p>
         </div>
       )}
@@ -6297,7 +6356,7 @@ function WasteProductCard({ entry, product, pi }:{ entry:WasteEntry; product:Was
   );
 }
 
-function AccCompanyWaste() {
+function AccCompanyWaste({ isHead }:{ isHead?:boolean }) {
   const { t, dir } = useCLang();
   const [filterBranch, setFilterBranch] = useState("");   // branchId
   const [expandedId,   setExpandedId]   = useState<string|null>(null);
@@ -6323,14 +6382,14 @@ function AccCompanyWaste() {
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-gray-800">{t("موديول الهدر والتالف","Waste & Spoilage Module")}</h2><p className="text-gray-400 text-sm mt-0.5">{t("مراجعة الهدر — تعديل التصنيف والمسؤولية وتوزيع التحميل على الموظفين","Review waste — adjust classification, responsibility and employee allocations")}</p></div>
-        {pendingDisplayed.length>0 && (
+        <div><h2 className="text-xl font-bold text-gray-800">{isHead ? t("موديول الهدر والتالف — تدقيق","Waste & Spoilage — Audit") : t("موديول الهدر والتالف","Waste & Spoilage Module")}</h2><p className="text-gray-400 text-sm mt-0.5">{isHead ? t("تدقيق قيود الهدر والتالف — قراءة فقط","Audit waste & spoilage records — read only") : t("مراجعة الهدر — تعديل التصنيف والمسؤولية وتوزيع التحميل على الموظفين","Review waste — adjust classification, responsibility and employee allocations")}</p></div>
+        {!isHead && pendingDisplayed.length>0 && (
           <Btn variant="success" size="sm" onClick={bulkApprove}><CheckCircle2 size={12}/> {t("موافقة على الكل","Approve All")} ({pendingDisplayed.length})</Btn>
         )}
       </div>
 
       {/* KPI header (T07 §4 — meta.summary) */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard label={t("بانتظار المراجعة","Pending Review")} value={String(summary?.pendingReview ?? pendingDisplayed.length)} sub={t("من الفروع","from branches")} icon={<Clock size={18} className="text-amber-600"/>} accent="amber"/>
         <KpiCard label={t("معتمد هذا الشهر","Approved (month)")} value={String(summary?.approvedThisMonth ?? 0)} sub={t("سجلات","records")} icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
         <KpiCard label={t("إجمالي الخسائر","Total Losses")} value={fmtH(summary?.totalLossesHalalas ?? 0)} sub={t("ر.س — هدر + تالف","SAR — waste + damage")} icon={<Trash2 size={18} className="text-rose-600"/>} accent="red"/>
@@ -6385,7 +6444,7 @@ function AccCompanyWaste() {
                     {(entry.employeeChargedHalalas ?? 0)>0 && <span className="text-[10px] text-orange-600 font-semibold">{t("منه على موظفين","charged")}: {fmtH(entry.employeeChargedHalalas)} {t("ر.س","SAR")}</span>}
                   </div>
                 </div>
-                {entry.status==="pending" && (
+                {!isHead && entry.status==="pending" && (
                   <div className="flex gap-1.5" onClick={e=>e.stopPropagation()}>
                     <Btn size="sm" variant="success" onClick={()=>approveMut.mutate(entry.id)}><ThumbsUp size={12}/></Btn>
                     <Btn size="sm" variant="danger"  onClick={()=>rejectMut.mutate({ entryId:entry.id, reason:"تحتاج مراجعة" })}><ThumbsDown size={12}/></Btn>
@@ -6396,7 +6455,7 @@ function AccCompanyWaste() {
               {isExpanded && (
                 <div className="px-5 pb-5 bg-gray-50/40 space-y-3">
                   <p className="text-xs font-bold text-gray-600 mt-3">{t("المنتجات — التصنيف والمسؤولية وتوزيع التحميل:","Products — classify, assign responsibility & allocate:")}</p>
-                  {entry.products.map((p,pi)=><WasteProductCard key={pi} entry={entry} product={p} pi={pi}/>)}
+                  {entry.products.map((p,pi)=><WasteProductCard key={pi} entry={entry} product={p} pi={pi} isHead={isHead}/>)}
                 </div>
               )}
             </div>
@@ -7787,7 +7846,7 @@ function PageRouter({ role, page, navigate, ops, approve, reject, requestClarifi
     if(page==="head-expenses")    return <HeadModulePage moduleKey="expenses"  title="مصروفات — اعتماد نهائي"   {...headModuleProps}/>;
     if(page==="head-purchases")   return <HeadModulePage moduleKey="purchases" title="مشتريات — اعتماد نهائي"   {...headModuleProps}/>;
     if(page==="head-inventory")   return <HeadModulePage moduleKey="inventory" title="مخزون — اعتماد نهائي"     {...headModuleProps}/>;
-    if(page==="head-waste")       return <AccCompanyWaste/>;
+    if(page==="head-waste")       return <AccCompanyWaste isHead={true}/>;
     if(page==="head-assets")      return <HeadModulePage moduleKey="assets"    title="أصول — اعتماد نهائي"      {...headModuleProps}/>;
     if(page==="head-shifts")      return <HeadModulePage moduleKey="shifts"    title="ورديات — اعتماد نهائي"    {...headModuleProps}/>;
     if(page==="head-employees")   return <HeadModulePage moduleKey="employees" title="موظفون — اعتماد نهائي"   {...headModuleProps}/>;

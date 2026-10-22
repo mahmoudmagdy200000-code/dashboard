@@ -15,11 +15,21 @@ export const HEAD_DAY_EVIDENCE_HINT = {
   ar:"دليل حالات جميع ورديات التقرير الحالي غير متاح؛ يجب اعتماد الورديات نهائيًا أولًا",
   en:"Current member shift statuses are unavailable; final approve the shifts first",
 };
+export const HEAD_EXPENSE_EVIDENCE_HINT = {
+  ar:"قرار اعتماد المصروف محجوز للمالك أو مدير العلامة التجارية وفق القاعدة EXP-06",
+  en:"Expense approval decision is reserved for the brand owner or manager per rule EXP-06",
+};
 
 export function getHeadReviewPolicy(op:HeadOperation | undefined, role:string | null | undefined, detail?:HeadOperation) {
   const denied = { finalApprove:false, returnForReview:false, blockedReason:null as string | null };
   if (!op || role !== "head" || op.status !== "approved") return denied;
   if (detail && (detail.id !== op.id || detail.status !== "approved" || moduleOf(detail) !== moduleOf(op))) return denied;
+  if (moduleOf(op) === "expenses" || (detail && moduleOf(detail) === "expenses")) {
+    return {
+      ...denied,
+      blockedReason:"expense_owner_decision_required",
+    };
+  }
   if (moduleOf(op) === "shifts") {
     if (phaseOf(op) !== "head_review" || (detail && phaseOf(detail) !== "head_review")) return denied;
     return { finalApprove:true, returnForReview:true, blockedReason:null };
@@ -39,7 +49,7 @@ export function headLegacyBulkIds(ops:readonly HeadOperation[], ids:readonly str
   const unique = [...new Set(ids)];
   return unique.every(id => {
     const op = byId.get(id);
-    return op && moduleOf(op) !== "shifts" && getHeadReviewPolicy(op, role, detailFor?.(op)).finalApprove;
+    return op && moduleOf(op) !== "shifts" && moduleOf(op) !== "expenses" && getHeadReviewPolicy(op, role, detailFor?.(op)).finalApprove;
   }) ? unique : [];
 }
 
