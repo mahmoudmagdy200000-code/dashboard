@@ -83,3 +83,27 @@ export interface PageProps {
   addCorrectiveOp?: (refId: string) => void;
   markErpPosted?: (ids: string[]) => Promise<string> | void;
 }
+
+export interface AdminUserData {
+  id?: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  brands: string[];
+  restaurants: string[];
+  branches: string[];
+  // reportsTo: writes send the head's userId; reads come back as {id,name}.
+  modules: string[];
+  reportsTo: string | { id: string; name: string } | null;
+  companyId?: string;
+  scope: "all" | "brand" | "restaurant" | "branch";
+  status: "active" | "inactive";
+  createdAt?: string;
+  lastLoginAt?: string;
+  supplierId?: string;
+}
+
+/** reportsTo is a userId on write but an object on read — render the name safely. */
+export const reportsToName = (v: unknown): string =>
+  typeof v === "object" && v !== null && "name" in v ? String((v as any).name) : String(v ?? "");
