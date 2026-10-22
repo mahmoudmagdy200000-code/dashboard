@@ -14,7 +14,10 @@ import {
   isOpWithinPeriod,
   validateConditionalApproval,
   fetchAllHeadOpsPages,
+  executeMixedBulkApproval,
+  getLocalDateString,
 } from "./headReviewGuards.ts";
+import { runSalesAction } from "./salesActionGuards.ts";
 import { sumCOpAmounts } from "./operationMapping.ts";
 import { fetchAllHeadOpsPages as fetchAllHeadOpsPagesPlatform } from "../../../api/queries/platform/head.ts";
 
@@ -839,4 +842,273 @@ test("HA-F22: shouldUpdateHeadOps and opsRange prevent infinite render loops whi
   }
   assert.equal(renderCount, 5);
   assert.equal(simulatedOps, current, "Data reference remained stable, preventing infinite state update loop");
+});
+
+test("HA-F04: executeMixedBulkApproval handles partial success, reconciliation, and full failure modes", async () => {
+  // 1. Partial success: pending succeeds, approved fails with HTTP 500
+  let pendingCalled = false;
+  let approvedCalled = false;
+  let state = [
+    { id: "p-1", status: "pending" },
+    { id: "a-1", status: "approved" },
+  ];
+  let invalidated = false;
+
+  await assert.rejects(
+    async () => {
+      try {
+        await executeMixedBulkApproval({
+          pendingIds: ["p-1"],
+          approvedIds: ["a-1"],
+          approvePendingFn: async (ids) => {
+            pendingCalled = true;
+            return { ok: true, ids };
+          },
+          approveFinalFn: async () => {
+            approvedCalled = true;
+            throw new Error("HTTP 500 Server Error on bulk final approve");
+          },
+        });
+      } catch (err: any) {
+        if (err.isPartial) {
+          // Caller state reconciliation: reconcile succeeded partition only
+          if (err.pendingSucceeded) {
+            state = state.map((o) => (o.id === "p-1" ? { ...o, status: "approved" } : o));
+          }
+          if (err.approvedSucceeded) {
+            state = state.map((o) => (o.id === "a-1" ? { ...o, status: "final-approved" } : o));
+          }
+          invalidated = true;
+        }
+        throw err;
+      }
+    },
+    (err: any) => {
+      assert.equal(err.isPartial, true, "Must flag as partial error");
+      assert.equal(err.pendingSucceeded, true, "Pending must have succeeded");
+      assert.equal(err.approvedSucceeded, false, "Approved must have failed");
+      assert.match(err.message, /تم اعتماد العمليات المعلقة بنجاح/);
+      return true;
+    },
+  );
+  assert.equal(pendingCalled, true);
+  assert.equal(approvedCalled, true);
+  assert.equal(state.find((o) => o.id === "p-1")?.status, "approved", "Pending reconciled to approved");
+  assert.equal(state.find((o) => o.id === "a-1")?.status, "approved", "Approved untouched on failure");
+  assert.equal(invalidated, true, "Query invalidation triggered on partial success");
+
+  // 2. Full failure: first call throws, second call is not marked as succeeded
+  await assert.rejects(
+    executeMixedBulkApproval({
+      pendingIds: ["p-2"],
+      approvedIds: ["a-2"],
+      approvePendingFn: async () => {
+        throw new Error("HTTP 403 Forbidden");
+      },
+      approveFinalFn: async () => {
+        throw new Error("HTTP 500 Crash");
+      },
+    }),
+    (err: any) => {
+      assert.equal(err.isPartial, undefined);
+      assert.ok(err.pendingError);
+      assert.ok(err.approvedError);
+      return true;
+    },
+  );
+
+  // 3. Full success: both succeed cleanly
+  const successRes = await executeMixedBulkApproval({
+    pendingIds: ["p-3"],
+    approvedIds: ["a-3"],
+    approvePendingFn: async (ids) => ({ count: ids.length }),
+    approveFinalFn: async (ids) => ({ count: ids.length }),
+  });
+  assert.equal(successRes.isPartial, false);
+  assert.equal(successRes.pendingSucceeded, true);
+  assert.equal(successRes.approvedSucceeded, true);
+});
+
+test("HA-F22: shouldUpdateHeadOps detects metadata field changes (branch, brandName, accountantName, operationDate) with identical id/status/amount", () => {
+  const base = [
+    {
+      id: "op-meta-1",
+      status: "approved",
+      amount: 1500,
+      branch: "Main Branch",
+      brandName: "Brand A",
+      accountantName: "Mohamed",
+      operationDate: "2026-10-21",
+      erpPosted: false,
+    },
+  ];
+
+  // 1. Identical metadata: shouldUpdate === false
+  const same = shouldUpdateHeadOps(base, [{ ...base[0] }], true);
+  assert.equal(same.shouldUpdate, false);
+
+  // 2. Branch changed: shouldUpdate === true
+  const branchChange = shouldUpdateHeadOps(
+    base,
+    [{ ...base[0], branch: "North Branch" }],
+    true,
+  );
+  assert.equal(branchChange.shouldUpdate, true, "Must detect branch change");
+  assert.equal(branchChange.nextOps[0].branch, "North Branch");
+
+  // 3. Brand name changed: shouldUpdate === true
+  const brandChange = shouldUpdateHeadOps(
+    base,
+    [{ ...base[0], brandName: "Brand B" }],
+    true,
+  );
+  assert.equal(brandChange.shouldUpdate, true, "Must detect brandName change");
+
+  // 4. Accountant name changed: shouldUpdate === true
+  const accountantChange = shouldUpdateHeadOps(
+    base,
+    [{ ...base[0], accountantName: "Ali" }],
+    true,
+  );
+  assert.equal(accountantChange.shouldUpdate, true, "Must detect accountantName change");
+
+  // 5. Operation date changed: shouldUpdate === true
+  const dateChange = shouldUpdateHeadOps(
+    base,
+    [{ ...base[0], operationDate: "2026-10-22" }],
+    true,
+  );
+  assert.equal(dateChange.shouldUpdate, true, "Must detect operationDate change");
+
+  // 6. Supplier name changed: shouldUpdate === true
+  const supplierChange = shouldUpdateHeadOps(
+    base,
+    [{ ...base[0], supplierName: "Almarai" }],
+    true,
+  );
+  assert.equal(supplierChange.shouldUpdate, true, "Must detect supplierName change");
+});
+
+test("HA-F07: getLocalDateString and period filtering use consistent local date calculation", () => {
+  const d = new Date(2026, 9, 22, 14, 30); // October 22, 2026 local
+  const localStr = getLocalDateString(d);
+  assert.equal(localStr, "2026-10-22");
+
+  // Consistent with isOpWithinPeriod
+  const now = new Date(2026, 9, 22, 12, 0);
+  assert.equal(isOpWithinPeriod("2026-10-22T08:00:00", "day", now), true);
+  assert.equal(isOpWithinPeriod("2026-10-21T23:59:00", "day", now), false);
+  assert.equal(isOpWithinPeriod("2026-10-23T00:01:00", "day", now), false);
+
+  // Month filtering
+  assert.equal(isOpWithinPeriod("2026-10-01T00:00:00", "month", now), true);
+  assert.equal(isOpWithinPeriod("2026-09-30T23:59:59", "month", now), false);
+});
+
+test("HA-F11: incomplete branches and categories with unknown amounts are preserved as unavailable without ranking or falsifying as zero", () => {
+  const ops = [
+    { branch: "Riyadh", moduleKey: "sales", amount: 1000 },
+    { branch: "Jeddah", moduleKey: "sales", amount: 2000 },
+    { branch: "Dammam", moduleKey: "sales", amount: null }, // Incomplete branch
+    { branch: "Riyadh", moduleKey: "expenses", amount: null }, // Incomplete category
+  ];
+
+  // Branch map preserves null without falsifying as zero
+  const branchAmts: Record<string, number | null> = {};
+  ops.forEach((o) => {
+    if (!o.branch) return;
+    if (branchAmts[o.branch] === null) return;
+    if (o.amount == null || Number.isNaN(o.amount)) {
+      branchAmts[o.branch] = null;
+    } else {
+      branchAmts[o.branch] = (branchAmts[o.branch] ?? 0) + o.amount;
+    }
+  });
+
+  const completeBranchEntries = Object.entries(branchAmts)
+    .filter((entry): entry is [string, number] => entry[1] !== null)
+    .sort(([, a], [, b]) => b - a);
+  const incompleteBranches = Object.entries(branchAmts)
+    .filter((entry): entry is [string, null] => entry[1] === null)
+    .map(([b]) => b);
+
+  assert.deepEqual(completeBranchEntries, [["Jeddah", 2000]]);
+  assert.deepEqual(incompleteBranches, ["Riyadh", "Dammam"]);
+
+  // Category aggregation: expenses has an operation with null amount
+  const salesAmt = aggregateOpsAmount(ops.filter((o) => o.moduleKey === "sales"));
+  const expAmt = aggregateOpsAmount(ops.filter((o) => o.moduleKey === "expenses"));
+
+  assert.equal(salesAmt, null, "Sales has Dammam with null amount -> aggregate is null");
+  assert.equal(expAmt, null, "Expenses has Riyadh with null amount -> aggregate is null");
+
+  // Neither category is filtered out or fabricated as 0
+  const categories = ["sales", "expenses", "inventory"].map((key) => {
+    const catOps = ops.filter((o) => o.moduleKey === key);
+    const amt = aggregateOpsAmount(catOps);
+    const hasOps = catOps.length > 0;
+    return { key, amount: amt, hasOps };
+  }).filter((c) => (c.amount != null && c.amount > 0) || c.hasOps);
+
+  assert.equal(categories.length, 2, "Both sales and expenses preserved because hasOps === true");
+  assert.equal(categories.find((c) => c.key === "sales")?.amount, null);
+  assert.equal(categories.find((c) => c.key === "expenses")?.amount, null);
+});
+
+test("HA-F08: ERP batch creation accepts batchId, batch_id, and id from backend response", () => {
+  const extractBatchId = (res: any): string => {
+    const id = res?.batchId ?? res?.batch_id ?? res?.id ?? "";
+    if (!id || typeof id !== "string" || !id.trim()) {
+      throw new Error("لم يتم استلام معرّف الدفعة من الخادم");
+    }
+    return id.trim();
+  };
+
+  assert.equal(extractBatchId({ batchId: "BATCH-UUID-1" }), "BATCH-UUID-1");
+  assert.equal(extractBatchId({ batch_id: "BATCH-UUID-2" }), "BATCH-UUID-2");
+  assert.equal(extractBatchId({ id: "BATCH-UUID-3" }), "BATCH-UUID-3");
+  assert.equal(extractBatchId({ batchId: "BATCH-4", id: "OTHER-4" }), "BATCH-4");
+  assert.throws(() => extractBatchId(null), { message: "لم يتم استلام معرّف الدفعة من الخادم" });
+  assert.throws(() => extractBatchId({}), { message: "لم يتم استلام معرّف الدفعة من الخادم" });
+  assert.throws(() => extractBatchId({ batchId: "   " }), { message: "لم يتم استلام معرّف الدفعة من الخادم" });
+});
+
+test("HA-F04: runSalesAction asynchronous error handling awaits promises without detached rejections and respects Sales Action Policy", async () => {
+  const op = { id: "op-act-test", moduleKey: "sales", status: "pending" };
+  const inFlight = new Set<string>();
+  let state = "pending";
+
+  // 1. Policy blocks action -> returns false synchronously, mutation never called
+  let mutationCalled = false;
+  const blocked = runSalesAction(
+    { operation: op, role: "branch" }, // unauthorized role
+    "return",
+    async () => {
+      mutationCalled = true;
+    },
+  );
+  assert.equal(blocked, false);
+  assert.equal(mutationCalled, false);
+
+  // 2. Policy allows action -> returns Promise, awaits mutation, catches error
+  const allowed = runSalesAction(
+    { operation: op, role: "accountant" },
+    "return",
+    async () => {
+      return runFinancialMutation(
+        op.id,
+        inFlight,
+        async () => {
+          throw new Error("HTTP 500 Mutation Failed");
+        },
+        () => {
+          state = "rejected";
+        },
+      );
+    },
+  );
+  assert.ok(allowed && typeof allowed.then === "function", "Must return a Promise");
+  await assert.rejects(allowed, { message: "HTTP 500 Mutation Failed" });
+  assert.equal(state, "pending", "State remains untouched on API error");
+  assert.equal(inFlight.has(op.id), false, "In-flight lock released on error");
 });

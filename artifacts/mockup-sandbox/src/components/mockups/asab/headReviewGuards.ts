@@ -143,6 +143,13 @@ export interface ErpFilterCriteria {
   periodFilter: string;
 }
 
+export function getLocalDateString(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function isOpWithinPeriod(
   opDateStr: string | null | undefined,
   period: string,
@@ -152,10 +159,8 @@ export function isOpWithinPeriod(
   if (!opDateStr) return false;
   const opDate = new Date(opDateStr);
   if (isNaN(opDate.getTime())) return false;
-  const isoDayStr = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   if (period === "day") {
-    return isoDayStr(opDate) === isoDayStr(now);
+    return getLocalDateString(opDate) === getLocalDateString(now);
   }
   if (period === "week") {
     const startOfWeek = new Date(now);
@@ -273,13 +278,31 @@ export function shouldUpdateHeadOps<
     id: string;
     status: string;
     amount: number | null;
+    branch?: string | null;
+    branchId?: string | null;
+    brandName?: string | null;
+    brandId?: string | null;
+    accountantName?: string | null;
+    accountantId?: string | null;
+    operationDate?: string | null;
+    supplierName?: string | null;
+    match?: string | null;
+    moduleKey?: string | null;
     erpPosted?: boolean;
     erpBatchId?: string;
+    erpPostedAt?: string;
     approvedBy?: string;
+    approvedAt?: string;
     finalApprovedBy?: string;
+    finalApprovedAt?: string;
     rejectedBy?: string;
+    rejectedAt?: string;
     rejectReason?: string;
     isCorrection?: boolean;
+    correctiveRef?: string;
+    returnNote?: string;
+    isConditional?: boolean;
+    conditionalNote?: string;
   },
 >(
   currentOps: readonly T[],
@@ -292,8 +315,8 @@ export function shouldUpdateHeadOps<
   if (currentOps === nextOps) {
     return { shouldUpdate: false, nextOps: currentOps as T[] };
   }
-  // Compare contents thoroughly including critical workflow fields to prevent render loops
-  // while never dropping meaningful operational changes.
+  // Compare contents thoroughly including critical workflow fields and displayed metadata
+  // to prevent render loops while never dropping meaningful operational changes.
   if (
     currentOps.length === nextOps.length &&
     currentOps.every((o, i) => {
@@ -302,13 +325,31 @@ export function shouldUpdateHeadOps<
         o.id === n.id &&
         o.status === n.status &&
         o.amount === n.amount &&
+        o.branch === n.branch &&
+        o.branchId === n.branchId &&
+        o.brandName === n.brandName &&
+        o.brandId === n.brandId &&
+        o.accountantName === n.accountantName &&
+        o.accountantId === n.accountantId &&
+        o.operationDate === n.operationDate &&
+        o.supplierName === n.supplierName &&
+        o.match === n.match &&
+        o.moduleKey === n.moduleKey &&
         o.erpPosted === n.erpPosted &&
         o.erpBatchId === n.erpBatchId &&
+        o.erpPostedAt === n.erpPostedAt &&
         o.approvedBy === n.approvedBy &&
+        o.approvedAt === n.approvedAt &&
         o.finalApprovedBy === n.finalApprovedBy &&
+        o.finalApprovedAt === n.finalApprovedAt &&
         o.rejectedBy === n.rejectedBy &&
+        o.rejectedAt === n.rejectedAt &&
         o.rejectReason === n.rejectReason &&
-        o.isCorrection === n.isCorrection
+        o.isCorrection === n.isCorrection &&
+        o.correctiveRef === n.correctiveRef &&
+        o.returnNote === n.returnNote &&
+        o.isConditional === n.isConditional &&
+        o.conditionalNote === n.conditionalNote
       );
     })
   ) {
@@ -326,4 +367,76 @@ export function validateConditionalApproval(note: string | null | undefined): {
     return { ok: false, error: "note_required" };
   }
   return { ok: true, trimmedNote: note.trim() };
+}
+
+export interface MixedBulkExecutionPlan<T = any> {
+  pendingIds: string[];
+  approvedIds: string[];
+  approvePendingFn: (ids: string[]) => Promise<T>;
+  approveFinalFn: (ids: string[]) => Promise<T>;
+}
+
+export interface MixedBulkExecutionResult {
+  pendingSucceeded: boolean;
+  approvedSucceeded: boolean;
+  isPartial: boolean;
+  error?: any;
+}
+
+export async function executeMixedBulkApproval(
+  plan: MixedBulkExecutionPlan,
+): Promise<MixedBulkExecutionResult> {
+  let pendingSucceeded = false;
+  let approvedSucceeded = false;
+  let pendingError: any = null;
+  let approvedError: any = null;
+
+  if (plan.pendingIds.length > 0) {
+    try {
+      await plan.approvePendingFn(plan.pendingIds);
+      pendingSucceeded = true;
+    } catch (err) {
+      pendingError = err;
+    }
+  }
+
+  if (plan.approvedIds.length > 0) {
+    try {
+      await plan.approveFinalFn(plan.approvedIds);
+      approvedSucceeded = true;
+    } catch (err) {
+      approvedError = err;
+    }
+  }
+
+  if (pendingError && approvedError) {
+    const err: any = new Error("فشل الاعتماد الجماعي لكلا المجموعتين");
+    err.pendingError = pendingError;
+    err.approvedError = approvedError;
+    throw err;
+  }
+  if (pendingError && !approvedSucceeded) {
+    throw pendingError;
+  }
+  if (approvedError && !pendingSucceeded) {
+    throw approvedError;
+  }
+  if (pendingError || approvedError) {
+    const partialErr: any = new Error(
+      pendingSucceeded
+        ? "تم اعتماد العمليات المعلقة بنجاح، ولكن فشل الاعتماد النهائي للعمليات المعتمدة"
+        : "تم الاعتماد النهائي للعمليات المعتمدة بنجاح، ولكن فشل اعتماد العمليات المعلقة",
+    );
+    partialErr.isPartial = true;
+    partialErr.pendingSucceeded = pendingSucceeded;
+    partialErr.approvedSucceeded = approvedSucceeded;
+    partialErr.cause = pendingError || approvedError;
+    throw partialErr;
+  }
+
+  return {
+    pendingSucceeded,
+    approvedSucceeded,
+    isPartial: false,
+  };
 }

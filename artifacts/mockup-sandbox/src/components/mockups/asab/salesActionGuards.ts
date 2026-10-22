@@ -74,9 +74,18 @@ export function hasSalesReconciliationEvidence(value: unknown): boolean {
 /** Re-evaluate immediately at the effect boundary, including modal confirmation. */
 export function runSalesAction(
   context: SalesActionContext | (() => SalesActionContext), action: SalesAction, effect: () => void,
-): boolean {
+): boolean;
+export function runSalesAction<T>(
+  context: SalesActionContext | (() => SalesActionContext), action: SalesAction, effect: () => Promise<T>,
+): Promise<T> | false;
+export function runSalesAction(
+  context: SalesActionContext | (() => SalesActionContext), action: SalesAction, effect: () => any,
+): any {
   if (!getSalesActionPolicy(typeof context === "function" ? context() : context)[action]) return false;
-  effect();
+  const result = effect();
+  if (result && typeof result.then === "function") {
+    return result;
+  }
   return true;
 }
 

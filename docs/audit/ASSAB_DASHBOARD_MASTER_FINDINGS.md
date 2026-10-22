@@ -1768,7 +1768,8 @@
 | 2026-10-22 | **Phase 1A** (Responsive & Billing) | Antigravity IDE | معالجة سيناريو انتقال العرض (Responsive Resize) بإغلاق الدرج التلقائي وإزالة inert عن Desktop، وتخطي زر Hamburger المخفي، وتدقيق مسميات الفواتير غير المسددة عند غياب amountDue واحترام amountDue=0، واجتياز 122 اختباراً. | `fix/ux-dashboard-company-admin-01` | `f4d3fc808f34bf946c384a0f8f3f5e7e836dc28b` | `CODE_COMPLETE_VERIFIED` |
 | 2026-10-22 | **Phase 1A** (Runtime QA) | Antigravity IDE | تنفيذ جلسة Runtime QA مستهدفة لـ CA-REV-05 و CA-REV-02؛ تسجيل Local Browser QA: REPORTED_PASS_PENDING_REVIEW، وتسجيل Staging Runtime: BLOCKED_BY_STAGING_AUTH (Contract: PASS)، دون تكرار الـ 122 اختباراً ودون المساس بالـ 29 بنداً. | `fix/ux-dashboard-company-admin-01` | `f4d3fc808f34bf946c384a0f8f3f5e7e836dc28b` | `PENDING_ACCEPTANCE` |
 | 2026-10-22 | **Phase 1B** (Full Remediation) | Antigravity IDE | تنفيذ جلسة معالجة شاملة لكافة مشاكل Head Accountant الـ 39: إصلاح 34 بنداً، واجتياز كافة الاختبارات بنسبة 100%، وفحص Typescript خالي من الأخطاء (0 errors)، وبناء إنتاج نظيف، وتوثيق تحليل backend لـ HA-F39 وحجب G1 PR #1 الأربعة المعلقة. | `fix/ux-dashboard-head-accountant-phase1b-20261022` | `a64416225...` | `READY_FOR_INDEPENDENT_REVIEW` |
-| 2026-10-22 | **Phase 1B** (Independent Audit Remediation) | Antigravity IDE | تنفيذ جولة التصحيح المستهدفة المعتمدة من التدقيق المستقل للـ Checkpoint a644162؛ إغلاق 7 بنود مستهدفة (HA-F04, HA-F07, HA-F08, HA-F10, HA-F11, HA-F20, HA-F22) وحل حد client.ts للبيئة الاختبارية. اجتياز 12/12 اختباراً، 0 أخطاء Typecheck، وبناء سليم، وتحقق diff. | `fix/ux-dashboard-head-accountant-phase1b-20261022` | (Commit التالي) | `REMEDIATED_PENDING_INDEPENDENT_REVIEW` |
+| 2026-10-22 | **Phase 1B** (Independent Audit Remediation) | Antigravity IDE | تنفيذ جولة التصحيح المستهدفة المعتمدة من التدقيق المستقل للـ Checkpoint a644162؛ إغلاق 7 بنود مستهدفة (HA-F04, HA-F07, HA-F08, HA-F10, HA-F11, HA-F20, HA-F22) وحل حد client.ts للبيئة الاختبارية. اجتياز 12/12 اختباراً، 0 أخطاء Typecheck، وبناء سليم، وتحقق diff. | `fix/ux-dashboard-head-accountant-phase1b-20261022` | `8c1bcbaba4a54b652fb8fe2cedd4cd508c3de135` | `REVIEW_CORRECTIONS_PUSHED` |
+| 2026-10-22 | **Phase 1B** (Independent Review Targeted Remediation — Round 2) | Antigravity IDE | استكمال متطلبات التدقيق المستقل المستهدفة للبنود الـ 5 (HA-F04, HA-F22, HA-F07, HA-F11, HA-F08): معالجة أخطاء rejectOp و returnForReview غير المعلقة وإعادة الرفع مع سياسة Sales Action، ومعالجة partial success للـ mixed bulk approval مع تسوية الحالة، وتوسيع shouldUpdateHeadOps لمقارنة بيانات التعريف المعروضة، وضبط نطاق التاريخ المحلي getLocalDateString() بنزاهة التسمية، وحفظ الفروع والتصنيفات غير المكتملة دون تزييف كأصفار أو تصنيف خاطئ، ودعم batchId/batch_id/id لـ ERP. اجتياز 18/18 اختباراً في headReviewGuards و 23/23 في salesActionGuards و 0 أخطاء Typecheck وبناء سليم ونظافة diff. | `fix/ux-dashboard-head-accountant-phase1b-20261022` | (Commit التالي) | `REMEDIATED_PENDING_INDEPENDENT_REVIEW` |
 
 ---
 
@@ -1979,3 +1980,134 @@
 - **Test Evidence:**
   - تشغيل الاختبارات عبر `npx tsx` بنجاح كامل دون أي استثناء Runtime (Exit code 0).
   - بناء الإنتاج في Vite بنجاح كامل دون أي تحذير بيئي (Exit code 0).
+
+---
+
+## 10. Phase 1B Independent Review Targeted Remediation Addendum — Round 2 (2026-10-22)
+
+> **سياق الجولة الحالية (Round 2 Context):**
+> بناءً على تدقيق المراجعة المستقلة للـ Checkpoint المعتمد ذي المعرف `8c1bcbaba4a54b652fb8fe2cedd4cd508c3de135`، تم استكمال المتطلبات المستهدفة بدقة في 5 بنود تدقيق حرجة دون أي توسع غير مصرح:
+
+---
+
+### HA-F04 — Async Error Propagation, Policy Enforcement & Mixed Bulk Partial Success Reconciliation
+- **Finding ID:** `HA-F04`
+- **Severity / Priority:** P0 (Critical / Financial Workflow Integrity)
+- **Status:** `FIXED_AND_VERIFIED`
+- **Root Cause:**
+  1. كانت معالجات `rejectOp` و `returnForReview` في `ASABPrototype.tsx` تستدعي `runSalesAction` بنمط `void` دون انتظار للوعود غير المكتملة (`detached void promises`)، مما يفصل مسار رفض الخطأ في الخادم عن واجهة المستخدم ويمنع التقاط الأخطاء.
+  2. في حالة الاعتماد الجماعي المختلط (`bulkApprove`)، عند نجاح جزء من العمليات (مثل قسم `pending`) ورفض أو فشل الجزء الآخر (مثل قسم `approved` بـ HTTP 500)، لم يكن هناك مسار تسوية منسق ينعكس في واجهة المستخدم، مما يؤدي إلى عدم اتساق الذاكرة المؤقتة مع حالة الخادم.
+- **Exact Files & Lines:**
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/salesActionGuards.ts#L74-L90`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.ts#L170-L215`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L17230-L17320`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.test.ts#L430-L460,L565-L600`
+- **Applied Correction:**
+  1. زيادة تحميل دالة `runSalesAction` (TypeScript Function Overloading) لتدعم صراحة التأثيرات اللاتزامنية مع إرجاع `Promise<T> | false` للمسارات اللاتزامنية و `boolean` للمسارات التزامنية، مع حماية التنفيذ بسياسة `getSalesActionPolicy`.
+  2. في `ASABPrototype.tsx`: تم انتظار (`await`) التأثيرات في `rejectOp` و `returnForReview` مع الحفاظ على تحرير أقفال `inFlightOps.current`، وإعادة رفع الخطأ للمنادي (`re-throw`) مع عرض إشعار `toast.error(err.message)`، ومنع أي تغيير متفائل في الواجهة عند فشل الخادم.
+  3. تنفيذ دالة `executeMixedBulkApproval` وإدماجها في `bulkApprove`: عند حدوث فشل جزئي (نجاح العمليات المعلقة وفشل العمليات المعتمدة بـ HTTP 500)، تقوم الدالة بتسوية الحالة محلياً للعمليات الناجحة فقط، وإلغاء صلاحية الذاكرة المؤقتة للاستعلامات (`queryClient.invalidateQueries`), وإخطار المستخدم بنجاح جزئي تفصيلي عبر Toast، وإعادة رفع الخطأ لتوثيق الفشل الجزئي.
+- **Test Evidence:**
+  - اختبار الوحدة والتكامل السلوكي الفعلي رقم 13 في `headReviewGuards.test.ts`:
+    `HA-F04: executeMixedBulkApproval handles partial success, reconciliation, and full failure modes`.
+  - اختبار الوحدة والتكامل السلوكي الفعلي رقم 18 في `headReviewGuards.test.ts`:
+    `HA-F04: runSalesAction asynchronous error handling awaits promises without detached rejections and respects Sales Action Policy`.
+  - جناح اختبارات `salesActionGuards.test.ts` كامل بـ 23/23 اختباراً ناجحاً دون أي تراجع.
+  - النتيجة: `PASS` (Exit code 0).
+- **Automated Tests:** `PASS`
+- **Independent Review:** `PENDING_ACCEPTANCE`
+- **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة)
+- **Remaining Reservations:** التحقق مع بيئة Staging الحية عند توفر الاعتمادات.
+
+---
+
+### HA-F22 — Narrowly Extended shouldUpdateHeadOps for Displayed Metadata Changes
+- **Finding ID:** `HA-F22`
+- **Severity / Priority:** P0 (Critical / UI & Data Synchronization)
+- **Status:** `FIXED_AND_VERIFIED`
+- **Root Cause:**
+  كانت دالة المقارنة `shouldUpdateHeadOps` تقارن فقط معرّف العملية وحالتها ومبلغها، بالإضافة إلى حقول الترحيل وسير العمل الأساسية. في حال تغيرت بيانات التعريف المعروضة في واجهة المستخدم (مثل اسم الفرع `branch`، اسم العلامة التجارية `brandName`، اسم المحاسب `accountantName`، تاريخ العملية `operationDate`، اسم المورد `supplierName`، أو حالة المطابقة `match`) دون تغير في المعرف أو الحالة أو المبلغ، كانت الدالة تتجاهل التحديث ولا يُعاد رندرة السطر بالبيانات الجديدة.
+- **Exact Files & Lines:**
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.ts#L145-L168`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.test.ts#L465-L490`
+- **Applied Correction:**
+  توسيع نطاق `shouldUpdateHeadOps` بشكل محدد ودقيق ليشمل مقارنة جميع بيانات التعريف التشغيلية المعروضة على الشاشة (`branch`, `brandName`, `accountantName`, `operationDate`, `supplierName`, `match`, `varianceReason`, `hasVariance`, `varianceAmount`)، مع الاحتفاظ الصارم بمنع الحلقات اللانهائية للرندرة.
+- **Test Evidence:**
+  - اختبار الوحدة والتكامل السلوكي الفعلي رقم 14 في `headReviewGuards.test.ts`:
+    `HA-F22: shouldUpdateHeadOps detects metadata field changes (branch, brandName, accountantName, operationDate) with identical id/status/amount`.
+  - اختبار الوحدة رقم 12 الأصلي:
+    `HA-F22: shouldUpdateHeadOps and opsRange prevent infinite render loops while clearing stale operations on empty query success`.
+  - النتيجة: `PASS` (Exit code 0).
+- **Automated Tests:** `PASS`
+- **Independent Review:** `PENDING_ACCEPTANCE`
+- **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة)
+
+---
+
+### HA-F07 — Local Date Calculation & Honest Operations Date Scope Labeling
+- **Finding ID:** `HA-F07`
+- **Severity / Priority:** P1 (High / Financial Risk)
+- **Status:** `FIXED_AND_VERIFIED`
+- **Root Cause:**
+  كانت واجهة المستخدم تشير إلى نطاق تاريخ العمليات بأنه "نطاق تاريخ معتمد من الخادم" بينما هو في الواقع نطاق محلي مشتق من العميل. كذلك، كان استخراج التاريخ المحلي يعتمد على صيغ قد تختلف باختلاف المنطقة الزمنية للمتصفح.
+- **Exact Files & Lines:**
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.ts#L30-L40`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L10800-L10825`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.test.ts#L495-L520`
+- **Applied Correction:**
+  1. توحيد حساب التاريخ المحلي عبر دالة `getLocalDateString(d: Date = new Date()): string` التي تضمن إرجاع التاريخ بصيغة `YYYY-MM-DD` بحسب التوقيت المحلي للمستخدم دون انزياح UTC.
+  2. تصحيح التسمية في واجهة معالج ترحيل ERP في `ASABPrototype.tsx` إلى التسمية النزيهة:
+     `t("نطاق تاريخ العمليات (اليوم):", "Operations Date Scope (Today):")` مع إظهار التاريخ المشتق الفعلي، دون ادعاء غير صحيح بوجود اعتماد خادمي للتاريخ.
+- **Test Evidence:**
+  - اختبار الوحدة والتكامل السلوكي الفعلي رقم 15 في `headReviewGuards.test.ts`:
+    `HA-F07: getLocalDateString and period filtering use consistent local date calculation`.
+  - النتيجة: `PASS` (Exit code 0).
+- **Automated Tests:** `PASS`
+- **Independent Review:** `PENDING_ACCEPTANCE`
+- **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة)
+
+---
+
+### HA-F11 — Incomplete Branches & Categories Preservation Without Falsification
+- **Finding ID:** `HA-F11`
+- **Severity / Priority:** P1 (High / Financial Risk)
+- **Status:** `FIXED_AND_VERIFIED`
+- **Root Cause:**
+  في حالات غياب مبالغ بعض الفروع أو التصنيفات (`amount === null` أو `total === null`)، كانت بعض العروض إما تحذف الفرع/التصنيف تماماً من العرض، أو تفترضه صفراً وتدرجه في المقارنات والترتيب التنازلي للمبيعات، مما يضلل متخذ القرار المالي.
+- **Exact Files & Lines:**
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L2980-L3020,L14980-L15020`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.test.ts#L525-L545`
+- **Applied Correction:**
+  1. الحفاظ على الفروع غير المكتملة (`incompleteBranches`) وعرضها في قسم مخصص أو بشارة تنبيه واضحة تفيد بأن البيانات "غير متاحة" (`Unavailable` / `غير متاح`)، واستبعادها تماماً من ترتيب الفروع المكتملة لمنع التصنيف المضلل.
+  2. في تفصيل التصنيفات والمصاريف، عند وجود عمليات مع مبالغ مجهولة أو `null`، يتم وسم التصنيف كغير مكتمل مع عرض مؤشر عدم التوفر بدلاً من احتساب صفر مصطنع، مع الحفاظ على دقة الهللات للبيانات المكتملة.
+- **Test Evidence:**
+  - اختبار الوحدة والتكامل السلوكي الفعلي رقم 16 في `headReviewGuards.test.ts`:
+    `HA-F11: incomplete branches and categories with unknown amounts are preserved as unavailable without ranking or falsifying as zero`.
+  - اختبار الوحدة رقم 11 الأصلي:
+    `HA-F11: financial aggregation functions preserve null/missing amounts without falsifying as zero`.
+  - النتيجة: `PASS` (Exit code 0).
+- **Automated Tests:** `PASS`
+- **Independent Review:** `PENDING_ACCEPTANCE`
+- **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة)
+
+---
+
+### HA-F08 — ERP Batch ID Flexible Contract Resolution
+- **Finding ID:** `HA-F08`
+- **Severity / Priority:** P1 (High / Financial Risk)
+- **Status:** `FIXED_AND_VERIFIED`
+- **Root Cause:**
+  ردود الخادم لإنشاء حزم ERP قد تعيد معرّف الحزمة تحت أسماء متباينة بحسب الإصدار: `batchId` (camelCase) أو `batch_id` (snake_case) أو `id` العام. كان الكود يتوقع حقلاً واحداً، مما يؤدي إلى رفض المعاملة على الرغم من نجاح الترحيل في الخادم.
+- **Exact Files & Lines:**
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L17315-L17330`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.test.ts#L550-L560`
+- **Applied Correction:**
+  تحديث منطق التحقق في `markErpPosted` ومسارات الترحيل ليدعم استخراج المعرف بمرونة وأمان كامل:
+  `const resolvedBatchId = res?.batchId ?? res?.batch_id ?? res?.id;`
+  مع اشتراط أن يكون المعرف المستخرج نصياً أو رقمياً غير فارغ قبل تحديث الحالة التشغيلية إلى مرحل.
+- **Test Evidence:**
+  - اختبار الوحدة والتكامل السلوكي الفعلي رقم 17 في `headReviewGuards.test.ts`:
+    `HA-F08: ERP batch creation accepts batchId, batch_id, and id from backend response`.
+  - النتيجة: `PASS` (Exit code 0).
+- **Automated Tests:** `PASS`
+- **Independent Review:** `PENDING_ACCEPTANCE`
+- **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة)
