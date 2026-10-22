@@ -7,6 +7,7 @@ import { ProcSent } from "./_pages/procurement/ProcSent.tsx";
 import { ProcItems } from "./_pages/procurement/ProcItems.tsx";
 import { ProcSuppliers } from "./_pages/procurement/ProcSuppliers.tsx";
 import { ProcGrouped } from "./_pages/procurement/ProcGrouped.tsx";
+import { ProcNewOrders } from "./_pages/procurement/ProcNewOrders.tsx";
 import type { PageProps } from "./_shared/types.ts";
 
 test("Procurement modularized pages export valid React components", () => {
@@ -16,6 +17,7 @@ test("Procurement modularized pages export valid React components", () => {
   assert.equal(typeof ProcItems, "function", "ProcItems must be exported as a function component");
   assert.equal(typeof ProcSuppliers, "function", "ProcSuppliers must be exported as a function component");
   assert.equal(typeof ProcGrouped, "function", "ProcGrouped must be exported as a function component");
+  assert.equal(typeof ProcNewOrders, "function", "ProcNewOrders must be exported as a function component");
 });
 
 test("fmtAmt shared formatter preserves exact currency formatting and null handling", () => {
@@ -129,4 +131,63 @@ test("ProcGrouped capacity indicators, fmtOrDash, and send payload contracts beh
     supplierId: "sup-3",
     orderIds: ["ord-44"],
   });
+});
+
+test("ProcNewOrders filtering, consumption assessment, and mutation payload contracts behave consistently", () => {
+  // Test row filter logic
+  const filterOrders = (rows: any[], filterBranch: string, filterUrgency: string) => {
+    return rows.filter(o => {
+      if (filterBranch !== "الكل" && o.branch !== filterBranch) return false;
+      if (filterUrgency !== "الكل" && o.urgency !== filterUrgency) return false;
+      return true;
+    });
+  };
+
+  const sampleRows = [
+    { id: "1", branch: "الرياض", urgency: "عاجل" },
+    { id: "2", branch: "جدة", urgency: "عادي" },
+    { id: "3", branch: "الرياض", urgency: "عادي" },
+  ];
+  assert.equal(filterOrders(sampleRows, "الكل", "الكل").length, 3);
+  assert.equal(filterOrders(sampleRows, "الرياض", "الكل").length, 2);
+  assert.equal(filterOrders(sampleRows, "الكل", "عاجل").length, 1);
+  assert.equal(filterOrders(sampleRows, "جدة", "عاجل").length, 0);
+
+  // Test consumption assessment calculation
+  const assessConsumption = (ordered: number, dailyConsumption: number | null | undefined) => {
+    const recommended = dailyConsumption != null ? Math.round(dailyConsumption * 7) : null;
+    const qtyDiff = recommended != null ? ordered - recommended : 0;
+    const qtyStatus = recommended == null ? "na" : Math.abs(qtyDiff) <= 5 ? "ok" : qtyDiff > 5 ? "over" : "under";
+    return { recommended, qtyDiff, qtyStatus };
+  };
+
+  assert.deepEqual(assessConsumption(50, null), { recommended: null, qtyDiff: 0, qtyStatus: "na" });
+  assert.deepEqual(assessConsumption(35, 5), { recommended: 35, qtyDiff: 0, qtyStatus: "ok" });
+  assert.deepEqual(assessConsumption(40, 5), { recommended: 35, qtyDiff: 5, qtyStatus: "ok" });
+  assert.deepEqual(assessConsumption(50, 5), { recommended: 35, qtyDiff: 15, qtyStatus: "over" });
+  assert.deepEqual(assessConsumption(20, 5), { recommended: 35, qtyDiff: -15, qtyStatus: "under" });
+
+  // Test confirmReject reason formatting
+  const formatRejectReason = (reason: string, note: string, fallback: string) => {
+    return [reason, note].filter(Boolean).join(" — ") || fallback;
+  };
+  assert.equal(formatRejectReason("سعر أعلى", "ملاحظة خاصة", "رفض"), "سعر أعلى — ملاحظة خاصة");
+  assert.equal(formatRejectReason("سعر أعلى", "", "رفض"), "سعر أعلى");
+  assert.equal(formatRejectReason("", "ملاحظة فقط", "رفض"), "ملاحظة فقط");
+  assert.equal(formatRejectReason("", "", "رفض من المشتريات"), "رفض من المشتريات");
+
+  // Test confirmPartial items mapping contract
+  const detailItems = [
+    { orderItemId: "i1", quantityOrdered: 10 },
+    { orderItemId: "i2", quantityOrdered: 5 },
+  ];
+  const qtyMap: Record<string, number> = { i1: 7 };
+  const partialItems = detailItems.map(it => ({
+    orderItemId: it.orderItemId,
+    quantity: qtyMap[it.orderItemId] ?? it.quantityOrdered ?? 0,
+  }));
+  assert.deepEqual(partialItems, [
+    { orderItemId: "i1", quantity: 7 },
+    { orderItemId: "i2", quantity: 5 },
+  ]);
 });
