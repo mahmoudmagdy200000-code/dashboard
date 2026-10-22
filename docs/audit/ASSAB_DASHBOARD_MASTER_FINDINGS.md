@@ -50,14 +50,16 @@
 
 | المقياس | العدد | النسبة |
 | :--- | :---: | :---: |
-| **إجمالي المشكلات المسجلة (Total Findings)** | **24** | 100% |
-| **تم الإصلاح والتحقق الآلي (Fixed & Verified)** | **20** | 83.3% |
-| **معلقة لقرار / موافقة (Approval Required)** | **4** | 16.7% |
+| **إجمالي المشكلات المسجلة (Original Audit Findings)** | **24** | — |
+| **تصحيحات مراجعة المرحلة 1A (Review Corrections)** | **5** | — |
+| **إجمالي بنود السجل المتابعة (Total Tracked Items)** | **29** | 100% |
+| **تم الإصلاح والتحقق الآلي (Fixed & Verified)** | **25** | 86.2% |
+| **معلقة لقرار / موافقة (Approval Required)** | **4** | 13.8% |
 | **مفتوحة بلا إصلاح (Open)** | **0** | 0.0% |
 | **منفذة دون فحص (Implemented Unverified)** | **0** | 0.0% |
 | **محجوبة بموانع (Blocked)** | **0** | 0.0% |
 | **فاشلة (Failed)** | **0** | 0.0% |
-| **التحقق التشغيلي الحي (Runtime Live Staging)** | **24 NOT_RUN** | بانتظار جلسة QA المستقلة |
+| **التحقق التشغيلي الحي (Runtime Live Staging)** | **29 NOT_RUN** | بانتظار جلسة QA المستقلة |
 
 ---
 
@@ -89,6 +91,16 @@
 | **CA-F22** | P2 | Modules (`ca-modules`) | غياب حماية النقر المزدوج المتزامن أثناء التبديل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `companyAdminGuards.ts` | `0fe15e4` |
 | **CA-F23** | P2 | Shared (`LiveChatWidget`) | فقدان مسودة الشات عند الفشل وخلط الإغلاق بالإنهاء | `FIXED_AND_VERIFIED` | `NOT_RUN` | `LiveChatWidget.tsx`, `companyAdminGuards.ts` | `0fe15e4` |
 | **CA-F24** | P2 | Shared API Routes | مسارات مشتركة وتفضيلات الإشعارات تتطلب تفويضاً | `APPROVAL_REQUIRED` | `NOT_RUN` | حدود العقود البرمجية | — |
+
+### 4.1 Phase 1A — Final Review Corrections (تصحيحات المراجعة اللاحقة)
+
+| ID | الأولوية | الموديول / الصفحة | عنوان التصحيح المعتمد | الحالة البرمجية | الفحص الحي | الملفات المتأثرة | الـ Commit SHA |
+| :---: | :---: | :--- | :--- | :---: | :---: | :--- | :---: |
+| **CA-REV-01** | P1 | Billing (`ca-billing`) | فصل معرّف الفاتورة الداخلي `id` عن المعروض `displayId` واستخدام `id` في تنزيل PDF | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `companyAdminGuards.ts`, `companyAdminGuards.test.ts` | (Commit الحالي) |
+| **CA-REV-02** | P1 | Billing (`ca-billing`) | مؤشرات الفوترة: استهلاك `GET /company/me/billing/summary` وبيانات pagination meta بدلاً من جمع الصفحة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `companyAdminGuards.ts`, `companyAdminGuards.test.ts` | (Commit الحالي) |
+| **CA-REV-03** | P2 | Billing (`ca-billing`) | مطابقة تاريخ الفاتورة `issueDate` من Backend مع الاحتفاظ بـ `issuedAt`/`createdAt` كبدائل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `companyAdminGuards.ts`, `companyAdminGuards.test.ts` | (Commit الحالي) |
+| **CA-REV-04** | P1 | Settings (`ca-settings`) | مسح الحقول الاختيارية (`crNumber`, `email`) بقيمة `null` مع احترام الحقول غير القابلة للـ null (`city`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `companySettingsGuards.ts`, `companySettingsGuards.test.ts`, `companyAdmin.ts` | (Commit الحالي) |
+| **CA-REV-05** | P1 | Layout Shell (`Shell`) | إمكانية الوصول للدرج المحمول (Focus Trap, Escape, `visibility:hidden`, `inert`, وإعادة التركيز) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | (Commit الحالي) |
 
 ---
 
@@ -125,7 +137,7 @@
 - **Original Evidence:** [`CompanyDashboard.tsx#L2579-L2605`](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/CompanyDashboard.tsx#L2579-L2605)
 - **Audit Baseline SHA:** `195315c66d9e7523e799c905b7649a8a7bc8b013`
 - **Root Cause:** استدعاء متفائل فوري لـ `setSent(true)` دون انتظار نجاح الوعد `mutateAsync`.
-- **Proposed Correction:** إرسال التذكرة عبر حارس `runSupportTicketSubmit`، والتحقق الصارم من فئات التذاكر المعتمدة بالباك إند (`general, billing, technical, branch, security, feature`)، واشتراط 10 محارف كحد أدنى، وتأكيد النجاح فقط عند رد الخادم، والاحتفاظ بالمسودة عند الفشل.
+- **Proposed Correction:** إرسال التذكرة عبر حارس `runSupportTicketSubmit`، والتحقق الصارم من فئات التذاكر المعتمدة في كود الواجهة (`technical, subscription, billing, general_inquiry, feature_request, other`)؛ واشتراط 10 محارف كحد أدنى، وتأكيد النجاح فقط عند رد الخادم، والاحتفاظ بالمسودة عند الفشل. (ملاحظة تصحيح التقرير: الكود المرفوع في `supportTicketGuards.ts` يستخدم هذه التصنيفات الصحيحة بالفعل، وتم تصحيح نص التقرير ليتطابق مع الكود دون أي تعديل برمجي غير ضروري).
 - **Implementation Branch:** `fix/ux-dashboard-company-admin-01`
 - **Files Changed:** `CompanyDashboard.tsx`, `supportTicketGuards.ts`, `supportTicketGuards.test.ts`
 - **Implementation Commit SHA:** `0fe15e46b6320bee68f25422eb0dad6a05739fbd`
@@ -622,6 +634,108 @@
 
 ---
 
+## 5.1 Phase 1A — Detailed Review Corrections Register (سجل تصحيحات المراجعة التفصيلي)
+
+### CA-REV-01 — فصل معرّف الفاتورة الداخلي عن المعرّف المعروض واستخدامه لتنزيل PDF
+- **Finding ID:** `CA-REV-01`
+- **Phase:** Phase 1A — Company Admin (Review Correction)
+- **Role / Module / Page:** Company Admin / Billing / `ca-billing`
+- **Problem Description:** كان كود الفواتير يخلط بين المعرّف الداخلي `id` والرقم التسلسلي العام المعروض `publicId`، ما أدى لعرض معرفات داخلية للمستخدم أو احتمالية فشل تنزيل ملف PDF إذا استُخدم معرف غير متطابق مع متطلبات الخادم `/company/me/billing/invoices/:id/pdf`.
+- **Severity / Priority:** P1 (High)
+- **Root Cause:** عدم التمييز الصريح بين المعرّف التقني المطلوب للخادم (`id`) والمعرّف المخصص للعرض (`displayId`).
+- **Proposed Correction:** في `parseInvoice`: فصل تام بين `id` (لـ API) و `displayId` (الذي يأخذ `publicId` أو يرتد لـ `id`). وفي واجهة المستخدم عرض `inv.displayId` وفي زر التنزيل استدعاء `downloadPdfMut.mutate({ id: inv.id, filename: `invoice-${inv.displayId}.pdf` })`.
+- **Implementation Branch:** `fix/ux-dashboard-company-admin-01`
+- **Files Changed:** `companyAdminGuards.ts`, `companyAdminGuards.test.ts`, `CompanyDashboard.tsx`
+- **Implementation Commit SHA:** (Commit الحالي)
+- **Automated Test Results:** `companyAdminGuards.test.ts` — CA-REV-01 test PASS
+- **Runtime Verification Status:** `NOT_RUN`
+- **Current Finding Status:** `FIXED_AND_VERIFIED`
+- **Approval / Decision Required:** لا يوجد.
+- **Remaining Risks:** لا يوجد.
+- **Last Updated Date:** 2026-10-22
+
+---
+
+### CA-REV-02 — حساب مؤشرات الفوترة وفق عقد الملخص الإجمالي وبيانات الترقيم
+- **Finding ID:** `CA-REV-02`
+- **Phase:** Phase 1A — Company Admin (Review Correction)
+- **Role / Module / Page:** Company Admin / Billing / `ca-billing`
+- **Problem Description:** كانت بطاقات المؤشرات (KPIs) تجمع فقط فواتير الصفحة الحالية المعروضة وتظهرها وكأنها إجمالي الشركة، ما يعطي أرقاماً مضللة إذا كانت هناك فواتير في صفحات سابقة أو تالية.
+- **Severity / Priority:** P1 (High)
+- **Root Cause:** الاعتماد على `invoices.reduce(...)` لبيانات الصفحة المفردة فقط وغياب الربط بـ `GET /company/me/billing/summary` وبيانات الترقيم `meta.total`.
+- **Proposed Correction:** استهلاك خطاف `useBillingSummary()` وتمرير `billingSummary` ومعلومات الترقيم `meta.total` إلى دالة `calculateBillingKpis`. في حال توفر الملخص، تُعرض مبالغ الشركة الإجمالية (`totalPaidHalalas`, `outstandingHalalas`) وعدد السجلات الكلي من `meta.total`.
+- **Implementation Branch:** `fix/ux-dashboard-company-admin-01`
+- **Files Changed:** `companyAdminGuards.ts`, `companyAdminGuards.test.ts`, `CompanyDashboard.tsx`
+- **Implementation Commit SHA:** (Commit الحالي)
+- **Automated Test Results:** `companyAdminGuards.test.ts` — CA-REV-02 test PASS
+- **Runtime Verification Status:** `NOT_RUN`
+- **Current Finding Status:** `FIXED_AND_VERIFIED`
+- **Approval / Decision Required:** لا يوجد.
+- **Remaining Risks:** لا يوجد.
+- **Last Updated Date:** 2026-10-22
+
+---
+
+### CA-REV-03 — مطابقة حقل تاريخ الفاتورة issueDate من الخادم
+- **Finding ID:** `CA-REV-03`
+- **Phase:** Phase 1A — Company Admin (Review Correction)
+- **Role / Module / Page:** Company Admin / Billing / `ca-billing`
+- **Problem Description:** كان نموذج الفاتورة يعتمد على `issuedAt` أو `createdAt` دون مطابقة صريحة لحقل `issueDate` المعتمد في عقود الفوترة بالباك إند.
+- **Severity / Priority:** P2 (Medium)
+- **Root Cause:** عدم تضمين `issueDate` في قائمة الأولويات لفحص تواريخ الفواتير.
+- **Proposed Correction:** تحديث `parseInvoice` ليفحص `raw.issueDate` أولاً بأعلى أولوية، ثم يرتد بالتدرج إلى `issuedAt` ثم `createdAt` ثم `date`.
+- **Implementation Branch:** `fix/ux-dashboard-company-admin-01`
+- **Files Changed:** `companyAdminGuards.ts`, `companyAdminGuards.test.ts`
+- **Implementation Commit SHA:** (Commit الحالي)
+- **Automated Test Results:** `companyAdminGuards.test.ts` — CA-REV-03 test PASS
+- **Runtime Verification Status:** `NOT_RUN`
+- **Current Finding Status:** `FIXED_AND_VERIFIED`
+- **Approval / Decision Required:** لا يوجد.
+- **Remaining Risks:** لا يوجد.
+- **Last Updated Date:** 2026-10-22
+
+---
+
+### CA-REV-04 — مسح الحقول الاختيارية بقيمة null مع احترام الحقول غير القابلة للـ null
+- **Finding ID:** `CA-REV-04`
+- **Phase:** Phase 1A — Company Admin (Review Correction)
+- **Role / Module / Page:** Company Admin / Settings / `ca-settings`
+- **Problem Description:** عند قيام المستخدم بمسح الحقول الاختيارية (مثل رقم السجل التجاري والبريد الإلكتروني)، كان الكود يتجاهل الحقول الفارغة أو يرسل قيماً لا تمسح البيانات المخزنة، كما كان إرسال `null` لحقل `city` يتسبب في خطأ 422 من الخادم لكون `city` غير قابلة للـ null.
+- **Severity / Priority:** P1 (High)
+- **Root Cause:** عدم التمييز بين الحقول التي تقبل `null` لتفريغها في قاعدة البيانات (`crNumber`, `email`) والحقول التي تشترط نصاً غير منعدم (`city`, `name`).
+- **Proposed Correction:** في `validateCompanySettings`: إرسال `crNumber: crNumber ? crNumber : null` و `email: email ? email : null` لتمكين تفريغها بالباك إند، مع الامتناع عن إرسال `city` كـ `null` (استبعادها عند الفراغ) لمنع خطأ 422. وتحديث واجهة `CompanySettings` في `companyAdmin.ts` لدعم `string | null`.
+- **Implementation Branch:** `fix/ux-dashboard-company-admin-01`
+- **Files Changed:** `companySettingsGuards.ts`, `companySettingsGuards.test.ts`, `companyAdmin.ts`
+- **Implementation Commit SHA:** (Commit الحالي)
+- **Automated Test Results:** `companySettingsGuards.test.ts` — CA-REV-04 test PASS (20/20 guards tests PASS)
+- **Runtime Verification Status:** `NOT_RUN`
+- **Current Finding Status:** `FIXED_AND_VERIFIED`
+- **Approval / Decision Required:** لا يوجد.
+- **Remaining Risks:** لا يوجد.
+- **Last Updated Date:** 2026-10-22
+
+---
+
+### CA-REV-05 — إمكانية الوصول للدرج المحمول وإدارة التركيز التلقائي
+- **Finding ID:** `CA-REV-05`
+- **Phase:** Phase 1A — Company Admin (Review Correction)
+- **Role / Module / Page:** Layout Shell / Mobile Drawer / `Shell`
+- **Problem Description:** عند إغلاق الدرج المحمول، كان بالإمكان التنقل بلوحة المفاتيح عبر زر Tab إلى العناصر المخفية خارج الشاشة لعدم إخفائها من شجرة إمكانية الوصول، مع غياب نقل التركيز لزر الإغلاق عند الفتح وإعادة التركيز لزر القائمة عند الإغلاق ودعم مفتاح Escape.
+- **Severity / Priority:** P1 (High)
+- **Root Cause:** الاعتماد على تحريك CSS (`translate-x-full`) دون ضبط `visibility: hidden` و `inert` و `aria-hidden` ودون إدارة `focus()`.
+- **Proposed Correction:** إضافة خاصية `visibility: mobileOpen ? "visible" : "hidden"` و `inert={!mobileOpen ? true : undefined}` و `aria-hidden={!mobileOpen}`؛ واستخدام `useRef` لنقل التركيز تلقائياً إلى زر الإغلاق عند الفتح، وإعادة التركيز لزر القائمة الرئيسي عند الإغلاق، ودعم مفتاح `Escape` للخروج السريع.
+- **Implementation Branch:** `fix/ux-dashboard-company-admin-01`
+- **Files Changed:** `CompanyDashboard.tsx`
+- **Implementation Commit SHA:** (Commit الحالي)
+- **Automated Test Results:** Typecheck 0 errors, Production Build Complete
+- **Runtime Verification Status:** `NOT_RUN`
+- **Current Finding Status:** `FIXED_AND_VERIFIED`
+- **Approval / Decision Required:** لا يوجد.
+- **Remaining Risks:** لا يوجد.
+- **Last Updated Date:** 2026-10-22
+
+---
+
 ## 6. Subsequent Phases — Import Queue (طابور استيراد المراحل القادمة)
 
 وفقاً للسياسة الصارمة، لا يتم اختلاق أي أرقام أو مشاكل افتراضية، ويتم إدراج تقارير المراحل فقط عندما تصدر حزم التدقيق المعتمدة الخاصة بها:
@@ -645,4 +759,5 @@
 | :---: | :---: | :---: | :--- | :--- | :---: | :---: |
 | 2026-10-22 | **Phase 1A** (Setup) | ChatGPT Draft | إنشاء مسودة أولية لسجل المشكلات من حزمة الـ WORK ZIP المعتمدة (24 Findings). | `work/dashboard-shift-cycle-20261015` | `195315c66...` (Base) | `DRAFT_FOR_IMPORT` |
 | 2026-10-22 | **Phase 1A** (Remediation) | Antigravity IDE | استكمال تنفيذ جميع إصلاحات Phase 1A المعتمدة الـ 20 واجتياز 118 فحصاً آلياً و 0 أخطاء TypeScript وتجميد 4 بنود تتطلب موافقة. | `fix/ux-dashboard-company-admin-01` | `0fe15e46b...` | `CODE_COMPLETE_VERIFIED` |
-| 2026-10-22 | **Phase 1A** (Register) | Antigravity IDE | اعتماد ونشر النسخة الرسمية الدائمة من Master Findings Register مع التوثيق الكامل وتفعيل المزامنة الثنائية. | `fix/ux-dashboard-company-admin-01` | `docs(audit)` commit | `GOVERNED_AND_PUBLISHED` |
+| 2026-10-22 | **Phase 1A** (Register) | Antigravity IDE | اعتماد ونشر النسخة الرسمية الدائمة من Master Findings Register مع التوثيق الكامل وتفعيل المزامنة الثنائية. | `fix/ux-dashboard-company-admin-01` | `c28bab9f9...` | `GOVERNED_AND_PUBLISHED` |
+| 2026-10-22 | **Phase 1A** (Review Fixes) | Antigravity IDE | معالجة تصحيحات مراجعة المرحلة 1A الخمسة (PDF ID, Billing KPIs, Invoice Date, Settings Nullable, Drawer Focus) وتحديث السجل الدائم بالمزامنة الثنائية. | `fix/ux-dashboard-company-admin-01` | (Commit الحالي) | `REVIEW_FIXES_VERIFIED` |

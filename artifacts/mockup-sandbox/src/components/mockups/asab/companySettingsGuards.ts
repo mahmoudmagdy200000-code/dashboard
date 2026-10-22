@@ -14,8 +14,8 @@ export interface CompanySettingsValidationResult {
   payload?: {
     name: string;
     city?: string;
-    crNumber?: string;
-    email?: string;
+    crNumber?: string | null;
+    email?: string | null;
   };
 }
 
@@ -58,9 +58,12 @@ export function validateCompanySettings(
     error: null,
     payload: {
       name,
+      // City does not accept null on backend (sometimes|string|max:80), only send if non-empty
       ...(city ? { city } : {}),
-      ...(crNumber ? { crNumber } : {}),
-      ...(email ? { email } : {}),
+      // Optional fields in backend (sometimes|nullable|string/email):
+      // Sending null explicitly clears the field without omitting it from the PUT/PATCH payload.
+      crNumber: crNumber ? crNumber : null,
+      email: email ? email : null,
     },
   };
 }

@@ -72,8 +72,10 @@ export type InvoiceStatus = "paid" | "open" | "overdue" | "void" | "unknown";
 export interface RawInvoice {
   id?: string;
   publicId?: string;
+  issueDate?: string;
   issuedAt?: string;
   createdAt?: string;
+  date?: string;
   totalHalalas?: number | null;
   amount?: number | null;
   amountDueHalalas?: number | null;
@@ -82,7 +84,10 @@ export interface RawInvoice {
 }
 
 export interface ParsedInvoice {
+  /** Internal ID used for API endpoints (e.g. GET /invoices/:id/pdf) */
   id: string;
+  /** Public user-facing identifier (e.g. INV-2026-001) */
+  displayId: string;
   date: string;
   amount: number;
   amountDue: number;
@@ -90,8 +95,10 @@ export interface ParsedInvoice {
 }
 
 export function parseInvoice(raw: RawInvoice): ParsedInvoice {
-  const id = raw.publicId || raw.id || "—";
-  const date = raw.issuedAt || raw.createdAt || "";
+  const internalId = raw.id || raw.publicId || "";
+  const displayId = raw.publicId || raw.id || "—";
+  // Matches issueDate from Backend first, falling back to issuedAt / createdAt
+  const date = raw.issueDate || raw.issuedAt || raw.createdAt || raw.date || "";
   const amount = raw.totalHalalas != null ? raw.totalHalalas / 100 : raw.amount != null ? Number(raw.amount) : 0;
   const amountDue = raw.amountDueHalalas != null ? raw.amountDueHalalas / 100 : raw.amountDue != null ? Number(raw.amountDue) : 0;
   let status: InvoiceStatus = "unknown";
@@ -101,22 +108,42 @@ export function parseInvoice(raw: RawInvoice): ParsedInvoice {
   else if (s === "overdue" || s === "late") status = "overdue";
   else if (s === "void" || s === "cancelled") status = "void";
 
-  return { id, date, amount, amountDue, status };
+  return { id: internalId, displayId, date, amount, amountDue, status };
 }
 
-export function calculateBillingKpis(invoices: ParsedInvoice[]) {
+export interface BillingSummaryKpiInput {
+  totalPaidHalalas?: number | null;
+  outstandingHalalas?: number | null;
+  nextInvoiceDate?: string | null;
+  nextInvoiceAmountHalalas?: number | null;
+}
+
+export function calculateBillingKpis(
+  invoices: ParsedInvoice[],
+  summary?: BillingSummaryKpiInput | null,
+  totalCountMeta?: number | null
+) {
   const paid = invoices.filter((i) => i.status === "paid");
   const openOrOverdue = invoices.filter((i) => i.status === "open" || i.status === "overdue");
 
-  const totalPaid = paid.reduce((sum, i) => sum + i.amount, 0);
-  const totalDue = openOrOverdue.reduce((sum, i) => sum + (i.amountDue || i.amount), 0);
+  // Prioritize company-wide totals from GET /company/me/billing/summary over single-page sum
+  const totalPaid = summary?.totalPaidHalalas != null
+    ? Math.round(summary.totalPaidHalalas / 100)
+    : paid.reduce((sum, i) => sum + i.amount, 0);
+
+  const totalDue = summary?.outstandingHalalas != null
+    ? Math.round(summary.outstandingHalalas / 100)
+    : openOrOverdue.reduce((sum, i) => sum + (i.amountDue || i.amount), 0);
+
+  const totalCount = totalCountMeta != null ? totalCountMeta : invoices.length;
 
   return {
     totalPaid,
     totalDue,
     paidCount: paid.length,
     dueCount: openOrOverdue.length,
-    totalCount: invoices.length,
+    totalCount,
+    isSummaryBased: summary?.totalPaidHalalas != null || summary?.outstandingHalalas != null,
   };
 }
 

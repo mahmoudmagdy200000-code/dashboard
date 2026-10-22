@@ -86,7 +86,7 @@ test("validateCompanySettings validates email format when provided", () => {
   });
 });
 
-test("validateCompanySettings trims values and omits empty optional fields", () => {
+test("CA-REV-04: validateCompanySettings clears optional fields with null and preserves non-null constraints", () => {
   const res = validateCompanySettings({
     name: "  مطاعم الريان  ",
     city: "  الرياض  ",
@@ -97,6 +97,22 @@ test("validateCompanySettings trims values and omits empty optional fields", () 
   assert.deepEqual(res.payload, {
     name: "مطاعم الريان",
     city: "الرياض",
+    crNumber: null,
+    email: null,
+  });
+
+  // When city is empty, non-nullable city is omitted so it does not send null to Backend
+  const resNoCity = validateCompanySettings({
+    name: "مطاعم الريان",
+    city: "",
+    crNumber: "1010123456",
+    email: "info@rayan.sa",
+  }, "ar");
+  assert.equal(resNoCity.valid, true);
+  assert.deepEqual(resNoCity.payload, {
+    name: "مطاعم الريان",
+    crNumber: "1010123456",
+    email: "info@rayan.sa",
   });
 });
 

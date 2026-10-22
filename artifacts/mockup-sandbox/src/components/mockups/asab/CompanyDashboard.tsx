@@ -36,7 +36,7 @@ import {
   useCompanySettings, useUpdateCompanySettings, useUpgradeSubscription, useContactSales,
   useCompanySubscription, useCompanyPlans,
   // Billing
-  useBillingInvoices, useExportInvoices, useDownloadInvoicePDF, useExportJobStatus,
+  useBillingSummary, useBillingInvoices, useExportInvoices, useDownloadInvoicePDF, useExportJobStatus,
   // Support
   useSupportChannels, useCreateTicket,
   // Head
@@ -952,6 +952,18 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, a
   const pageLabel = t(pageLabelAr, pageLabelEn);
   const [mobileOpen, setMobileOpen] = useState(false);
   const langPrefMut = useLanguagePref();
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const prevMobileOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (mobileOpen) {
+      closeBtnRef.current?.focus();
+    } else if (prevMobileOpenRef.current) {
+      menuBtnRef.current?.focus();
+    }
+    prevMobileOpenRef.current = mobileOpen;
+  }, [mobileOpen]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -981,6 +993,7 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, a
         </div>
         {isMobile && (
           <button
+            ref={closeBtnRef}
             type="button"
             onClick={() => setMobileOpen(false)}
             className="text-white/60 hover:text-white p-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/40"
@@ -1075,10 +1088,15 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, a
         />
       )}
       <div
-        className={`fixed inset-y-0 ${dir === "rtl" ? "right-0" : "left-0"} z-50 w-72 max-w-[85vw] flex flex-col shadow-2xl transition-transform duration-200 md:hidden ${mobileOpen ? "translate-x-0" : dir === "rtl" ? "translate-x-full" : "-translate-x-full"}`}
-        style={{ background: SIDEBAR_GRAD }}
+        className={`fixed inset-y-0 ${dir === "rtl" ? "right-0" : "left-0"} z-50 w-72 max-w-[85vw] flex flex-col shadow-2xl transition-all duration-200 md:hidden ${mobileOpen ? "translate-x-0 opacity-100" : `${dir === "rtl" ? "translate-x-full" : "-translate-x-full"} opacity-0 pointer-events-none`}`}
+        style={{
+          background: SIDEBAR_GRAD,
+          visibility: mobileOpen ? "visible" : "hidden",
+        }}
         role="dialog"
-        aria-modal="true"
+        aria-modal={mobileOpen}
+        aria-hidden={!mobileOpen}
+        inert={!mobileOpen ? true : undefined}
         aria-label={t("القائمة الجانبية", "Sidebar menu")}
       >
         {renderSidebarContent(true)}
@@ -1089,6 +1107,7 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, a
         <header className="bg-white border-b border-gray-100 px-3 sm:px-4 md:px-6 py-2.5 sm:py-3 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2 text-sm text-gray-500 min-w-0">
             <button
+              ref={menuBtnRef}
               type="button"
               onClick={() => setMobileOpen(true)}
               className="p-1.5 -mx-1 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-400 md:hidden flex-shrink-0"
@@ -2631,6 +2650,7 @@ function CAModules() {
 function CABilling() {
   const { t, dir } = useCLang();
   const { data: apiInvoicesPage, isLoading: isInvoicesLoading, isError: isInvoicesError, refetch: refetchInvoices } = useBillingInvoices();
+  const { data: billingSummary } = useBillingSummary();
   const exportMut = useExportInvoices();
   const downloadPdfMut = useDownloadInvoicePDF();
   const [exportJobId, setExportJobId] = useState<string | null>(null);
@@ -2643,7 +2663,8 @@ function CABilling() {
     ? apiInvoicesPage
     : ((apiInvoicesPage as any)?.data ?? []);
   const invoices = apiInvoices.map((i: any) => parseInvoice(i));
-  const kpis = calculateBillingKpis(invoices);
+  const totalCountMeta = (apiInvoicesPage as any)?.meta?.total ?? null;
+  const kpis = calculateBillingKpis(invoices, billingSummary, totalCountMeta);
 
   const renderStatusBadge = (status: string) => {
     switch (status) {
@@ -2664,9 +2685,27 @@ function CABilling() {
     <div className="space-y-5" dir={dir}>
       <div><h2 className="text-xl font-bold text-gray-800">{t("الفواتير والمدفوعات","Invoices & Payments")}</h2></div>
       <div className="grid grid-cols-3 gap-4">
-        <KpiCard label={t("إجمالي المدفوع","Total Paid")} value={fmt(kpis.totalPaid)} sub={t(`${kpis.paidCount} فاتورة مدفوعة`, `${kpis.paidCount} paid invoices`)} icon={<Wallet size={18} className="text-emerald-600"/>} accent="emerald"/>
-        <KpiCard label={t("المبالغ المستحقة","Outstanding Due")} value={fmt(kpis.totalDue)} sub={t(`${kpis.dueCount} فواتير معلقة`, `${kpis.dueCount} pending invoices`)} icon={<CreditCard size={18} className="text-amber-600"/>} accent="amber"/>
-        <KpiCard label={t("إجمالي الفواتير","Total Invoices")} value={String(kpis.totalCount)} sub={t("سجل الفواتير الكامل", "All invoice records")} icon={<FileText size={18} className="text-blue-600"/>} accent="blue"/>
+        <KpiCard
+          label={t("إجمالي المدفوع","Total Paid")}
+          value={fmt(kpis.totalPaid)}
+          sub={kpis.isSummaryBased ? t("إجمالي مدفوعات الشركة", "Company total paid") : t(`${kpis.paidCount} فاتورة مدفوعة`, `${kpis.paidCount} paid invoices`)}
+          icon={<Wallet size={18} className="text-emerald-600"/>}
+          accent="emerald"
+        />
+        <KpiCard
+          label={t("المبالغ المستحقة","Outstanding Due")}
+          value={fmt(kpis.totalDue)}
+          sub={kpis.isSummaryBased ? t("مستحقات الشركة الإجمالية", "Company total outstanding") : t(`${kpis.dueCount} فواتير معلقة`, `${kpis.dueCount} pending invoices`)}
+          icon={<CreditCard size={18} className="text-amber-600"/>}
+          accent="amber"
+        />
+        <KpiCard
+          label={t("إجمالي الفواتير","Total Invoices")}
+          value={String(kpis.totalCount)}
+          sub={totalCountMeta != null ? t(`من أصل ${totalCountMeta} فاتورة`, `Of ${totalCountMeta} total records`) : t("سجل الفواتير الكامل", "All invoice records")}
+          icon={<FileText size={18} className="text-blue-600"/>}
+          accent="blue"
+        />
       </div>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
@@ -2702,16 +2741,16 @@ function CABilling() {
                 <FileText size={16} className="text-emerald-600"/>
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-gray-800 text-sm" dir="ltr">{inv.id}</p>
+                <p className="font-semibold text-gray-800 text-sm" dir="ltr">{inv.displayId}</p>
                 <p className="text-xs text-gray-400">{inv.date}</p>
               </div>
               <span className="font-mono font-bold text-gray-800">{fmt(inv.amount)} {t("ر.س","SAR")}</span>
               {renderStatusBadge(inv.status)}
               <button
                 disabled={downloadPdfMut.isPending}
-                onClick={() => downloadPdfMut.mutate({ id: inv.id })}
+                onClick={() => downloadPdfMut.mutate({ id: inv.id, filename: `invoice-${inv.displayId}.pdf` })}
                 className="p-1.5 rounded-lg text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors disabled:opacity-50"
-                aria-label={t(`تحميل فاتورة ${inv.id}`, `Download invoice ${inv.id}`)}
+                aria-label={t(`تحميل فاتورة ${inv.displayId}`, `Download invoice ${inv.displayId}`)}
               >
                 <Download size={13}/>
               </button>

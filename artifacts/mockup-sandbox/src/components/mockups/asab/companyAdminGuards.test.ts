@@ -70,6 +70,80 @@ test("CA-F03: parseInvoice and calculateBillingKpis compute totalPaid ONLY from 
   assert.equal(kpis.totalCount, 4);
 });
 
+test("CA-REV-01: parseInvoice separates internal id (for PDF download) and public displayId", () => {
+  const invWithBoth = parseInvoice({
+    id: "uuid-9876-internal",
+    publicId: "INV-2026-0042",
+    totalHalalas: 150000,
+    status: "paid",
+  });
+  assert.equal(invWithBoth.id, "uuid-9876-internal", "Internal id must be preserved for backend PDF API");
+  assert.equal(invWithBoth.displayId, "INV-2026-0042", "displayId must show publicId to user");
+
+  const invFallback = parseInvoice({
+    id: "uuid-fallback-only",
+    totalHalalas: 50000,
+    status: "open",
+  });
+  assert.equal(invFallback.id, "uuid-fallback-only");
+  assert.equal(invFallback.displayId, "uuid-fallback-only", "Fallback to id when publicId is absent");
+});
+
+test("CA-REV-02: calculateBillingKpis prioritizes company-wide summary over current page sum", () => {
+  // Page with only 2 invoices (e.g., current page of 20)
+  const pageInvoices = [
+    parseInvoice({ id: "inv_1", totalHalalas: 10000, status: "paid" }),  // 100 SAR paid
+    parseInvoice({ id: "inv_2", totalHalalas: 20000, status: "open" }),  // 200 SAR open
+  ];
+
+  // Company-wide summary from GET /company/me/billing/summary
+  const companySummary = {
+    totalPaidHalalas: 8500000, // 85,000 SAR total paid across company history
+    outstandingHalalas: 450000, // 4,500 SAR total outstanding
+  };
+  const totalCountFromMeta = 150; // Total invoices from Page.meta.total
+
+  const kpis = calculateBillingKpis(pageInvoices, companySummary, totalCountFromMeta);
+
+  assert.equal(kpis.totalPaid, 85000, "totalPaid must use company-wide summary (not 100 SAR from current page)");
+  assert.equal(kpis.totalDue, 4500, "totalDue must use company-wide summary (not 200 SAR from current page)");
+  assert.equal(kpis.totalCount, 150, "totalCount must reflect pagination meta.total (not 2 from current page)");
+  assert.equal(kpis.isSummaryBased, true);
+
+  // Fallback behavior when summary is absent
+  const fallbackKpis = calculateBillingKpis(pageInvoices);
+  assert.equal(fallbackKpis.totalPaid, 100);
+  assert.equal(fallbackKpis.totalDue, 200);
+  assert.equal(fallbackKpis.totalCount, 2);
+  assert.equal(fallbackKpis.isSummaryBased, false);
+});
+
+test("CA-REV-03: parseInvoice matches issueDate from Backend before falling back to issuedAt / createdAt", () => {
+  // Case 1: Backend sends issueDate (standard billing field)
+  const inv1 = parseInvoice({
+    id: "inv_1",
+    issueDate: "2026-10-22",
+    issuedAt: "2026-10-21T00:00:00Z",
+    createdAt: "2026-10-20T00:00:00Z",
+  });
+  assert.equal(inv1.date, "2026-10-22", "issueDate must take precedence over issuedAt and createdAt");
+
+  // Case 2: issueDate missing, issuedAt present
+  const inv2 = parseInvoice({
+    id: "inv_2",
+    issuedAt: "2026-10-21T00:00:00Z",
+    createdAt: "2026-10-20T00:00:00Z",
+  });
+  assert.equal(inv2.date, "2026-10-21T00:00:00Z", "issuedAt must be used when issueDate is absent");
+
+  // Case 3: only createdAt present
+  const inv3 = parseInvoice({
+    id: "inv_3",
+    createdAt: "2026-10-20T00:00:00Z",
+  });
+  assert.equal(inv3.date, "2026-10-20T00:00:00Z", "createdAt must be used as final fallback");
+});
+
 test("CA-F09: parseSupportChannel maps backend fields and determines correct actionType", () => {
   const ch1 = parseSupportChannel({
     key: "phone",
