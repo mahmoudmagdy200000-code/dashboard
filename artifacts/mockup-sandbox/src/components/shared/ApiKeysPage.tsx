@@ -51,10 +51,30 @@ export function ApiKeysPage({ t = (ar) => ar }: Props) {
     setShowCreate(false);
   };
 
-  const copyKey = () => {
-    if (created) navigator.clipboard?.writeText(created.key);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  const copyKey = async () => {
+    if (!created?.key) return;
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(created.key);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = created.key;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        const success = document.execCommand("copy");
+        document.body.removeChild(textarea);
+        if (success) {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        }
+      }
+    } catch {
+      setCopied(false);
+    }
   };
 
   const card: React.CSSProperties = { background: "white", borderRadius: 12, border: "1px solid rgba(0,0,0,0.06)", overflow: "hidden" };
@@ -83,7 +103,7 @@ export function ApiKeysPage({ t = (ar) => ar }: Props) {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <code style={{ flex: 1, background: "white", padding: "10px 12px", borderRadius: 8, fontSize: 12, direction: "ltr", wordBreak: "break-all", border: "1px solid #d1fae5" }}>{created.key}</code>
-            <button onClick={copyKey} style={{ ...primaryBtn, background: "#059669" }}>{copied ? <Check size={15} /> : <Copy size={15} />}</button>
+            <button onClick={copyKey} aria-label={copied ? t("تم النسخ", "Copied") : t("نسخ المفتاح", "Copy key")} style={{ ...primaryBtn, background: "#059669" }}>{copied ? <Check size={15} /> : <Copy size={15} />}</button>
           </div>
         </div>
       )}
@@ -96,7 +116,13 @@ export function ApiKeysPage({ t = (ar) => ar }: Props) {
           <label style={{ fontSize: 12, fontWeight: 700, color: "#475569", display: "block", marginBottom: 6 }}>{t("الصلاحيات", "Scopes")}</label>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
             {ALL_SCOPES.map((s) => (
-              <button key={s.key} onClick={() => toggleScope(s.key)} style={{ padding: "6px 12px", borderRadius: 999, border: scopes.includes(s.key) ? "2px solid #7C3AED" : "1px solid #e2e8f0", background: scopes.includes(s.key) ? "rgba(124,58,237,0.06)" : "white", fontSize: 12, cursor: "pointer", fontFamily: FONT, color: "#334155" }}>
+              <button
+                key={s.key}
+                type="button"
+                role="switch"
+                aria-checked={scopes.includes(s.key)}
+                onClick={() => toggleScope(s.key)}
+                style={{ padding: "6px 12px", borderRadius: 999, border: scopes.includes(s.key) ? "2px solid #7C3AED" : "1px solid #e2e8f0", background: scopes.includes(s.key) ? "rgba(124,58,237,0.06)" : "white", fontSize: 12, cursor: "pointer", fontFamily: FONT, color: "#334155" }}>
                 {t(s.ar, s.key)}
               </button>
             ))}

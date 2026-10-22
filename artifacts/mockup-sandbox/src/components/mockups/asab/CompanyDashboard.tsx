@@ -83,6 +83,9 @@ import type {
 } from "../../../api/types/company";
 import { getErrorMessage, isApiError } from "../../../api/errors";
 import { isUnassignedAsset, buildAssignPatch, branchPatchPart } from "./assetAssignment";
+import { initialCompanySettingsState, runCompanySettingsSave, type CompanySettingsFormState } from "./companySettingsGuards";
+import { SUPPORT_TICKET_CATEGORIES, runSupportTicketSubmit } from "./supportTicketGuards";
+import { validateBranchCreate, validateUserEdit, parseInvoice, calculateBillingKpis, parseSupportChannel, formatPlanPrice, formatQuota, canToggleModule } from "./companyAdminGuards";
 import { NotificationBell } from "../../shared/NotificationBell";
 import { RejectModal } from "../../shared/RejectModal";
 import { ClarifyModal } from "../../shared/ClarifyModal";
@@ -109,7 +112,7 @@ import {
   Send, Check, Download, Zap, Lock, ChevronDown, ChevronUp,
   Eye, Paperclip, ThumbsUp, ThumbsDown, Upload, Clipboard,
   Home, RotateCcw, Filter, GitMerge, ArrowRightToLine, CheckSquare, Edit3,
-  Activity, Trash2, Globe
+  Activity, Trash2, Globe, Menu
 } from "lucide-react";
 
 // ═══════════════════════════════════════════════════
@@ -947,93 +950,165 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, a
   const pageLabelAr = activeNavItem?.label || "";
   const pageLabelEn = activeNavItem ? (EN_C_NAV_LABELS[activeNavItem.id] || pageLabelAr) : "";
   const pageLabel = t(pageLabelAr, pageLabelEn);
-  const [showNotif,setShowNotif]=useState(false);
-  const [notifs,setNotifs]=useState(SHELL_NOTIFICATIONS);
-  const unreadCount=notifs.filter(n=>n.unread).length;
+  const [mobileOpen, setMobileOpen] = useState(false);
   const langPrefMut = useLanguagePref();
-  return (
-    <div className="flex h-screen overflow-hidden" dir={dir}>
-      <div className="w-60 flex-shrink-0 flex flex-col" style={{ background:SIDEBAR_GRAD }}>
-        <div className="px-4 py-5 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background:"linear-gradient(135deg,#7C3AED,#00D9FF)" }}>{COMPANY.logo}</div>
-            <div className="min-w-0">
-              <p className="text-white font-bold text-sm leading-tight truncate">{COMPANY.name}</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-xs text-cyan-400 font-semibold">{t(PLAN_AR[COMPANY.plan]||COMPANY.plan, COMPANY.plan)}</span>
-                <span className="w-1 h-1 rounded-full bg-emerald-400"/>
-              </div>
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && mobileOpen) setMobileOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
+
+  const handleNav = (p: string) => {
+    navigate(p);
+    setMobileOpen(false);
+  };
+
+  const renderSidebarContent = (isMobile = false) => (
+    <>
+      <div className="px-4 py-4 sm:py-5 border-b border-white/10 flex items-center justify-between">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{ background:"linear-gradient(135deg,#7C3AED,#00D9FF)" }}>{COMPANY.logo}</div>
+          <div className="min-w-0">
+            <p className="text-white font-bold text-sm leading-tight truncate">{COMPANY.name}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-xs text-cyan-400 font-semibold">{t(PLAN_AR[COMPANY.plan]||COMPANY.plan, COMPANY.plan)}</span>
+              <span className="w-1 h-1 rounded-full bg-emerald-400"/>
             </div>
           </div>
         </div>
-        <div className="px-4 py-3 border-b border-white/10">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10">
-            <span className="text-base">{meta.icon}</span>
-            <div>
-              <p className="text-white text-xs font-bold">{t(meta.label, enMeta.label)}</p>
-              <p className="text-white/40 text-[10px]">{t("مجموعة التاج","Al-Taj Group")}</p>
-            </div>
-          </div>
-        </div>
-        {allowedRoles.length>1 && <div className="px-4 py-2 border-b border-white/10">
-          <select aria-label={t("الدور الممنوح","Granted role")} value={role}
-            onChange={e=>onSelectRole(e.target.value as CRole)}
-            className="w-full rounded-lg bg-white text-gray-800 text-xs px-2 py-1.5">
-            {allowedRoles.map(r=><option key={r} value={r}>{t(ROLE_META[r].label,EN_C_ROLE_META[r].label)}</option>)}
-          </select>
-        </div>}
-        <nav className="flex-1 px-3 py-3 overflow-y-auto">
-          {nav.map((entry,i)=>{
-            if(isSection(entry)) return (
-              <p key={i} className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-2 mt-4 mb-1 first:mt-0">
-                {t(entry.section, EN_C_SECTIONS[entry.section]||entry.section)}
-              </p>
-            );
-            const item = entry as any;
-            const active = page===item.id;
-            const itemLabel = t(item.label, EN_C_NAV_LABELS[item.id]||item.label);
-            return (
-              <button key={item.id} onClick={()=>navigate(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mb-0.5 ${active?"bg-white/15 text-white":"text-white/60 hover:bg-white/8 hover:text-white/90"}`}>
-                <span className={active?"text-cyan-400":""}>{item.icon}</span>
-                <span className={`flex-1 ${dir==="rtl"?"text-right":"text-left"}`}>{itemLabel}</span>
-                {item.id==="head-pending" && headPendingCount>0
-                  ? <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{headPendingCount}</span>
-                  : item.badge ? <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{item.badge}</span> : null}
-              </button>
-            );
-          })}
-        </nav>
-        <div className="p-3 border-t border-white/10 space-y-1">
+        {isMobile && (
           <button
-            onClick={()=>{
-              const next = lang==="ar"?"en":"ar";
-              setLang(next);
-              langPrefMut.mutate({ language: next });
-            }}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-white/50 hover:text-white/80 hover:bg-white/8 transition-all text-sm">
-            <Globe size={14}/> {lang==="ar" ? "English" : "عربي"}
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            className="text-white/60 hover:text-white p-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/40"
+            aria-label={t("إغلاق القائمة", "Close menu")}
+          >
+            <X size={20} />
           </button>
-          <button onClick={onLogout} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-white/50 hover:text-white/80 hover:bg-white/8 transition-all text-sm">
-            <LogOut size={14}/> {t("تسجيل الخروج","Sign Out")}
-          </button>
+        )}
+      </div>
+      <div className="px-4 py-3 border-b border-white/10">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10">
+          <span className="text-base">{meta.icon}</span>
+          <div>
+            <p className="text-white text-xs font-bold">{t(meta.label, enMeta.label)}</p>
+            <p className="text-white/40 text-[10px]">{t("مجموعة التاج","Al-Taj Group")}</p>
+          </div>
         </div>
       </div>
-      <div className="flex-1 flex flex-col overflow-hidden" style={{ background:BG_CONTENT }}>
-        <div className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span className="font-bold text-gray-800">{COMPANY.name}</span>
-            <ChevronRight size={12} className={`text-gray-300 ${dir==="ltr"?"rotate-180":""}`}/>
-            <span>{pageLabel}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-100">● {t(PLAN_AR[COMPANY.plan]||COMPANY.plan, COMPANY.plan)}</Badge>
-            <Badge className="bg-purple-50 text-purple-700 border border-purple-100">{meta.icon} {t(meta.label, enMeta.label)}</Badge>
-            <GlobalSearch t={t} theme="light"/>
-            <NotificationBell t={t} theme="light"/>
-          </div>
+      {allowedRoles.length > 1 && (
+        <div className="px-4 py-2 border-b border-white/10">
+          <select
+            aria-label={t("الدور الممنوح","Granted role")}
+            value={role}
+            onChange={e => { onSelectRole(e.target.value as CRole); setMobileOpen(false); }}
+            className="w-full rounded-lg bg-white text-gray-800 text-xs px-2 py-1.5 outline-none"
+          >
+            {allowedRoles.map(r => <option key={r} value={r}>{t(ROLE_META[r].label, EN_C_ROLE_META[r].label)}</option>)}
+          </select>
         </div>
-        <div className="flex-1 overflow-y-auto p-6">{children}</div>
+      )}
+      <nav className="flex-1 px-3 py-3 overflow-y-auto">
+        {nav.map((entry, i) => {
+          if (isSection(entry)) return (
+            <p key={i} className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-2 mt-4 mb-1 first:mt-0">
+              {t(entry.section, EN_C_SECTIONS[entry.section] || entry.section)}
+            </p>
+          );
+          const item = entry as any;
+          const active = page === item.id;
+          const itemLabel = t(item.label, EN_C_NAV_LABELS[item.id] || item.label);
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleNav(item.id)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all mb-0.5 ${active ? "bg-white/15 text-white" : "text-white/60 hover:bg-white/8 hover:text-white/90"}`}
+            >
+              <span className={active ? "text-cyan-400" : ""}>{item.icon}</span>
+              <span className={`flex-1 ${dir === "rtl" ? "text-right" : "text-left"}`}>{itemLabel}</span>
+              {item.id === "head-pending" && headPendingCount > 0 ? (
+                <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{headPendingCount}</span>
+              ) : item.badge ? (
+                <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{item.badge}</span>
+              ) : null}
+            </button>
+          );
+        })}
+      </nav>
+      <div className="p-3 border-t border-white/10 space-y-1">
+        <button
+          onClick={() => {
+            const next = lang === "ar" ? "en" : "ar";
+            setLang(next);
+            langPrefMut.mutate({ language: next });
+          }}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-white/50 hover:text-white/80 hover:bg-white/8 transition-all text-sm"
+        >
+          <Globe size={14} /> {lang === "ar" ? "English" : "عربي"}
+        </button>
+        <button
+          onClick={() => { onLogout(); setMobileOpen(false); }}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-white/50 hover:text-white/80 hover:bg-white/8 transition-all text-sm"
+        >
+          <LogOut size={14} /> {t("تسجيل الخروج", "Sign Out")}
+        </button>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="flex h-screen overflow-hidden" dir={dir}>
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex md:w-60 md:flex-shrink-0 md:flex-col" style={{ background: SIDEBAR_GRAD }} aria-label={t("القائمة الجانبية", "Sidebar")}>
+        {renderSidebarContent(false)}
+      </aside>
+
+      {/* Mobile Drawer Backdrop & Panel */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm transition-opacity"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <div
+        className={`fixed inset-y-0 ${dir === "rtl" ? "right-0" : "left-0"} z-50 w-72 max-w-[85vw] flex flex-col shadow-2xl transition-transform duration-200 md:hidden ${mobileOpen ? "translate-x-0" : dir === "rtl" ? "translate-x-full" : "-translate-x-full"}`}
+        style={{ background: SIDEBAR_GRAD }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("القائمة الجانبية", "Sidebar menu")}
+      >
+        {renderSidebarContent(true)}
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0" style={{ background: BG_CONTENT }}>
+        <header className="bg-white border-b border-gray-100 px-3 sm:px-4 md:px-6 py-2.5 sm:py-3 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2 text-sm text-gray-500 min-w-0">
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              className="p-1.5 -mx-1 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-400 md:hidden flex-shrink-0"
+              aria-label={t("فتح القائمة", "Open menu")}
+              aria-expanded={mobileOpen}
+            >
+              <Menu size={20} />
+            </button>
+            <span className="font-bold text-gray-800 truncate">{COMPANY.name}</span>
+            <ChevronRight size={12} className={`text-gray-300 hidden sm:inline ${dir === "ltr" ? "rotate-180" : ""}`} />
+            <span className="hidden sm:inline truncate">{pageLabel}</span>
+          </div>
+          <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+            <Badge className="hidden sm:inline-flex bg-emerald-50 text-emerald-700 border border-emerald-100">● {t(PLAN_AR[COMPANY.plan] || COMPANY.plan, COMPANY.plan)}</Badge>
+            <Badge className="hidden md:inline-flex bg-purple-50 text-purple-700 border border-purple-100">{meta.icon} {t(meta.label, enMeta.label)}</Badge>
+            <GlobalSearch t={t} theme="light" />
+            <NotificationBell t={t} theme="light" />
+          </div>
+        </header>
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">{children}</main>
       </div>
     </div>
   );
@@ -1874,7 +1949,7 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
 // COMPANY ADMIN PAGES
 // ═══════════════════════════════════════════════════
 function CADashboard({ navigate }:{ navigate:(p:string)=>void }) {
-  const { t, dir } = useCLang();
+  const { t, dir, lang } = useCLang();
   const { data: apiDashboard } = useCompanyAdminDashboard();
   const { data: apiSub } = useCompanySubscription();
   // All figures come from GET /company/me/dashboard + /subscription. No static fallback.
@@ -1901,12 +1976,12 @@ function CADashboard({ navigate }:{ navigate:(p:string)=>void }) {
   const statItems:[string,string,string,string][] = [
     [t("العلامات","Brands"),       `${brandsCount} / ∞`,"",""],
     [t("المطاعم","Restaurants"),   `${restaurantsCount} / ∞`,"",""],
-    [t("الفروع","Branches"),        `${branchesCount} / ${branchesMax}`,"",""],
-    [t("المستخدمون","Users"),       `${usersCount} / ${usersMax}`,"",""],
+    [t("الفروع","Branches"),        formatQuota(branchesCount, branchesMax, lang).label,"",""],
+    [t("المستخدمون","Users"),       formatQuota(usersCount, usersMax, lang).label,"",""],
   ];
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("مرحباً،","Welcome,")} {apiDashboard?.company?.name ?? COMPANY.name} 🏢</h2>
           <p className="text-gray-400 text-sm mt-0.5">{t("خطة","Plan")} {t(PLAN_AR[(apiDashboard?.company?.plan ?? COMPANY.plan)]||(apiDashboard?.company?.plan ?? COMPANY.plan), (apiDashboard?.company?.plan ?? COMPANY.plan))} · {branchesCount} {t("فرع","branches")} · {brandsCount} {t("علامات تجارية","brands")}</p>
@@ -1916,11 +1991,11 @@ function CADashboard({ navigate }:{ navigate:(p:string)=>void }) {
         </button>
       </div>
       <div className="bg-gradient-to-l from-purple-600 to-blue-700 rounded-2xl p-5 text-white">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <p className="font-bold text-lg">{t("خطة احترافي — نشطة ✅","Professional Plan — Active ✅")}</p>
-            <p className="text-white/70 text-sm mt-0.5">{t("تنتهي في 15 يناير 2026 · متبقي","Expires Jan 15, 2026 · ")} <span className="text-cyan-300 font-bold">{daysRemaining}</span> {t("يوم","days remaining")}</p>
-            <div className="flex items-center gap-6 mt-3">
+            <p className="font-bold text-lg">{apiSub?.planName || (apiDashboard?.company?.plan ? t(PLAN_AR[apiDashboard.company.plan]||apiDashboard.company.plan, apiDashboard.company.plan) : t("الخطة الحالية","Current Plan"))} — {t("نشطة ✅","Active ✅")}</p>
+            <p className="text-white/70 text-sm mt-0.5">{((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd) ? t(`ينتهي في ${String((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd).slice(0,10)} · متبقي `, `Expires ${String((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd).slice(0,10)} · `) : t("متبقي ", "Remaining ")}<span className="text-cyan-300 font-bold">{daysRemaining}</span> {t("يوم","days remaining")}</p>
+            <div className="flex items-center gap-6 mt-3 flex-wrap">
               {statItems.map(([l,v])=>(
                 <div key={l}><p className="text-white/50 text-xs">{l}</p><p className="font-bold">{v}</p></div>
               ))}
@@ -1932,15 +2007,15 @@ function CADashboard({ navigate }:{ navigate:(p:string)=>void }) {
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-4 gap-4">
-        <KpiCard label={t("إجمالي المبيعات الشهرية","Monthly Total Sales")} value={`${fmt(Math.round(totalSalesM/1000))}K`} sub={t("ر.س هذا الشهر","SAR this month")} icon={<TrendingUp size={18} className="text-emerald-600"/>} accent="emerald" delta="+8.2%"/>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <KpiCard label={t("إجمالي المبيعات الشهرية","Monthly Total Sales")} value={`${fmt(Math.round(totalSalesM/1000))}K`} sub={t("ر.س هذا الشهر","SAR this month")} icon={<TrendingUp size={18} className="text-emerald-600"/>} accent="emerald"/>
         <KpiCard label={t("إجمالي المصروفات","Total Expenses")}            value={`${fmt(Math.round(totalExpM/1000))}K`}   sub={t("ر.س هذا الشهر","SAR this month")} icon={<Wallet size={18} className="text-red-500"/>}      accent="red"/>
-        <KpiCard label={t("صافي الربح","Net Profit")}                       value={`${fmt(Math.round((totalSalesM-totalExpM)/1000))}K`} sub={t("ر.س","SAR")} icon={<BarChart3 size={18} className="text-purple-600"/>} accent="purple" delta="+12.4%"/>
+        <KpiCard label={t("صافي الربح","Net Profit")}                       value={`${fmt(Math.round((totalSalesM-totalExpM)/1000))}K`} sub={t("ر.س","SAR")} icon={<BarChart3 size={18} className="text-purple-600"/>} accent="purple"/>
         <KpiCard label={t("معدل إنجاز الفروع","Branch Completion Rate")}    value={`${branchCompletionRate}%`} sub={t(`${branchesAboveTarget} من ${branchesCount} فرع فوق الهدف`,`${branchesAboveTarget} of ${branchesCount} branches above target`)} icon={<CheckCircle2 size={18} className="text-blue-600"/>} accent="blue"/>
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
         {apiBrands.length===0 && (
-          <div className="col-span-3 bg-white rounded-xl border border-gray-100 shadow-sm p-8 text-center text-gray-400 text-sm">{t("لا توجد بيانات علامات تجارية بعد","No brand data yet")}</div>
+          <div className="col-span-1 md:col-span-3 bg-white rounded-xl border border-gray-100 shadow-sm p-8 text-center text-gray-400 text-sm">{t("لا توجد بيانات علامات تجارية بعد","No brand data yet")}</div>
         )}
         {apiBrands.map(b=>{
           const sales=Math.round((b.monthlySalesHalalas ?? 0)/100);
@@ -1965,7 +2040,7 @@ function CADashboard({ navigate }:{ navigate:(p:string)=>void }) {
 }
 
 function CASubscription() {
-  const { t, dir } = useCLang();
+  const { t, dir, lang } = useCLang();
   const upgradeMut = useUpgradeSubscription();
   const contactMut = useContactSales();
   const { data: apiSub } = useCompanySubscription();
@@ -1991,17 +2066,16 @@ function CASubscription() {
   const storageUsed  = storageMeter?.used ?? 0;
   const storageMax   = storageMeter?.max ?? null; // null → unlimited («∞»)
   const currentPlanName = apiSub?.planName ?? "Professional";
-  const currentPlanPriceAnnual = (apiPlans.find(p => p.isCurrent)?.priceAnnualHalalas != null)
-    ? Math.round((apiPlans.find(p => p.isCurrent)!.priceAnnualHalalas as number) / 100)
-    : 4800;
-  const currentPlanPriceMonthly = (apiPlans.find(p => p.isCurrent)?.priceMonthlyHalalas != null)
-    ? Math.round((apiPlans.find(p => p.isCurrent)!.priceMonthlyHalalas as number) / 100)
-    : 400;
+  const currentPlan = apiPlans.find(p => p.isCurrent);
+  const currentPriceAnnualObj = formatPlanPrice(currentPlan?.priceAnnualHalalas, lang);
+  const currentPriceMonthlyObj = formatPlanPrice(currentPlan?.priceMonthlyHalalas, lang);
+  const currentPlanPriceAnnual = currentPriceAnnualObj.formatted;
+  const currentPlanPriceMonthly = currentPriceMonthlyObj.formatted;
   const SAR = t("ر.س","SAR");
   const perYear = t("سنة","year"); const perMonth = t("شهر","mo");
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div><h2 className="text-xl font-bold text-gray-800">{t("الاشتراك والخطة","Subscription & Plan")}</h2></div>
         <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
           {(["annual","monthly"] as const).map(b=>(
@@ -2012,11 +2086,19 @@ function CASubscription() {
         </div>
       </div>
       <div className="bg-white rounded-2xl border border-purple-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 bg-gradient-to-l from-purple-600 to-blue-700 text-white flex items-center justify-between">
-          <div><div className="flex items-center gap-2"><span className="font-black text-xl">{t(PLAN_AR[currentPlanName]||currentPlanName, currentPlanName)}</span><Badge className="bg-white/20 text-white text-[10px]">{t("الخطة الحالية","Current Plan")}</Badge></div><p className="text-white/70 text-xs mt-0.5">{t("تنتهي 15 يناير 2026","Expires Jan 15, 2026")}</p></div>
-          <p className="text-2xl font-black">{billing==="annual"?fmt(currentPlanPriceAnnual):fmt(currentPlanPriceMonthly)} <span className="text-sm font-normal text-white/60">{SAR}/{billing==="annual"?perYear:perMonth}</span></p>
+        <div className="px-5 py-4 bg-gradient-to-l from-purple-600 to-blue-700 text-white flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <div className="flex items-center gap-2"><span className="font-black text-xl">{t(PLAN_AR[currentPlanName]||currentPlanName, currentPlanName)}</span><Badge className="bg-white/20 text-white text-[10px]">{t("الخطة الحالية","Current Plan")}</Badge></div>
+            <p className="text-white/70 text-xs mt-0.5">{((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd) ? t(`ينتهي في ${String((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd).slice(0,10)}`, `Expires ${String((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd).slice(0,10)}`) : t("تجديد سنوي تلقائي","Annual auto-renew")}</p>
+          </div>
+          <p className="text-2xl font-black">
+            {billing==="annual"?currentPlanPriceAnnual:currentPlanPriceMonthly}
+            {(!currentPriceAnnualObj.isCustom && !currentPriceMonthlyObj.isCustom) && (
+              <span className="text-sm font-normal text-white/60"> {SAR}/{billing==="annual"?perYear:perMonth}</span>
+            )}
+          </p>
         </div>
-        <div className="p-5 grid grid-cols-3 gap-4">
+        <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           {([[t("الفروع","Branches"),branchesUsed,branchesMax,"bg-blue-500"],[t("المستخدمون","Users"),usersUsed,usersMax,"bg-purple-500"],[t("التخزين (GB)","Storage (GB)"),storageUsed,storageMax,"bg-emerald-500"]] as [string,number,number|null,string][]).map(([l,u,m,c])=>{
             const unlimited = m === null || m === undefined;   // T14.4 — unlimited plan → «/∞»
             const pct = unlimited || Number(m) <= 0 ? 0 : Math.min(100, Math.round((Number(u)/Number(m))*100));
@@ -2025,13 +2107,24 @@ function CASubscription() {
           );})}
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
         {plans.map(p=>(
           <div key={p.id} className={`bg-white rounded-2xl border-2 shadow-sm overflow-hidden ${p.current?"border-purple-400 shadow-purple-100":"border-gray-100"}`}>
             {p.current&&<div className="px-4 py-1.5 text-center text-xs font-bold bg-purple-600 text-white">⭐ {t("خطتك الحالية","Your Current Plan")}</div>}
             <div className="p-5">
               <p className="font-black text-gray-900 text-lg">{t(PLAN_AR[p.plan]||p.plan, p.plan)}</p>
-              <div className="mt-2 mb-4">{p.price_m===null?<p className="text-2xl font-black text-gray-800">{t("حسب الطلب","Custom")}</p>:<><span className="text-2xl font-black text-gray-800">{billing==="annual"?p.price_a!.toLocaleString():p.price_m.toLocaleString()}</span><span className="text-gray-400 text-sm"> {SAR}/{billing==="annual"?perYear:perMonth}</span></>}</div>
+              <div className="mt-2 mb-4">
+                {p.price_m === null || p.price_a === null ? (
+                  <p className="text-2xl font-black text-gray-800">{t("حسب الطلب","Custom")}</p>
+                ) : (
+                  <>
+                    <span className="text-2xl font-black text-gray-800">
+                      {billing === "annual" ? (p.price_a != null ? p.price_a.toLocaleString() : "—") : (p.price_m != null ? p.price_m.toLocaleString() : "—")}
+                    </span>
+                    <span className="text-gray-400 text-sm"> {SAR}/{billing==="annual"?perYear:perMonth}</span>
+                  </>
+                )}
+              </div>
               <ul className="space-y-1.5 mb-5">{p.features.map(f=><li key={f} className="flex items-center gap-2 text-xs text-gray-600"><Check size={11} className="text-emerald-500 flex-shrink-0"/>{f}</li>)}</ul>
               {p.current?<div className="w-full py-2 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold text-center">{t("خطتك الحالية ✓","Your Current Plan ✓")}</div>:p.price_m===null?<button onClick={()=>contactMut.mutate({ message: t("استفسار عن خطة المؤسسات","Enterprise plan inquiry") })} className="w-full py-2 rounded-lg border-2 border-purple-300 text-purple-700 text-xs font-bold hover:bg-purple-50">{t("تواصل مع المبيعات","Contact Sales")}</button>:<button onClick={()=>upgradeMut.mutate({ planId: p.id, billingCycle: billing })} className="w-full py-2 rounded-lg bg-purple-600 text-white text-xs font-bold hover:bg-purple-700">{t("ترقية ↑","Upgrade ↑")}</button>}
             </div>
@@ -2043,7 +2136,7 @@ function CASubscription() {
 }
 
 function CAUsers() {
-  const { t, dir } = useCLang();
+  const { t, dir, lang } = useCLang();
   type U = { id:string;name:string;role:string;branch:string;email:string;status:"active"|"inactive";last:string };
   const { data: apiUsers = [] } = useCompanyUsers();
   const { data: apiInvites = [] } = useCompanyInvitations();
@@ -2069,6 +2162,12 @@ function CAUsers() {
   const [showAdd,setShowAdd]=useState(false);
   const [search,setSearch]=useState("");
   const [inviteForm,setInviteForm]=useState({ name:"", email:"", role:"accountant" });
+  // CA-F08 — Edit User controlled state & validation
+  const [editingUser, setEditingUser] = useState<U | null>(null);
+  const [editUserName, setEditUserName] = useState("");
+  const [editUserPhone, setEditUserPhone] = useState("");
+  const [editUserError, setEditUserError] = useState<string | null>(null);
+
   const submitInvite=()=>{
     if(!inviteForm.email.trim())return;
     inviteMut.mutate(
@@ -2077,6 +2176,7 @@ function CAUsers() {
     );
   };
   const toggle=(id:string)=>{
+    if (toggleMut.isPending) return;
     if (apiUsers.length > 0) {
       toggleMut.mutate(id);
     } else {
@@ -2088,7 +2188,10 @@ function CAUsers() {
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-gray-800">{t("إدارة المستخدمين","User Management")}</h2><p className="text-gray-400 text-sm">{users.filter(u=>u.status==="active").length} {t("نشط","active")} · {users.length}/50</p></div>
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">{t("إدارة المستخدمين","User Management")}</h2>
+          <p className="text-gray-400 text-sm">{users.filter(u=>u.status==="active").length} {t("نشط","active")} · {users.length} {t("مستخدم","users")}</p>
+        </div>
         <Btn variant="primary" onClick={()=>setShowAdd(true)}><Plus size={13}/> {t("إضافة مستخدم","Add User")}</Btn>
       </div>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4"><div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2"><Search size={13} className="text-gray-400"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("بحث...","Search...")} className="flex-1 text-sm outline-none"/></div></div>
@@ -2117,16 +2220,104 @@ function CAUsers() {
               <div className="flex gap-3 mt-0.5"><p className="text-xs text-gray-400" dir="ltr">{u.email}</p>{u.branch!=="—"&&<span className="text-[10px] text-gray-500">{u.branch}</span>}</div>
             </div>
             <div className="flex gap-1.5">
-              <button onClick={()=>toggle(u.id)} className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border ${u.status==="active"?"bg-gray-50 border-gray-200 text-gray-600 hover:bg-red-50 hover:text-red-600":"bg-emerald-50 border-emerald-200 text-emerald-700"}`}>{u.status==="active"?t("إيقاف","Disable"):t("تفعيل","Enable")}</button>
-              <button onClick={()=>updateUserMut.mutate({id:u.id, name:u.name})} className="p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"><Edit2 size={13}/></button>
+              <button
+                onClick={()=>toggle(u.id)}
+                disabled={toggleMut.isPending}
+                aria-label={u.status==="active"?t("إيقاف المستخدم","Disable user"):t("تفعيل المستخدم","Enable user")}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors disabled:opacity-50 ${u.status==="active"?"bg-gray-50 border-gray-200 text-gray-600 hover:bg-red-50 hover:text-red-600":"bg-emerald-50 border-emerald-200 text-emerald-700"}`}>
+                {u.status==="active"?t("إيقاف","Disable"):t("تفعيل","Enable")}
+              </button>
+              <button
+                onClick={()=>{
+                  setEditingUser(u);
+                  setEditUserName(u.name);
+                  setEditUserPhone((u as any).phone || "");
+                  setEditUserError(null);
+                }}
+                aria-label={t("تعديل بيانات المستخدم","Edit user details")}
+                className="p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                <Edit2 size={13}/>
+              </button>
             </div>
           </div>
         ))}
       </div>
+      {/* CA-F08: Edit User Modal */}
+      {editingUser&&(
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>!updateUserMut.isPending&&setEditingUser(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e=>e.stopPropagation()} dir={dir} role="dialog" aria-modal="true" aria-label={t("تعديل بيانات المستخدم","Edit User")}>
+            <div className="px-5 py-4 bg-purple-600 text-white flex items-center justify-between">
+              <h3 className="font-bold">{t("تعديل بيانات المستخدم","Edit User")}</h3>
+              <button onClick={()=>!updateUserMut.isPending&&setEditingUser(null)} disabled={updateUserMut.isPending} className="text-purple-200 hover:text-white" aria-label={t("إغلاق","Close")}><X size={18}/></button>
+            </div>
+            <div className="p-5 space-y-3">
+              {editUserError&&(
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+                  <AlertTriangle size={14} className="shrink-0"/>
+                  <span>{editUserError}</span>
+                </div>
+              )}
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">{t("الاسم الكامل","Full Name")}</label>
+                <input
+                  value={editUserName}
+                  onChange={e=>{ setEditUserName(e.target.value); if(editUserError) setEditUserError(null); }}
+                  disabled={updateUserMut.isPending}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400 disabled:opacity-50"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">{t("رقم الهاتف (اختياري)","Phone Number (optional)")}</label>
+                <input
+                  value={editUserPhone}
+                  onChange={e=>setEditUserPhone(e.target.value)}
+                  disabled={updateUserMut.isPending}
+                  dir="ltr"
+                  placeholder="05xxxxxxxx"
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400 disabled:opacity-50"
+                />
+              </div>
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 space-y-1 text-xs text-gray-500">
+                <div className="flex justify-between"><span>{t("البريد الإلكتروني:","Email:")}</span><span dir="ltr" className="font-medium text-gray-700">{editingUser.email}</span></div>
+                <div className="flex justify-between"><span>{t("الدور الحالي:","Current Role:")}</span><span className="font-medium text-gray-700">{editingUser.role}</span></div>
+                {editingUser.branch!=="—"&&<div className="flex justify-between"><span>{t("الفرع:","Branch:")}</span><span className="font-medium text-gray-700">{editingUser.branch}</span></div>}
+              </div>
+              <div className="flex gap-2 justify-end pt-1">
+                <Btn onClick={()=>setEditingUser(null)} disabled={updateUserMut.isPending}>{t("إلغاء","Cancel")}</Btn>
+                <Btn
+                  variant="primary"
+                  disabled={updateUserMut.isPending}
+                  onClick={()=>{
+                    const validation = validateUserEdit({ id: editingUser.id, name: editUserName, phone: editUserPhone }, lang);
+                    if(!validation.valid||!validation.payload){
+                      setEditUserError(validation.error||t("بيانات غير صحيحة","Invalid data"));
+                      return;
+                    }
+                    updateUserMut.mutate(
+                      { id: editingUser.id, name: validation.payload.name, phone: validation.payload.phone } as any,
+                      {
+                        onSuccess: ()=>{
+                          setEditingUser(null);
+                          setEditUserError(null);
+                        },
+                        onError: (err)=>{
+                          setEditUserError(getErrorMessage(err)||t("فشل تحديث بيانات المستخدم","Failed to update user"));
+                        },
+                      }
+                    );
+                  }}
+                >
+                  {updateUserMut.isPending ? <RefreshCw size={13} className="animate-spin"/> : <Check size={13}/>} {t("حفظ التعديلات","Save Changes")}
+                </Btn>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {showAdd&&(
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setShowAdd(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e=>e.stopPropagation()} dir={dir}>
-            <div className="px-5 py-4 bg-purple-600 text-white flex items-center justify-between"><h3 className="font-bold">{t("إضافة مستخدم","Add User")}</h3><button onClick={()=>setShowAdd(false)} className="text-purple-200 hover:text-white"><X size={18}/></button></div>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e=>e.stopPropagation()} dir={dir} role="dialog" aria-modal="true" aria-label={t("إضافة مستخدم","Add User")}>
+            <div className="px-5 py-4 bg-purple-600 text-white flex items-center justify-between"><h3 className="font-bold">{t("إضافة مستخدم","Add User")}</h3><button onClick={()=>setShowAdd(false)} className="text-purple-200 hover:text-white" aria-label={t("إغلاق","Close")}><X size={18}/></button></div>
             <div className="p-5 space-y-3">
               <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الاسم الكامل","Full Name")}</label><input value={inviteForm.name} onChange={e=>setInviteForm(f=>({...f,name:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
               <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("البريد الإلكتروني","Email")}</label><input value={inviteForm.email} onChange={e=>setInviteForm(f=>({...f,email:e.target.value}))} dir="ltr" placeholder="email@company.sa" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
@@ -2142,7 +2333,7 @@ function CAUsers() {
 }
 
 function CABranches() {
-  const { t, dir } = useCLang();
+  const { t, dir, lang } = useCLang();
   const { data: apiBrandsTree = [] } = useCompanyBrands();
   const { data: members = [] } = useCompanyUsers();
   const createBranchMut = useCreateBranch();
@@ -2170,8 +2361,14 @@ function CABranches() {
   const totalSales=allBranchesTree.reduce((s:number,b:any)=>s+b.salesM,0);
   const [showAddBranch,setShowAddBranch]=useState(false);
   const [newBranchName,setNewBranchName]=useState("");
-  const [newBranchBrand,setNewBranchBrand]=useState("");
+  const [newBranchBrandId,setNewBranchBrandId]=useState("");
+  const [newBranchRestId,setNewBranchRestId]=useState("");
   const [newBranchCity,setNewBranchCity]=useState("الرياض");
+  const [branchFormError,setBranchFormError]=useState<string|null>(null);
+
+  const selectedBrand = brandsTree.find(b=>b.id===newBranchBrandId);
+  const availableRestaurants = selectedBrand?.restaurants ?? [];
+
   // T14.6 — transfer-manager modal state.
   const [transferFor,setTransferFor]=useState<{id:string;name:string}|null>(null);
   const [newMgrUserId,setNewMgrUserId]=useState("");
@@ -2186,22 +2383,102 @@ function CABranches() {
     : rs==="rejected"
     ? <Badge className="bg-red-50 text-red-700 text-[9px]">{t("مرفوض","Rejected")}</Badge>
     : null;
+
+  const submitNewBranch = () => {
+    const val = validateBranchCreate({ restaurantId: newBranchRestId, name: newBranchName, city: newBranchCity }, lang);
+    if (!val.valid) {
+      setBranchFormError(val.error || t("بيانات غير مكتملة", "Incomplete data"));
+      return;
+    }
+    createBranchMut.mutate(
+      { restaurantId: newBranchRestId, name: newBranchName.trim(), city: newBranchCity },
+      {
+        onSuccess: () => {
+          setShowAddBranch(false);
+          setNewBranchName("");
+          setNewBranchBrandId("");
+          setNewBranchRestId("");
+          setBranchFormError(null);
+        },
+        onError: (err) => {
+          setBranchFormError(getErrorMessage(err) || t("فشل إرسال طلب إنشاء الفرع", "Failed to submit branch request"));
+        },
+      }
+    );
+  };
+
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
         <div><h2 className="text-xl font-bold text-gray-800">{t("العلامات التجارية والفروع","Brands & Branches")}</h2><p className="text-gray-400 text-sm">{brandsTree.length} {t("علامات","brands")} · {allBranchesTree.length} {t("فرع","branches")}{pendingCount>0&&<span className="text-amber-600"> · {pendingCount} {t("قيد المراجعة","pending review")}</span>}</p></div>
-        <Btn variant="primary" onClick={()=>setShowAddBranch(true)}><Plus size={13}/> {t("إضافة فرع","Add Branch")}</Btn>
+        <Btn variant="primary" onClick={()=>{ setShowAddBranch(true); setBranchFormError(null); }}><Plus size={13}/> {t("إضافة فرع","Add Branch")}</Btn>
       </div>
       {showAddBranch&&(
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setShowAddBranch(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e=>e.stopPropagation()} dir={dir}>
-            <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">{t("إضافة فرع جديد","Add New Branch")}</h3><button onClick={()=>setShowAddBranch(false)} className="text-gray-400 hover:text-gray-600"><X size={18}/></button></div>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>!createBranchMut.isPending&&setShowAddBranch(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e=>e.stopPropagation()} dir={dir} role="dialog" aria-modal="true" aria-label={t("إضافة فرع جديد","Add New Branch")}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-800">{t("إضافة فرع جديد","Add New Branch")}</h3>
+              <button onClick={()=>!createBranchMut.isPending&&setShowAddBranch(false)} disabled={createBranchMut.isPending} className="text-gray-400 hover:text-gray-600" aria-label={t("إغلاق","Close")}><X size={18}/></button>
+            </div>
             <div className="space-y-3">
-              <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("اسم الفرع","Branch Name")}</label><input value={newBranchName} onChange={e=>setNewBranchName(e.target.value)} placeholder={t("مثال: فرع حي الياسمين...","e.g. Al-Yasmin district branch...")} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>
-              <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("العلامة التجارية","Brand")}</label><select value={newBranchBrand} onChange={e=>setNewBranchBrand(e.target.value)} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"><option value="">{t("اختر علامة","Select brand")}</option>{brandsTree.map(b=><option key={b.id}>{b.name}</option>)}</select></div>
-              <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("المدينة","City")}</label><select value={newBranchCity} onChange={e=>setNewBranchCity(e.target.value)} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"><option>الرياض</option><option>جدة</option><option>الدمام</option><option>مكة المكرمة</option></select></div>
+              {branchFormError&&(
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+                  <AlertTriangle size={14} className="shrink-0"/>
+                  <span>{branchFormError}</span>
+                </div>
+              )}
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">{t("العلامة التجارية","Brand")}</label>
+                <select
+                  value={newBranchBrandId}
+                  onChange={e=>{ setNewBranchBrandId(e.target.value); setNewBranchRestId(""); if(branchFormError) setBranchFormError(null); }}
+                  disabled={createBranchMut.isPending}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400 disabled:opacity-50"
+                >
+                  <option value="">{t("اختر علامة تجارية","Select brand")}</option>
+                  {brandsTree.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">{t("المطعم التابع له","Restaurant")}</label>
+                <select
+                  value={newBranchRestId}
+                  onChange={e=>{ setNewBranchRestId(e.target.value); if(branchFormError) setBranchFormError(null); }}
+                  disabled={!newBranchBrandId||createBranchMut.isPending}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400 disabled:opacity-50"
+                >
+                  <option value="">{t("اختر مطعماً","Select restaurant")}</option>
+                  {availableRestaurants.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">{t("اسم الفرع","Branch Name")}</label>
+                <input
+                  value={newBranchName}
+                  onChange={e=>{ setNewBranchName(e.target.value); if(branchFormError) setBranchFormError(null); }}
+                  disabled={createBranchMut.isPending}
+                  placeholder={t("مثال: فرع حي الياسمين...","e.g. Al-Yasmin district branch...")}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400 disabled:opacity-50"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">{t("المدينة","City")}</label>
+                <select
+                  value={newBranchCity}
+                  onChange={e=>setNewBranchCity(e.target.value)}
+                  disabled={createBranchMut.isPending}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400 disabled:opacity-50"
+                >
+                  <option>الرياض</option><option>جدة</option><option>الدمام</option><option>مكة المكرمة</option>
+                </select>
+              </div>
               <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 text-[11px] text-amber-700">{t("يُنشأ الفرع كطلب قيد المراجعة، ويظهر بعد اعتماد الإدارة.","The branch is created as a pending request and appears after admin approval.")}</div>
-              <div className="flex gap-2 justify-end pt-1"><Btn onClick={()=>setShowAddBranch(false)}>{t("إلغاء","Cancel")}</Btn><Btn variant="primary" onClick={()=>{if(!newBranchName){alert(t("أدخل اسم الفرع","Enter branch name"));return;}createBranchMut.mutate({ restaurantId: brandsTree.find(b=>b.name===newBranchBrand)?.restaurants[0]?.id || "", name: newBranchName, city: newBranchCity });setShowAddBranch(false);setNewBranchName("");}}><Plus size={13}/> {t("إرسال للمراجعة","Submit for review")}</Btn></div>
+              <div className="flex gap-2 justify-end pt-1">
+                <Btn onClick={()=>setShowAddBranch(false)} disabled={createBranchMut.isPending}>{t("إلغاء","Cancel")}</Btn>
+                <Btn variant="primary" onClick={submitNewBranch} disabled={createBranchMut.isPending}>
+                  {createBranchMut.isPending ? <RefreshCw size={13} className="animate-spin"/> : <Plus size={13}/>} {t("إرسال للمراجعة","Submit for review")}
+                </Btn>
+              </div>
             </div>
           </div>
         </div>
@@ -2209,8 +2486,8 @@ function CABranches() {
       {/* T14.6 — transfer branch manager to another active company member. */}
       {transferFor&&(
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setTransferFor(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e=>e.stopPropagation()} dir={dir}>
-            <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">{t("نقل مدير الفرع","Transfer Branch Manager")} — {transferFor.name}</h3><button onClick={()=>setTransferFor(null)} className="text-gray-400 hover:text-gray-600"><X size={18}/></button></div>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e=>e.stopPropagation()} dir={dir} role="dialog" aria-modal="true" aria-label={t("نقل مدير الفرع","Transfer Branch Manager")}>
+            <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">{t("نقل مدير الفرع","Transfer Branch Manager")} — {transferFor.name}</h3><button onClick={()=>setTransferFor(null)} className="text-gray-400 hover:text-gray-600" aria-label={t("إغلاق","Close")}><X size={18}/></button></div>
             <div className="space-y-3">
               <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("المدير الجديد","New Manager")}</label>
                 <select value={newMgrUserId} onChange={e=>setNewMgrUserId(e.target.value)} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400">
@@ -2224,7 +2501,7 @@ function CABranches() {
           </div>
         </div>
       )}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label={t("العلامات التجارية","Brands")}           value={String(brandsTree.length)} sub={t("تحت إدارة المجموعة","Under group management")} icon={<Star size={18} className="text-amber-600"/>} accent="amber"/>
         <KpiCard label={t("إجمالي المطاعم","Total Restaurants")}  value={String(brandsTree.reduce((s,b)=>s+b.restaurants.length,0))} sub={t("مطعم","restaurant")} icon={<Home size={18} className="text-blue-600"/>} accent="blue"/>
         <KpiCard label={t("الفروع النشطة","Active Branches")}     value={String(activeBranchesCount)} sub={pendingCount>0?`+${pendingCount} ${t("قيد المراجعة","pending")}`:t("فرع","branches")} icon={<Building2 size={18} className="text-emerald-600"/>} accent="emerald"/>
@@ -2295,7 +2572,20 @@ function CAModules() {
     active: m.isActive,
     inPlan: m.inPlan,
   }));
-  const toggle=(id:string)=>{const m=mods.find(x=>x.id===id);if(!m?.inPlan){alert(t("يحتاج ترقية الخطة","Plan upgrade required"));return;}if(apiMods.length>0){toggleModuleMut.mutate({ moduleKey:id, isActive:!m.active });}else{setLocalMods(p=>p.map(x=>x.id===id?{...x,active:!x.active}:x));}};
+  const toggle = (id: string) => {
+    const m = mods.find((x) => x.id === id);
+    if (!m) return;
+    if (!m.inPlan) {
+      alert(t("يحتاج ترقية الخطة", "Plan upgrade required"));
+      return;
+    }
+    if (!canToggleModule(m.inPlan, toggleModuleMut.isPending)) return;
+    if (apiMods.length > 0) {
+      toggleModuleMut.mutate({ moduleKey: id, isActive: !m.active });
+    } else {
+      setLocalMods((p) => p.map((x) => (x.id === id ? { ...x, active: !x.active } : x)));
+    }
+  };
   return (
     <div className="space-y-5" dir={dir}>
       <div><h2 className="text-xl font-bold text-gray-800">{t("الوحدات النشطة","Active Modules")}</h2></div>
@@ -2305,15 +2595,34 @@ function CAModules() {
         <KpiCard label={t("تحتاج ترقية","Needs Upgrade")} value={String(mods.filter(m=>!m.inPlan).length)} sub={t("غير مشمولة","Not included")} icon={<Lock size={18} className="text-gray-500"/>} accent="blue"/>
       </div>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        {mods.map(m=>(
-          <div key={m.id} className={`px-5 py-4 flex items-center gap-4 border-b border-gray-50 last:border-0 ${!m.inPlan?"bg-gray-50/60":""}`}>
-            <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-xl flex-shrink-0">{m.icon}</div>
-            <div className="flex-1"><div className="flex items-center gap-2"><span className="font-semibold text-gray-800 text-sm">{t(m.nameAr,m.nameEn)}</span>{!m.inPlan&&<Badge className="bg-amber-50 text-amber-700 border border-amber-100 text-[10px]"><Lock size={9}/> {t("يحتاج ترقية","Needs upgrade")}</Badge>}</div><p className="text-xs text-gray-400 mt-0.5">{t(m.descAr,m.descEn)}</p></div>
-            <button onClick={()=>toggle(m.id)} className={`w-12 h-6 rounded-full transition-all flex-shrink-0 relative ${m.active?"bg-purple-500":m.inPlan?"bg-gray-300":"bg-gray-200 cursor-not-allowed"}`}>
-              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${m.active?"right-0.5":"left-0.5"}`}/>
-            </button>
-          </div>
-        ))}
+        {mods.map(m=>{
+          const isAllowed = canToggleModule(m.inPlan, toggleModuleMut.isPending);
+          return (
+            <div key={m.id} className={`px-5 py-4 flex items-center gap-4 border-b border-gray-50 last:border-0 ${!m.inPlan?"bg-gray-50/60":""}`}>
+              <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-xl flex-shrink-0">{m.icon}</div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-800 text-sm">{t(m.nameAr,m.nameEn)}</span>
+                  {!m.inPlan&&<Badge className="bg-amber-50 text-amber-700 border border-amber-100 text-[10px]"><Lock size={9}/> {t("يحتاج ترقية","Needs upgrade")}</Badge>}
+                </div>
+                <p className="text-xs text-gray-400 mt-0.5">{t(m.descAr,m.descEn)}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={m.active}
+                aria-label={t(`تبديل تفعيل ${m.nameAr}`, `Toggle ${m.nameEn}`)}
+                disabled={!isAllowed}
+                onClick={()=>toggle(m.id)}
+                className={`w-12 h-6 rounded-full transition-all flex-shrink-0 relative ${
+                  m.active ? "bg-purple-500" : m.inPlan ? "bg-gray-300" : "bg-gray-200 cursor-not-allowed"
+                } ${toggleModuleMut.isPending ? "opacity-60 cursor-wait" : ""}`}
+              >
+                <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${m.active?"right-0.5":"left-0.5"}`}/>
+              </button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -2321,7 +2630,7 @@ function CAModules() {
 
 function CABilling() {
   const { t, dir } = useCLang();
-  const { data: apiInvoicesPage } = useBillingInvoices();
+  const { data: apiInvoicesPage, isLoading: isInvoicesLoading, isError: isInvoicesError, refetch: refetchInvoices } = useBillingInvoices();
   const exportMut = useExportInvoices();
   const downloadPdfMut = useDownloadInvoicePDF();
   const [exportJobId, setExportJobId] = useState<string | null>(null);
@@ -2333,38 +2642,82 @@ function CABilling() {
   const apiInvoices: any[] = Array.isArray(apiInvoicesPage)
     ? apiInvoicesPage
     : ((apiInvoicesPage as any)?.data ?? []);
-  const invoices = apiInvoices.map((i: any) => ({
-    id: i.publicId || i.id,
-    date: i.issuedAt || i.createdAt || "",
-    amount: Math.round((i.totalHalalas || 0) / 100),
-  }));
+  const invoices = apiInvoices.map((i: any) => parseInvoice(i));
+  const kpis = calculateBillingKpis(invoices);
+
+  const renderStatusBadge = (status: string) => {
+    switch (status) {
+      case "paid":
+        return <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px]">✓ {t("مدفوع", "Paid")}</Badge>;
+      case "open":
+        return <Badge className="bg-amber-50 text-amber-700 border border-amber-100 text-[10px]">⏳ {t("معلقة", "Open")}</Badge>;
+      case "overdue":
+        return <Badge className="bg-rose-50 text-rose-700 border border-rose-100 text-[10px]">⚠️ {t("متأخرة", "Overdue")}</Badge>;
+      case "void":
+        return <Badge className="bg-gray-50 text-gray-500 border border-gray-200 text-[10px]">✕ {t("ملغاة", "Void")}</Badge>;
+      default:
+        return <Badge className="bg-gray-50 text-gray-500 border border-gray-200 text-[10px]">{status || t("غير محدد", "Unknown")}</Badge>;
+    }
+  };
+
   return (
     <div className="space-y-5" dir={dir}>
       <div><h2 className="text-xl font-bold text-gray-800">{t("الفواتير والمدفوعات","Invoices & Payments")}</h2></div>
       <div className="grid grid-cols-3 gap-4">
-        <KpiCard label={t("إجمالي المدفوع","Total Paid")} value={fmt(invoices.reduce((s,i)=>s+i.amount,0))} sub={t("ر.س","SAR")} icon={<Wallet size={18} className="text-emerald-600"/>} accent="emerald"/>
-        <KpiCard label={t("الفاتورة التالية","Next Invoice")} value={t("15 يناير 2026","Jan 15, 2026")} sub={t("4,800 ر.س","4,800 SAR")} icon={<CreditCard size={18} className="text-blue-600"/>} accent="blue"/>
-        <KpiCard label={t("طريقة الدفع","Payment Method")} value={t("بطاقة ائتمان","Credit Card")} sub="**** 4521" icon={<Shield size={18} className="text-purple-600"/>} accent="purple"/>
+        <KpiCard label={t("إجمالي المدفوع","Total Paid")} value={fmt(kpis.totalPaid)} sub={t(`${kpis.paidCount} فاتورة مدفوعة`, `${kpis.paidCount} paid invoices`)} icon={<Wallet size={18} className="text-emerald-600"/>} accent="emerald"/>
+        <KpiCard label={t("المبالغ المستحقة","Outstanding Due")} value={fmt(kpis.totalDue)} sub={t(`${kpis.dueCount} فواتير معلقة`, `${kpis.dueCount} pending invoices`)} icon={<CreditCard size={18} className="text-amber-600"/>} accent="amber"/>
+        <KpiCard label={t("إجمالي الفواتير","Total Invoices")} value={String(kpis.totalCount)} sub={t("سجل الفواتير الكامل", "All invoice records")} icon={<FileText size={18} className="text-blue-600"/>} accent="blue"/>
       </div>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
           <h3 className="font-bold text-gray-900 text-sm">{t("سجل الفواتير","Invoice History")}</h3>
           <button
             onClick={() => exportMut.mutate({}, { onSuccess: (res) => res?.jobId && setExportJobId(res.jobId) })}
-            disabled={Boolean(exportJobId)}
+            disabled={Boolean(exportJobId) || invoices.length === 0}
             className="text-xs text-emerald-700 font-semibold flex items-center gap-1 hover:text-emerald-800 transition-colors disabled:opacity-50">
             <Download size={11}/> {exportJobId ? t("جاري التحضير...","Preparing...") : t("تصدير","Export")}
           </button>
         </div>
-        {invoices.map(inv=>(
-          <div key={inv.id} className="px-5 py-4 flex items-center gap-4 border-b border-gray-50 last:border-0">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0"><FileText size={16} className="text-emerald-600"/></div>
-            <div className="flex-1"><p className="font-semibold text-gray-800 text-sm" dir="ltr">{inv.id}</p><p className="text-xs text-gray-400">{inv.date}</p></div>
-            <span className="font-mono font-bold text-gray-800">{fmt(inv.amount)} {t("ر.س","SAR")}</span>
-            <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px]">✓ {t("مدفوع","Paid")}</Badge>
-            <button onClick={()=>downloadPdfMut.mutate({ id: inv.id })} className="p-1.5 rounded-lg text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors"><Download size={13}/></button>
+
+        {isInvoicesLoading ? (
+          <div className="p-8 text-center text-gray-500 flex items-center justify-center gap-2">
+            <RefreshCw size={16} className="animate-spin text-purple-600" />
+            <span className="text-sm">{t("جاري تحميل الفواتير...", "Loading invoices...")}</span>
           </div>
-        ))}
+        ) : isInvoicesError ? (
+          <div className="p-6 text-center bg-rose-50 border-t border-rose-100 text-rose-700 space-y-2">
+            <p className="text-sm font-semibold">{t("تعذر تحميل الفواتير", "Failed to load invoices")}</p>
+            <Btn size="sm" variant="outline" onClick={() => refetchInvoices()}>
+              <RefreshCw size={13} /> {t("إعادة المحاولة", "Retry")}
+            </Btn>
+          </div>
+        ) : invoices.length === 0 ? (
+          <div className="p-8 text-center text-gray-400 text-sm">
+            {t("لا توجد فواتير مسجلة حتى الآن", "No invoices found")}
+          </div>
+        ) : (
+          invoices.map((inv) => (
+            <div key={inv.id} className="px-5 py-4 flex items-center gap-4 border-b border-gray-50 last:border-0">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                <FileText size={16} className="text-emerald-600"/>
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-gray-800 text-sm" dir="ltr">{inv.id}</p>
+                <p className="text-xs text-gray-400">{inv.date}</p>
+              </div>
+              <span className="font-mono font-bold text-gray-800">{fmt(inv.amount)} {t("ر.س","SAR")}</span>
+              {renderStatusBadge(inv.status)}
+              <button
+                disabled={downloadPdfMut.isPending}
+                onClick={() => downloadPdfMut.mutate({ id: inv.id })}
+                className="p-1.5 rounded-lg text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors disabled:opacity-50"
+                aria-label={t(`تحميل فاتورة ${inv.id}`, `Download invoice ${inv.id}`)}
+              >
+                <Download size={13}/>
+              </button>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -2452,31 +2805,142 @@ function CASettings() {
   const { data: apiSettings } = useCompanySettings();
   const updateSettingsMut = useUpdateCompanySettings();
   const langPrefMut = useLanguagePref();
-  const [saved,setSaved]=useState(false);
-  const [showPwd,setShowPwd]=useState(false);
-  const [showSessions,setShowSessions]=useState(false);
-  const [show2FA,setShow2FA]=useState(false);
-  const [caView,setCaView]=useState<"home"|"notifications"|"apikeys"|"webhooks">("home");
-  if (caView==="notifications") return (<div className="space-y-4" dir={dir}><button onClick={()=>setCaView("home")} className="text-sm text-purple-600 hover:underline">← {t("رجوع","Back")}</button><NotificationPreferencesPage t={t}/></div>);
-  if (caView==="apikeys") return (<div className="space-y-4" dir={dir}><button onClick={()=>setCaView("home")} className="text-sm text-purple-600 hover:underline">← {t("رجوع","Back")}</button><ApiKeysPage t={t}/></div>);
-  if (caView==="webhooks") return (<div className="space-y-4" dir={dir}><button onClick={()=>setCaView("home")} className="text-sm text-purple-600 hover:underline">← {t("رجوع","Back")}</button><WebhooksPage t={t}/></div>);
-  const fields = [
-    [t("اسم المجموعة","Group Name"),       apiSettings?.name || "مجموعة التاج للمطاعم"],
-    [t("المدينة الرئيسية","Main City"),     apiSettings?.city || "الرياض"],
-    [t("رقم السجل التجاري","CR Number"),   apiSettings?.crNumber || "1010XXXXXX"],
-    [t("البريد الإلكتروني","Email"),        apiSettings?.email || "info@altaj.com"],
-  ];
+  const [saved, setSaved] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const saveLockRef = useRef(false);
+  const [showPwd, setShowPwd] = useState(false);
+  const [showSessions, setShowSessions] = useState(false);
+  const [show2FA, setShow2FA] = useState(false);
+  const [caView, setCaView] = useState<"home" | "notifications" | "apikeys" | "webhooks">("home");
+
+  const [formData, setFormData] = useState<CompanySettingsFormState>({
+    name: "",
+    city: "",
+    crNumber: "",
+    email: "",
+  });
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    if (apiSettings && !isInitialized) {
+      setFormData(initialCompanySettingsState(apiSettings));
+      setIsInitialized(true);
+    }
+  }, [apiSettings, isInitialized]);
+
+  if (caView === "notifications") return (<div className="space-y-4" dir={dir}><button onClick={() => setCaView("home")} className="text-sm text-purple-600 hover:underline">← {t("رجوع", "Back")}</button><NotificationPreferencesPage t={t} /></div>);
+  if (caView === "apikeys") return (<div className="space-y-4" dir={dir}><button onClick={() => setCaView("home")} className="text-sm text-purple-600 hover:underline">← {t("رجوع", "Back")}</button><ApiKeysPage t={t} /></div>);
+  if (caView === "webhooks") return (<div className="space-y-4" dir={dir}><button onClick={() => setCaView("home")} className="text-sm text-purple-600 hover:underline">← {t("رجوع", "Back")}</button><WebhooksPage t={t} /></div>);
+
+  const handleSave = async () => {
+    if (updateSettingsMut.isPending || saveLockRef.current) return;
+    setErrorMessage(null);
+    const result = await runCompanySettingsSave(
+      formData,
+      lang,
+      (payload) => updateSettingsMut.mutateAsync(payload),
+      saveLockRef
+    );
+    if (result.success) {
+      setSaved(true);
+      setErrorMessage(null);
+      setTimeout(() => setSaved(false), 2500);
+    } else {
+      setSaved(false);
+      setErrorMessage(result.error);
+    }
+  };
+
   return (
     <div className="space-y-5" dir={dir}>
-      <div><h2 className="text-xl font-bold text-gray-800">{t("إعدادات الشركة","Company Settings")}</h2></div>
+      <div><h2 className="text-xl font-bold text-gray-800">{t("إعدادات الشركة", "Company Settings")}</h2></div>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-4">
-        <h3 className="font-bold text-gray-800 text-sm border-b border-gray-100 pb-3">{t("بيانات الشركة","Company Information")}</h3>
+        <h3 className="font-bold text-gray-800 text-sm border-b border-gray-100 pb-3">{t("بيانات الشركة", "Company Information")}</h3>
+        {errorMessage && (
+          <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+            <AlertTriangle size={14} className="shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4">
-          {fields.map(([l,v])=>(
-            <div key={l}><label className="text-xs font-semibold text-gray-600 block mb-1">{l}</label><input defaultValue={v} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>
-          ))}
+          <div>
+            <label className="text-xs font-semibold text-gray-600 block mb-1">{t("اسم المجموعة", "Group Name")}</label>
+            <input
+              value={formData.name}
+              onChange={(e) => {
+                setFormData((prev) => ({ ...prev, name: e.target.value }));
+                if (errorMessage) setErrorMessage(null);
+              }}
+              placeholder={t("مجموعة التاج للمطاعم", "Altaj Restaurant Group")}
+              disabled={updateSettingsMut.isPending}
+              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400 disabled:bg-gray-50 disabled:text-gray-400"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 block mb-1">{t("المدينة الرئيسية", "Main City")}</label>
+            <input
+              value={formData.city}
+              onChange={(e) => {
+                setFormData((prev) => ({ ...prev, city: e.target.value }));
+                if (errorMessage) setErrorMessage(null);
+              }}
+              placeholder={t("الرياض", "Riyadh")}
+              disabled={updateSettingsMut.isPending}
+              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400 disabled:bg-gray-50 disabled:text-gray-400"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 block mb-1">{t("رقم السجل التجاري", "CR Number")}</label>
+            <input
+              value={formData.crNumber}
+              onChange={(e) => {
+                setFormData((prev) => ({ ...prev, crNumber: e.target.value }));
+                if (errorMessage) setErrorMessage(null);
+              }}
+              placeholder="1010XXXXXX"
+              disabled={updateSettingsMut.isPending}
+              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400 disabled:bg-gray-50 disabled:text-gray-400"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 block mb-1">{t("البريد الإلكتروني", "Email")}</label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => {
+                setFormData((prev) => ({ ...prev, email: e.target.value }));
+                if (errorMessage) setErrorMessage(null);
+              }}
+              placeholder="info@altaj.com"
+              disabled={updateSettingsMut.isPending}
+              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400 disabled:bg-gray-50 disabled:text-gray-400"
+            />
+          </div>
         </div>
-        <div className="flex justify-end"><button onClick={()=>{updateSettingsMut.mutate({});setSaved(true);setTimeout(()=>setSaved(false),2000);}} className={`inline-flex items-center gap-1.5 px-5 py-2 rounded-lg font-bold text-sm transition-all ${saved?"bg-emerald-500 text-white":"bg-purple-600 text-white hover:bg-purple-700"}`}>{saved?<><Check size={14}/> {t("تم الحفظ","Saved")}</>:<><CheckCircle2 size={14}/> {t("حفظ","Save")}</>}</button></div>
+        <div className="flex justify-end">
+          <button
+            onClick={handleSave}
+            disabled={updateSettingsMut.isPending}
+            className={`inline-flex items-center gap-1.5 px-5 py-2 rounded-lg font-bold text-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed ${saved ? "bg-emerald-500 text-white" : "bg-purple-600 text-white hover:bg-purple-700"}`}
+          >
+            {updateSettingsMut.isPending ? (
+              <>
+                <RefreshCw size={14} className="animate-spin" />
+                {t("جاري الحفظ...", "Saving...")}
+              </>
+            ) : saved ? (
+              <>
+                <Check size={14} />
+                {t("تم الحفظ", "Saved")}
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={14} />
+                {t("حفظ", "Save")}
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* ── Account Settings ─────────────────────── */}
@@ -2559,62 +3023,162 @@ function CASettings() {
 }
 
 function CASupport() {
-  const { t, dir } = useCLang();
-  const { data: apiChannels } = useSupportChannels();
+  const { t, dir, lang } = useCLang();
+  const { data: apiChannels, isLoading: isChannelsLoading } = useSupportChannels();
   const createTicketMut = useCreateTicket();
-  const PLACEHOLDER = t("نوع المشكلة...","Issue type...");
-  const [msgType,setMsgType]=useState(PLACEHOLDER);
-  const [msgBody,setMsgBody]=useState("");
-  const [sent,setSent]=useState(false);
-  // Support contact channels come from GET /company/me/support/channels. No static fallback.
-  const channels = (Array.isArray(apiChannels)
-    ? (apiChannels as any[]).map((c: any) => ({
-        ic: c.icon ?? "📞",
-        label: c.label ?? c.name ?? "",
-        d: c.description ?? c.detail ?? "",
-        b: c.availability ?? "",
-        action: () => { if (c.link) window.open(c.link, "_blank"); },
-      }))
-    : []) as Array<{ ic:string; label:string; d:string; b:string; action:()=>void }>;
-  const handleSend=()=>{
-    if(msgType===PLACEHOLDER){alert(t("يرجى تحديد نوع المشكلة","Please select an issue type"));return;}
-    if(!msgBody.trim()){alert(t("يرجى شرح المشكلة أولاً","Please describe the issue first"));return;}
-    createTicketMut.mutate({ subject: msgType, category: msgType, body: msgBody });
-    setSent(true);
+  const submitLockRef = useRef(false);
+  const [categoryKey, setCategoryKey] = useState<string>("");
+  const [msgBody, setMsgBody] = useState("");
+  const [sent, setSent] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const rawChannels: any[] = Array.isArray(apiChannels)
+    ? apiChannels
+    : ((apiChannels as any)?.data ?? []);
+  const channels = rawChannels.map((c: any) => parseSupportChannel(c, lang as "ar" | "en"));
+
+  const handleSend = async () => {
+    if (createTicketMut.isPending || submitLockRef.current) return;
+    setErrorMessage(null);
+    const result = await runSupportTicketSubmit(
+      { category: categoryKey, body: msgBody },
+      lang,
+      (payload) => createTicketMut.mutateAsync(payload),
+      submitLockRef
+    );
+    if (result.success) {
+      setSent(true);
+      setErrorMessage(null);
+    } else {
+      setSent(false);
+      setErrorMessage(result.error);
+    }
   };
+
   return (
     <div className="space-y-5" dir={dir}>
-      <div><h2 className="text-xl font-bold text-gray-800">{t("الدعم الفني","Technical Support")}</h2></div>
-      <div className="grid grid-cols-3 gap-4">
-        {channels.map(({ic,label,d,b,action})=>(
-          <button key={label} onClick={action} className={`bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:border-purple-200 hover:shadow-md transition-all ${dir==="rtl"?"text-right":"text-left"}`}>
-            <div className="text-3xl mb-3">{ic}</div>
-            <p className="font-bold text-gray-800 text-sm">{label}</p>
-            <p className="text-xs text-gray-400 mt-1">{d}</p>
-            <Badge className="mt-2 bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px]">{b}</Badge>
-          </button>
-        ))}
-      </div>
+      <div><h2 className="text-xl font-bold text-gray-800">{t("الدعم الفني", "Technical Support")}</h2></div>
+      {isChannelsLoading ? (
+        <div className="p-6 text-center text-gray-400 text-sm flex items-center justify-center gap-2">
+          <RefreshCw size={14} className="animate-spin text-purple-600" />
+          <span>{t("جاري تحميل قنوات الدعم...", "Loading support channels...")}</span>
+        </div>
+      ) : channels.length === 0 ? (
+        <div className="p-6 text-center text-gray-400 text-sm bg-white rounded-xl border border-gray-100">
+          {t("لا توجد قنوات تواصل مباشرة مسجلة حالياً، يمكنك إرسال تذكرة دعم أدناه", "No direct support channels available right now. You can submit a support ticket below.")}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {channels.map((ch) => {
+            const handleClick = () => {
+              if (!ch.isAvailable || ch.actionType === "none") return;
+              if (ch.actionType === "url") {
+                window.open(ch.value, "_blank", "noopener,noreferrer");
+              } else if (ch.actionType === "tel") {
+                window.location.href = `tel:${ch.value}`;
+              } else if (ch.actionType === "mailto") {
+                window.location.href = `mailto:${ch.value}`;
+              }
+            };
+            return (
+              <button
+                key={ch.key || ch.label}
+                type="button"
+                onClick={handleClick}
+                disabled={!ch.isAvailable || ch.actionType === "none"}
+                className={`bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:border-purple-200 hover:shadow-md transition-all ${
+                  dir === "rtl" ? "text-right" : "text-left"
+                } ${!ch.isAvailable ? "opacity-60 cursor-not-allowed" : ""}`}
+              >
+                <div className="text-3xl mb-3">{ch.icon}</div>
+                <p className="font-bold text-gray-800 text-sm">{ch.label}</p>
+                <p className="text-xs text-gray-500 mt-1 font-mono" dir="ltr">{ch.value || "—"}</p>
+                <Badge
+                  className={`mt-2 text-[10px] ${
+                    ch.isAvailable
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                      : "bg-gray-50 text-gray-500 border-gray-200"
+                  }`}
+                >
+                  {ch.isAvailable
+                    ? (ch.hours || (lang === "ar" ? "متاح الآن" : "Available"))
+                    : (lang === "ar" ? "غير متاح حالياً" : "Unavailable")}
+                </Badge>
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-        <h3 className="font-bold text-gray-800 text-sm mb-3">{t("إرسال طلب دعم","Submit Support Request")}</h3>
-        {sent?(
+        <h3 className="font-bold text-gray-800 text-sm mb-3">{t("إرسال طلب دعم", "Submit Support Request")}</h3>
+        {sent ? (
           <div className="text-center py-6">
             <div className="text-4xl mb-3">✅</div>
-            <p className="font-bold text-gray-800">{t("تم إرسال طلب الدعم","Support request submitted")}</p>
-            <p className="text-sm text-gray-400 mt-1">{t("سنتواصل معك خلال 24 ساعة","We will contact you within 24 hours")}</p>
-            <Btn onClick={()=>{setSent(false);setMsgBody("");setMsgType(PLACEHOLDER);}} variant="ghost" size="sm">{t("إرسال طلب آخر","Submit another request")}</Btn>
+            <p className="font-bold text-gray-800">{t("تم إرسال طلب الدعم", "Support request submitted")}</p>
+            <p className="text-sm text-gray-400 mt-1">{t("سنتواصل معك خلال 24 ساعة", "We will contact you within 24 hours")}</p>
+            <Btn
+              onClick={() => {
+                setSent(false);
+                setMsgBody("");
+                setCategoryKey("");
+                setErrorMessage(null);
+              }}
+              variant="ghost"
+              size="sm"
+            >
+              {t("إرسال طلب آخر", "Submit another request")}
+            </Btn>
           </div>
-        ):(
+        ) : (
           <div className="space-y-3">
-            <select value={msgType} onChange={e=>setMsgType(e.target.value)} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none">
-              <option>{PLACEHOLDER}</option>
-              <option>{t("مشكلة في الاشتراك","Subscription issue")}</option>
-              <option>{t("مشكلة تقنية","Technical issue")}</option>
-              <option>{t("استفسار عام","General inquiry")}</option>
-              <option>{t("طلب ميزة","Feature request")}</option>
+            {errorMessage && (
+              <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                <AlertTriangle size={14} className="shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+            <select
+              value={categoryKey}
+              onChange={(e) => {
+                setCategoryKey(e.target.value);
+                if (errorMessage) setErrorMessage(null);
+              }}
+              disabled={createTicketMut.isPending}
+              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none disabled:bg-gray-50 disabled:text-gray-400"
+            >
+              <option value="">{t("نوع المشكلة...", "Issue type...")}</option>
+              {SUPPORT_TICKET_CATEGORIES.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {t(c.ar, c.en)}
+                </option>
+              ))}
             </select>
-            <textarea rows={4} value={msgBody} onChange={e=>setMsgBody(e.target.value)} placeholder={t("اشرح المشكلة بالتفصيل...","Describe the issue in detail...")} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none resize-none focus:border-purple-400"/>
-            <Btn variant="primary" onClick={handleSend}><Send size={13}/> {t("إرسال الطلب","Submit Request")}</Btn>
+            <textarea
+              rows={4}
+              value={msgBody}
+              onChange={(e) => {
+                setMsgBody(e.target.value);
+                if (errorMessage) setErrorMessage(null);
+              }}
+              placeholder={t("اشرح المشكلة بالتفصيل (10 أحرف على الأقل)...", "Describe the issue in detail (at least 10 characters)...")}
+              disabled={createTicketMut.isPending}
+              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none resize-none focus:border-purple-400 disabled:bg-gray-50 disabled:text-gray-400"
+            />
+            <Btn
+              variant="primary"
+              onClick={handleSend}
+              disabled={createTicketMut.isPending}
+            >
+              {createTicketMut.isPending ? (
+                <>
+                  <RefreshCw size={13} className="animate-spin" /> {t("جاري الإرسال...", "Submitting...")}
+                </>
+              ) : (
+                <>
+                  <Send size={13} /> {t("إرسال الطلب", "Submit Request")}
+                </>
+              )}
+            </Btn>
           </div>
         )}
       </div>

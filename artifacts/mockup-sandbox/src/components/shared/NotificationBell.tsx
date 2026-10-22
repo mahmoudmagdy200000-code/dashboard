@@ -75,6 +75,9 @@ export function NotificationBell({ t = (ar) => ar, theme = "light" }: Props) {
         ref={buttonRef}
         onClick={() => setOpen((v) => !v)}
         title={t("الإشعارات", "Notifications")}
+        aria-label={t("الإشعارات", "Notifications")}
+        aria-expanded={open}
+        aria-haspopup="true"
         style={{
           position: "relative",
           background: buttonBg,
@@ -119,11 +122,13 @@ export function NotificationBell({ t = (ar) => ar, theme = "light" }: Props) {
         <div
           ref={panelRef}
           dir="rtl"
+          role="region"
+          aria-label={t("قائمة الإشعارات", "Notifications List")}
           style={{
             position: "absolute",
             top: 46,
             insetInlineEnd: 0,
-            width: 380,
+            width: "min(380px, calc(100vw - 32px))",
             maxHeight: 480,
             background: "white",
             border: "1px solid rgba(0,0,0,0.08)",
@@ -197,7 +202,15 @@ export function NotificationBell({ t = (ar) => ar, theme = "light" }: Props) {
               return (
                 <div
                   key={n.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleItemClick(n)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleItemClick(n);
+                    }
+                  }}
                   style={{
                     padding: "12px 16px",
                     borderBottom: "1px solid rgba(0,0,0,0.04)",
@@ -255,17 +268,18 @@ export function NotificationBell({ t = (ar) => ar, theme = "light" }: Props) {
                       deleteOne.mutate(n.id);
                     }}
                     title={t("حذف", "Delete")}
+                    aria-label={t("حذف الإشعار", "Delete notification")}
                     style={{
                       background: "transparent",
                       border: "none",
                       color: "#cbd5e1",
                       cursor: "pointer",
-                      padding: 0,
+                      padding: 4,
                       fontSize: 14,
                       lineHeight: 1,
                     }}
                   >
-                    <Check size={12} />
+                    <Check size={14} />
                   </button>
                 </div>
               );

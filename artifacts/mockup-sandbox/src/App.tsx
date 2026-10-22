@@ -110,7 +110,10 @@ function getPreviewPath(): string | null {
   // 1. Hash routing (static deployment)
   const hash = window.location.hash;
   const hashMatch = hash.match(/^#\/preview(?:\/(.*))?$/);
-  if (hashMatch) return hashMatch[1] ?? "";
+  if (hashMatch) {
+    const raw = hashMatch[1] ?? "";
+    return raw.split("?")[0];
+  }
 
   // 2. Pathname routing (dev / canvas iframes)
   const basePath = getBasePath();
@@ -120,7 +123,11 @@ function getPreviewPath(): string | null {
       ? pathname.slice(basePath.length) || "/"
       : pathname;
   const match = local.match(/^\/preview(?:\/(.*))?$/);
-  return match ? match[1] ?? "" : null;
+  if (match) {
+    const raw = match[1] ?? "";
+    return raw.split("?")[0];
+  }
+  return null;
 }
 
 // ─── ASAB Landing Page (only shown for logged-in users — picks a dashboard) ──

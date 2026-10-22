@@ -62,17 +62,30 @@ export function LiveChatWidget({ t = (ar) => ar }: Props) {
     }
   };
 
-  const handleSend = (e: FormEvent) => {
+  const handleSend = async (e: FormEvent) => {
     e.preventDefault();
-    if (!text.trim() || !sessionId) return;
-    sendMut.mutate({ sessionId, text: text.trim() });
-    setText("");
+    if (!text.trim() || !sessionId || sendMut.isPending) return;
+    const currentText = text.trim();
+    try {
+      await sendMut.mutateAsync({ sessionId, text: currentText });
+      setText("");
+    } catch {
+      // Draft preserved in text state on failure!
+    }
   };
 
-  const handleClose = () => {
-    if (sessionId) closeMut.mutate(sessionId);
-    setSessionId(null);
+  // Close the popup UI without terminating the active server session
+  const handleMinimize = () => {
     setOpen(false);
+  };
+
+  // Explicitly terminate the server session upon user confirmation
+  const handleEndSession = () => {
+    if (window.confirm(t("هل أنت متأكد من إنهاء جلسة الدعم؟", "Are you sure you want to end this chat session?"))) {
+      if (sessionId) closeMut.mutate(sessionId);
+      setSessionId(null);
+      setOpen(false);
+    }
   };
 
   // Floating launcher button
@@ -151,9 +164,37 @@ export function LiveChatWidget({ t = (ar) => ar }: Props) {
                   : t("انتهت المحادثة", "Chat ended")}
           </div>
         </div>
-        <button onClick={handleClose} style={{ background: "transparent", border: "none", color: "white", cursor: "pointer", padding: 4 }}>
-          <X size={18} />
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {sessionId && !closed && (
+            <button
+              type="button"
+              onClick={handleEndSession}
+              style={{
+                background: "rgba(239,68,68,0.2)",
+                border: "1px solid rgba(255,255,255,0.3)",
+                color: "white",
+                fontSize: 10,
+                borderRadius: 6,
+                padding: "2px 8px",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+              title={t("إنهاء الجلسة", "End session")}
+              aria-label={t("إنهاء الجلسة", "End session")}
+            >
+              {t("إنهاء", "End")}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleMinimize}
+            style={{ background: "transparent", border: "none", color: "white", cursor: "pointer", padding: 4 }}
+            title={t("تصغير", "Minimize")}
+            aria-label={t("تصغير نافذة الدردشة", "Minimize chat window")}
+          >
+            <X size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Messages */}
@@ -210,20 +251,21 @@ export function LiveChatWidget({ t = (ar) => ar }: Props) {
         />
         <button
           type="submit"
-          disabled={closed || !text.trim()}
+          disabled={closed || !text.trim() || sendMut.isPending}
+          aria-label={t("إرسال الرسالة", "Send message")}
           style={{
             width: 42,
             borderRadius: 10,
             border: "none",
-            background: closed || !text.trim() ? "#cbd5e1" : "linear-gradient(135deg, #7C3AED, #00D9FF)",
+            background: closed || !text.trim() || sendMut.isPending ? "#cbd5e1" : "linear-gradient(135deg, #7C3AED, #00D9FF)",
             color: "white",
-            cursor: closed || !text.trim() ? "not-allowed" : "pointer",
+            cursor: closed || !text.trim() || sendMut.isPending ? "not-allowed" : "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Send size={16} />
+          {sendMut.isPending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
         </button>
       </form>
     </div>
