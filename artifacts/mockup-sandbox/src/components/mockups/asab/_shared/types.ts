@@ -106,4 +106,6 @@ export interface AdminUserData {
 
 /** reportsTo is a userId on write but an object on read — render the name safely. */
 export const reportsToName = (v: unknown): string =>
-  typeof v === "object" && v !== null && "name" in v ? String((v as any).name) : String(v ?? "");
+  typeof v === "string"
+    ? v
+    : ((v as { name?: string } | null)?.name ?? "");

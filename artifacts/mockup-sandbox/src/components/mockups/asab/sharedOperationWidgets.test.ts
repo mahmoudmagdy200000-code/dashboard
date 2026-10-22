@@ -23,12 +23,13 @@ import {
   EN_SEV_LABEL,
   EN_EXCEPTION_UI,
   EN_EXCEPTION_ITEMS,
+  OP_MODULE_LABELS,
 } from "./_shared/displayConfig";
 import { applyFilters, topModulePage } from "./_shared/filterOps";
 import { PipelineBar, OpStagePill, PipelineOverview } from "./_shared/PipelineOverview";
 import { OpRow } from "./_shared/OpRow";
 import { deriveExceptions, ExceptionPanel } from "./_shared/ExceptionPanel";
-import type { Op, Filters } from "./_shared/types";
+import { type Op, type Filters, reportsToName } from "./_shared/types";
 
 test("displayConfig: match, status, origin, and pipeline configurations are fully populated", () => {
   assert.equal(MATCH_CFG.exact.label, "متطابق");
@@ -189,4 +190,36 @@ test("Component exports: PipelineBar, OpStagePill, PipelineOverview, OpRow, Exce
   assert.equal(typeof PipelineOverview, "function");
   assert.equal(typeof OpRow, "function");
   assert.equal(typeof ExceptionPanel, "function");
+});
+
+test("M4-F01 regression: OP_MODULE_LABELS preserves original mapping and includes waste", () => {
+  assert.equal(OP_MODULE_LABELS.sales, "مبيعات");
+  assert.equal(OP_MODULE_LABELS.expenses, "مصروفات");
+  assert.equal(OP_MODULE_LABELS.purchases, "مشتريات");
+  assert.equal(OP_MODULE_LABELS.inventory, "مخزون");
+  assert.equal(OP_MODULE_LABELS.shifts, "شفتات");
+  assert.equal(OP_MODULE_LABELS.employees, "كشف الحساب");
+  assert.equal(OP_MODULE_LABELS.cash, "عهدة نقدية");
+  assert.equal(OP_MODULE_LABELS.waste, "هالك");
+  assert.equal(Object.keys(OP_MODULE_LABELS).length, 8);
+});
+
+test("M4-F02 regression: reportsToName preserves string, null, undefined, valid object, missing name, and null name behavior", () => {
+  // 1. string input
+  assert.equal(reportsToName("فهد"), "فهد");
+  assert.equal(reportsToName("User-123"), "User-123");
+  // 2. null input
+  assert.equal(reportsToName(null), "");
+  // 3. undefined input
+  assert.equal(reportsToName(undefined), "");
+  // 4. valid object with name
+  assert.equal(reportsToName({ id: "u1", name: "طلال الحسين" }), "طلال الحسين");
+  // 5. object missing name
+  assert.equal(reportsToName({ id: "u2" }), "");
+  // 6. object with null name
+  assert.equal(reportsToName({ id: "u3", name: null }), "");
+  // 7. object with undefined name
+  assert.equal(reportsToName({ name: undefined }), "");
+  // 8. primitive non-string
+  assert.equal(reportsToName(42), "");
 });

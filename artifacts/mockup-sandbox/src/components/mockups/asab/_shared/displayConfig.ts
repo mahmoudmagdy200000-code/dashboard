@@ -136,13 +136,14 @@ export const EXCEPTION_SEV_CFG: Record<ExceptionSeverity, { cls: string; barCls:
 };
 
 export const OP_MODULE_LABELS: Record<string, string> = {
-  sales: "المبيعات",
-  expenses: "المصروفات",
-  purchases: "المشتريات",
-  inventory: "المخزون",
-  shifts: "الشفتات",
-  employees: "الموظفون",
-  cash: "العهد النقدية",
+  sales: "مبيعات",
+  expenses: "مصروفات",
+  purchases: "مشتريات",
+  inventory: "مخزون",
+  shifts: "شفتات",
+  employees: "كشف الحساب",
+  cash: "عهدة نقدية",
+  waste: "هالك",
 };
 
 export const EN_NAV_LABELS: Record<string, string> = {
