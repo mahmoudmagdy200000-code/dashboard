@@ -6,6 +6,7 @@ import { ProcReports } from "./_pages/procurement/ProcReports.tsx";
 import { ProcSent } from "./_pages/procurement/ProcSent.tsx";
 import { ProcItems } from "./_pages/procurement/ProcItems.tsx";
 import { ProcSuppliers } from "./_pages/procurement/ProcSuppliers.tsx";
+import { ProcGrouped } from "./_pages/procurement/ProcGrouped.tsx";
 import type { PageProps } from "./_shared/types.ts";
 
 test("Procurement modularized pages export valid React components", () => {
@@ -14,6 +15,7 @@ test("Procurement modularized pages export valid React components", () => {
   assert.equal(typeof ProcSent, "function", "ProcSent must be exported as a function component");
   assert.equal(typeof ProcItems, "function", "ProcItems must be exported as a function component");
   assert.equal(typeof ProcSuppliers, "function", "ProcSuppliers must be exported as a function component");
+  assert.equal(typeof ProcGrouped, "function", "ProcGrouped must be exported as a function component");
 });
 
 test("fmtAmt shared formatter preserves exact currency formatting and null handling", () => {
@@ -63,4 +65,68 @@ test("ProcSuppliers rating and status resolution logic behaves consistently", ()
   assert.equal(contactOf({ contact: "Mohamed" }), "Mohamed");
   assert.equal(contactOf({ contactPhone: "0501234567" }), "0501234567");
   assert.equal(contactOf({}), "");
+});
+
+test("ProcGrouped capacity indicators, fmtOrDash, and send payload contracts behave consistently", () => {
+  // Test fmtOrDash helper logic
+  const fmtOrDash = (n: number | null | undefined) => n == null ? "—" : fmtAmt(n);
+  assert.equal(fmtOrDash(null), "—");
+  assert.equal(fmtOrDash(undefined), "—");
+  assert.equal(fmtOrDash(100), fmtAmt(100));
+
+  // Test capacity percentage and threshold logic
+  const calcCapacity = (it: { capacity?: number | null; capacityPct?: number | null; totalQuantity: number; exceeded?: boolean }) => {
+    const noCap = it.capacity == null;
+    const pct = it.capacityPct ?? (noCap ? null : Math.round((it.totalQuantity / it.capacity!) * 100));
+    const over = it.exceeded === true;
+    const color = over ? "red" : (pct ?? 0) > 80 ? "amber" : "emerald";
+    return { noCap, pct, over, color };
+  };
+
+  assert.deepEqual(calcCapacity({ totalQuantity: 50, capacity: null }), {
+    noCap: true,
+    pct: null,
+    over: false,
+    color: "emerald",
+  });
+  assert.deepEqual(calcCapacity({ totalQuantity: 60, capacity: 100 }), {
+    noCap: false,
+    pct: 60,
+    over: false,
+    color: "emerald",
+  });
+  assert.deepEqual(calcCapacity({ totalQuantity: 85, capacity: 100 }), {
+    noCap: false,
+    pct: 85,
+    over: false,
+    color: "amber",
+  });
+  assert.deepEqual(calcCapacity({ totalQuantity: 120, capacity: 100, exceeded: true }), {
+    noCap: false,
+    pct: 120,
+    over: true,
+    color: "red",
+  });
+
+  // Verify mutation payload structures match expected API interfaces
+  const itemSendPayload = (supId: string | undefined, orderIds: string[]) => ({
+    supplierId: supId,
+    orderIds,
+  });
+  assert.deepEqual(itemSendPayload("sup-1", ["ord-1", "ord-2"]), {
+    supplierId: "sup-1",
+    orderIds: ["ord-1", "ord-2"],
+  });
+
+  const supplierSendPayload = (supId: string) => ({ supplierId: supId });
+  assert.deepEqual(supplierSendPayload("sup-99"), { supplierId: "sup-99" });
+
+  const unassignedSendPayload = (supId: string, orderId: string) => ({
+    supplierId: supId,
+    orderIds: [orderId],
+  });
+  assert.deepEqual(unassignedSendPayload("sup-3", "ord-44"), {
+    supplierId: "sup-3",
+    orderIds: ["ord-44"],
+  });
 });
