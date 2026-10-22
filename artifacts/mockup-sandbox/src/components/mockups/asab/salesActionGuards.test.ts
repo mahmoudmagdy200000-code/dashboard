@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import ts from "typescript";
 import {
   getSalesActionPolicy, isPkg6SalesReport, runSalesAction,
@@ -126,7 +126,7 @@ test("actual sales edit/save/assign handlers send no forbidden requests in eithe
   };
   for (const [file, component, assign] of [
     ["CompanyDashboard.tsx", "SalesReconPanel", "confirmAssign"],
-    ["ASABPrototype.tsx", "AccSalesDetail", "confirmVarianceAssign"],
+    [existsSync(new URL("_pages/accountant/AccSalesDetail.tsx", import.meta.url)) ? "_pages/accountant/AccSalesDetail.tsx" : "ASABPrototype.tsx", "AccSalesDetail", "confirmVarianceAssign"],
   ]) {
     for (const role of ["accountant", "head"]) {
       for (const operation of [legacy, day]) {
@@ -185,7 +185,7 @@ test("nullable Backend legacy evidence permits actual edit/save/assign only for 
   const recon = nullableLegacyRecon;
   for (const [file, component, assign] of [
     ["CompanyDashboard.tsx", "SalesReconPanel", "confirmAssign"],
-    ["ASABPrototype.tsx", "AccSalesDetail", "confirmVarianceAssign"],
+    [existsSync(new URL("_pages/accountant/AccSalesDetail.tsx", import.meta.url)) ? "_pages/accountant/AccSalesDetail.tsx" : "ASABPrototype.tsx", "AccSalesDetail", "confirmVarianceAssign"],
   ]) {
     for (const role of ["accountant", "head"]) {
       for (const status of ["pending", "approved", "final-approved"]) {

@@ -40,3 +40,15 @@ export const formatDateLong = (lang: "ar" | "en", iso?: string | null) => {
     ? `${d.getDate()} ${AR_MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`
     : `${EN_MONTHS_LONG[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 };
+
+export const isImageFile = (name: string) => /\.(jpe?g|png|webp|gif|bmp|heic|heif|tiff?)$/i.test(name || "");
+
+import { APP_BASE_URL } from "../../../../api/client";
+
+export const resolveAssetUrl = (u?: string | null): string => {
+  const s = String(u ?? "");
+  if (!s) return "";
+  if (/^(data:|blob:)/i.test(s)) return s;
+  const abs = /^https?:/i.test(s) ? s : `${APP_BASE_URL}${s.startsWith("/") ? "" : "/"}${s}`;
+  return abs.replace(/(^https?:\/\/)|\/{2,}/gi, (_m, proto) => proto || "/");
+};

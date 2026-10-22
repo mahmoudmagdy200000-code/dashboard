@@ -21,3 +21,14 @@ export function topModulePage(targetOps: Op[], prefix: string, fallback: string)
   const top = Object.entries(freq).sort(([, a], [, b]) => b - a)[0];
   return (top ? `${prefix}${top[0]}` : fallback) as PageId;
 }
+
+// Extract distinct brands present in live operations for filtering dropdowns
+export function brandOptionsFromOps(ops: Op[]): { id: string; name: string }[] {
+  const seen = new Map<string, string>();
+  for (const o of ops) {
+    const id = o.brandId ?? "";
+    const name = o.brandName ?? "";
+    if (id && name && !seen.has(id)) seen.set(id, name);
+  }
+  return [...seen.entries()].map(([id, name]) => ({ id, name }));
+}
