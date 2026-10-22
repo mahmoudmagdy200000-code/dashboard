@@ -64,7 +64,7 @@ test("CA-F03: parseInvoice and calculateBillingKpis compute totalPaid ONLY from 
 
   const kpis = calculateBillingKpis(parsed);
   assert.equal(kpis.totalPaid, 1000, "totalPaid must ONLY include paid invoices");
-  assert.equal(kpis.totalDue, 750, "totalDue must sum open and overdue invoices");
+  assert.equal(kpis.pageDue, 750, "pageDue must sum open and overdue invoices on current page");
   assert.equal(kpis.paidCount, 1);
   assert.equal(kpis.dueCount, 2);
   assert.equal(kpis.totalCount, 4);
@@ -89,33 +89,51 @@ test("CA-REV-01: parseInvoice separates internal id (for PDF download) and publi
   assert.equal(invFallback.displayId, "uuid-fallback-only", "Fallback to id when publicId is absent");
 });
 
-test("CA-REV-02: calculateBillingKpis prioritizes company-wide summary over current page sum", () => {
-  // Page with only 2 invoices (e.g., current page of 20)
+test("CA-REV-02: calculateBillingKpis handles backend reality when outstandingHalalas is absent and invoices are paginated", () => {
+  // Page with only 2 invoices (e.g., current page of 150 total records)
   const pageInvoices = [
     parseInvoice({ id: "inv_1", totalHalalas: 10000, status: "paid" }),  // 100 SAR paid
     parseInvoice({ id: "inv_2", totalHalalas: 20000, status: "open" }),  // 200 SAR open
   ];
 
-  // Company-wide summary from GET /company/me/billing/summary
-  const companySummary = {
+  // Scenario 1: Actual Backend Reality — GET /company/me/billing/summary only provides totalPaidHalalas (no outstandingHalalas)
+  const actualBackendSummary = {
     totalPaidHalalas: 8500000, // 85,000 SAR total paid across company history
-    outstandingHalalas: 450000, // 4,500 SAR total outstanding
+    // outstandingHalalas is NOT returned by backend controller
   };
   const totalCountFromMeta = 150; // Total invoices from Page.meta.total
 
-  const kpis = calculateBillingKpis(pageInvoices, companySummary, totalCountFromMeta);
+  const kpisActual = calculateBillingKpis(pageInvoices, actualBackendSummary, totalCountFromMeta);
 
-  assert.equal(kpis.totalPaid, 85000, "totalPaid must use company-wide summary (not 100 SAR from current page)");
-  assert.equal(kpis.totalDue, 4500, "totalDue must use company-wide summary (not 200 SAR from current page)");
-  assert.equal(kpis.totalCount, 150, "totalCount must reflect pagination meta.total (not 2 from current page)");
-  assert.equal(kpis.isSummaryBased, true);
+  assert.equal(kpisActual.totalPaid, 85000, "totalPaid must use company-wide summary");
+  assert.equal(kpisActual.isSummaryBasedPaid, true);
+  assert.equal(kpisActual.companyTotalDue, null, "companyTotalDue MUST be null because backend summary does not provide outstandingHalalas");
+  assert.equal(kpisActual.pageDue, 200, "pageDue must accurately represent open/overdue on current page only");
+  assert.equal(kpisActual.isMultiPage, true, "isMultiPage must be true when totalCountMeta (150) exceeds page invoices (2)");
+  assert.equal(kpisActual.isSinglePageComplete, false);
+  assert.equal(kpisActual.totalCount, 150);
 
-  // Fallback behavior when summary is absent
+  // Scenario 2: Single-page company (all invoices fit in current page)
+  const kpisSinglePage = calculateBillingKpis(pageInvoices, actualBackendSummary, 2);
+  assert.equal(kpisSinglePage.isMultiPage, false);
+  assert.equal(kpisSinglePage.isSinglePageComplete, true);
+  assert.equal(kpisSinglePage.pageDue, 200);
+
+  // Scenario 3: Future-proof if backend adds outstandingHalalas to summary
+  const futureSummary = {
+    totalPaidHalalas: 8500000,
+    outstandingHalalas: 450000, // 4,500 SAR
+  };
+  const kpisFuture = calculateBillingKpis(pageInvoices, futureSummary, 150);
+  assert.equal(kpisFuture.companyTotalDue, 4500, "companyTotalDue should be parsed if backend ever returns it");
+
+  // Scenario 4: Fallback behavior when summary is absent
   const fallbackKpis = calculateBillingKpis(pageInvoices);
   assert.equal(fallbackKpis.totalPaid, 100);
-  assert.equal(fallbackKpis.totalDue, 200);
+  assert.equal(fallbackKpis.isSummaryBasedPaid, false);
+  assert.equal(fallbackKpis.companyTotalDue, null);
+  assert.equal(fallbackKpis.pageDue, 200);
   assert.equal(fallbackKpis.totalCount, 2);
-  assert.equal(fallbackKpis.isSummaryBased, false);
 });
 
 test("CA-REV-03: parseInvoice matches issueDate from Backend before falling back to issuedAt / createdAt", () => {

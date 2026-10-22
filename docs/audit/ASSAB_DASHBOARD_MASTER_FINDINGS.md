@@ -25,24 +25,36 @@
 
 ---
 
-## 2. Status Vocabulary & Management (قاموس ودورة حياة الحالات)
+## 2. Status Vocabulary & 4-Axis Governance (قاموس ودورة حياة الحالات ومحاور الحوكمة الأربعة)
 
-| الحالة (Status) | الرمز | المعنى والدلالة التشغيلية |
+لضمان عدم الخلط بين الادعاء البرمجي والتحقق الفعلي، يخضع كل بند في هذا السجل لتقييم مستقل عبر **أربعة محاور حوكمة منفصلة**:
+
+1. **حالة التطبيق البرمجي (Implementation Status):**
+   - `NOT_STARTED` 🔴: لم يبدأ العمل عليه.
+   - `IMPLEMENTED` 🟢: تم تعديل الكود البرمجي في المستودع.
+   - `GATED` 🟣: محجوب بقرار معماري / إداري يتطلب موافقة منفصلة (`APPROVAL_REQUIRED`).
+2. **الاختبارات الآلية (Automated Tests):**
+   - `PASS` 🟢: اجتاز اختبارات الوحدة وفحص الأنواع (Typecheck) وبناء الإنتاج (Build) بنسبة 100%.
+   - `FAIL` ❌: فشل في أحد الاختبارات الآلية.
+   - `NOT_RUN` ⚪: لم تُنفّذ له اختبارات آلية بعد.
+3. **المراجعة المستقلة والقبول الفني (Independent Review):**
+   - `PENDING_ACCEPTANCE` 🟡: تم تطبيق الكود واجتياز الفحص الآلي، وهو بانتظار المراجعة والقبول المستقل من المهندس المشرف.
+   - `ACCEPTED` 🟢: تمت مراجعته واعتُمد فنياً وقُبل من المراجع المستقل.
+   - `CHANGES_REQUESTED` 🟠: طُلبت تصحيحات أو تعديلات إضافية بناءً على المراجعة.
+4. **التحقق التشغيلي الحي (Runtime Verification):**
+   - `NOT_RUN` ⚪: لم يتم إجراء فحص تشغيلي حي داخل جلسة متصفح موثقة على بيئة Staging (لا يجوز ادعاء نجاحه إلا بعد تنفيذه الفعلي).
+   - `PASS` 🟢: تم التحقق التشغيلي الحي في المتصفح واجتاز الخطوات بنجاح.
+   - `FAIL` ❌: فشل أثناء التحقق التشغيلي الحي.
+
+| الحالة الشاملة للجدول (Overall Status) | الرمز | المعنى والدلالة التشغيلية |
 | :--- | :---: | :--- |
 | `OPEN` | 🔴 | المشكلة مكتشفة وموثقة في التدقيق ولكن لم يبدأ تنفيذ إصلاحها بعد. |
 | `IN_PROGRESS` | 🟡 | جارٍ تنفيذ الإصلاح البرمجي للمشكلة بنشاط. |
 | `IMPLEMENTED_UNVERIFIED` | 🟠 | تم تعديل الكود ولكن لم يكتمل الفحص الآلي المستقل أو الاختبارات. |
-| `FIXED_AND_VERIFIED` | 🟢 | تم تطبيق الإصلاح البرمجي واجتاز الفحوصات الآلية (Unit Tests + Typecheck + Build) بنجاح كامل. |
-| `APPROVAL_REQUIRED` | 🟣 | الإصلاح معلق بانتظار قرار معماري / إداري من محمود أو اعتماد سياسة قواعد الأعمال. |
+| `FIXED_AND_VERIFIED` | 🟢 | تم تطبيق الإصلاح واجتاز الفحوصات الآلية بالكامل ويخضع للمراجعة المستقلة للقبول. |
+| `APPROVAL_REQUIRED` | 🟣 | الإصلاح معلق بانتظار قرار معماري / إداري من الإدارة أو اعتماد سياسة قواعد الأعمال. |
 | `BLOCKED` | ⛔ | يوجد مانع تقني أو بيئي موثق يمنع استكمال الإصلاح. |
 | `FAILED` | ❌ | فشل الإصلاح أو لم تجتز التعديلات الاختبارات المحددة. |
-| `NOT_APPLICABLE` | ⚪ | ثبت عدم انطباق المشكلة مع توثيق الدليل والسبب التقني. |
-
-### حالة التحقق الحي المنفصلة (Runtime Verification Status):
-- `NOT_RUN`: لم يتم إجراء فحص تشغيلي حي داخل جلسة متصفح موثقة على بيئة Staging.
-- `PASS`: تم التحقق التشغيلي في المتصفح واجتاز الخطوات بنجاح.
-- `FAIL`: فشل أثناء التحقق التشغيلي الحي.
-- `BLOCKED`: تعذر الفحص الحي لغياب صلاحية وصول أو حسابات مؤهلة.
 
 ---
 
@@ -656,19 +668,21 @@
 
 ---
 
-### CA-REV-02 — حساب مؤشرات الفوترة وفق عقد الملخص الإجمالي وبيانات الترقيم
+### CA-REV-02 — حساب مؤشرات الفوترة وفق عقد الملخص الإجمالي والتفريق الصريح لمستحقات الصفحة
 - **Finding ID:** `CA-REV-02`
 - **Phase:** Phase 1A — Company Admin (Review Correction)
 - **Role / Module / Page:** Company Admin / Billing / `ca-billing`
-- **Problem Description:** كانت بطاقات المؤشرات (KPIs) تجمع فقط فواتير الصفحة الحالية المعروضة وتظهرها وكأنها إجمالي الشركة، ما يعطي أرقاماً مضللة إذا كانت هناك فواتير في صفحات سابقة أو تالية.
+- **Problem Description:** كانت بطاقات المؤشرات (KPIs) تجمع فقط فواتير الصفحة الحالية المعروضة وتظهرها وكأنها إجمالي الشركة، ما يعطي أرقاماً مضللة إذا كانت هناك فواتير في صفحات سابقة أو تالية. وبعد مراجعة عقد الباك إند الفعلي في `BillingController.php` لـ `GET /company/me/billing/summary`، تبيّن أنه يعيد فقط `totalPaidHalalas` و`nextInvoice` و`defaultPaymentMethod`، ولا يعيد إطلاقاً `outstandingHalalas`. لذا لا يجوز جمع مستحقات الصفحة الحالية وعرضها كإجمالي الشركة.
 - **Severity / Priority:** P1 (High)
-- **Root Cause:** الاعتماد على `invoices.reduce(...)` لبيانات الصفحة المفردة فقط وغياب الربط بـ `GET /company/me/billing/summary` وبيانات الترقيم `meta.total`.
-- **Proposed Correction:** استهلاك خطاف `useBillingSummary()` وتمرير `billingSummary` ومعلومات الترقيم `meta.total` إلى دالة `calculateBillingKpis`. في حال توفر الملخص، تُعرض مبالغ الشركة الإجمالية (`totalPaidHalalas`, `outstandingHalalas`) وعدد السجلات الكلي من `meta.total`.
+- **Root Cause:** عدم تطابق تسمية المؤشر مع النطاق الفعلي لبيانات الـ API (حيث الـ API لا يوفر تجميعاً لمستحقات الشركة عبر كافة الصفحات).
+- **Proposed Correction:** استهلاك خطاف `useBillingSummary()` وتمرير `billingSummary` ومعلومات الترقيم `meta.total` إلى دالة `calculateBillingKpis`. اعتماد `totalPaid` من ملخص الشركة الإجمالي (`totalPaidHalalas`). وفي مؤشر المستحقات: تصحيح المسمى إلى «مستحقات الصفحة الحالية» عند تعدد الصفحات مع إيضاح أن إجمالي الشركة غير متوفر في الـ API، أو «المبالغ المستحقة» عند شمول الصفحة لجميع السجلات، دون اختراع مسار وهمي ودون المساس بقواعد SUB-01.
 - **Implementation Branch:** `fix/ux-dashboard-company-admin-01`
 - **Files Changed:** `companyAdminGuards.ts`, `companyAdminGuards.test.ts`, `CompanyDashboard.tsx`
-- **Implementation Commit SHA:** (Commit الحالي)
-- **Automated Test Results:** `companyAdminGuards.test.ts` — CA-REV-02 test PASS
-- **Runtime Verification Status:** `NOT_RUN`
+- **Implementation Commit SHA:** `1cb2b1e19a3...` (والمعدل في Commit القبول النهائي الحالي)
+- **Implementation Status:** `IMPLEMENTED`
+- **Automated Test Results:** `PASS` (`companyAdminGuards.test.ts` — 4 سيناريوهات تغطي غياب `outstandingHalalas` والترقيم المتعدد والصفحة الواحدة والـ Fallback)
+- **Independent Review:** `PENDING_ACCEPTANCE`
+- **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة)
 - **Current Finding Status:** `FIXED_AND_VERIFIED`
 - **Approval / Decision Required:** لا يوجد.
 - **Remaining Risks:** لا يوجد.
@@ -686,8 +700,10 @@
 - **Proposed Correction:** تحديث `parseInvoice` ليفحص `raw.issueDate` أولاً بأعلى أولوية، ثم يرتد بالتدرج إلى `issuedAt` ثم `createdAt` ثم `date`.
 - **Implementation Branch:** `fix/ux-dashboard-company-admin-01`
 - **Files Changed:** `companyAdminGuards.ts`, `companyAdminGuards.test.ts`
-- **Implementation Commit SHA:** (Commit الحالي)
-- **Automated Test Results:** `companyAdminGuards.test.ts` — CA-REV-03 test PASS
+- **Implementation Commit SHA:** `1cb2b1e19a3...`
+- **Implementation Status:** `IMPLEMENTED`
+- **Automated Test Results:** `PASS` (`companyAdminGuards.test.ts` — CA-REV-03 test PASS)
+- **Independent Review:** `PENDING_ACCEPTANCE`
 - **Runtime Verification Status:** `NOT_RUN`
 - **Current Finding Status:** `FIXED_AND_VERIFIED`
 - **Approval / Decision Required:** لا يوجد.
@@ -706,8 +722,10 @@
 - **Proposed Correction:** في `validateCompanySettings`: إرسال `crNumber: crNumber ? crNumber : null` و `email: email ? email : null` لتمكين تفريغها بالباك إند، مع الامتناع عن إرسال `city` كـ `null` (استبعادها عند الفراغ) لمنع خطأ 422. وتحديث واجهة `CompanySettings` في `companyAdmin.ts` لدعم `string | null`.
 - **Implementation Branch:** `fix/ux-dashboard-company-admin-01`
 - **Files Changed:** `companySettingsGuards.ts`, `companySettingsGuards.test.ts`, `companyAdmin.ts`
-- **Implementation Commit SHA:** (Commit الحالي)
-- **Automated Test Results:** `companySettingsGuards.test.ts` — CA-REV-04 test PASS (20/20 guards tests PASS)
+- **Implementation Commit SHA:** `1cb2b1e19a3...`
+- **Implementation Status:** `IMPLEMENTED`
+- **Automated Test Results:** `PASS` (`companySettingsGuards.test.ts` — CA-REV-04 test PASS)
+- **Independent Review:** `PENDING_ACCEPTANCE`
 - **Runtime Verification Status:** `NOT_RUN`
 - **Current Finding Status:** `FIXED_AND_VERIFIED`
 - **Approval / Decision Required:** لا يوجد.
@@ -716,19 +734,21 @@
 
 ---
 
-### CA-REV-05 — إمكانية الوصول للدرج المحمول وإدارة التركيز التلقائي
+### CA-REV-05 — إمكانية الوصول للدرج المحمول وحبس التركيز واستعادته
 - **Finding ID:** `CA-REV-05`
 - **Phase:** Phase 1A — Company Admin (Review Correction)
 - **Role / Module / Page:** Layout Shell / Mobile Drawer / `Shell`
-- **Problem Description:** عند إغلاق الدرج المحمول، كان بالإمكان التنقل بلوحة المفاتيح عبر زر Tab إلى العناصر المخفية خارج الشاشة لعدم إخفائها من شجرة إمكانية الوصول، مع غياب نقل التركيز لزر الإغلاق عند الفتح وإعادة التركيز لزر القائمة عند الإغلاق ودعم مفتاح Escape.
+- **Problem Description:** عند فتح الدرج المحمول، كان بالإمكان خروج التركيز عبر Tab / Shift+Tab إلى عناصر الصفحة الخلفية لعدم وجود Focus Containment كامل، مع الحاجة للتأكد من استعادة التركيز بعد الإغلاق ودعم RTL/LTR والموبايل، وعدم الادعاء بنجاح فحص لوحة المفاتيح الحي دون تنفيذه.
 - **Severity / Priority:** P1 (High)
-- **Root Cause:** الاعتماد على تحريك CSS (`translate-x-full`) دون ضبط `visibility: hidden` و `inert` و `aria-hidden` ودون إدارة `focus()`.
-- **Proposed Correction:** إضافة خاصية `visibility: mobileOpen ? "visible" : "hidden"` و `inert={!mobileOpen ? true : undefined}` و `aria-hidden={!mobileOpen}`؛ واستخدام `useRef` لنقل التركيز تلقائياً إلى زر الإغلاق عند الفتح، وإعادة التركيز لزر القائمة الرئيسي عند الإغلاق، ودعم مفتاح `Escape` للخروج السريع.
+- **Root Cause:** غياب حلقة حبس التركيز (Focus Trap) داخل الدرج أثناء الفتح، وعدم عزل المحتوى الخلفي الرئيسي عبر خاصية `inert`.
+- **Proposed Correction:** ربط `drawerRef` وتنفيذ دورة تركيز محكمة عبر Tab / Shift+Tab داخل عناصر الدرج القابلة للتركيز لمنع تسرب التركيز إلى خارج الدرج، وتطبيق `inert` و `aria-hidden` على حاوية الصفحة الرئيسية عند فتح الدرج لعزلها برمجياً بالكامل، ونقل التركيز لزر الإغلاق عند الفتح، وإعادة التركيز لزر القائمة الرئيسي عند الإغلاق أو الضغط على مفتاح `Escape`، مع مراعاة كاملة لاتجاهي RTL و LTR.
 - **Implementation Branch:** `fix/ux-dashboard-company-admin-01`
 - **Files Changed:** `CompanyDashboard.tsx`
-- **Implementation Commit SHA:** (Commit الحالي)
-- **Automated Test Results:** Typecheck 0 errors, Production Build Complete
-- **Runtime Verification Status:** `NOT_RUN`
+- **Implementation Commit SHA:** `1cb2b1e19a3...` (والمعدل في Commit القبول النهائي الحالي)
+- **Implementation Status:** `IMPLEMENTED`
+- **Automated Test Results:** `PASS` (TypeScript 0 errors, Production Build Complete, 121 Unit Tests PASS)
+- **Independent Review:** `PENDING_ACCEPTANCE`
+- **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة، مع التأكيد الصارم على عدم الادعاء بإجراء الفحص الحي التشغيلي قبل تنفيذه الفعلي)
 - **Current Finding Status:** `FIXED_AND_VERIFIED`
 - **Approval / Decision Required:** لا يوجد.
 - **Remaining Risks:** لا يوجد.
@@ -760,4 +780,5 @@
 | 2026-10-22 | **Phase 1A** (Setup) | ChatGPT Draft | إنشاء مسودة أولية لسجل المشكلات من حزمة الـ WORK ZIP المعتمدة (24 Findings). | `work/dashboard-shift-cycle-20261015` | `195315c66...` (Base) | `DRAFT_FOR_IMPORT` |
 | 2026-10-22 | **Phase 1A** (Remediation) | Antigravity IDE | استكمال تنفيذ جميع إصلاحات Phase 1A المعتمدة الـ 20 واجتياز 118 فحصاً آلياً و 0 أخطاء TypeScript وتجميد 4 بنود تتطلب موافقة. | `fix/ux-dashboard-company-admin-01` | `0fe15e46b...` | `CODE_COMPLETE_VERIFIED` |
 | 2026-10-22 | **Phase 1A** (Register) | Antigravity IDE | اعتماد ونشر النسخة الرسمية الدائمة من Master Findings Register مع التوثيق الكامل وتفعيل المزامنة الثنائية. | `fix/ux-dashboard-company-admin-01` | `c28bab9f9...` | `GOVERNED_AND_PUBLISHED` |
-| 2026-10-22 | **Phase 1A** (Review Fixes) | Antigravity IDE | معالجة تصحيحات مراجعة المرحلة 1A الخمسة (PDF ID, Billing KPIs, Invoice Date, Settings Nullable, Drawer Focus) وتحديث السجل الدائم بالمزامنة الثنائية. | `fix/ux-dashboard-company-admin-01` | (Commit الحالي) | `REVIEW_FIXES_VERIFIED` |
+| 2026-10-22 | **Phase 1A** (Review Fixes) | Antigravity IDE | معالجة تصحيحات مراجعة المرحلة 1A الخمسة (PDF ID, Billing KPIs, Invoice Date, Settings Nullable, Drawer Focus) وتحديث السجل الدائم بالمزامنة الثنائية. | `fix/ux-dashboard-company-admin-01` | `1cb2b1e19...` | `REVIEW_FIXES_PUSHED` |
+| 2026-10-22 | **Phase 1A** (Final Blockers) | Antigravity IDE | حل معوقات القبول الفني النهائي: تصحيح نطاق مستحقات الفوترة وفق عقد Backend الفعلي، وإحكام حبس التركيز للدرج المحمول (Focus Containment & Inert Background)، وتفصيل محاور الحوكمة الأربعة. | `fix/ux-dashboard-company-admin-01` | (Commit الحالي) | `READY_FOR_FINAL_ACCEPTANCE` |

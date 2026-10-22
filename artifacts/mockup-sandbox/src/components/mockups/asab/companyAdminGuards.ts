@@ -118,11 +118,23 @@ export interface BillingSummaryKpiInput {
   nextInvoiceAmountHalalas?: number | null;
 }
 
+export interface BillingKpisResult {
+  totalPaid: number;
+  isSummaryBasedPaid: boolean;
+  companyTotalDue: number | null;
+  pageDue: number;
+  paidCount: number;
+  dueCount: number;
+  totalCount: number;
+  isMultiPage: boolean;
+  isSinglePageComplete: boolean;
+}
+
 export function calculateBillingKpis(
   invoices: ParsedInvoice[],
   summary?: BillingSummaryKpiInput | null,
   totalCountMeta?: number | null
-) {
+): BillingKpisResult {
   const paid = invoices.filter((i) => i.status === "paid");
   const openOrOverdue = invoices.filter((i) => i.status === "open" || i.status === "overdue");
 
@@ -131,19 +143,30 @@ export function calculateBillingKpis(
     ? Math.round(summary.totalPaidHalalas / 100)
     : paid.reduce((sum, i) => sum + i.amount, 0);
 
-  const totalDue = summary?.outstandingHalalas != null
+  const isSummaryBasedPaid = summary?.totalPaidHalalas != null;
+
+  // Outstanding due on the currently loaded page
+  const pageDue = openOrOverdue.reduce((sum, i) => sum + (i.amountDue || i.amount), 0);
+
+  // If backend ever provides company-wide outstandingHalalas in summary, use it:
+  const companyTotalDue = summary?.outstandingHalalas != null
     ? Math.round(summary.outstandingHalalas / 100)
-    : openOrOverdue.reduce((sum, i) => sum + (i.amountDue || i.amount), 0);
+    : null;
 
   const totalCount = totalCountMeta != null ? totalCountMeta : invoices.length;
+  const isMultiPage = totalCountMeta != null && totalCountMeta > invoices.length;
+  const isSinglePageComplete = totalCountMeta != null ? totalCountMeta <= invoices.length : true;
 
   return {
     totalPaid,
-    totalDue,
+    isSummaryBasedPaid,
+    companyTotalDue,
+    pageDue,
     paidCount: paid.length,
     dueCount: openOrOverdue.length,
     totalCount,
-    isSummaryBased: summary?.totalPaidHalalas != null || summary?.outstandingHalalas != null,
+    isMultiPage,
+    isSinglePageComplete,
   };
 }
 

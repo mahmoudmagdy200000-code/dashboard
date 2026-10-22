@@ -954,6 +954,7 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, a
   const langPrefMut = useLanguagePref();
   const menuBtnRef = useRef<HTMLButtonElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
   const prevMobileOpenRef = useRef(false);
 
   useEffect(() => {
@@ -966,9 +967,44 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, a
   }, [mobileOpen]);
 
   useEffect(() => {
+    if (!mobileOpen) return;
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && mobileOpen) setMobileOpen(false);
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMobileOpen(false);
+        return;
+      }
+
+      if (e.key === "Tab") {
+        const drawerEl = drawerRef.current;
+        if (!drawerEl) return;
+
+        const focusable = drawerEl.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) {
+          e.preventDefault();
+          return;
+        }
+
+        const firstEl = focusable[0];
+        const lastEl = focusable[focusable.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstEl || !drawerEl.contains(document.activeElement)) {
+            e.preventDefault();
+            lastEl.focus();
+          }
+        } else {
+          if (document.activeElement === lastEl || !drawerEl.contains(document.activeElement)) {
+            e.preventDefault();
+            firstEl.focus();
+          }
+        }
+      }
     };
+
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [mobileOpen]);
@@ -1088,6 +1124,7 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, a
         />
       )}
       <div
+        ref={drawerRef}
         className={`fixed inset-y-0 ${dir === "rtl" ? "right-0" : "left-0"} z-50 w-72 max-w-[85vw] flex flex-col shadow-2xl transition-all duration-200 md:hidden ${mobileOpen ? "translate-x-0 opacity-100" : `${dir === "rtl" ? "translate-x-full" : "-translate-x-full"} opacity-0 pointer-events-none`}`}
         style={{
           background: SIDEBAR_GRAD,
@@ -1103,7 +1140,12 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, a
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0" style={{ background: BG_CONTENT }}>
+      <div
+        className="flex-1 flex flex-col overflow-hidden min-w-0"
+        style={{ background: BG_CONTENT }}
+        inert={mobileOpen ? true : undefined}
+        aria-hidden={mobileOpen ? true : undefined}
+      >
         <header className="bg-white border-b border-gray-100 px-3 sm:px-4 md:px-6 py-2.5 sm:py-3 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2 text-sm text-gray-500 min-w-0">
             <button
@@ -2688,21 +2730,33 @@ function CABilling() {
         <KpiCard
           label={t("إجمالي المدفوع","Total Paid")}
           value={fmt(kpis.totalPaid)}
-          sub={kpis.isSummaryBased ? t("إجمالي مدفوعات الشركة", "Company total paid") : t(`${kpis.paidCount} فاتورة مدفوعة`, `${kpis.paidCount} paid invoices`)}
+          sub={kpis.isSummaryBasedPaid ? t("إجمالي مدفوعات الشركة (ملخص الحساب)", "Company total (billing summary)") : t(`${kpis.paidCount} فاتورة مدفوعة بالصفحة`, `${kpis.paidCount} paid on page`)}
           icon={<Wallet size={18} className="text-emerald-600"/>}
           accent="emerald"
         />
         <KpiCard
-          label={t("المبالغ المستحقة","Outstanding Due")}
-          value={fmt(kpis.totalDue)}
-          sub={kpis.isSummaryBased ? t("مستحقات الشركة الإجمالية", "Company total outstanding") : t(`${kpis.dueCount} فواتير معلقة`, `${kpis.dueCount} pending invoices`)}
+          label={
+            kpis.companyTotalDue != null
+              ? t("إجمالي المستحقات (الشركة)", "Total Outstanding (Company)")
+              : kpis.isMultiPage
+                ? t("مستحقات الصفحة الحالية", "Current Page Due")
+                : t("المبالغ المستحقة", "Outstanding Due")
+          }
+          value={fmt(kpis.companyTotalDue != null ? kpis.companyTotalDue : kpis.pageDue)}
+          sub={
+            kpis.companyTotalDue != null
+              ? t("مستحقات الشركة الإجمالية من ملخص الفوترة", "Company total from billing summary")
+              : kpis.isMultiPage
+                ? t(`${kpis.dueCount} فواتير معلقة بالصفحة (إجمالي الشركة غير متوفر في الـ API)`, `${kpis.dueCount} pending on page (company total unavailable in API)`)
+                : t(`${kpis.dueCount} فواتير معلقة (كامل السجلات)`, `${kpis.dueCount} pending invoices (all records)`)
+          }
           icon={<CreditCard size={18} className="text-amber-600"/>}
           accent="amber"
         />
         <KpiCard
           label={t("إجمالي الفواتير","Total Invoices")}
           value={String(kpis.totalCount)}
-          sub={totalCountMeta != null ? t(`من أصل ${totalCountMeta} فاتورة`, `Of ${totalCountMeta} total records`) : t("سجل الفواتير الكامل", "All invoice records")}
+          sub={kpis.isMultiPage ? t(`إجمالي الشركة (${invoices.length} معروضة بالصفحة)`, `Company total (${invoices.length} shown on page)`) : t("سجل الفواتير الكامل", "All invoice records")}
           icon={<FileText size={18} className="text-blue-600"/>}
           accent="blue"
         />
