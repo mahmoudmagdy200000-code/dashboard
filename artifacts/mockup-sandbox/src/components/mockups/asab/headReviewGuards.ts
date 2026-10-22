@@ -255,8 +255,8 @@ export function canProceedPreflight(
     | null
     | undefined,
 ): boolean {
-  if (!erpPreflight) return true;
-  if (erpPreflight.canProceed === false) return false;
+  if (!erpPreflight || typeof erpPreflight !== "object") return false;
+  if (erpPreflight.canProceed !== true) return false;
   const checks = erpPreflight.checks ?? [];
   return !checks.some((c) => !c.ok && c.severity === "error");
 }
@@ -269,7 +269,18 @@ export function aggregateOpsAmount(
 }
 
 export function shouldUpdateHeadOps<
-  T extends { id: string; status: string; amount: number | null },
+  T extends {
+    id: string;
+    status: string;
+    amount: number | null;
+    erpPosted?: boolean;
+    erpBatchId?: string;
+    approvedBy?: string;
+    finalApprovedBy?: string;
+    rejectedBy?: string;
+    rejectReason?: string;
+    isCorrection?: boolean;
+  },
 >(
   currentOps: readonly T[],
   nextOps: readonly T[],
@@ -278,15 +289,28 @@ export function shouldUpdateHeadOps<
   if (!allQueriesSucceeded) {
     return { shouldUpdate: false, nextOps: currentOps as T[] };
   }
-  // Compare contents to prevent render loop
+  if (currentOps === nextOps) {
+    return { shouldUpdate: false, nextOps: currentOps as T[] };
+  }
+  // Compare contents thoroughly including critical workflow fields to prevent render loops
+  // while never dropping meaningful operational changes.
   if (
     currentOps.length === nextOps.length &&
-    currentOps.every(
-      (o, i) =>
-        o.id === nextOps[i].id &&
-        o.status === nextOps[i].status &&
-        o.amount === nextOps[i].amount,
-    )
+    currentOps.every((o, i) => {
+      const n = nextOps[i];
+      return (
+        o.id === n.id &&
+        o.status === n.status &&
+        o.amount === n.amount &&
+        o.erpPosted === n.erpPosted &&
+        o.erpBatchId === n.erpBatchId &&
+        o.approvedBy === n.approvedBy &&
+        o.finalApprovedBy === n.finalApprovedBy &&
+        o.rejectedBy === n.rejectedBy &&
+        o.rejectReason === n.rejectReason &&
+        o.isCorrection === n.isCorrection
+      );
+    })
   ) {
     return { shouldUpdate: false, nextOps: currentOps as T[] };
   }

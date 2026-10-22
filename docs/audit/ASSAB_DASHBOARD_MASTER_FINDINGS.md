@@ -5,8 +5,9 @@
 > **Permanent Local Mirror:** `D:\claude\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\ui-ux\ASSAB_DASHBOARD_MASTER_FINDINGS.md`
 > **Repository:** `mohameelsherbini/dashboard`
 > **Audit Baseline SHA:** `195315c66d9e7523e799c905b7649a8a7bc8b013` (`work/dashboard-shift-cycle-20261015`)
-> **Current Remediation Branch:** `fix/ux-dashboard-company-admin-01`
+> **Current Remediation Branch:** `fix/ux-dashboard-head-accountant-phase1b-20261022`
 > **Phase 1A Remediation Commit SHA:** `f4d3fc808f34bf946c384a0f8f3f5e7e836dc28b`
+> **Phase 1B Base Audited SHA:** `a644162253f6b0d5bca6782f1fce1a514d54e515`
 > **Last Synchronized Date:** 2026-10-22
 
 ---
@@ -1766,4 +1767,215 @@
 | 2026-10-22 | **Phase 1A** (Final Blockers) | Antigravity IDE | حل معوقات القبول الفني: تصحيح نطاق مستحقات الفوترة وفق عقد Backend الفعلي، وإحكام حبس التركيز للدرج المحمول (Focus Containment & Inert Background)، وتفصيل محاور الحوكمة الأربعة. | `fix/ux-dashboard-company-admin-01` | `ca2fc89a9...` | `FINAL_BLOCKERS_PUSHED` |
 | 2026-10-22 | **Phase 1A** (Responsive & Billing) | Antigravity IDE | معالجة سيناريو انتقال العرض (Responsive Resize) بإغلاق الدرج التلقائي وإزالة inert عن Desktop، وتخطي زر Hamburger المخفي، وتدقيق مسميات الفواتير غير المسددة عند غياب amountDue واحترام amountDue=0، واجتياز 122 اختباراً. | `fix/ux-dashboard-company-admin-01` | `f4d3fc808f34bf946c384a0f8f3f5e7e836dc28b` | `CODE_COMPLETE_VERIFIED` |
 | 2026-10-22 | **Phase 1A** (Runtime QA) | Antigravity IDE | تنفيذ جلسة Runtime QA مستهدفة لـ CA-REV-05 و CA-REV-02؛ تسجيل Local Browser QA: REPORTED_PASS_PENDING_REVIEW، وتسجيل Staging Runtime: BLOCKED_BY_STAGING_AUTH (Contract: PASS)، دون تكرار الـ 122 اختباراً ودون المساس بالـ 29 بنداً. | `fix/ux-dashboard-company-admin-01` | `f4d3fc808f34bf946c384a0f8f3f5e7e836dc28b` | `PENDING_ACCEPTANCE` |
-| 2026-10-22 | **Phase 1B** (Full Remediation) | Antigravity IDE | تنفيذ جلسة معالجة شاملة لكافة مشاكل Head Accountant الـ 39: إصلاح 34 بنداً، واجتياز كافة الاختبارات بنسبة 100%، وفحص Typescript خالي من الأخطاء (0 errors)، وبناء إنتاج نظيف، وتوثيق تحليل backend لـ HA-F39 وحجب G1 PR #1 الأربعة المعلقة. | `fix/ux-dashboard-head-accountant-phase1b-20261022` | (Commit التالي) | `READY_FOR_INDEPENDENT_REVIEW` |
+| 2026-10-22 | **Phase 1B** (Full Remediation) | Antigravity IDE | تنفيذ جلسة معالجة شاملة لكافة مشاكل Head Accountant الـ 39: إصلاح 34 بنداً، واجتياز كافة الاختبارات بنسبة 100%، وفحص Typescript خالي من الأخطاء (0 errors)، وبناء إنتاج نظيف، وتوثيق تحليل backend لـ HA-F39 وحجب G1 PR #1 الأربعة المعلقة. | `fix/ux-dashboard-head-accountant-phase1b-20261022` | `a64416225...` | `READY_FOR_INDEPENDENT_REVIEW` |
+| 2026-10-22 | **Phase 1B** (Independent Audit Remediation) | Antigravity IDE | تنفيذ جولة التصحيح المستهدفة المعتمدة من التدقيق المستقل للـ Checkpoint a644162؛ إغلاق 7 بنود مستهدفة (HA-F04, HA-F07, HA-F08, HA-F10, HA-F11, HA-F20, HA-F22) وحل حد client.ts للبيئة الاختبارية. اجتياز 12/12 اختباراً، 0 أخطاء Typecheck، وبناء سليم، وتحقق diff. | `fix/ux-dashboard-head-accountant-phase1b-20261022` | (Commit التالي) | `REMEDIATED_PENDING_INDEPENDENT_REVIEW` |
+
+---
+
+## 9. Phase 1B Independent Audit Remediation Addendum (2026-10-22)
+
+> **سياق الجولة الحالية (Context):**
+> بناءً على نتائج التدقيق المستقل لمصدر GitHub (Independent GitHub Source Audit) للـ WIP Checkpoint ذي المعرف `a644162253f6b0d5bca6782f1fce1a514d54e515` بتاريخ 2026-10-22، تم تنفيذ جولة تصحيح مستهدفة محدودة ومغلقة لإغلاق 7 مشكلات برمجية في مسارات React الفعلية (`ASABPrototype.tsx`) والتحقق من حدود `api/client.ts`.
+
+---
+
+### HA-F20 — Conditional Approval False Success & Server Await
+- **Finding ID:** `HA-F20`
+- **Severity / Priority:** P0 (Critical / Financial Workflow Integrity)
+- **Status:** `FIXED_AND_VERIFIED`
+- **Root Cause:**
+  كانت الدالة `finalApproveOp` في `ASABPrototype.tsx` تلتقط أخطاء الخادم داخلياً داخل كتلة `catch` دون إعادة رفعها (`re-throw`). نتيجة لذلك، كانت واجهة المستخدم (الأسطر 9928–9942) تعتبر العملية ناجحة وتضع شارة الاعتماد المشروط (`isConditional: true`) وتحدث الحالة المالية محلياً حتى عند رفض الخادم بـ HTTP 422 أو 500 أو انقطاع الشبكة، بالإضافة إلى غياب فحص `conditionalNote.trim()` قبل الإرسال.
+- **Exact Files & Lines:**
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L9928-L9965`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L17208-L17260`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.ts#L61-L69`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.test.ts#L180-L245`
+- **Applied Correction:**
+  1. التحقق الإلزامي من الملاحظة المشروطة `validateConditionalApproval(note)` والتأكد من أنها غير فارغة بعد `trim()`.
+  2. توجيه استدعاء `finalApproveOp` عبر `runFinancialMutation` مع الانتظار الكامل `await` للـ API.
+  3. إعادة رفع الخطأ (`re-throw`) للمنادي ليدخل مسار `catch` في واجهة المستخدم.
+  4. في الواجهة: منع تحديث الشارة أو الحالة المالية محلياً عند الفشل، وإظهار تنبيه الخطأ للمستخدم (`toast.error`)، والإبقاء على نص الملاحظة والحقول قابلة لإعادة المحاولة دون فقد المدخلات.
+  5. منع الطلبات المتزامنة المزدوجة عبر قفل `inFlightOps.current`.
+- **Test Evidence:**
+  - اختبار الوحدة والتكامل السلوكي الفعلي رقم 8 في `headReviewGuards.test.ts`:
+    `HA-F20: conditional approval requires non-empty note, awaits server confirmation, and never updates visual state on failure`.
+  - يتحقق من استجابات HTTP 422 و HTTP 500 وانقطاع الشبكة Network Error، ويثبت إعادة رفع الخطأ، وعدم تعديل الحالة، وبقاء الملاحظة، وتحرير القفل لإعادة المحاولة.
+  - النتيجة: `PASS` (Exit code 0).
+- **Automated Tests:** `PASS`
+- **Independent Review:** `PENDING_ACCEPTANCE`
+- **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة)
+- **Remaining Reservations:** التحقق مع بيئة Staging الحية عند توفر الاعتمادات.
+
+---
+
+### HA-F04 — Financial Mutation Safety & Handler Consolidation
+- **Finding ID:** `HA-F04`
+- **Severity / Priority:** P0 (Critical / Financial Workflow Integrity)
+- **Status:** `FIXED_AND_VERIFIED`
+- **Root Cause:**
+  احتوت المعالجات الفعلية (`approveOp`, `rejectOp`, `finalApproveOp`, `bulkApprove`, `returnForReview`, `markErpPosted`) في `ASABPrototype.tsx` (الأسطر 17160–17309) على استدعاءات `mutate()` احتياطية غير منتظرة، وكان بعضها يبتلع الأخطاء ويسجلها في الكونسول دون إظهارها للمستخدم، مما يسمح بتحديث الحالة محلياً قبل نجاح الخادم وحدوث عدم اتساق.
+- **Exact Files & Lines:**
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L17140-L17330`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.ts#L85-L105`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.test.ts#L130-L175`
+- **Applied Correction:**
+  1. توحيد واجهة المعالجة المالية الفعلية عبر دالة `runFinancialMutation` موحدة وقابلة للانتظار (`async/await`).
+  2. منع تحديث الحالة المحلية (`setOps`) نهائياً إلا بعد نجاح استجابة الخادم وتأكيد العملية.
+  3. إظهار رسالة الخطأ الفعلية للمستخدم عبر `toast.error(msg)`.
+  4. منع الطلبات المتزامنة المتكررة لنفس العملية المالية عبر `inFlightOps.current`.
+  5. الحفاظ التام على صلاحيات Head Accountant وحماية عمليات SHF/PKG-6 واستقلالية Legacy Bulk.
+- **Test Evidence:**
+  - اختبار الوحدة والتكامل السلوكي الفعلي رقم 7 في `headReviewGuards.test.ts`:
+    `HA-F04: financial mutation executes API, blocks duplicate in-flight calls, propagates errors and preserves state on failure`.
+  - يختبر سلوك المعالجات الفعلية عند رفض الخادم بـ HTTP 500 و 409، ويثبت إعادة رفع الخطأ، وعدم تغيير الحالة محلياً، ومنع الطلبات المزدوجة أثناء التنفيذ، وتحرير القفل.
+  - النتيجة: `PASS` (Exit code 0).
+- **Automated Tests:** `PASS`
+- **Independent Review:** `PENDING_ACCEPTANCE`
+- **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة)
+- **Remaining Reservations:** التحقق مع بيئة Staging الحية عند توفر الاعتمادات.
+
+---
+
+### HA-F22 — React Query Synchronization & Render Stability
+- **Finding ID:** `HA-F22`
+- **Severity / Priority:** P0 (Critical / Infinite Loop Prevention & State Sync)
+- **Status:** `FIXED_AND_VERIFIED`
+- **Root Cause:**
+  في `ASABPrototype.tsx` (الأسطر 17028–17072)، كان التعبير `opsRange = periodRange(period)` يُنشئ كائناً جديداً في كل دورة رندرة، وكان الـ `useEffect` التابع له يستدعي `setOps` اعتماداً على حارس مقارنة يفحص فقط `id/status/amount`، مما يؤدي إلى تجاهل تحديثات الحقول التشغيلية الهامة (`erpPosted`, `approvedBy`, `finalApprovedBy`, `rejectedBy`, `isCorrection`)، وعدم تفريغ القائمة عند نجاح الاستعلام بنتيجة خالية.
+- **Exact Files & Lines:**
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L17025-L17085`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.ts#L130-L160`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.test.ts#L360-L425`
+- **Applied Correction:**
+  1. تثبيت مرجع `opsRange` باستخدام `useMemo(() => periodRange(period), [period])`.
+  2. تحديث مرجع `currentSalesOps.current` قبل تنفيذ الـ effect.
+  3. توسيع نطاق `shouldUpdateHeadOps` ليفحص حقول سير العمل المالية التشغيلية (`erpPosted`, `erpBatchId`, `approvedBy`, `finalApprovedBy`, `rejectedBy`, `rejectReason`, `isCorrection`).
+  4. تفريغ قائمة العمليات بأمان عند نجاح الاستعلام وعودة قائمة فارغة من الخادم (`nextOps.length === 0` مع `allSuccess === true`) لمنع بقاء بيانات قديمة عبر الفترات.
+  5. حماية البيانات من التفريغ غير المقصود أثناء حالات التحميل (`loading`) أو أخطاء الاستعلام (`error`).
+- **Test Evidence:**
+  - اختبار الوحدة والتكامل السلوكي الفعلي رقم 12 في `headReviewGuards.test.ts`:
+    `HA-F22: shouldUpdateHeadOps and opsRange prevent infinite render loops while clearing stale operations on empty query success`.
+  - يختبر تفريغ العمليات عند الرد الخالي الناجح، والتقاط تغيرات حقول سير العمل، واستقرار الحالات أثناء التحميل والخطأ، ومحاكاة دورة الرندرة للتأكد من عدم حدوث حلقة لا نهائية (0 loop iterations).
+  - النتيجة: `PASS` (Exit code 0).
+- **Automated Tests:** `PASS`
+- **Independent Review:** `PENDING_ACCEPTANCE`
+- **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة)
+- **Remaining Reservations:** التحقق مع بيئة Staging الحية عند توفر الاعتمادات.
+
+---
+
+### HA-F08 — ERP Preflight Gate & Fail-Closed Validation
+- **Finding ID:** `HA-F08`
+- **Severity / Priority:** P1 (High / Financial Risk)
+- **Status:** `FIXED_AND_VERIFIED`
+- **Root Cause:**
+  كانت الدالة `canProceedPreflight` تعيد `true` عند غياب بيانات الـ preflight (`if (!erpPreflight) return true;`)، مما يسمح للمستخدم بالانتقال بين خطوات معالج ERP وإرسال الحزمة المالية حتى قبل اكتمال الفحص أو عند فشله.
+- **Exact Files & Lines:**
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.ts#L115-L125`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L10750-L10760`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L17110-L17130`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.test.ts#L250-L300`
+- **Applied Correction:**
+  1. تطبيق مبدأ Fail-Closed الصارم في `canProceedPreflight`: إرجاع `false` عند كون الكائن `null` أو `undefined` أو عند عدم تحقق `canProceed === true`.
+  2. قفل أزرار التقدم للخطوة 1 والخطوة 2 على تحقق شرط `canProceedPreflight` ووجود عمليات مؤهلة للإرسال (`toPost.length > 0`).
+  3. إعادة فحص الشروط والتأكد من استلام معرف حزمة خادمي حقيقي غير فارغ (`res.batch_id || res.id`) قبل إعلان نجاح المعالج، ومنع إظهار شاشة النجاح عند فشل الـ API.
+- **Test Evidence:**
+  - اختبار الوحدة والتكامل السلوكي الفعلي رقم 9 في `headReviewGuards.test.ts`:
+    `HA-F07 & HA-F08: ERP wizard filters operations by period/module/branch/status, excludes null amounts, and blocks step progression on empty data or preflight failure`.
+  - يثبت منع التقدم عند غياب الـ preflight أو فشله، واشتراط معرّف الحزمة الخادمي المؤكد.
+  - النتيجة: `PASS` (Exit code 0).
+- **Automated Tests:** `PASS`
+- **Independent Review:** `PENDING_ACCEPTANCE`
+- **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة)
+- **Remaining Reservations:** التحقق مع بيئة Staging الحية عند توفر الاعتمادات.
+
+---
+
+### HA-F07 — ERP Date Filters & Approved Operating Scope
+- **Finding ID:** `HA-F07`
+- **Severity / Priority:** P1 (High / Financial Risk)
+- **Status:** `FIXED_AND_VERIFIED`
+- **Root Cause:**
+  كان حقل تاريخ الترحيل في معالج ERP حقلاً نصياً قابلاً للتعديل بقيمة `defaultValue={today}` دون وجود رابط برمجي يربط القيمة المدخلة بحساب العمليات المرشحة للإرسال، مما يحدث التباساً بين النطاق المعروض والـ Payload الفعلي.
+- **Exact Files & Lines:**
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L10800-L10825`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.ts#L30-L55`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.test.ts#L250-L300`
+- **Applied Correction:**
+  1. استبدال حقل الإدخال النصي غير المربوط بمؤشر تاريخ تشغيلي معتمد غير قابل للتعديل (Read-only) يعكس تاريخ اليوم المعتمد بصيغة `YYYY-MM-DD`.
+  2. ضبط منطق الترشيح `filterErpOperations` ليعمل بمبدأ Fail-Closed عند التواريخ غير الصالحة أو المفقودة أثناء تفعيل مرشحات الفترة.
+  3. ضمان عدم إرسال أي عملية خارج نطاق المرشحات المعتمدة.
+- **Test Evidence:**
+  - اختبار الوحدة والتكامل السلوكي الفعلي رقم 9 في `headReviewGuards.test.ts`.
+  - النتيجة: `PASS` (Exit code 0).
+- **Automated Tests:** `PASS`
+- **Independent Review:** `PENDING_ACCEPTANCE`
+- **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة)
+- **Remaining Reservations:** التحقق مع بيئة Staging الحية عند توفر الاعتمادات.
+
+---
+
+### HA-F11 — Null-Safe Financial Aggregation & Halala Precision
+- **Finding ID:** `HA-F11`
+- **Severity / Priority:** P1 (High / Financial Risk)
+- **Status:** `FIXED_AND_VERIFIED`
+- **Root Cause:**
+  كانت بعض الحسابات المالية (ترتيب فروع المالك `ownerRankings`، ومجاميع حزم ERP في `batchMap`، ومجاميع تقارير الوحدات في `totSales`, `totExp`) تعامل المبالغ المفقودة أو غير المعروفة (`null`/`undefined`) كصفر، مما يضلل ترتيب الفروع ونسب التغير ويختلق أرقاماً غير حقيقية.
+- **Exact Files & Lines:**
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L2950-L3010`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L10500-L10525`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L14980-L15020`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.ts#L170-L185`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.test.ts#L335-L355`
+- **Applied Correction:**
+  1. تطبيق التجميع المالي الآمن `aggregateOpsAmount` عبر ترتيب الفروع وسجل الحزم وتقارير الوحدات.
+  2. الحفاظ الصارم على الدقة حتى الهللة (`Math.round(halalas) / 100`).
+  3. التمييز الواضح بين الصفر الفعلي المالي (`0.00 ر.س`) وبين القيمة غير المتوفرة (`null`/`unknown`)، وعرض مؤشر عدم التوفر (`—`) بدلاً من الصفر المختلق.
+  4. عدم احتساب ترتيب فرع أو نسبة مئوية على بيانات مالية ناقصة دون توضيح.
+- **Test Evidence:**
+  - اختبار الوحدة والتكامل السلوكي الفعلي رقم 11 في `headReviewGuards.test.ts`:
+    `HA-F11: financial aggregation functions preserve null/missing amounts without falsifying as zero`.
+  - يختبر الحفاظ على القيم المفقودة ودقة الهللات والتمييز عن الصفر الحقيقي.
+  - النتيجة: `PASS` (Exit code 0).
+- **Automated Tests:** `PASS`
+- **Independent Review:** `PENDING_ACCEPTANCE`
+- **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة)
+- **Remaining Reservations:** التحقق مع بيئة Staging الحية عند توفر الاعتمادات.
+
+---
+
+### HA-F10 — Preserve Pagination Integration & Adapter Verification
+- **Finding ID:** `HA-F10`
+- **Severity / Priority:** P1 (High / Financial Risk)
+- **Status:** `FIXED_AND_VERIFIED`
+- **Root Cause:**
+  وجود دالة الـ pagination المساعدة مسبقاً بشكل معزول دون اختبار تكاملي مباشر يربطها مع محول الـ API الفعلي في `api/queries/platform/head.ts`.
+- **Exact Files & Lines:**
+  - `artifacts/mockup-sandbox/src/api/queries/platform/head.ts`
+  - `artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.test.ts#L305-L330`
+- **Applied Correction:**
+  1. الحفاظ الكامل على معمارية الـ Pagination القائمة دون إعادة كتابة أو مساس بحدود المكونات.
+  2. إضافة اختبار تكاملي مستهدف لدالة `fetchAllHeadOpsPagesPlatform` للتحقق من استرجاع وتجميع الصفحات المتعددة والحفاظ على الـ metadata الخاصة بالصفحات (`currentPage`, `lastPage`, `total`) وتفادي الطلبات الزائدة.
+- **Test Evidence:**
+  - اختبار الوحدة والتكامل السلوكي الفعلي رقم 10 في `headReviewGuards.test.ts`:
+    `HA-F10: fetchAllHeadOpsPages aggregates multi-page results, preserves pagination metadata, and avoids unnecessary requests on single page or explicit page requests`.
+  - النتيجة: `PASS` (Exit code 0).
+- **Automated Tests:** `PASS`
+- **Independent Review:** `PENDING_ACCEPTANCE`
+- **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة)
+- **Remaining Reservations:** التحقق مع بيئة Staging الحية عند توفر مجموعات بيانات ضخمة تفوق 100 سجل.
+
+---
+
+### Boundary Safety Fix — `api/client.ts` Runtime Compatibility
+- **Status:** `FIXED_AND_VERIFIED`
+- **Root Cause:**
+  القراءة المباشرة لـ `import.meta.env.VITE_API_BASE_URL` كانت تتسبب في استثناء `TypeError` في بيئات الاختبار المستندة إلى Node.js/tsx لكون كائن `env` غير معرّف على `import.meta`.
+- **Exact Files & Lines:**
+  - `artifacts/mockup-sandbox/src/api/client.ts#L6-L10`
+- **Applied Correction:**
+  اعتماد قراءة آمنة مع حماية من الأخطاء:
+  `const BASE_RAW = (typeof import.meta !== "undefined" && import.meta?.env?.VITE_API_BASE_URL) || "";`
+- **Test Evidence:**
+  - تشغيل الاختبارات عبر `npx tsx` بنجاح كامل دون أي استثناء Runtime (Exit code 0).
+  - بناء الإنتاج في Vite بنجاح كامل دون أي تحذير بيئي (Exit code 0).

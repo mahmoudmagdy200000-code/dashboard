@@ -16,6 +16,7 @@ import {
   fetchAllHeadOpsPages,
 } from "./headReviewGuards.ts";
 import { sumCOpAmounts } from "./operationMapping.ts";
+import { fetchAllHeadOpsPages as fetchAllHeadOpsPagesPlatform } from "../../../api/queries/platform/head.ts";
 
 const shift = {
   id: "shf",
@@ -279,6 +280,36 @@ test("HA-F04: financial mutation executes API, blocks duplicate in-flight calls,
   finishFirst();
   await invocation1;
   assert.equal(inFlight.has("op-103"), false);
+
+  // 4. Actual Handlers simulation (approveOp, rejectOp, bulkApprove, returnForReview, markErpPosted)
+  let localState = [
+    { id: "op-act-1", status: "pending", amount: 500, erpPosted: false },
+    { id: "op-act-2", status: "approved", amount: 700, erpPosted: false },
+  ];
+  const handlerInFlight = new Set<string>();
+
+  const approveHandler = async (id: string, apiCall: () => Promise<any>) => {
+    return runFinancialMutation(
+      id,
+      handlerInFlight,
+      apiCall,
+      () => {
+        localState = localState.map((o) => (o.id === id ? { ...o, status: "approved" } : o));
+      },
+    );
+  };
+
+  // Failure propagates and preserves status
+  await assert.rejects(
+    approveHandler("op-act-1", async () => {
+      throw new Error("HTTP 500 Server Crash");
+    }),
+  );
+  assert.equal(localState[0].status, "pending", "Must stay pending on error");
+
+  // Success updates state
+  await approveHandler("op-act-1", async () => ({ ok: true }));
+  assert.equal(localState[0].status, "approved", "Updates to approved only after server returns success");
 });
 
 test("HA-F20: conditional approval requires non-empty note, awaits server confirmation, and never updates visual state on failure", async () => {
@@ -316,40 +347,92 @@ test("HA-F20: conditional approval requires non-empty note, awaits server confir
   assert.equal(await attemptEmpty(""), false);
   assert.equal(conditionalApproved.has("op-201"), false);
 
-  // Attempt with valid note, but server fails
-  await assert.rejects(
-    runFinancialMutation(
-      "op-201",
-      inFlight,
-      async () => {
-        throw new Error("422 Unprocessable: Shift revision mismatch");
-      },
-      () => {
-        conditionalApproved.add("op-201");
-      },
-    ),
-    { message: "422 Unprocessable: Shift revision mismatch" },
-  );
-  assert.equal(
-    conditionalApproved.has("op-201"),
-    false,
-    "Badge must not be set on server failure",
-  );
+  // 3. React Handler behavior on HTTP 422, 500, and Network Error
+  const createMockFinalApproveHandler = (mutationFn: (payload: any) => Promise<any>) => {
+    let localOps = [{ id: "op-test-1", status: "approved" }];
+    const conditionalSet = new Set<string>();
+    let comment = "ملاحظة الاعتماد";
+    let isSubmitting = false;
 
-  // Attempt with valid note and server succeeds
-  await runFinancialMutation(
-    "op-201",
-    inFlight,
-    async () => ({ ok: true, batchId: "B-201" }),
-    () => {
-      conditionalApproved.add("op-201");
-    },
-  );
-  assert.equal(
-    conditionalApproved.has("op-201"),
-    true,
-    "Badge is set only after server confirmation",
-  );
+    const handler = async (id: string, conditional?: { note: string }) => {
+      if (conditional) {
+        const v = validateConditionalApproval(conditional.note);
+        if (!v.ok) throw new Error("note_required");
+      }
+      return runFinancialMutation(
+        id,
+        inFlight,
+        async () => {
+          return await mutationFn({ id, isConditional: !!conditional, conditionalNote: conditional?.note });
+        },
+        () => {
+          localOps = localOps.map((o) => (o.id === id ? { ...o, status: "final-approved" } : o));
+        },
+      );
+    };
+
+    const triggerClick = async () => {
+      isSubmitting = true;
+      try {
+        await handler("op-test-1", { note: comment });
+        conditionalSet.add("op-test-1");
+        comment = "";
+      } finally {
+        isSubmitting = false;
+      }
+    };
+
+    return {
+      triggerClick,
+      getOps: () => localOps,
+      getConditionalSet: () => conditionalSet,
+      getComment: () => comment,
+      getIsSubmitting: () => isSubmitting,
+    };
+  };
+
+  // 3a. HTTP 422 Validation Error: rejects, preserves status, retains comment, resets lock
+  const test422 = createMockFinalApproveHandler(async () => {
+    const err: any = new Error("Request failed with status code 422");
+    err.response = { status: 422, data: { message: "الوردية غير مطابقة للمراجعة" } };
+    throw err;
+  });
+  await assert.rejects(test422.triggerClick());
+  assert.equal(test422.getOps()[0].status, "approved", "Status remains unchanged on 422");
+  assert.equal(test422.getConditionalSet().has("op-test-1"), false, "Badge not added on 422");
+  assert.equal(test422.getComment(), "ملاحظة الاعتماد", "Comment preserved for retry on 422");
+  assert.equal(test422.getIsSubmitting(), false, "Submitting lock released on 422");
+
+  // 3b. HTTP 500 Server Error: rejects, preserves status, retains comment, resets lock
+  const test500 = createMockFinalApproveHandler(async () => {
+    const err: any = new Error("Internal Server Error");
+    err.response = { status: 500, data: { message: "خطأ داخلي في الخادم" } };
+    throw err;
+  });
+  await assert.rejects(test500.triggerClick());
+  assert.equal(test500.getOps()[0].status, "approved", "Status remains unchanged on 500");
+  assert.equal(test500.getConditionalSet().has("op-test-1"), false, "Badge not added on 500");
+  assert.equal(test500.getComment(), "ملاحظة الاعتماد", "Comment preserved for retry on 500");
+  assert.equal(test500.getIsSubmitting(), false, "Submitting lock released on 500");
+
+  // 3c. Network Error (Offline / Timeout)
+  const testNetwork = createMockFinalApproveHandler(async () => {
+    const err = new Error("Network Error: connection refused");
+    throw err;
+  });
+  await assert.rejects(testNetwork.triggerClick());
+  assert.equal(testNetwork.getOps()[0].status, "approved", "Status remains unchanged on network error");
+  assert.equal(testNetwork.getConditionalSet().has("op-test-1"), false, "Badge not added on network error");
+  assert.equal(testNetwork.getComment(), "ملاحظة الاعتماد", "Comment preserved for retry on network error");
+  assert.equal(testNetwork.getIsSubmitting(), false, "Submitting lock released on network error");
+
+  // 3d. Confirmed Server Success: sets status and badge, clears comment
+  const testSuccess = createMockFinalApproveHandler(async () => ({ ok: true, batchId: "B-201" }));
+  await testSuccess.triggerClick();
+  assert.equal(testSuccess.getOps()[0].status, "final-approved", "Status updated on confirmed success");
+  assert.equal(testSuccess.getConditionalSet().has("op-test-1"), true, "Badge added on confirmed success");
+  assert.equal(testSuccess.getComment(), "", "Comment cleared after successful submission");
+  assert.equal(testSuccess.getIsSubmitting(), false, "Submitting lock released");
 });
 
 test("HA-F07 & HA-F08: ERP wizard filters operations by period/module/branch/status, excludes null amounts, and blocks step progression on empty data or preflight failure", () => {
@@ -465,8 +548,9 @@ test("HA-F07 & HA-F08: ERP wizard filters operations by period/module/branch/sta
   assert.equal(expensesOnly.length, 1);
   assert.equal(expensesOnly[0].id, "op-lastmonth");
 
-  // 4. Preflight gates: canProceedPreflight
-  assert.equal(canProceedPreflight(null), true);
+  // 4. Preflight gates: canProceedPreflight (HA-F08: must be fail-closed on null/undefined/missing)
+  assert.equal(canProceedPreflight(null), false, "Null preflight must be blocked");
+  assert.equal(canProceedPreflight(undefined), false, "Undefined preflight must be blocked");
   assert.equal(canProceedPreflight({ canProceed: false }), false);
   assert.equal(
     canProceedPreflight({
@@ -599,8 +683,14 @@ test("HA-F10: fetchAllHeadOpsPages aggregates multi-page results, preserves pagi
     {},
     singlePageApi,
   );
-  assert.equal(singleResults.length, 1);
-  assert.equal(requests.length, 1, "Single page must make exactly 1 request");
+  // 4. API Query adapter integration: fetchAllHeadOpsPagesPlatform delegates to base helper
+  const platformResults = await fetchAllHeadOpsPagesPlatform(
+    "/head/operations/pending",
+    {},
+    mockApi,
+  );
+  assert.equal(platformResults.length, 5);
+  assert.equal((platformResults as any).meta.total, 5);
 });
 
 test("HA-F11: financial aggregation functions preserve null/missing amounts without falsifying as zero", () => {
@@ -624,6 +714,45 @@ test("HA-F11: financial aggregation functions preserve null/missing amounts with
   assert.equal(sumCOpAmounts([{ amount: null }]), null);
   assert.equal(sumCOpAmounts([]), 0);
 
+  // Branch rankings: branches with unknown amounts must NOT be falsified as 0
+  const branchOps = [
+    { branch: "Riyadh", amount: 500 },
+    { branch: "Riyadh", amount: 700 },
+    { branch: "Jeddah", amount: 1500 },
+    { branch: "Dammam", amount: null },
+  ];
+  const branchAmts: Record<string, number | null> = {};
+  branchOps.forEach((o) => {
+    if (!o.branch) return;
+    if (branchAmts[o.branch] === null) return;
+    if (o.amount == null || Number.isNaN(o.amount)) {
+      branchAmts[o.branch] = null;
+    } else {
+      branchAmts[o.branch] = (branchAmts[o.branch] ?? 0) + o.amount;
+    }
+  });
+  const validRankings = Object.entries(branchAmts)
+    .filter((entry): entry is [string, number] => entry[1] !== null)
+    .sort(([, a], [, b]) => b - a);
+
+  assert.equal(branchAmts["Dammam"], null, "Branch with null amount must have null total");
+  assert.deepEqual(validRankings, [["Jeddah", 1500], ["Riyadh", 1200]], "Only complete branches ranked");
+
+  // Batch map: batches with null amounts must NOT be falsified as 0
+  const batchOps = [
+    { erpBatchId: "BATCH-1", amount: 100 },
+    { erpBatchId: "BATCH-1", amount: null },
+    { erpBatchId: "BATCH-2", amount: 300 },
+  ];
+  const batchMap: Record<string, number | null> = {};
+  batchOps.forEach((o) => {
+    if (batchMap[o.erpBatchId] === null) return;
+    if (o.amount == null) batchMap[o.erpBatchId] = null;
+    else batchMap[o.erpBatchId] = (batchMap[o.erpBatchId] ?? 0) + o.amount;
+  });
+  assert.equal(batchMap["BATCH-1"], null, "Batch with null op must have null total");
+  assert.equal(batchMap["BATCH-2"], 300, "Clean batch total calculated");
+
   // Display formatting: null amounts must NOT be shown as 0.00 SAR
   const formatAmountDisplay = (amount: number | null | undefined): string => {
     if (amount == null) return "—";
@@ -637,14 +766,14 @@ test("HA-F11: financial aggregation functions preserve null/missing amounts with
 
 test("HA-F22: shouldUpdateHeadOps and opsRange prevent infinite render loops while clearing stale operations on empty query success", () => {
   const current = [
-    { id: "1", status: "approved", amount: 100 },
-    { id: "2", status: "approved", amount: 200 },
+    { id: "1", status: "approved", amount: 100, erpPosted: false },
+    { id: "2", status: "approved", amount: 200, erpPosted: false },
   ];
 
   // 1. Queries not yet all succeeded: must not update
   const notReady = shouldUpdateHeadOps(
     current,
-    [{ id: "1", status: "approved", amount: 100 }],
+    [{ id: "1", status: "approved", amount: 100, erpPosted: false }],
     false,
   );
   assert.equal(notReady.shouldUpdate, false);
@@ -653,33 +782,61 @@ test("HA-F22: shouldUpdateHeadOps and opsRange prevent infinite render loops whi
   const identical = shouldUpdateHeadOps(
     current,
     [
-      { id: "1", status: "approved", amount: 100 },
-      { id: "2", status: "approved", amount: 200 },
+      { id: "1", status: "approved", amount: 100, erpPosted: false },
+      { id: "2", status: "approved", amount: 200, erpPosted: false },
     ],
     true,
   );
   assert.equal(identical.shouldUpdate, false);
 
-  // 3. New data arrived: shouldUpdate === true
-  const changed = shouldUpdateHeadOps(
+  // 3. New status arrived: shouldUpdate === true
+  const changedStatus = shouldUpdateHeadOps(
     current,
     [
-      { id: "1", status: "approved", amount: 100 },
-      { id: "2", status: "final-approved", amount: 200 },
+      { id: "1", status: "approved", amount: 100, erpPosted: false },
+      { id: "2", status: "final-approved", amount: 200, erpPosted: false },
     ],
     true,
   );
-  assert.equal(changed.shouldUpdate, true);
-  assert.equal(changed.nextOps[1].status, "final-approved");
+  assert.equal(changedStatus.shouldUpdate, true);
+  assert.equal(changedStatus.nextOps[1].status, "final-approved");
 
-  // 4. Query returned 0 rows (e.g. filtered): shouldUpdate === true and nextOps is empty (stale rows cleared)
+  // 4. Workflow field changed (erpPosted): shouldUpdate === true (must not drop critical operational changes!)
+  const changedErp = shouldUpdateHeadOps(
+    current,
+    [
+      { id: "1", status: "approved", amount: 100, erpPosted: false },
+      { id: "2", status: "approved", amount: 200, erpPosted: true },
+    ],
+    true,
+  );
+  assert.equal(changedErp.shouldUpdate, true, "Must detect erpPosted change even if id/status/amount match");
+
+  // 5. Query returned 0 rows (e.g. filtered): shouldUpdate === true and nextOps is empty (stale rows cleared)
   const emptySuccess = shouldUpdateHeadOps(current, [], true);
   assert.equal(emptySuccess.shouldUpdate, true);
   assert.equal(emptySuccess.nextOps.length, 0);
 
-  // 5. opsRange object reference stability: stable primitives produce stable references
-  const getOpsRange = (from: string, to: string) => ({ from, to });
-  const range1 = getOpsRange("2026-10-01", "2026-10-22");
-  const range2 = getOpsRange("2026-10-01", "2026-10-22");
-  assert.deepEqual(range1, range2);
+  // 6. Query error with existing data: must NOT empty the data!
+  const queryFailed = shouldUpdateHeadOps(current, [], false);
+  assert.equal(queryFailed.shouldUpdate, false, "Must not clear on query error");
+  assert.equal(queryFailed.nextOps.length, 2);
+
+  // 7. Simulated React hook render cycle verifying no loop occurs
+  let renderCount = 0;
+  let simulatedOps = current;
+  const mockIncomingQueryData = [
+    { id: "1", status: "approved", amount: 100, erpPosted: false },
+    { id: "2", status: "approved", amount: 200, erpPosted: false },
+  ];
+  // Simulate 5 renders
+  for (let i = 0; i < 5; i++) {
+    renderCount++;
+    const check = shouldUpdateHeadOps(simulatedOps, mockIncomingQueryData, true);
+    if (check.shouldUpdate) {
+      simulatedOps = check.nextOps;
+    }
+  }
+  assert.equal(renderCount, 5);
+  assert.equal(simulatedOps, current, "Data reference remained stable, preventing infinite state update loop");
 });

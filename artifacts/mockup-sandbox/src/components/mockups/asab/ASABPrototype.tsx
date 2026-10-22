@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
-import { headLegacyBulkIds, filterErpOperations, canProceedPreflight, aggregateOpsAmount, shouldUpdateHeadOps, runFinancialMutation } from "./headReviewGuards";
+import { headLegacyBulkIds, filterErpOperations, canProceedPreflight, aggregateOpsAmount, shouldUpdateHeadOps, runFinancialMutation, validateConditionalApproval } from "./headReviewGuards";
 import { toast } from "sonner";
 import { useState, useEffect, useMemo, ReactNode, createContext, useContext, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import {
@@ -2910,10 +2910,21 @@ function OwnerReportsPage({ ops }: PageProps) {
     : null;
   const netPctChange = (ownerApi as any)?.netPctChange ?? (baselineNet != null && baselineNet > 0 && netPosition != null ? Math.round(((netPosition - baselineNet) / baselineNet) * 100) : null);
 
-  // Branch rankings from ERP-posted ops — descending by amount
-  const branchAmts: Record<string, number> = {};
-  postedOps.forEach(o => { branchAmts[o.branch] = (branchAmts[o.branch] || 0) + (typeof o.amount === 'number' && !Number.isNaN(o.amount) ? o.amount : 0); });
-  const branchRankings = Object.entries(branchAmts).sort(([, a], [, b]) => b - a).slice(0, 5);
+  // Branch rankings from ERP-posted ops — descending by amount, null-safe
+  const branchAmts: Record<string, number | null> = {};
+  postedOps.forEach(o => {
+    if (!o.branch) return;
+    if (branchAmts[o.branch] === null) return;
+    if (o.amount == null || Number.isNaN(o.amount)) {
+      branchAmts[o.branch] = null;
+    } else {
+      branchAmts[o.branch] = (branchAmts[o.branch] ?? 0) + o.amount;
+    }
+  });
+  const branchRankings = Object.entries(branchAmts)
+    .filter((entry): entry is [string, number] => entry[1] !== null)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5);
 
   // Category breakdown for owner — ERP-posted amounts only, with honest period comparison
   const ownerCategories = [
@@ -2942,12 +2953,19 @@ function OwnerReportsPage({ ops }: PageProps) {
   const topBranch = branchRankings[0];
   if (topBranch) commentary.push({ icon: "🏆", text: en ? `${topBranch[0]} is the highest-revenue branch in ERP at ${fmtAmt(topBranch[1])} SAR` : `${topBranch[0]} هو الفرع الأعلى إيراداً في ERP بمقدار ${fmtAmt(topBranch[1])} ر.س`, color: "text-indigo-700" });
 
-  // ERP batch log — source of truth
-  const batchMap: Record<string, { id: string; total: number; modules: Set<string> }> = {};
+  // ERP batch log — source of truth, null-safe batch totals
+  const batchMap: Record<string, { id: string; total: number | null; modules: Set<string> }> = {};
   postedOps.forEach(o => {
     const b = o.erpBatchId || t("دفعة غير مُسمَّاة", "Unnamed batch");
     if (!batchMap[b]) batchMap[b] = { id: b, total: 0, modules: new Set() };
-    batchMap[b].total += (o.amount ?? 0); batchMap[b].modules.add(o.moduleLabel);
+    if (batchMap[b].total !== null) {
+      if (o.amount == null || Number.isNaN(o.amount)) {
+        batchMap[b].total = null;
+      } else {
+        batchMap[b].total = (batchMap[b].total ?? 0) + o.amount;
+      }
+    }
+    batchMap[b].modules.add(o.moduleLabel);
   });
   const batches = Object.values(batchMap);
 
@@ -3280,7 +3298,7 @@ function OwnerReportsPage({ ops }: PageProps) {
                           <p className="text-[11px] text-gray-400 mt-0.5">{[...b.modules].join(" · ")}</p>
                         </div>
                         <p className="font-black text-gray-900 font-mono tabular-nums text-base">
-                          {(b.total / 1000).toFixed(1)}K
+                          {b.total != null ? `${(b.total / 1000).toFixed(1)}K` : "—"}
                           <span className="text-xs font-semibold text-gray-400 mr-0.5">{t("ر.س", "SAR")}</span>
                         </p>
                         <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-lg">✓ {t("مُعتمد", "Approved")}</span>
@@ -10603,11 +10621,17 @@ function HeadERP({ ops, markErpPosted }: PageProps) {
   const preflightWarnings = (erpPreflight as any)?.warningCount ?? preflightChecks.filter(c => !c.ok).length;
   const erpBatchRows = (((erpBatches as any)?.data ?? erpBatches ?? []) as any[]);
 
-  // ERP Reports: group posted ops by module
-  const reportsByModule = postedOps.reduce<Record<string, { label: string; count: number; total: number; batchIds: string[] }>>((acc, op) => {
+  // ERP Reports: group posted ops by module (HA-F11: null-safe module totals)
+  const reportsByModule = postedOps.reduce<Record<string, { label: string; count: number; total: number | null; batchIds: string[] }>>((acc, op) => {
     if (!acc[op.moduleKey]) { acc[op.moduleKey] = { label: op.moduleLabel, count: 0, total: 0, batchIds: [] }; }
     acc[op.moduleKey].count++;
-    acc[op.moduleKey].total += (op.amount ?? 0);
+    if (acc[op.moduleKey].total !== null) {
+      if (op.amount == null || Number.isNaN(op.amount)) {
+        acc[op.moduleKey].total = null;
+      } else {
+        acc[op.moduleKey].total = (acc[op.moduleKey].total ?? 0) + op.amount;
+      }
+    }
     if (op.erpBatchId && !acc[op.moduleKey].batchIds.includes(op.erpBatchId)) acc[op.moduleKey].batchIds.push(op.erpBatchId);
     return acc;
   }, {});
@@ -10702,7 +10726,7 @@ function HeadERP({ ops, markErpPosted }: PageProps) {
                             <Badge className={`${originInfo.cls} border text-[10px]`}>{originInfo.icon} {originInfo.label}</Badge>
                           </td>
                           <td className="px-5 py-3.5 text-center text-slate-600 font-mono font-bold">{r.count}</td>
-                          <td className="px-5 py-3.5 text-center font-mono font-extrabold text-slate-800 tabular-nums">{(r.total / 1000).toFixed(1)}K {t("ر.س", "SAR")}</td>
+                          <td className="px-5 py-3.5 text-center font-mono font-extrabold text-slate-800 tabular-nums">{r.total != null ? `${(r.total / 1000).toFixed(1)}K ${t("ر.س", "SAR")}` : "—"}</td>
                           <td className="px-5 py-3.5 text-center">
                             {r.batchIds.map(b => <span key={b} className="text-xs font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded mr-1">{b}</span>)}
                           </td>
@@ -10718,7 +10742,9 @@ function HeadERP({ ops, markErpPosted }: PageProps) {
                       <td className="px-5 py-3 font-bold text-slate-700 text-sm">{t("الإجمالي الكلي", "Grand Total")}</td>
                       <td></td>
                       <td className="px-5 py-3 text-center font-bold text-slate-700 font-mono">{postedOps.length}</td>
-                      <td className="px-5 py-3 text-center font-extrabold text-slate-900 font-mono tabular-nums">{(postedOps.reduce((s, o) => s + (o.amount ?? 0), 0) / 1000).toFixed(1)}K {t("ر.س", "SAR")}</td>
+                      <td className="px-5 py-3 text-center font-extrabold text-slate-900 font-mono tabular-nums">
+                        {postedOps.some(o => o.amount == null) ? "—" : `${(postedOps.reduce((s, o) => s + (o.amount ?? 0), 0) / 1000).toFixed(1)}K ${t("ر.س", "SAR")}`}
+                      </td>
                       <td colSpan={2}></td>
                     </tr>
                   </tfoot>
@@ -10843,7 +10869,10 @@ function HeadERP({ ops, markErpPosted }: PageProps) {
                           <span className="text-xs text-gray-700">{p.l}</span>
                         </label>
                       ))}
-                      <input type="text" defaultValue={new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 mt-1" />
+                      <div className="w-full text-xs border border-gray-200 bg-gray-100/70 rounded-lg px-2.5 py-1.5 mt-1 text-gray-600 font-mono flex items-center justify-between">
+                        <span className="text-[11px] text-gray-500">{t("تاريخ التشغيل المعتمد:", "Approved Date:")}</span>
+                        <span className="font-semibold text-purple-700">{new Date().toISOString().slice(0, 10)}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -10950,9 +10979,13 @@ function HeadERP({ ops, markErpPosted }: PageProps) {
                         if (typeof serverId === "string" && serverId.trim().length > 0) {
                           setPostedBatchId(serverId);
                           setStep(2);
+                        } else {
+                          toast.error(t("لم يتم استلام معرّف الدفعة من الخادم", "No batch ID received from server"));
                         }
                       }
-                    } catch {
+                    } catch (err) {
+                      const msg = (err as any)?.response?.data?.message || (err as any)?.message || t("فشل الترحيل إلى ERP", "ERP posting failed");
+                      toast.error(msg);
                       // Posting failed — do NOT advance to step 2!
                     } finally {
                       setIsPosting(false);
@@ -17026,7 +17059,7 @@ export function ASABPrototype() {
   // so nothing is hidden until the user picks a window. Applies to the operation
   // lists only (per backend §d).
   const [period, setPeriod] = useState<OpPeriod>("all");
-  const opsRange = periodRange(period);
+  const opsRange = useMemo(() => periodRange(period), [period]);
   // Live operations from platform API — falls back to INITIAL_OPS when API returns empty.
   // Local setOps is preserved to drive optimistic UI for approve / reject / final-approve / ERP mutations.
   const isHead = currentRole === "head";
@@ -17040,7 +17073,10 @@ export function ASABPrototype() {
   const { data: headFinalOps } = useFinalApprovedOperations(opsRange, { enabled: !switchingRole && isHead });
   const { data: headRejectedOps } = useRejectedOperations(opsRange, { enabled: !switchingRole && isHead });
   const [ops, setOps] = useState<Op[]>([]);
-  // Sync incoming live ops into local state when a non-empty batch arrives. A side effect, so
+  const currentSalesOps = useRef(ops);
+  currentSalesOps.current = ops;
+
+  // Sync incoming live ops into local state when queries succeed. A side effect, so
   // useEffect (not useMemo); deps are the stable react-query data refs.
   useEffect(() => {
     if (switchingRole || !currentRole) return;
@@ -17059,13 +17095,21 @@ export function ASABPrototype() {
           ...(headFinalOps ?? []),
           ...(headRejectedOps ?? []),
         ];
-        // HA-F22: Clear stale rows from previous period/filters even when merged has 0 records
-        setOps(merged.map(mapApiOpToOp));
+        const nextOps = merged.map(mapApiOpToOp);
+        // HA-F22: Content-aware comparison prevents infinite render loops while clearing stale operations
+        const { shouldUpdate } = shouldUpdateHeadOps(currentSalesOps.current, nextOps, allSuccess);
+        if (shouldUpdate) {
+          setOps(nextOps);
+        }
       }
     } else if (currentRole === "accountant" && canRunAccountantOperations(user, currentRole)) {
       const accState = queryClient.getQueryState(queryKeys.platformAccountantOperations({ pageSize: 100, ...opsRange }));
       if (accState?.status === "success") {
-        setOps(((apiOps as any[]) ?? []).map(mapApiOpToOp));
+        const nextOps = (((apiOps as any[]) ?? []).map(mapApiOpToOp));
+        const { shouldUpdate } = shouldUpdateHeadOps(currentSalesOps.current, nextOps, true);
+        if (shouldUpdate) {
+          setOps(nextOps);
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -17138,10 +17182,9 @@ export function ASABPrototype() {
   const now = () => new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
 
   const salesQueryClient = useQueryClient();
-  const currentSalesOps = useRef(ops);
-  currentSalesOps.current = ops;
   const currentSalesRole = useRef(appState.role);
   currentSalesRole.current = currentRole;
+  const inFlightOps = useRef<Set<string>>(new Set());
   const salesDetailFor = (op: { id: string }) => salesQueryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id));
   const salesContextFor = (id: string) => {
     const operation = currentSalesOps.current.find(op => op.id === id);
@@ -17158,77 +17201,124 @@ export function ASABPrototype() {
   const erpBatchMut = useCreateERPBatch();
 
   const approveOp = async (id: string) => {
-    try {
-      if (typeof (approveMut as any).mutateAsync === "function") {
-        await (approveMut as any).mutateAsync({ id });
-      } else if (typeof approveMut.mutate === "function") {
-        approveMut.mutate({ id });
-      }
-      setOps(p => p.map(o =>
-        o.id === id && o.status === "pending"
-          ? {
-            ...o, status: "approved" as OpStatus,
-            approvedBy: appState.role === "head" ? "رئيس الحسابات" : "المحاسب المختص",
-            approvedAt: now()
-          }
-          : o
-      ));
-      if (typeof salesQueryClient !== "undefined" && typeof salesQueryClient?.invalidateQueries === "function") {
-        void salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
-      }
-    } catch (err) {
-      console.error("approveOp failed", err);
-    }
-  };
-  const rejectOp = (id: string, reason: string) => {
-    runSalesAction(() => salesContextFor(id), "return", async () => {
-      try {
-        if (typeof (rejectMut as any).mutateAsync === "function") {
-          await (rejectMut as any).mutateAsync({ id, reason });
-        } else if (typeof rejectMut.mutate === "function") {
-          rejectMut.mutate({ id, reason });
+    return runFinancialMutation(
+      id,
+      inFlightOps.current,
+      async () => {
+        if (typeof (approveMut as any).mutateAsync === "function") {
+          return await (approveMut as any).mutateAsync({ id });
         }
+        if (typeof (approveMut as any).mutate === "function") {
+          return await new Promise((resolve, reject) => {
+            (approveMut as any).mutate({ id }, { onSuccess: resolve, onError: reject });
+          });
+        }
+        throw new Error("No mutation handler available for approval");
+      },
+      () => {
         setOps(p => p.map(o =>
-          o.id === id && (o.status === "pending" || o.status === "approved")
+          o.id === id && o.status === "pending"
             ? {
-              ...o, status: "rejected" as OpStatus, rejectReason: reason,
-              rejectedBy: appState.role === "head" ? "رئيس الحسابات" : "المحاسب المختص",
-              rejectedAt: now()
+              ...o, status: "approved" as OpStatus,
+              approvedBy: appState.role === "head" ? "رئيس الحسابات" : "المحاسب المختص",
+              approvedAt: now()
             }
             : o
         ));
         if (typeof salesQueryClient !== "undefined" && typeof salesQueryClient?.invalidateQueries === "function") {
           void salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
         }
-      } catch (err) {
-        console.error("rejectOp failed", err);
       }
+    ).catch(err => {
+      const msg = (err as any)?.response?.data?.message || (err as any)?.message || "فشل اعتماد العملية";
+      toast.error(msg);
+      throw err;
     });
   };
-  const finalApproveOp = async (id: string, conditional?: { note: string }) => {
-    try {
-      if (typeof (finalMut as any).mutateAsync === "function") {
-        await (finalMut as any).mutateAsync({ id, isConditional: !!conditional, conditionalNote: conditional?.note });
-      } else if (typeof finalMut.mutate === "function") {
-        finalMut.mutate({ id, isConditional: !!conditional, conditionalNote: conditional?.note });
-      }
-      setOps(p => p.map(o =>
-        o.id === id && o.status === "approved"
-          ? {
-            ...o, status: "final-approved" as OpStatus,
-            finalApprovedBy: "رئيس الحسابات",
-            finalApprovedAt: now()
+
+  const rejectOp = (id: string, reason: string) => {
+    return runSalesAction(() => salesContextFor(id), "return", () => {
+      void runFinancialMutation(
+        id,
+        inFlightOps.current,
+        async () => {
+          if (typeof (rejectMut as any).mutateAsync === "function") {
+            return await (rejectMut as any).mutateAsync({ id, reason });
           }
-          : o
-      ));
-      if (typeof salesQueryClient !== "undefined" && typeof salesQueryClient?.invalidateQueries === "function") {
-        void salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
-      }
-    } catch (err) {
-      console.error("finalApproveOp failed", err);
-    }
+          if (typeof (rejectMut as any).mutate === "function") {
+            return await new Promise((resolve, reject) => {
+              (rejectMut as any).mutate({ id, reason }, { onSuccess: resolve, onError: reject });
+            });
+          }
+          throw new Error("No mutation handler available for rejection");
+        },
+        () => {
+          setOps(p => p.map(o =>
+            o.id === id && (o.status === "pending" || o.status === "approved")
+              ? {
+                ...o, status: "rejected" as OpStatus, rejectReason: reason,
+                rejectedBy: appState.role === "head" ? "رئيس الحسابات" : "المحاسب المختص",
+                rejectedAt: now()
+              }
+              : o
+          ));
+          if (typeof salesQueryClient !== "undefined" && typeof salesQueryClient?.invalidateQueries === "function") {
+            void salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
+          }
+        }
+      ).catch(err => {
+        const msg = (err as any)?.response?.data?.message || (err as any)?.message || "فشل رفض العملية";
+        toast.error(msg);
+        throw err;
+      });
+    });
   };
-  const bulkApprove = (ids: string[]) => {
+
+  const finalApproveOp = async (id: string, conditional?: { note: string }) => {
+    if (conditional) {
+      const validation = validateConditionalApproval(conditional.note);
+      if (!validation.ok) {
+        const err = new Error(validation.error === "note_required" ? "ملاحظة الاعتماد المشروط مطلوبة" : "بيانات الاعتماد المشروط غير صالحة");
+        toast.error(err.message);
+        throw err;
+      }
+    }
+    return runFinancialMutation(
+      id,
+      inFlightOps.current,
+      async () => {
+        if (typeof (finalMut as any).mutateAsync === "function") {
+          return await (finalMut as any).mutateAsync({ id, isConditional: !!conditional, conditionalNote: conditional?.note });
+        }
+        if (typeof (finalMut as any).mutate === "function") {
+          return await new Promise((resolve, reject) => {
+            (finalMut as any).mutate({ id, isConditional: !!conditional, conditionalNote: conditional?.note }, { onSuccess: resolve, onError: reject });
+          });
+        }
+        throw new Error("No mutation handler available for final approval");
+      },
+      () => {
+        setOps(p => p.map(o =>
+          o.id === id && o.status === "approved"
+            ? {
+              ...o, status: "final-approved" as OpStatus,
+              finalApprovedBy: "رئيس الحسابات",
+              finalApprovedAt: now()
+            }
+            : o
+        ));
+        if (typeof salesQueryClient !== "undefined" && typeof salesQueryClient?.invalidateQueries === "function") {
+          void salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
+        }
+      }
+    ).catch(err => {
+      const msg = (err as any)?.response?.data?.message || (err as any)?.message || "فشل الاعتماد النهائي";
+      toast.error(msg);
+      throw err;
+    });
+  };
+
+  const bulkApprove = async (ids: string[]) => {
     const eligible = salesBulkApprovalIds(currentSalesOps.current, ids.filter(id =>
       currentSalesOps.current.find(op => op.id === id)?.status === "pending"), currentSalesRole.current, salesDetailFor);
     const approved = headLegacyBulkIds(currentSalesOps.current, ids.filter(id =>
@@ -17244,67 +17334,83 @@ export function ASABPrototype() {
       if (o.status === "approved") approvedIds.push(o.id);
     });
 
-    if (pendingIds.length > 0) {
-      runSalesBulkApproval(currentSalesOps.current, pendingIds, currentSalesRole.current, async (eligibleIds) => {
-        try {
+    const bulkKey = `bulk-${ids.slice().sort().join(",")}`;
+    return runFinancialMutation(
+      bulkKey,
+      inFlightOps.current,
+      async () => {
+        if (pendingIds.length > 0) {
           if (typeof (bulkApproveMut as any).mutateAsync === "function") {
-            await (bulkApproveMut as any).mutateAsync({ operationIds: eligibleIds });
-          } else if (typeof bulkApproveMut.mutate === "function") {
-            bulkApproveMut.mutate({ operationIds: eligibleIds });
+            await (bulkApproveMut as any).mutateAsync({ operationIds: pendingIds });
+          } else if (typeof (bulkApproveMut as any).mutate === "function") {
+            await new Promise((resolve, reject) => {
+              (bulkApproveMut as any).mutate({ operationIds: pendingIds }, { onSuccess: resolve, onError: reject });
+            });
           }
-          setOps(p => p.map(o =>
-            eligibleIds.includes(o.id) && o.status === "pending"
-              ? { ...o, status: "approved" as OpStatus, approvedBy: "المحاسب المختص", approvedAt: ts }
-              : o
-          ));
-        } catch (err) {
-          console.error("bulkApprove failed", err);
         }
-      }, salesDetailFor);
-    }
-    if (approvedIds.length > 0) {
-      void (async () => {
-        try {
+        if (approvedIds.length > 0) {
           if (typeof (bulkFinalMut as any).mutateAsync === "function") {
             await (bulkFinalMut as any).mutateAsync({ operationIds: approvedIds });
-          } else if (typeof bulkFinalMut.mutate === "function") {
-            bulkFinalMut.mutate({ operationIds: approvedIds });
+          } else if (typeof (bulkFinalMut as any).mutate === "function") {
+            await new Promise((resolve, reject) => {
+              (bulkFinalMut as any).mutate({ operationIds: approvedIds }, { onSuccess: resolve, onError: reject });
+            });
           }
-          setOps(p => p.map(o =>
-            approvedIds.includes(o.id) && o.status === "approved"
-              ? { ...o, status: "final-approved" as OpStatus, finalApprovedBy: "رئيس الحسابات", finalApprovedAt: ts }
-              : o
-          ));
-        } catch (err) {
-          console.error("bulkFinalMut failed", err);
         }
-      })();
-    }
-    if (typeof salesQueryClient !== "undefined" && typeof salesQueryClient?.invalidateQueries === "function") {
-      void salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
-    }
+      },
+      () => {
+        setOps(p => p.map(o => {
+          if (pendingIds.includes(o.id) && o.status === "pending") {
+            return { ...o, status: "approved" as OpStatus, approvedBy: "المحاسب المختص", approvedAt: ts };
+          }
+          if (approvedIds.includes(o.id) && o.status === "approved") {
+            return { ...o, status: "final-approved" as OpStatus, finalApprovedBy: "رئيس الحسابات", finalApprovedAt: ts };
+          }
+          return o;
+        }));
+        if (typeof salesQueryClient !== "undefined" && typeof salesQueryClient?.invalidateQueries === "function") {
+          void salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
+        }
+      }
+    ).catch(err => {
+      const msg = (err as any)?.response?.data?.message || (err as any)?.message || "فشل الاعتماد الجماعي";
+      toast.error(msg);
+      throw err;
+    });
   };
 
   // T10 §A4 — return an approved op to the accountant for review (op → pending).
   const returnForReview = (id: string, note?: string) => {
-    runSalesAction(() => salesContextFor(id), "returnForReview", async () => {
-      try {
-        if (typeof (returnReviewMut as any).mutateAsync === "function") {
-          await (returnReviewMut as any).mutateAsync({ id, note });
-        } else if (typeof returnReviewMut.mutate === "function") {
-          returnReviewMut.mutate({ id, note });
+    return runSalesAction(() => salesContextFor(id), "returnForReview", () => {
+      void runFinancialMutation(
+        id,
+        inFlightOps.current,
+        async () => {
+          if (typeof (returnReviewMut as any).mutateAsync === "function") {
+            return await (returnReviewMut as any).mutateAsync({ id, note });
+          }
+          if (typeof (returnReviewMut as any).mutate === "function") {
+            return await new Promise((resolve, reject) => {
+              (returnReviewMut as any).mutate({ id, note }, { onSuccess: resolve, onError: reject });
+            });
+          }
+          throw new Error("No mutation handler available for returnForReview");
+        },
+        () => {
+          setOps(p => p.map(o =>
+            o.id === id && o.status === "approved"
+              ? { ...o, status: "pending" as OpStatus, approvedBy: undefined, approvedAt: undefined }
+              : o
+          ));
+          if (typeof salesQueryClient !== "undefined" && typeof salesQueryClient?.invalidateQueries === "function") {
+            void salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
+          }
         }
-        setOps(p => p.map(o =>
-          o.id === id && o.status === "approved"
-            ? { ...o, status: "pending" as OpStatus, approvedBy: undefined, approvedAt: undefined }
-            : o
-        ));
-        if (typeof salesQueryClient !== "undefined" && typeof salesQueryClient?.invalidateQueries === "function") {
-          void salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
-        }
-      } catch (err) {
-        console.error("returnForReview failed", err);
-      }
+      ).catch(err => {
+        const msg = (err as any)?.response?.data?.message || (err as any)?.message || "فشلت إعادة العملية للمراجعة";
+        toast.error(msg);
+        throw err;
+      });
     });
   };
 
@@ -17342,18 +17448,33 @@ export function ASABPrototype() {
     }
     const set = new Set(ids);
     const postedAt = now();
-    const res = await erpBatchMut.mutateAsync({ operationIds: ids });
-    const serverBatchId = (res as any)?.batchId ?? (res as any)?.id ?? "";
-    if (!serverBatchId) {
-      throw new Error("لم يتم استلام معرّف الدفعة من الخادم");
-    }
-    setOps(p => p.map(o =>
-      set.has(o.id) && o.status === "final-approved" && !o.erpPosted
-        ? { ...o, erpPosted: true, erpBatchId: serverBatchId, erpPostedAt: postedAt }
-        : o
-    ));
-    await salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
-    return serverBatchId;
+    const erpKey = `erp-${ids.slice().sort().join(",")}`;
+    return runFinancialMutation(
+      erpKey,
+      inFlightOps.current,
+      async () => {
+        const res = await erpBatchMut.mutateAsync({ operationIds: ids });
+        const serverBatchId = (res as any)?.batchId ?? (res as any)?.id ?? "";
+        if (!serverBatchId || typeof serverBatchId !== "string" || !serverBatchId.trim()) {
+          throw new Error("لم يتم استلام معرّف الدفعة من الخادم");
+        }
+        return serverBatchId;
+      },
+      (serverBatchId) => {
+        setOps(p => p.map(o =>
+          set.has(o.id) && o.status === "final-approved" && !o.erpPosted
+            ? { ...o, erpPosted: true, erpBatchId: serverBatchId, erpPostedAt: postedAt }
+            : o
+        ));
+        if (typeof salesQueryClient !== "undefined" && typeof salesQueryClient?.invalidateQueries === "function") {
+          void salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
+        }
+      }
+    ).catch(err => {
+      const msg = (err as any)?.response?.data?.message || (err as any)?.message || "فشل الترحيل إلى ERP";
+      toast.error(msg);
+      throw err;
+    });
   };
 
   if (!currentRole) return (
