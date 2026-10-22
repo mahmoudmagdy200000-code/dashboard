@@ -1,8 +1,4 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, downloadBlob, type Page } from "../../client";
 import { getErrorMessage } from "../../errors";
@@ -37,7 +33,8 @@ export function useAccountantsPerformancePlatform() {
     queryKey: queryKeys.platformAccountantsPerformance,
     queryFn: async () => {
       const res = await api.get<
-        Page<PlatformAccountantPerformanceRow> | PlatformAccountantPerformanceRow[]
+        | Page<PlatformAccountantPerformanceRow>
+        | PlatformAccountantPerformanceRow[]
       >("/head/accountants/performance");
       const d = res.data;
       return Array.isArray(d) ? d : (d.data ?? []);
@@ -66,8 +63,8 @@ export function usePatchHeadReminderPlatform() {
       id,
       ...patch
     }: { id: string } & Partial<PlatformHeadReminder> & {
-      done?: boolean;
-    }) => {
+        done?: boolean;
+      }) => {
       const res = await api.patch<PlatformHeadReminder>(
         `/head/reminders/${id}`,
         patch,
@@ -97,11 +94,16 @@ export function useMarkAllHeadRemindersDonePlatform() {
 }
 
 // ─── Operations queues (HA-F10: multi-page fetching & metadata preservation) ─
-async function fetchAllHeadOpsPages(
+export async function fetchAllHeadOpsPages(
   url: string,
   filter: PlatformOpsFilter,
+  apiClient: {
+    get: <T = any>(u: string, cfg?: any) => Promise<{ data: T }>;
+  } = api,
 ): Promise<Operation[]> {
-  const res = await api.get<Page<Operation> | Operation[]>(url, { params: filter });
+  const res = await apiClient.get<Page<Operation> | Operation[]>(url, {
+    params: filter,
+  });
   const d = res.data;
   if (Array.isArray(d)) return d;
   const firstData = d.data ?? [];
@@ -113,13 +115,17 @@ async function fetchAllHeadOpsPages(
   // Otherwise, fetch all remaining pages so Head queues are never silently truncated
   const remaining = await Promise.all(
     Array.from({ length: meta.totalPages - 1 }, (_, i) =>
-      api.get<Page<Operation> | Operation[]>(url, {
-        params: { ...filter, page: i + 2 },
-      }).then((r) => (Array.isArray(r.data) ? r.data : (r.data.data ?? []))),
+      apiClient
+        .get<Page<Operation> | Operation[]>(url, {
+          params: { ...filter, page: i + 2 },
+        })
+        .then((r) => (Array.isArray(r.data) ? r.data : (r.data.data ?? []))),
     ),
   );
   const all = [firstData, ...remaining].flat();
-  return Object.assign(all, { meta: { ...meta, total: meta.total ?? all.length } });
+  return Object.assign(all, {
+    meta: { ...meta, total: meta.total ?? all.length },
+  });
 }
 
 export function usePendingOperations(
@@ -140,7 +146,8 @@ export function useFinalApprovedOperations(
   return useQuery({
     queryKey: queryKeys.platformFinalApprovedOperations(filter),
     enabled: options.enabled ?? true,
-    queryFn: () => fetchAllHeadOpsPages("/head/operations/final-approved", filter),
+    queryFn: () =>
+      fetchAllHeadOpsPages("/head/operations/final-approved", filter),
   });
 }
 
@@ -238,7 +245,13 @@ export function useReportsOwnerPlatform() {
 // B-H5: download an internal report from its API-provided downloadUrl (blob, Bearer-authed).
 export function useDownloadHeadReport() {
   return useMutation({
-    mutationFn: async ({ url, filename }: { url: string; filename: string }) => {
+    mutationFn: async ({
+      url,
+      filename,
+    }: {
+      url: string;
+      filename: string;
+    }) => {
       // downloadUrl looks like "/api/v1/operations/export?moduleKey=sales".
       // `api` is already based at ${BASE}/api/v1, so strip origin + the /api/v1 prefix.
       let path = url.replace(/^https?:\/\/[^/]+/, "").replace(/^\/api\/v1/, "");

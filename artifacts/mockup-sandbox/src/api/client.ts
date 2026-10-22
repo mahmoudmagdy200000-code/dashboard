@@ -3,13 +3,20 @@ import axios, {
   type AxiosInstance,
   type InternalAxiosRequestConfig,
 } from "axios";
-import { clearTokensIfCurrent, getTokenState, rotateTokensIfCurrent, type TokenState } from "./tokens";
+import {
+  clearTokensIfCurrent,
+  getTokenState,
+  rotateTokensIfCurrent,
+  type TokenState,
+} from "./tokens";
 import { ApiError, isErrorBody, type ApiErrorBody } from "./errors";
 
-const BASE_RAW = import.meta.env.VITE_API_BASE_URL ?? "";
+const BASE_RAW =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
+  "";
 const BASE = BASE_RAW.replace(/\/$/, "");
 
-if (!BASE) {
+if (!BASE && typeof window !== "undefined") {
   // eslint-disable-next-line no-console
   console.warn(
     "[api] VITE_API_BASE_URL is not set. Set it in .env (frontend root) before making API calls.",
@@ -53,14 +60,18 @@ function generateIdempotencyKey(): string {
 api.interceptors.request.use((config) => {
   const state = getTokenState();
   const authConfig = config as RetriableConfig;
-  if (authConfig.__authSessionId !== undefined && authConfig.__authSessionId !== state.sessionId) {
+  if (
+    authConfig.__authSessionId !== undefined &&
+    authConfig.__authSessionId !== state.sessionId
+  ) {
     throw new SessionChangedError();
   }
   authConfig.__authSessionId ??= state.sessionId;
   authConfig.__authRevision = state.revision;
 
   const url = config.url ?? "";
-  const publicAuthRequest = url.includes("/auth/login") || url.includes("/auth/refresh");
+  const publicAuthRequest =
+    url.includes("/auth/login") || url.includes("/auth/refresh");
   if (config.headers) {
     if (!publicAuthRequest && state.tokens?.accessToken) {
       config.headers.Authorization = `Bearer ${state.tokens.accessToken}`;
@@ -72,7 +83,10 @@ api.interceptors.request.use((config) => {
   // Auto-attach Idempotency-Key on mutations unless the caller already set one.
   const method = (config.method ?? "get").toLowerCase();
   if (!SAFE_METHODS.has(method) && config.headers) {
-    if (!config.headers["Idempotency-Key"] && !config.headers["idempotency-key"]) {
+    if (
+      !config.headers["Idempotency-Key"] &&
+      !config.headers["idempotency-key"]
+    ) {
       config.headers["Idempotency-Key"] = generateIdempotencyKey();
     }
   }
@@ -80,7 +94,9 @@ api.interceptors.request.use((config) => {
 });
 
 /** Manually attach an Idempotency-Key (overrides the auto-generated one). */
-export function withIdempotencyKey(key: string): { headers: { "Idempotency-Key": string } } {
+export function withIdempotencyKey(key: string): {
+  headers: { "Idempotency-Key": string };
+} {
   return { headers: { "Idempotency-Key": key } };
 }
 
@@ -90,9 +106,16 @@ const refreshes = new Map<string, Promise<RefreshResult>>();
 
 async function performRefresh(expected: TokenState): Promise<RefreshResult> {
   const current = getTokenState();
-  if (current.sessionId !== expected.sessionId || current.revision !== expected.revision || !current.tokens) {
+  if (
+    current.sessionId !== expected.sessionId ||
+    current.revision !== expected.revision ||
+    !current.tokens
+  ) {
     return current.sessionId === expected.sessionId && current.tokens
-      ? { accessToken: current.tokens.accessToken, sessionId: current.sessionId }
+      ? {
+          accessToken: current.tokens.accessToken,
+          sessionId: current.sessionId,
+        }
       : null;
   }
   const t = expected.tokens;
@@ -128,7 +151,10 @@ async function performRefresh(expected: TokenState): Promise<RefreshResult> {
       refreshToken: res.data.refreshToken,
     };
     if (rotateTokensIfCurrent(expected, rotated)) {
-      return { accessToken: rotated.accessToken, sessionId: expected.sessionId };
+      return {
+        accessToken: rotated.accessToken,
+        sessionId: expected.sessionId,
+      };
     }
     const newer = getTokenState();
     return newer.sessionId === expected.sessionId && newer.tokens
@@ -160,7 +186,9 @@ type RetriableConfig = InternalAxiosRequestConfig & {
 };
 
 class SessionChangedError extends Error {
-  constructor() { super("Authentication session changed before request dispatch"); }
+  constructor() {
+    super("Authentication session changed before request dispatch");
+  }
 }
 
 api.interceptors.response.use(
@@ -180,9 +208,16 @@ api.interceptors.response.use(
     ) {
       const originalSessionId = cfg.__authSessionId;
       const current = getTokenState();
-      if (originalSessionId !== undefined && current.sessionId === originalSessionId && current.tokens) {
+      if (
+        originalSessionId !== undefined &&
+        current.sessionId === originalSessionId &&
+        current.tokens
+      ) {
         let newToken: string | null = null;
-        if (cfg.__authRevision !== undefined && current.revision !== cfg.__authRevision) {
+        if (
+          cfg.__authRevision !== undefined &&
+          current.revision !== cfg.__authRevision
+        ) {
           // Another request already rotated this same session's token pair.
           newToken = current.tokens.accessToken;
         } else {
@@ -190,12 +225,17 @@ api.interceptors.response.use(
           const key = `${expected.sessionId}:${expected.revision}`;
           let pending = refreshes.get(key);
           if (!pending) {
-            pending = performRefresh(expected).finally(() => refreshes.delete(key));
+            pending = performRefresh(expected).finally(() =>
+              refreshes.delete(key),
+            );
             refreshes.set(key, pending);
           }
           const refreshed = await pending;
           const afterRefresh = getTokenState();
-          if (refreshed?.sessionId === originalSessionId && afterRefresh.sessionId === originalSessionId) {
+          if (
+            refreshed?.sessionId === originalSessionId &&
+            afterRefresh.sessionId === originalSessionId
+          ) {
             newToken = afterRefresh.tokens?.accessToken ?? null;
           }
         }

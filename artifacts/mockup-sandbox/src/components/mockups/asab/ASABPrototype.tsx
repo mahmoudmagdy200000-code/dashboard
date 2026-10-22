@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
-import { headLegacyBulkIds } from "./headReviewGuards";
+import { headLegacyBulkIds, filterErpOperations, canProceedPreflight, aggregateOpsAmount, shouldUpdateHeadOps } from "./headReviewGuards";
 import { toast } from "sonner";
 import { useState, useEffect, useMemo, ReactNode, createContext, useContext, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import {
@@ -2748,7 +2748,7 @@ function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate:(p:PageI
                       <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                       <span className="text-[11px] font-bold text-emerald-800">{t("مُدرَجة في الحزمة — قيود مُعتمدة نهائياً","Included in Package — Final-approved entries")}</span>
                       <span className="text-[10px] text-emerald-600 mr-auto font-mono font-bold">
-                        {fmtAmt(selectedOps.filter(o=>o.status==="final-approved").reduce((s,o)=>s+(o.amount??0),0))} {t("ر.س","SAR")}
+                        {fmtAmt(aggregateOpsAmount(selectedOps.filter(o=>o.status==="final-approved")))} {t("ر.س","SAR")}
                       </span>
                     </div>
                     <div className="divide-y divide-gray-50">
@@ -2775,7 +2775,7 @@ function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate:(p:PageI
                       <span className="w-2 h-2 rounded-full bg-red-500"></span>
                       <span className="text-[11px] font-bold text-red-800">{t("معلقة — تمنع اكتمال التجميع","Pending — Blocking consolidation")}</span>
                       <span className="text-[10px] text-red-600 mr-auto font-mono font-bold">
-                        {fmtAmt(selectedOps.filter(o=>o.status==="pending").reduce((s,o)=>s+(o.amount??0),0))} {t("ر.س","SAR")}
+                        {fmtAmt(aggregateOpsAmount(selectedOps.filter(o=>o.status==="pending")))} {t("ر.س","SAR")}
                       </span>
                     </div>
                     <div className="divide-y divide-gray-50">
@@ -2804,7 +2804,7 @@ function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate:(p:PageI
                         <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                         <span className="text-[11px] font-bold text-emerald-800">{t("جاهز للإرسال لـ ERP","Ready to Send to ERP")}</span>
                         <span className="text-[10px] text-emerald-600 mr-auto font-mono font-bold">
-                          {fmtAmt(readyForErp.reduce((s,o)=>s+(o.amount??0),0))} {t("ر.س","SAR")}
+                          {fmtAmt(aggregateOpsAmount(readyForErp))} {t("ر.س","SAR")}
                         </span>
                       </div>
                       <div className="px-4 py-3">
@@ -2818,15 +2818,16 @@ function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate:(p:PageI
                 {(() => {
                   const posted = selectedOps.filter(o=>o.erpPosted);
                   if(posted.length === 0) return null;
-                  const bm: Record<string,{total:number;count:number}> = {};
-                  posted.forEach(o=>{ const b=o.erpBatchId||"—"; if(!bm[b]) bm[b]={total:0,count:0}; bm[b].total+=(o.amount??0); bm[b].count++; });
+                  const bm: Record<string,{total:number|null;count:number;ops:Op[]}> = {};
+                  posted.forEach(o=>{ const b=o.erpBatchId||"—"; if(!bm[b]) bm[b]={total:0,count:0,ops:[]}; bm[b].ops.push(o); bm[b].count++; });
+                  Object.values(bm).forEach(entry=>{ entry.total = aggregateOpsAmount(entry.ops); });
                   return (
                     <div className="bg-white rounded-xl border border-indigo-100 overflow-hidden">
                       <div className="px-4 py-2 bg-indigo-50 border-b border-indigo-100 flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
                         <span className="text-[11px] font-bold text-indigo-800">{t("مُرحَّلة في ERP — دفعات مُغلقة","Posted to ERP — Closed Batches")}</span>
                         <span className="text-[10px] text-indigo-600 mr-auto font-mono font-bold">
-                          {fmtAmt(posted.reduce((s,o)=>s+(o.amount??0),0))} {t("ر.س","SAR")}
+                          {fmtAmt(aggregateOpsAmount(posted))} {t("ر.س","SAR")}
                         </span>
                       </div>
                       <div className="divide-y divide-gray-50">
@@ -2893,9 +2894,9 @@ function OwnerReportsPage({ ops }: PageProps) {
 
   // — Owner layer data source: ERP-posted only — the verified financial record
   const postedOps    = ops.filter(o=>o.erpPosted);
-  const salesPosted  = postedOps.filter(o=>o.moduleKey==="sales").reduce((s,o)=>s+(o.amount??0),0);
-  const expPosted    = postedOps.filter(o=>o.moduleKey==="expenses").reduce((s,o)=>s+(o.amount??0),0);
-  const purPosted    = postedOps.filter(o=>o.moduleKey==="purchases").reduce((s,o)=>s+(o.amount??0),0);
+  const salesPosted  = aggregateOpsAmount(postedOps.filter(o=>o.moduleKey==="sales")) ?? 0;
+  const expPosted    = aggregateOpsAmount(postedOps.filter(o=>o.moduleKey==="expenses")) ?? 0;
+  const purPosted    = aggregateOpsAmount(postedOps.filter(o=>o.moduleKey==="purchases")) ?? 0;
   const netPosition  = salesPosted - expPosted - purPosted;
 
   // B-H5 / HA-F14: previous-month baseline + netPctChange come from /head/reports/owner without fake fallbacks
@@ -2906,7 +2907,7 @@ function OwnerReportsPage({ ops }: PageProps) {
 
   // Branch rankings from ERP-posted ops — descending by amount
   const branchAmts: Record<string,number> = {};
-  postedOps.forEach(o=>{ branchAmts[o.branch]=(branchAmts[o.branch]||0)+(o.amount??0); });
+  postedOps.forEach(o=>{ branchAmts[o.branch]=(branchAmts[o.branch]||0)+(typeof o.amount === 'number' && !Number.isNaN(o.amount) ? o.amount : 0); });
   const branchRankings = Object.entries(branchAmts).sort(([,a],[,b])=>b-a).slice(0,5);
 
   // Category breakdown for owner — ERP-posted amounts only, with honest period comparison
@@ -2919,7 +2920,7 @@ function OwnerReportsPage({ ops }: PageProps) {
     { key:"employees" as ModuleKey, label:t("مستحقات الموظفين","Payroll"),   icon:"👥", color:"bg-indigo-500",  textColor:"text-indigo-700",  isIncome:false },
     { key:"cash"      as ModuleKey, label:t("العهد النقدية","Cash Custody"), icon:"💼", color:"bg-purple-500",  textColor:"text-purple-700",  isIncome:false },
   ].map(c=>{
-    const amt  = postedOps.filter(o=>o.moduleKey===c.key).reduce((s,o)=>s+(o.amount??0),0);
+    const amt  = aggregateOpsAmount(postedOps.filter(o=>o.moduleKey===c.key)) ?? 0;
     const prev = (ownerApi as any)?.previousMonthByCategory?.[c.key] != null ? Math.round((ownerApi as any).previousMonthByCategory[c.key] / 100) : 0;
     const pct  = prev > 0 ? Math.round(((amt-prev)/prev)*100) : null;
     return {...c, amount:amt, prev, pct};

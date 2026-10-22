@@ -174,6 +174,7 @@ test("actual reject confirmation and return handlers recheck review before HTTP 
       const [reject, returnForReview] = uiHandlers("ASABPrototype.tsx", "ASABPrototype", ["rejectOp", "returnForReview"], scope);
       reject("legacy", "reason");
       returnForReview("legacy");
+      await Promise.resolve();
       assert.deepEqual(requests, pkg6 ? [] : role === "head" ? ["POST reject", "POST reject", "POST return-for-review"] : ["POST reject", "POST reject"]);
       assert.equal(changes.length, pkg6 ? 0 : role === "head" ? 2 : 1);
     }

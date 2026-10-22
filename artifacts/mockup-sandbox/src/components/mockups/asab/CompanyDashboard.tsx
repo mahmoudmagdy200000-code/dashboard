@@ -4160,7 +4160,9 @@ function useSharedOps(role: CRole | null, fingerprint: string) {
               if (typeof rejectMut.mutateAsync === "function") {
                 await rejectMut.mutateAsync({ id:rejectingId, reason, notes });
               } else {
-                rejectMut.mutate({ id:rejectingId, reason, notes });
+                await new Promise<void>((resolve, reject) => {
+                  rejectMut.mutate({ id:rejectingId, reason, notes }, { onSuccess: () => resolve(), onError: reject });
+                });
               }
             } else {
               const err = "تغيرت حالة العملية؛ حدّث القائمة وأعد المراجعة";
@@ -4180,7 +4182,9 @@ function useSharedOps(role: CRole | null, fingerprint: string) {
               if (typeof rejectMut.mutateAsync === "function") {
                 await rejectMut.mutateAsync({ id: rejectingId, reason, notes });
               } else {
-                rejectMut.mutate({ id: rejectingId, reason, notes });
+                await new Promise<void>((resolve, reject) => {
+                  rejectMut.mutate({ id: rejectingId, reason, notes }, { onSuccess: () => resolve(), onError: reject });
+                });
               }
             } catch (error) {
               if (typeof toast !== "undefined") toast.error(getErrorMessage(error, "ar"));
