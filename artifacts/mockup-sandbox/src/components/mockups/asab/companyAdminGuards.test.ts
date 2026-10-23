@@ -319,3 +319,31 @@ test("GO-06 B07: editAsset uses the existing modal dialog primitive and preserve
   assert.match(source, /onClick=\{submitEdit\}/);
   assert.match(source, /onSuccess: \(\) => setEditAsset\(null\)/);
 });
+
+test("GO-07 B07: Edit Asset trigger has a contextual Arabic and English accessible name", () => {
+  const source = readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8");
+  const trigger = source.match(/<button onClick=\{e=>openEdit\(a, e\.currentTarget\)\}[^>]*>[\s\S]*?<Edit2 size=\{11\}[^>]*\s*\/?>[\s\S]*?<\/button>/)?.[0];
+
+  assert.ok(trigger, "the existing Edit Asset trigger must remain present");
+  assert.match(trigger, /aria-label=\{t\("تعديل الأصل: "\s*\+\s*a\.name,\s*"Edit asset: "\s*\+\s*a\.name\)\}/);
+  assert.match(trigger, /onClick=\{e=>openEdit\(a, e\.currentTarget\)\}/);
+});
+
+test("GO-07 B07: editAsset labels are programmatically associated with every form control", () => {
+  const source = readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8");
+  const dialog = source.match(/<DialogPrimitive\.Content\b[\s\S]*?<\/DialogPrimitive\.Content>/)?.[0];
+  assert.ok(dialog, "the editAsset dialog content must remain present");
+
+  const labels = [...dialog.matchAll(/<label\b[^>]*htmlFor="([^"]+)"[^>]*>/g)].map((match) => match[1]);
+  const controls = [...dialog.matchAll(/<(?:input|select)\b[^>]*\bid="([^"]+)"[^>]*>/g)].map((match) => match[1]);
+  assert.deepEqual(labels, [
+    "edit-asset-name",
+    "edit-asset-category",
+    "edit-asset-status",
+    "edit-asset-branch",
+    "edit-asset-book-value",
+    "edit-asset-serial",
+    "edit-asset-custodian",
+  ]);
+  assert.deepEqual(controls, labels, "each labelled control must have a matching id exactly once");
+});
