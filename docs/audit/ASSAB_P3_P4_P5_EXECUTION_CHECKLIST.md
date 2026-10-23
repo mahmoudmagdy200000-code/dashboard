@@ -117,6 +117,9 @@ A02 committed as `b44afbdf4d741404a165330966809785148f1b0b`; status remains `PEN
 
 A03 evidence: R3-F08 source confirms `components/KpiCard.tsx` is a clickable `div`; the audit links `HA-F33` and `S1H-F13` are retained without adding IDs. AST scan found five actual interactive call sites, all in HeadDashboard; other KpiCard uses are informational. Interactive variant is a native `type="button"` with visible focus ring; informational variant remains a `div` with no pointer/focus affordance. SSR variant assertions PASS. `pnpm --filter @workspace/mockup-sandbox run typecheck` exit 0. Keyboard activation, role navigation and 320px reflow remain NOT_RUN.
 
+GO-04 A03 correction checkpoint: preSHA `94d02dd2824cb8faea7fd346bf66160c9acb9189`; scope is limited to `KpiCard.tsx`, its focused semantic test, and checklist/tracker evidence. RED test added; production component not yet changed. Browser keyboard and reflow remain NOT_RUN.
+GO-04 A03 result: RED reproduced invalid flow descendants (focused TAP exit 1: `button descendants must not contain flow-content elements`); after replacing the inner wrappers/text with block spans, GREEN is 2/2 (exit 0) and mockup typecheck is PASS (exit 0). `git diff --check` PASS. This is static JSX-structure evidence; keyboard activation, 320px reflow, AR/EN visual behavior, and browser checks remain NOT_RUN. Local correction commit is prepared after these checks.
+
 ### A04 — Document language metadata
 **Phase:** P4 · **Finding links:** `A4-F06; CA-F19; HA-F36; S1H-F12` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
 **Scope:** root document and language selection.

@@ -29,15 +29,15 @@ export function KpiCard({
   const iconBg = accents[accent]?.split(" ")[1] || "bg-purple-500";
   const content = (
     <>
-      <div className={`w-10 h-10 rounded-xl ${iconBg} bg-opacity-10 flex items-center justify-center flex-shrink-0`}>
+      <span className={`w-10 h-10 rounded-xl ${iconBg} bg-opacity-10 flex items-center justify-center flex-shrink-0`}>
         {icon}
-      </div>
-      <div className="min-w-0">
-        <p className="text-gray-500 text-xs font-medium uppercase tracking-wider leading-tight">{label}</p>
-        <p className="text-gray-900 font-extrabold text-3xl mt-1 leading-none font-mono">{value}</p>
-        {sub && <p className="text-gray-400 text-xs mt-1.5">{sub}</p>}
-        {onClick && <p className="text-[10px] text-purple-500 mt-1">← اضغط للتفاصيل</p>}
-      </div>
+      </span>
+      <span className="block min-w-0">
+        <span className="block text-gray-500 text-xs font-medium uppercase tracking-wider leading-tight">{label}</span>
+        <span className="block text-gray-900 font-extrabold text-3xl mt-1 leading-none font-mono">{value}</span>
+        {sub && <span className="block text-gray-400 text-xs mt-1.5">{sub}</span>}
+        {onClick && <span className="block text-[10px] text-purple-500 mt-1">← اضغط للتفاصيل</span>}
+      </span>
     </>
   );
 
