@@ -84,9 +84,11 @@ export function ProcNewOrders({ }: PageProps) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("الطلبات الجديدة", "New Orders")}</h2>
-          <p className="text-gray-400 text-sm mt-0.5">{t("راجع الاستهلاك قبل الاعتماد — اعتمد فردياً أو للفرع/المورد دفعةً واحدة", "Review consumption before approving — approve individually or per branch/supplier in bulk")}</p>
+          <p className="text-gray-400 text-sm mt-0.5">{t("مراجعة استهلاك الفروع وإعداد أوامر التوريد — الاعتماد المالي وفق PUR-01", "Review branch consumption and prepare supply orders — financial approval per PUR-01")}</p>
         </div>
-        {pending.length > 0 && <Btn variant="primary" size="sm" disabled={bulkMut.isPending} onClick={() => approveList(pending.map(o => o.id))}><Package size={12} /> {t("اعتماد الكل", "Approve All")} ({pending.length})</Btn>}
+        <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+          <span>📋 {t("الاعتماد المالي من صلاحية الإدارة المالية / المحاسب الرئيسي وفق PUR-01", "Financial approval requires authorized approval role per PUR-01")}</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -294,7 +296,9 @@ export function ProcNewOrders({ }: PageProps) {
                           </div>
                         ) : (
                           <div className="flex gap-2 pt-1 flex-wrap">
-                            <Btn size="sm" variant="success" disabled={approveMut.isPending} onClick={() => approveOne(r.id)}><CheckCircle2 size={12} /> {t("اعتماد بعد المراجعة", "Approve After Review")}</Btn>
+                            <span title={t("الاعتماد المالي من صلاحية الإدارة المالية / المحاسب الرئيسي وفق PUR-01", "Financial approval requires authorized approval role per PUR-01")}>
+                              <Btn size="sm" variant="success" disabled={true}><CheckCircle2 size={12} /> {t("اعتماد (يتطلب صلاحية مالية PUR-01)", "Approve (Requires PUR-01 Role)")}</Btn>
+                            </span>
                             <button onClick={() => openPartial(r.id)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-orange-700 border border-orange-200 text-xs font-semibold hover:bg-orange-100">
                               <AlertTriangle size={11} /> {t("اعتماد/رفض جزئي", "Partial")}

@@ -7850,13 +7850,18 @@ function ProcOverview({ navigate }:{ navigate:(p:string)=>void }) {
 
 function ProcNew() {
   const { t, dir } = useCLang();
-  const { data: apiOrders = [] } = useProcurementOrders();
-  const approveMut = useApproveOrder();
+  const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "approved" | "sent" | "rejected">("all");
+  const { data: apiOrders = [] } = useProcurementOrders({
+    page,
+    status: statusFilter === "all" ? undefined : statusFilter,
+  });
   const updateOrderMut = useUpdateOrder();
   const createOrderMut = useCreateProcurementOrder();
   const { data: supplierOpts = [] } = useProcurementSuppliers();
   const { data: itemOpts = [] } = useProcurementItems();
   const SAR = t("ر.س","SAR");
+  const [draftCommandId, setDraftCommandId] = useState<string>(() => generateCommandId());
   const [orderForm, setOrderForm] = useState({ supplierId:"", itemId:"", qty:"", unitPrice:"", notes:"" });
   const [editingOrder, setEditingOrder] = useState<any|null>(null);
   const [editNotes, setEditNotes] = useState("");
@@ -7873,11 +7878,11 @@ function ProcNew() {
   const submitOrder = () => {
     const q = parseFloat(orderForm.qty);
     const p = parseFloat(orderForm.unitPrice);
-    if (!orderForm.supplierId || !orderForm.itemId || isNaN(q) || q <= 0) {
-      alert(t("يرجى اختيار المورد والصنف وإدخال كمية صحيحة أكبر من صفر", "Please select supplier and item and enter a quantity greater than zero"));
+    if (!orderForm.supplierId || !orderForm.itemId || isNaN(q) || q <= 0 || isNaN(p) || p <= 0) {
+      alert(t("يرجى اختيار المورد والصنف وإدخال كمية وسعر صحيحين أكبر من صفر", "Please select supplier and item and enter valid quantity and price greater than zero"));
       return;
     }
-    const unitPriceHalalas = !isNaN(p) && p >= 0 ? Math.round(p * 100) : 0;
+    const unitPriceHalalas = Math.round(p * 100);
     const totalHalalas = Math.round(unitPriceHalalas * q);
     createOrderMut.mutate(
       {
@@ -7885,11 +7890,13 @@ function ProcNew() {
         items: [{ itemId: orderForm.itemId, qty: q, unitPriceHalalas, totalHalalas }],
         notes: orderForm.notes.trim() || undefined,
         description: orderForm.notes.trim() || undefined,
+        commandId: draftCommandId,
       } as any,
       {
         onSuccess: () => {
           setShowAdd(false);
           setOrderForm({ supplierId:"", itemId:"", qty:"", unitPrice:"", notes:"" });
+          setDraftCommandId(generateCommandId());
         },
       },
     );
@@ -7917,6 +7924,13 @@ function ProcNew() {
   const SC:Record<string,string>={pending:"bg-amber-50 text-amber-700 border-amber-200",approved:"bg-blue-50 text-blue-700 border-blue-200",sent:"bg-sky-50 text-sky-700 border-sky-200",delivered:"bg-emerald-50 text-emerald-700 border-emerald-200",rejected:"bg-red-50 text-red-700 border-red-200"};
   const SL:Record<string,string>={pending:t("معلق","Pending"),approved:t("معتمد","Approved"),sent:t("تم الإرسال / قيد النقل","Sent / In Transit"),delivered:t("تم التسليم","Delivered"),rejected:t("مرفوض","Rejected")};
 
+  const parsedQty = parseFloat(orderForm.qty);
+  const parsedPrice = parseFloat(orderForm.unitPrice);
+  const hasValidCalculation = !isNaN(parsedQty) && parsedQty > 0 && !isNaN(parsedPrice) && parsedPrice > 0;
+  const subtotalSar = hasValidCalculation ? parsedQty * parsedPrice : 0;
+  const estimatedVatSar = hasValidCalculation ? subtotalSar * 0.15 : 0;
+  const estimatedTotalSar = subtotalSar + estimatedVatSar;
+
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
@@ -7924,8 +7938,31 @@ function ProcNew() {
           <h2 className="text-xl font-bold text-gray-800">{t("أوامر الشراء","Purchase Orders")}</h2>
           <p className="text-gray-400 text-sm">{orders.filter(o=>o.status==="pending").length} {t("معلق","pending")}</p>
         </div>
-        <Btn variant="primary" onClick={()=>setShowAdd(true)}><Plus size={13}/> {t("أمر جديد","New Order")}</Btn>
+        <Btn variant="primary" onClick={()=>{ setDraftCommandId(generateCommandId()); setShowAdd(true); }}><Plus size={13}/> {t("أمر جديد","New Order")}</Btn>
       </div>
+
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+        {[
+          { key: "all" as const, label: t("الكل", "All") },
+          { key: "draft" as const, label: t("معلق", "Pending") },
+          { key: "approved" as const, label: t("معتمد", "Approved") },
+          { key: "sent" as const, label: t("تم الإرسال", "Sent") },
+          { key: "rejected" as const, label: t("مرفوض", "Rejected") },
+        ].map(f => (
+          <button
+            key={f.key}
+            onClick={() => { setStatusFilter(f.key); setPage(1); }}
+            className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+              statusFilter === f.key
+                ? "bg-gray-900 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
         <div className="grid grid-cols-6 gap-3 px-5 py-3 border-b border-gray-100 bg-gray-50 text-[10px] font-semibold text-gray-500 min-w-[580px]">
           <span>{t("رقم الأمر","Order #")}</span><span className="col-span-2">{t("المورد","Supplier")}</span><span>{t("العلامة","Brand")}</span><span>{t("الإجمالي","Total")}</span><span>{t("الإجراءات","Actions")}</span>
@@ -7938,17 +7975,33 @@ function ProcNew() {
             <span className="font-mono font-bold text-gray-800 text-sm">{fmt(o.total)} {SAR}</span>
             <div className="flex items-center gap-1.5">
               <Badge className={`text-[10px] border ${SC[o.status] || "bg-gray-100 text-gray-600"}`}>{SL[o.status] || o.status}</Badge>
-              {o.status === "pending" && (
-                <button disabled={approveMut.isPending} onClick={()=>approveMut.mutate(o._apiId || o.id)} title={t("اعتماد","Approve")} className="p-1 rounded text-emerald-600 hover:bg-emerald-50 transition-colors">
-                  <CheckCircle2 size={13}/>
-                </button>
-              )}
               <button onClick={()=>{ setEditingOrder(o); setEditNotes(""); }} title={t("تعديل","Edit")} className="p-1 rounded text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors">
                 <Edit2 size={11}/>
               </button>
             </div>
           </div>
         ))}
+        {(apiOrders as any).meta && (apiOrders as any).meta.totalPages > 1 && (
+          <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50/50 text-xs text-gray-500">
+            <span>{t("الصفحة", "Page")} {page} {t("من", "of")} {(apiOrders as any).meta.totalPages || 1} ({(apiOrders as any).meta.total ?? orders.length} {t("طلب", "orders")})</span>
+            <div className="flex gap-2">
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                className="px-2.5 py-1 rounded border border-gray-200 bg-white disabled:opacity-40"
+              >
+                {t("السابق", "Previous")}
+              </button>
+              <button
+                disabled={page >= ((apiOrders as any).meta.totalPages || 1)}
+                onClick={() => setPage(p => p + 1)}
+                className="px-2.5 py-1 rounded border border-gray-200 bg-white disabled:opacity-40"
+              >
+                {t("التالي", "Next")}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       {showAdd&&(
         <div role="dialog" aria-modal="true" aria-label={t("أمر شراء جديد","New Purchase Order")} tabIndex={-1} onKeyDown={e => { if (e.key === "Escape") setShowAdd(false); }} className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setShowAdd(false)}>
@@ -7960,10 +8013,26 @@ function ProcNew() {
               <div><label htmlFor="po-item" className="text-xs font-semibold text-gray-600 block mb-1">{t("الصنف","Item")} *</label><select id="po-item" value={orderForm.itemId} onChange={e=>handleItemSelect(e.target.value)} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"><option value="">{t("اختر الصنف","Select item")}</option>{itemOpts.map(i=><option key={i.id} value={i.id}>{i.name}</option>)}</select></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label htmlFor="po-qty" className="text-xs font-semibold text-gray-600 block mb-1">{t("الكمية","Qty")} *</label><input id="po-qty" type="number" min="0.01" step="any" value={orderForm.qty} onChange={e=>setOrderForm(f=>({...f,qty:e.target.value}))} dir="ltr" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
-                <div><label htmlFor="po-price" className="text-xs font-semibold text-gray-600 block mb-1">{t("سعر الوحدة (ر.س)","Unit Price (SAR)")}</label><input id="po-price" type="number" min="0" step="0.01" value={orderForm.unitPrice} onChange={e=>setOrderForm(f=>({...f,unitPrice:e.target.value}))} dir="ltr" placeholder="0.00" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
+                <div><label htmlFor="po-price" className="text-xs font-semibold text-gray-600 block mb-1">{t("سعر الوحدة (ر.س)","Unit Price (SAR)")} *</label><input id="po-price" type="number" min="0.01" step="0.01" value={orderForm.unitPrice} onChange={e=>setOrderForm(f=>({...f,unitPrice:e.target.value}))} dir="ltr" placeholder="0.00" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
               </div>
+              {hasValidCalculation && (
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs space-y-1">
+                  <div className="flex justify-between text-gray-600">
+                    <span>{t("المجموع قبل الضريبة (ر.س)","Subtotal (SAR)")}:</span>
+                    <span className="font-mono font-bold">{subtotalSar.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-amber-700">
+                    <span>{t("ضريبة القيمة المضافة التقديرية (15% منفصلة وفق PUR-05)","Estimated VAT (15% separate per PUR-05)")}:</span>
+                    <span className="font-mono font-bold">{estimatedVatSar.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-900 border-t border-gray-200 pt-1 font-bold">
+                    <span>{t("الإجمالي التقديري شامل الضريبة","Estimated Total Incl. VAT")}:</span>
+                    <span className="font-mono">{estimatedTotalSar.toFixed(2)} {SAR}</span>
+                  </div>
+                </div>
+              )}
               <div><label htmlFor="po-notes" className="text-xs font-semibold text-gray-600 block mb-1">{t("ملاحظات (اختياري)","Notes (optional)")}</label><textarea id="po-notes" rows={2} value={orderForm.notes} onChange={e=>setOrderForm(f=>({...f,notes:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none resize-none"/></div>
-              <div className="flex gap-2 justify-end pt-1"><Btn onClick={()=>setShowAdd(false)}>{t("إلغاء","Cancel")}</Btn><Btn variant="primary" onClick={submitOrder} disabled={!orderForm.supplierId||!orderForm.itemId||!orderForm.qty||createOrderMut.isPending}><Send size={13}/> {createOrderMut.isPending ? t("جارٍ الحفظ...","Saving...") : t("إنشاء","Create")}</Btn></div>
+              <div className="flex gap-2 justify-end pt-1"><Btn onClick={()=>setShowAdd(false)}>{t("إلغاء","Cancel")}</Btn><Btn variant="primary" onClick={submitOrder} disabled={!orderForm.supplierId||!orderForm.itemId||!orderForm.qty||!orderForm.unitPrice||createOrderMut.isPending}><Send size={13}/> {createOrderMut.isPending ? t("جارٍ الحفظ...","Saving...") : t("إنشاء","Create")}</Btn></div>
             </div>
           </div>
         </div>

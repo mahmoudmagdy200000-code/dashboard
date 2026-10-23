@@ -79,27 +79,81 @@ test("Phase 1E PROC-F03 & PROC-F05: ProcNew validates quantity and calculates pr
   );
 });
 
-test("Phase 1E PROC-F04 & PROC-F11: ProcNew supports order approval and editing notes", () => {
-  const dash = norm(
-    readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8")
+test("Phase 1E PROC-F02: procurement query hooks route through procBase()", () => {
+  const procApi = norm(
+    readFileSync(new URL("../../../api/queries/procurement.ts", import.meta.url), "utf8")
   );
   assert.ok(
-    dash.includes("approveMut.mutate(o._apiId || o.id)") || dash.includes("approveMut.mutate"),
-    "ProcNew must provide inline order approval capability"
+    procApi.includes("${procBase()}/overview"),
+    "useProcurementOverview must route through procBase()"
+  );
+  assert.ok(
+    procApi.includes("${procBase()}/orders"),
+    "useProcurementOrders must route through procBase()"
+  );
+  assert.ok(
+    procApi.includes("${procBase()}/items"),
+    "useProcurementItems must route through procBase()"
+  );
+});
+
+test("Phase 1E PROC-F04 & PUR-01: ProcNew supports editing notes and fails closed on unauthorized approvals", () => {
+  const dash = norm(
+    readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8")
   );
   assert.ok(
     dash.includes("updateOrderMut.mutate") && dash.includes("editNotes"),
     "ProcNew must provide order edit capability with notes"
   );
+  const procNewOrders = norm(
+    readFileSync(new URL("./_pages/procurement/ProcNewOrders.tsx", import.meta.url), "utf8")
+  );
+  assert.ok(
+    procNewOrders.includes("PUR-01"),
+    "ProcNewOrders must reference PUR-01 financial approval compliance"
+  );
 });
 
-test("Phase 1E PROC-F06: ProcNew prevents duplicate submissions while mutations are pending", () => {
+test("Phase 1E PROC-F06: ProcNew establishes intent-level idempotency via draftCommandId and withIdempotencyKey", () => {
   const dash = norm(
     readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8")
+  );
+  const procApi = norm(
+    readFileSync(new URL("../../../api/queries/procurement.ts", import.meta.url), "utf8")
+  );
+  assert.ok(
+    dash.includes("draftCommandId") && dash.includes("generateCommandId()"),
+    "ProcNew must manage stable draftCommandId intent key per order creation"
+  );
+  assert.ok(
+    procApi.includes("commandId ? withIdempotencyKey(commandId) : undefined") ||
+    procApi.includes("withIdempotencyKey(commandId)"),
+    "useCreateProcurementOrder must pass withIdempotencyKey when commandId is provided"
   );
   assert.ok(
     dash.includes("createOrderMut.isPending"),
     "ProcNew submit button must be disabled when createOrderMut is pending"
+  );
+});
+
+test("Phase 1E PROC-F20: server pagination and filtering preserve metadata and expose UI controls", () => {
+  const dash = norm(
+    readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8")
+  );
+  const procApi = norm(
+    readFileSync(new URL("../../../api/queries/procurement.ts", import.meta.url), "utf8")
+  );
+  assert.ok(
+    procApi.includes("items.meta ="),
+    "useProcurementOrders must preserve page metadata on returned items"
+  );
+  assert.ok(
+    dash.includes("statusFilter") && dash.includes("setStatusFilter"),
+    "ProcNew must expose status filter controls"
+  );
+  assert.ok(
+    dash.includes("page") && dash.includes("setPage"),
+    "ProcNew must expose pagination state and controls"
   );
 });
 

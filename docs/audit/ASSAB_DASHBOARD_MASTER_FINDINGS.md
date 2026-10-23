@@ -6,12 +6,12 @@
 > **Repository:** `mohameelsherbini/dashboard`
 > **Audit Baseline SHA:** `195315c66d9e7523e799c905b7649a8a7bc8b013` (`work/dashboard-shift-cycle-20261015`)
 > **Current Remediation Branch:** `refactor/asabprototype-modularization-20261022`
-> **Phase 1A Remediation Commit SHA:** `0fe15e4`
-> **Phase 1B Remediation Commit SHA:** `f878f5a`
-> **Phase 1C Remediation Commit SHA:** `b00971b`
-> **Phase 1D Remediation Commit SHA:** `4361ebf`
+> **Phase 1A Remediation Commit SHA:** `f4d3fc808f34bf946c384a0f8f3f5e7e836dc28b`
+> **Phase 1B Remediation Commit SHA:** `8c1bcbaba4a54b652fb8fe2cedd4cd508c3de135`
+> **Phase 1C Remediation Commit SHA:** `b00971bc7af06ab58501552a78d8b1968464b64f` (Follow-up: `55454ae`)
+> **Phase 1D Remediation Commit SHA:** `4361ebf023d682b8102a5b5bdf5970d723829881` (Follow-up: `ba898b9`)
 > **Phase 1E Remediation Commit SHA:** `24b8f7f05c7d33a5ff684348dab84df0d319d075`
-> **Phase 1F Remediation Scope:** `ADM-F01` to `ADM-F37`
+> **Phase 1F Remediation Commit SHA:** `7bc73a0ac409b9c1c20bafc943882bd413d4cde0`
 > **Last Synchronized Date:** 2026-10-23
 
 ---
@@ -1751,10 +1751,10 @@
 | :---: | :--- | :---: | :---: | :--- |
 | **Phase 1A** | Company Admin | مكتمل وموثق | `29` | 25 مُصلح ومُتحقق، 4 معلق لموافقة إدارية. |
 | **Phase 1B** | Head Accountant | مكتمل وموثق | `39` | 34 مُصلح ومُتحقق، 4 معلق لـ PR#1، 1 مقترح تحليل backend. |
-| **Phase 1C** | Accountant | قيد الاعتماد / لم يُسلّم هنا | `0` | سيتم استيراد كافة الـ Findings فور تزويد حزمة تقرير التدقيق الأصلي. |
-| **Phase 1D** | Branch Manager | قيد التخطيط المستقبلي | `0` | تدقيق مستقل ومخطط له. |
-| **Phase 1E** | Procurement Manager | قيد التخطيط المستقبلي | `0` | تدقيق مستقل ومخطط له. |
-| **Phase 1F** | Platform Admin | قيد التخطيط المستقبلي | `0` | تدقيق مستقل ومخطط له. |
+| **Phase 1C** | Accountant | مكتمل وموثق | `47` | 46 مُصلح ومُتحقق، 1 محجوب بالباك إند (ACC-F32). |
+| **Phase 1D** | Branch Manager | مكتمل وموثق | `26` | 22 مُصلح ومُتحقق، 3 محجوب بالباك إند (1D-BRM-012, 025, 026), 1 توثيقي. |
+| **Phase 1E** | Procurement Manager | مكتمل وموثق | `25` | 24 مُصلح ومُتحقق ومُصحح، 1 محجوب بالباك إند وتوافق السياسات (PROC-F14). |
+| **Phase 1F** | Platform Admin | مكتمل وموثق | `37` | خاضع لجولة التصحيح المستهدفة المعتمدة من المراجعة المستقلة. |
 | **Phase 1G** | Supplier Portal | ميزة مشروطة بتفعيل الباك إند | `0` | تدقيق مستقل ومخطط له. |
 | **Phase 1H** | Shared Components | مراجعة المكونات المشتركة | `0` | التوفيق بين المكونات المشتركة ومنع تكرار القيود. |
 | **Phases 2–6** | Runtime, Accessibility, API & E2E | مراجعات لاحقة مجمعة | `0` | ربط نتائج الفحص الحي والاستقرار التعاقدي. |
@@ -2133,7 +2133,7 @@
 | **ACC-F09** | P2 | Operations | انتقال حالة الإعادة لمدير الفرع | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
 | **ACC-F10** | P1 | Cash Custody | التحقق من تأكيد استلام العهد النقدية قبل العرض | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
 | **ACC-F11** | P3 | Formatters | عزل اتجاه النصوص والأرقام (Bidi/RTL) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `formatters.ts` | `b00971b` |
-| **ACC-F12** | P1 | Expenses (EXP-06) | عزل سلطة اعتماد المصروفات للمحاسب الرئيسي فقط | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F12** | P1 | Expenses (EXP-06) | عزل سلطة اعتماد المصروفات للمالك أو مدير العلامة التجارية وقصر دور المحاسب على المراجعة والتقييد وفق EXP-06 (S01, S04/14, S12/3) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
 | **ACC-F13** | P2 | Tax | دقة حسابات ضريبة القيمة المضافة بالهللات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `taxUtils.ts` | `b00971b` |
 | **ACC-F14** | P2 | Assets | الحفاظ على ربط الفاتورة الأصلية عند التحويل لأصل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
 | **ACC-F15** | P2 | Assets | ربط إزالة المسودة بتأكيد نجاح الخادم غير المتزامن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
@@ -2210,25 +2210,25 @@
 | ID | الأولوية | الموديول / الصفحة | عنوان المشكلة المعتمد | الحالة البرمجية | الفحص الحي | الملفات المتأثرة | الـ Commit SHA |
 | :---: | :---: | :--- | :--- | :---: | :---: | :--- | :---: |
 | **PROC-F01** | P2 | Overview / New Orders | دقة الهللات (`totalHalalas/100`) وفصل المرسل عن المسلّم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
-| **PROC-F02** | P2 | Procurement API | عزل استعلامات المشتريات بين المنصة والمستأجر | `FIXED_AND_VERIFIED` | `NOT_RUN` | `procurement.ts`, `CompanyDashboard.tsx` | 24b8f7f |
-| **PROC-F03** | P2 | New Orders | إنشاء أوامر مسعرة (`unitPriceHalalas` و `totalHalalas`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
-| **PROC-F04** | P2 | New Orders | تعديل أوامر الشراء بالملاحظات ومعرف صالح | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
-| **PROC-F05** | P2 | New Orders | اشتراط كمية موجبة صريحة (`qty > 0`) وسعر صالح | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
-| **PROC-F06** | P2 | Create / Group Send | منع الأوامر المكررة وحماية الإرسال المتزامن (`isPending`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F02** | P2 | Procurement API | عزل استعلامات المشتريات وتوجيهها عبر `procBase()` لبيئتي المنصة والشركة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `procurement.ts`, `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F03** | P2 | New Orders | إنشاء أوامر مسعرة صريحة واشتراط سعر موجب ومنع الالتفاف بالصفر | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `procurement.ts` | 24b8f7f |
+| **PROC-F04** | P2 | New Orders | تعديل أوامر الشراء بالملاحظات وتأمين حوكمة الاعتماد المالي وفق PUR-01 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `ProcNewOrders.tsx` | 24b8f7f |
+| **PROC-F05** | P2 | New Orders | اشتراط كمية موجبة صريحة وسعر وحدة صحيح موجب (`qty > 0 && price > 0`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F06** | P2 | Create / Group Send | حماية الإرسال بمفتاح تطابق نية مستقر `draftCommandId` و `withIdempotencyKey` | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `procurement.ts` | 24b8f7f |
 | **PROC-F07** | P2 | Grouped Orders | مطابقة حقول الأوامر المجمعة والفروع (`orderCount`/`branches`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
 | **PROC-F08** | P2 | Grouped Orders | إرسال الأوامر المجمعة بمعرف المورد والمجموعة الصحيح | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
 | **PROC-F09** | P2 | Grouped Orders | التسمية النزيهة لإجراء إعداد رابط واتساب دون ادعاء استلام خارجي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
 | **PROC-F10** | P2 | Sent Orders | استخدام `sentAt` و `inTransit` و `eta` وعزل قيد النقل عن التسليم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
-| **PROC-F11** | P2 | Lifecycle | ربط إجراءات دورة الشراء (اعتماد، رفض، تعديل) برمجياً | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F11** | P2 | Lifecycle | ربط إجراءات دورة الشراء وضبط صلاحيات الاعتماد المالي (PUR-01) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `ProcNewOrders.tsx` | 24b8f7f |
 | **PROC-F12** | P2 | Suppliers | احتساب إجمالي إنفاق المورد من بيانات الخادم (`lifetimeSpend`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
 | **PROC-F13** | P2 | Suppliers | معايرة تقييم المورد (0-50 إلى 0-5 نجوم) وبيانات الاتصال | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
-| **PROC-F14** | P2 | Suppliers (PUR-04) | احترام اختصاص المحاسب بإضافة الموردين وعرض إشعار رسمي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F14** | P2 | Suppliers (PUR-04) | احترام اختصاص المحاسب بإضافة الموردين وحجب الإنشاء غير المصرح وفق PUR-04 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `ProcSuppliers.tsx` | 24b8f7f |
 | **PROC-F15** | P2 | Items | اشتراط الوحدة والسعر الموجب (`price > 0`) عند إضافة الصنف | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
 | **PROC-F16** | P2 | Items | حفظ دقة الهللات بدون بتر وربط عدد الموردين الفعلي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
-| **PROC-F17** | P2 | Items / VAT (PUR-05) | إشعار الأسعار غير شاملة الضريبة وفق PUR-05 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F17** | P2 | Items / VAT (PUR-05) | الحفاظ على خلو أسعار الشراء من الضريبة وتفصيل الضريبة التقديرية 15% (PUR-05) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
 | **PROC-F18** | P2 | Reports (INTG-01) | تصدير التقارير بصيغتي PDF و Excel/XLSX | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
 | **PROC-F19** | P2 | Shared Security | تطهير كاش استعلامات المشتريات عند تبديل الدور | `FIXED_AND_VERIFIED` | `NOT_RUN` | `roleAccess.ts` | 24b8f7f |
-| **PROC-F20** | P2 | Pagination | دعم البيانات المقسمة لصفحات والفلترة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F20** | P2 | Pagination | دعم تقسيم الصفحات Server Pagination والفلترة وحفظ metadata | `FIXED_AND_VERIFIED` | `NOT_RUN` | `procurement.ts`, `CompanyDashboard.tsx` | 24b8f7f |
 | **PROC-F21** | P2 | Accessibility | نوافذ حوارية قابلة للوصول مع زر Escape و `htmlFor` | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
 | **PROC-F22** | P2 | Mobile / Responsive | تخطيط متجاوب لشبكات وكروت المشتريات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
 | **PROC-F23** | P2 | Cross-Module | توثيق حدود مسؤوليات الاستلام والفروقات المحاسبية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
