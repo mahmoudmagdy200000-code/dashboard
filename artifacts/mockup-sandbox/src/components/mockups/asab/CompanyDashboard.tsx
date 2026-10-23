@@ -5981,7 +5981,7 @@ function AccCompanyAssets() {
 
       {editAsset && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setEditAsset(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e=>e.stopPropagation()} dir={dir}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5 max-h-[90dvh] overflow-y-auto" onClick={e=>e.stopPropagation()} dir={dir}>
             <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">{t("تعديل الأصل","Edit Asset")}</h3><button onClick={()=>setEditAsset(null)} className="text-gray-400"><X size={18}/></button></div>
             <div className="space-y-3">
               <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("اسم الأصل","Asset Name")}</label><input value={eForm.name} onChange={e=>setEForm(f=>({...f,name:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>

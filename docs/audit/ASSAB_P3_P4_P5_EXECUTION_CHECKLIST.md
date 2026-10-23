@@ -250,82 +250,82 @@ Post-commit checkpoint: A10 local commit `67b0c15a34ce17f526ca7e45a7e69db4174e0c
 **Implementation fields:** preSHA `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`; tests `PARTIAL_PASS — 13/13 Phase 1D tests; typecheck PASS; browser viewports NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 ### B02 — HeadPending / AccSales KPI and filters — reflow
-**Phase:** P3 · **Finding links:** `R3-F04; HA-F30; S1H-F18` · **Mode:** `VERIFY_CONDITIONAL` · **Initial:** `VERIFY_FIRST` · **Repository:** Dashboard
+**Phase:** P3 · **Finding links:** `R3-F04; HA-F30; S1H-F18` · **Mode:** `VERIFY_CONDITIONAL` · **Current:** `BLOCKED_EVIDENCE` · **Repository:** Dashboard
 **Scope:** HeadPending; AccSalesPage.
-- [ ] `B02-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `B02-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
+- [x] `B02-01` Reload §§0–1, find exact R3 source row and current sources; recheck related cross-links/current SHA; owner approves eligible work. Evidence: GO-02; R3-F04 source row at pinned `30d3d261b83ed4b0d9fa1dc1f875ae8592484261`; branch base unchanged; worktree HEAD `0e95364e09a784204df40da5d79d763137d72c5b`.
+- [x] `B02-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code. Evidence: `B02` tracker records preSHA and both source files; browser unavailable; B02 remains verify-first.
 - [ ] `B02-03` Minimal action/disposition: Address HeadPending/Accountant KPI + filter 3/4-column grid breakpoints after viewport proof; keep exact financial totals.
 - [ ] `B02-04` Targeted acceptance evidence: 320→768 AR+EN, filter keyboard, money visibility, no changes to approvals/data math.
-- [ ] `B02-05` Gate and limits: Dashboard finance display; VERIFY_FIRST
-- [ ] `B02-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `B02-05` Gate and limits: Dashboard finance display; VERIFY_FIRST. No source edits without viewport evidence; no financial value/layout behavior claimed.
+- [x] `B02-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS. No test executed; viewport/keyboard browser acceptance BLOCKED because this environment lacks Playwright Chromium.
 - [ ] `B02-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `B02-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `0e95364e09a784204df40da5d79d763137d72c5b`; postSHA `0e95364e09a784204df40da5d79d763137d72c5b`; commitSHA `ZERO_CODE_COMMIT`; tested SHA `NOT_RUN`; tests `NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 ### B03 — Procurement tables — horizontal scroll contract
-**Phase:** P3 · **Finding links:** `R3-F05` · **Mode:** `VERIFY_CONDITIONAL` · **Initial:** `VERIFY_FIRST` · **Repository:** Dashboard
+**Phase:** P3 · **Finding links:** `R3-F05` · **Mode:** `VERIFY_CONDITIONAL` · **Current:** `BLOCKED_EVIDENCE` · **Repository:** Dashboard
 **Scope:** ProcGrouped 6-column and ProcNewOrders detail tables (supplier already fixed).
-- [ ] `B03-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `B03-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
+- [x] `B03-01` Reload §§0–1, inspect exact R3-F05 source row and source wrappers; recheck related cross-links/current SHA; owner authorized the verification batch. Evidence: remote baseline unchanged; local HEAD `0e95364e09a784204df40da5d79d763137d72c5b`.
+- [x] `B03-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker before any code. Evidence: B03 tracker records source files, supplier scope, browser unavailability; no code changes made.
 - [ ] `B03-03` Minimal action/disposition: Verify supplier table already-scrollable; amend only unprotected procurement wide order/detail tables with minimal scroll wrapper/overflow.
 - [ ] `B03-04` Targeted acceptance evidence: 320/390/768, sticky label/header readability, scroll by touch/keyboard, no hidden actions, totals visible.
-- [ ] `B03-05` Gate and limits: Dashboard procurement; Supplier already resolved in source
-- [ ] `B03-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `B03-05` Gate and limits: Dashboard procurement; Supplier already resolved in source. Per R3-F05 only change procurement scroll behavior after narrow-viewport clipping/scroll contract is confirmed; source alone does not satisfy this gate.
+- [x] `B03-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS. No tests run; viewport touch/keyboard checks BLOCKED because browser runtime is unavailable.
 - [ ] `B03-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `B03-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `0e95364e09a784204df40da5d79d763137d72c5b`; postSHA `0e95364e09a784204df40da5d79d763137d72c5b`; commitSHA `ZERO_CODE_COMMIT`; tested SHA `NOT_RUN`; tests `NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 ### B04 — Prototype header — mobile priority and wrap
-**Phase:** P3 · **Finding links:** `R3-F02; S1H-F14; S1H-F18` · **Mode:** `VERIFY_CONDITIONAL` · **Initial:** `VERIFY_FIRST` · **Repository:** Dashboard
+**Phase:** P3 · **Finding links:** `R3-F02; S1H-F14; S1H-F18` · **Mode:** `VERIFY_CONDITIONAL` · **Current:** `BLOCKED_EVIDENCE` · **Repository:** Dashboard
 **Scope:** ASABPrototype mobile topbar and role controls.
-- [ ] `B04-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `B04-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
+- [x] `B04-01` Reload §§0–1, inspect R3-F02 source row and current topbar/Sheet code; verify current SHA and remote base; owner authorization is GO-02. Evidence: local HEAD `0e95364e09a784204df40da5d79d763137d72c5b`; remote base unchanged.
+- [x] `B04-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker. Evidence: B04 tracker; no source changes; Chromium/browser absent.
 - [ ] `B04-03` Minimal action/disposition: Verify Prototype mobile header after flex-wrap and Sheet fixes; adjust only proven topbar collision or inaccessible controls.
 - [ ] `B04-04` Targeted acceptance evidence: 320/360/430, open/close Sheet, focus return, search/notifications, role selector, AR+EN.
-- [ ] `B04-05` Gate and limits: Dashboard responsive shell; VERIFY_FIRST
-- [ ] `B04-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `B04-05` Gate and limits: Dashboard responsive shell; VERIFY_FIRST. Flex-wrap and responsive Sheet are already in source; no change unless collision or lost controls is reproduced.
+- [x] `B04-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS. No tests run; actual 320/360/430 layout, open/close, focus return and AR/EN remain BLOCKED.
 - [ ] `B04-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `B04-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `0e95364e09a784204df40da5d79d763137d72c5b`; postSHA `0e95364e09a784204df40da5d79d763137d72c5b`; commitSHA `ZERO_CODE_COMMIT`; tested SHA `NOT_RUN`; tests `NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 ### B05 — CompanyDashboard header — small viewports
-**Phase:** P3 · **Finding links:** `R3-F11; CA-F05; S1H-F18` · **Mode:** `VERIFY_CONDITIONAL` · **Initial:** `VERIFY_FIRST` · **Repository:** Dashboard
+**Phase:** P3 · **Finding links:** `R3-F11; CA-F05; S1H-F18` · **Mode:** `VERIFY_CONDITIONAL` · **Current:** `BLOCKED_EVIDENCE` · **Repository:** Dashboard
 **Scope:** CompanyDashboard GlobalSearch and notification toolbar.
-- [ ] `B05-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `B05-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
+- [x] `B05-01` Reload §§0–1, inspect R3-F11 source and toolbar components; verify SHA/remote base and cross-links; owner authorized under GO-02. Evidence: local HEAD `0e95364e09a784204df40da5d79d763137d72c5b`, remote base unchanged.
+- [x] `B05-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker. Evidence: B05 tracker; browser/viewport evidence unavailable; no code change.
 - [ ] `B05-03` Minimal action/disposition: Inspect CompanyDashboard toolbar/search/notification anchoring at narrow viewports; adjust only reproducible crowding.
 - [ ] `B05-04` Targeted acceptance evidence: 320/375/430, keyboard and notification popover in AR+EN, no lost search.
-- [ ] `B05-05` Gate and limits: Dashboard CompanyDashboard; VERIFY_FIRST
-- [ ] `B05-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `B05-05` Gate and limits: Dashboard CompanyDashboard; VERIFY_FIRST. Existing source already uses flex-wrap and makes search/notifications full width on narrow screens; only reproducible crowding may be changed.
+- [x] `B05-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS. No tests run; actual toolbar, notification anchoring, keyboard and AR/EN remain NOT_RUN/BLOCKED.
 - [ ] `B05-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `B05-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `0e95364e09a784204df40da5d79d763137d72c5b`; postSHA `0e95364e09a784204df40da5d79d763137d72c5b`; commitSHA `ZERO_CODE_COMMIT`; tested SHA `NOT_RUN`; tests `NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 ### B06 — EntryFlow role chooser — mobile width
-**Phase:** P3 · **Finding links:** `R3-F10` · **Mode:** `VERIFY_CONDITIONAL` · **Initial:** `VERIFY_FIRST` · **Repository:** Dashboard
+**Phase:** P3 · **Finding links:** `R3-F10` · **Mode:** `VERIFY_CONDITIONAL` · **Current:** `BLOCKED_EVIDENCE` · **Repository:** Dashboard
 **Scope:** pre-login two-column chooser (if active).
-- [ ] `B06-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `B06-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
+- [x] `B06-01` Reload §§0–1, inspect R3-F10, App route and EntryFlow source; recheck current HEAD and remote base; owner authorization is GO-02. Evidence: `App.tsx` routes unauthenticated users to `EntryFlow`; remote base unchanged; current local HEAD `0e95364e09a784204df40da5d79d763137d72c5b`.
+- [x] `B06-02` Record preSHA, branch, scope, auth boundaries and browser availability in tracker before any code. No source changes; chooser is pre-login; credentials/auth flows remain out of scope.
 - [ ] `B06-03` Minimal action/disposition: Verify reachability of EntryFlow and compact two-column chooser at 320px; add breakpoint only if text/tap issue proven.
 - [ ] `B06-04` Targeted acceptance evidence: 320px, 200% zoom, tap and focus; no change to actual employee auth/roles.
-- [ ] `B06-05` Gate and limits: Dashboard entry/preview if active; VERIFY_FIRST
-- [ ] `B06-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `B06-05` Gate and limits: Dashboard entry/preview if active; VERIFY_FIRST. This route is active, but breakpoint changes require proven text/tap/zoom defect.
+- [x] `B06-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS. No tests run; 320px/200% zoom and touch/focus remain BLOCKED.
 - [ ] `B06-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `B06-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `0e95364e09a784204df40da5d79d763137d72c5b`; postSHA `0e95364e09a784204df40da5d79d763137d72c5b`; commitSHA `ZERO_CODE_COMMIT`; tested SHA `NOT_RUN`; tests `NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 ### B07 — Company custom dialogs — focus and short-height safety
-**Phase:** P3+P4 · **Finding links:** `R3-F15; CA-F15; HA-F31; S1H-F13` · **Mode:** `VERIFY_CONDITIONAL` · **Initial:** `VERIFY_FIRST` · **Repository:** Dashboard
+**Phase:** P3+P4 · **Finding links:** `R3-F15; CA-F15; HA-F31; S1H-F13` · **Mode:** `VERIFY_CONDITIONAL` · **Current:** `IN_PROGRESS` · **Repository:** Dashboard
 **Scope:** CompanyDashboard custom modal(s) only; supplier Radix dialogs already fixed.
-- [ ] `B07-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `B07-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
-- [ ] `B07-03` Minimal action/disposition: Inventory only active Company custom modals and verify dialog semantics/scroll at short height; fix proven defects without touching supplier Radix dialogs.
+- [x] `B07-01` Reload §§0–1, inspect R3-F15 source and active CompanyDashboard modal code; verify current/remote SHA and related Master links; owner authorization is GO-02. Evidence: current HEAD `0e95364e09a784204df40da5d79d763137d72c5b`, remote baseline unchanged.
+- [x] `B07-02` Record preSHA, branch, scoped modal/test files and browser availability in tracker before code. No API/tenant/financial logic changes; only the identified asset-edit modal and its source regression test are in scope.
+- [x] `B07-03` Minimal action/disposition: Inventory confirmed `editAsset` is a tall CompanyDashboard custom form with no viewport cap/scroll, while adjacent `showAdd` already has one; added only `max-h-[90dvh] overflow-y-auto` to the edit form container. No modal API/state/financial behavior change.
 - [ ] `B07-04` Targeted acceptance evidence: Keyboard Escape / focus trap / return; 320px short viewport; soft keyboard; AR+EN.
-- [ ] `B07-05` Gate and limits: Dashboard Company dialogs; VERIFY_FIRST
-- [ ] `B07-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `B07-05` Gate and limits: Dashboard Company dialogs; VERIFY_FIRST. Add only a dynamic viewport height cap and internal vertical scrolling to the confirmed long edit form; supplier Radix dialogs untouched.
+- [x] `B07-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS. Phase 1D tests 13/13 exit 0; mockup typecheck exit 0; diff check exit 0. Browser short-height, Escape, focus trap/return, soft keyboard and AR/EN NOT_RUN.
 - [ ] `B07-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `B07-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `0e95364e09a784204df40da5d79d763137d72c5b`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `0e95364e09a784204df40da5d79d763137d72c5b`; tests `PARTIAL_PASS — 13/13 Phase 1D; typecheck PASS; browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 ### B08 — LiveChat floating overlap — viewport-safe placement
 **Phase:** P3 · **Finding links:** `R3-F12; S1H-F05; S1H-F19` · **Mode:** `VERIFY_CONDITIONAL` · **Initial:** `VERIFY_FIRST` · **Repository:** Dashboard

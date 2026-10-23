@@ -259,6 +259,12 @@ test("Phase 1D 1D-COM-017 & 1D-COM-018: Modal accessibility attributes and input
     dash.includes('aria-label='),
     "Modals and close buttons must have accessible aria-labels"
   );
+  const editAssetStart = dash.indexOf("{editAsset && (");
+  assert.ok(editAssetStart >= 0, "Company asset edit modal must remain present");
+  assert.ok(
+    dash.slice(editAssetStart, editAssetStart + 500).includes("max-h-[90dvh] overflow-y-auto"),
+    "Company asset edit form must remain scrollable within the dynamic viewport height"
+  );
   assert.ok(
     dash.includes('htmlFor="b-req-item"') || dash.includes('htmlFor="b-sup-name"'),
     "Branch form inputs must have associated labels via htmlFor"
