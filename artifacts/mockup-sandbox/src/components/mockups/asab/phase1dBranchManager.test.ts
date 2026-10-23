@@ -218,9 +218,16 @@ test("Phase 1D 1D-COM-016: Responsive layout classes applied across branch scree
   const dash = norm(
     readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8")
   );
+  const overview = norm(
+    readFileSync(new URL("./_pages/branch/BranchOverview.tsx", import.meta.url), "utf8")
+  );
   assert.ok(
-    dash.includes('grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'),
-    "BranchOverview KPI cards must use responsive grid breakpoints"
+    overview.includes('grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'),
+    "BranchOverview KPI cards must reflow from one to two to four columns"
+  );
+  assert.ok(
+    overview.includes('grid-cols-1 lg:grid-cols-3') && overview.includes('col-span-1 lg:col-span-2'),
+    "BranchOverview content cards must stack on small screens and restore the wider tasks column on large screens"
   );
   assert.ok(
     dash.includes('grid-cols-1 md:grid-cols-2'),

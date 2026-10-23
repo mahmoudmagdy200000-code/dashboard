@@ -28,7 +28,7 @@
 ## 1. Operator contract — ALWAYS reopen checklist
 **Every time the executor resumes, begins a batch, changes a repo, prepares a commit, or proceeds to next batch, they MUST reopen Section 1 and the exact batch section and reconcile both with `02_BATCH_TRACKER.csv`.** Work is invalid for acceptance without durable marks and SHA/test evidence.
 
-- [ ] `GLOBAL-01` Check owner-signed GO scope: repo, exact batch IDs, approved branch, whether local commits allowed; if absent, READ-ONLY ONLY.
+- [x] `GLOBAL-01` Check owner-signed GO scope: GO-02 authorizes eligible Dashboard batches A01–A11, B01–B10, C01–C20, D01–D02 and final M01 in the isolated branch `work/dashboard-p345-remediation-v2-20261023`; local commits only; no push/PR/merge/deploy.
 - [x] `GLOBAL-02` Verify attached ZIP CRC + embedded SHA-256 manifests; pin exact source baseline SHA and check latest remote SHA/branch drift.
 - [x] `GLOBAL-03` Inspect local working tree, remote/PR state, untracked files and other contributor edits; do not reset/rewrite/force push.
 - [ ] `GLOBAL-04` Read Master 249 root IDs and all batch evidence across Phases 3,4,5; compare current code to avoid stale fixes/double counting.
@@ -224,7 +224,7 @@ A09 evidence: A4-F08 source-confirmed at pinned AdminUsers.tsx mode buttons refs
 A10 evidence: A4-F01 source-confirmed; original active pages HeadPending.tsx and ProcNewOrders.tsx plus the Company Admin user search in CompanyDashboard.tsx. Added htmlFor/id pairs to four HeadPending selects and two ProcNewOrders selects; added localized accessible names to the HeadPending operation search and Company Admin user search. Filter/search state setters, query behavior and API contracts are unchanged. `TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.test.ts artifacts/mockup-sandbox/src/components/mockups/asab/phase1eProcurement.test.ts artifacts/mockup-sandbox/src/components/mockups/asab/companyAdminGuards.test.ts` exit 0 (51/51). `pnpm --filter @workspace/mockup-sandbox run typecheck` exit 0. Static TypeScript-AST assertions PASS 9/9 for label associations, local search labels, unique control identity and preserved state setters. Keyboard and AR/EN browser name announcement NOT_RUN; A10-04 remains unchecked.
 Post-commit checkpoint: A10 local commit `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; current branch was reopened at this SHA before A11.
 ### A11 — Role-local RTL/LTR exceptions only
-**Phase:** P4 · **Finding links:** `A4-F07; HA-F36; S1H-F12; R3-F07` · **Mode:** `IMPLEMENT` · **Current:** `IN_PROGRESS` · **Repository:** Dashboard
+**Phase:** P4 · **Finding links:** `A4-F07; HA-F36; S1H-F12; R3-F07` · **Mode:** `IMPLEMENT` · **Current:** `PENDING_REVIEW` · **Repository:** Dashboard
 **Scope:** ProcNewOrders; AccAssets import and direct role-specific overlays.
 - [x] `A11-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch. Evidence: GO-02; Phase 4 `A4-F07`; Phase 3 `R3-F07` disposition; crosswalk `HA-F36`/`S1H-F12`; GitHub base still `30d3d261b83ed4b0d9fa1dc1f875ae8592484261`; worktree HEAD `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`, clean.
 - [x] `A11-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code. Evidence: tracker A11 IN_PROGRESS, preSHA `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; files `ProcNewOrders.tsx`, `AccAssets.tsx`, Checklist, Tracker; no role/tenant/API logic changes; browser unavailable, visual/focus verification NOT_RUN.
@@ -233,21 +233,21 @@ Post-commit checkpoint: A10 local commit `67b0c15a34ce17f526ca7e45a7e69db4174e0c
 - [x] `A11-05` Gate and limits: Dashboard role-local; DO NOT reopen shared bidi already fixed R3-F07. No API/permission/business logic change; PUR-01 fail-closed code remains unchanged.
 - [x] `A11-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS. Focused 1E/1C tests 32/32, exit 0; typecheck exit 0; static source assertions 6/6; browser/viewport/keyboard/screen-reader NOT_RUN.
 - [ ] `A11-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
-- [ ] `A11-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; tests `PARTIAL_PASS — 32/32 focused 1E/1C tests; typecheck PASS; static 6/6; browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+- [x] `A11-08` Captured local commit SHA and test/review state: `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`. A11-04 remains NOT_RUN and A11 remains PENDING_REVIEW, not accepted; independent B01 may proceed.
+**Implementation fields:** preSHA `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; postSHA `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`; commitSHA `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`; tested SHA `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; tests `PARTIAL_PASS — 32/32 focused 1E/1C tests; typecheck PASS; static 6/6; browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 ### B01 — BranchOverview & affected shared summary grids — responsive layout
 **Phase:** P3 · **Finding links:** `R3-F03; HA-F30; 1D-COM-016` · **Mode:** `VERIFY_CONDITIONAL` · **Initial:** `VERIFY_FIRST` · **Repository:** Dashboard
 **Scope:** BranchOverview and exact fixed grids from Phase 3 finding.
-- [ ] `B01-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `B01-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
-- [ ] `B01-03` Minimal action/disposition: Reflow BranchOverview source-confirmed fixed 4/3-column layouts with minimal responsive utility classes only if clipping is demonstrated or source clearly guarantees failure.
+- [x] `B01-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck related Master cross-links and current SHA; owner approves batch. Evidence: GO-02; R3-F03 source row and crosswalk HA-F30/1D-COM-016; current local HEAD `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`, clean; remote audited base unchanged at `30d3d261b83ed4b0d9fa1dc1f875ae8592484261`.
+- [x] `B01-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code. Evidence: BranchOverview only; no financial/auth/tenant logic changes; browser viewport proof unavailable. The fixed four-column grid plus KpiCard 40px icon + 16px gap + padding establishes deterministic content compression at 320px, meeting source-guaranteed trigger for a minimal reflow.
+- [x] `B01-03` Minimal action/disposition: Reflowed source-confirmed fixed 4/3-column layouts with minimal responsive utility classes. KPI cards use 1/2/4 columns; content stacks to one column below large breakpoint. Values, calculations, data sources and actions unchanged.
 - [ ] `B01-04` Targeted acceptance evidence: 320/360/375/390/430/768 AR+EN, KPI label/money wrap, no horizontal page overflow.
-- [ ] `B01-05` Gate and limits: Dashboard role layouts; VERIFY_FIRST
-- [ ] `B01-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `B01-05` Gate and limits: Dashboard role layouts; VERIFY_FIRST. No financial calculation, API, permission or tenant change.
+- [x] `B01-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS. Phase 1D Branch Manager regression 13/13, exit 0; typecheck exit 0; viewport test NOT_RUN.
 - [ ] `B01-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `B01-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`; tests `PARTIAL_PASS — 13/13 Phase 1D tests; typecheck PASS; browser viewports NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 ### B02 — HeadPending / AccSales KPI and filters — reflow
 **Phase:** P3 · **Finding links:** `R3-F04; HA-F30; S1H-F18` · **Mode:** `VERIFY_CONDITIONAL` · **Initial:** `VERIFY_FIRST` · **Repository:** Dashboard

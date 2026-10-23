@@ -33,14 +33,14 @@ export function BranchOverview({ navigate }: PageProps) {
         </div>
         <div className="w-full h-3 bg-white/20 rounded-full"><div className="h-3 bg-white rounded-full" style={{ width: `${Math.min(100, pct)}%` }} /></div>
       </div>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard label={t("مبيعات اليوم", "Today's Sales")} value={`${todaySales.toLocaleString()} ${t("ر.س", "SAR")}`} icon={<TrendingUp size={18} className="text-emerald-600" />} accent="emerald" />
         <KpiCard label={t("الطلبات", "Orders")} value={String(orders)} sub={t("اليوم", "Today")} icon={<ShoppingCart size={18} className="text-blue-600" />} accent="blue" />
         <KpiCard label={t("الموظفون", "Employees")} value={String(empsActive)} sub={t("نشطون الآن", "Active Now")} icon={<Users size={18} className="text-purple-600" />} accent="purple" />
         <KpiCard label={t("التقارير المطلوبة", "Required Reports")} value={String(reqReports)} sub={t("تنتظر الرفع", "Awaiting Upload")} icon={<AlertTriangle size={18} className="text-amber-600" />} accent="amber" />
       </div>
-      <div className="grid grid-cols-3 gap-5">
-        <div className="col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="col-span-1 lg:col-span-2">
           <Card title={t("مهام اليوم", "Today's Tasks")}>
             {tasks.length === 0 && <div className="px-5 py-8 text-center text-sm text-gray-400">{t("لا توجد مهام", "No tasks")}</div>}
             {tasks.map((tk) => (
