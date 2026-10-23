@@ -1,7 +1,7 @@
 # ASSAB ERP — Unified Dashboard Phase 3 + Phase 4 + Phase 5 Remediation Execution Checklist (V2)
-**Prepared:** 2026-10-23 · **Status:** DRAFT / PENDING PROJECT OWNER EXECUTION GO · **No repository writes performed in preparing this artifact.**
+**Prepared:** 2026-10-23 · **Status:** ACTIVE LOCAL EXECUTION UNDER GO-02 · **Scope:** Dashboard-only local worktree; no push/PR/merge/deploy.
 
-> **STOP RULE:** This checklist is an execution-control specification, **not** authorization for Git writes. The operator may perform read-only preflight until Project Owner explicitly authorizes a named repository, branch, batch and allowed operations. Any code/commit is only after that GO; push, PR, merge, deploy, financial transactions, Backend/Flutter writes and final Master update require their own explicit authorization.
+> **GO-02 AUTHORIZATION NOTE (2026-10-23):** Project Owner explicitly authorized continuous local implementation and atomic local commits for eligible Dashboard batches A01–A11, B01–B10, C01–C20, D01–D02, plus M01 under its stated final-evidence gate. This supersedes GO-01's stop-after-bootstrap condition. Push, PR, merge, deploy, Backend/Flutter writes and live financial transactions remain prohibited. Follow each batch's approval and dependency gates; unresolved or unverified work stays BLOCKED/NOT_RUN/PENDING_REVIEW.
 
 ## 0. Release decision and authoritative evidence
 - **Phase 3:** 15 R3 IDs: 5 source-resolved, 3 partially resolved, 6 still source-open/risk, 1 display-policy decision. 176 visual language×viewport tests NOT_RUN and 14 historical BLOCKED (not 190 unique runtime claims).
@@ -216,24 +216,25 @@ A09 evidence: A4-F08 source-confirmed at pinned AdminUsers.tsx mode buttons refs
 - [ ] `A10-04` Targeted acceptance evidence: Each filter announced by accessible name; keyboard; search/filter/query contract unaffected; AR+EN.
 - [x] `A10-05` Gate and limits: Dashboard multiple surfaces
 - [x] `A10-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
-- [ ] `A10-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
-- [ ] `A10-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `dd084c12dc380ae737039e4565b118731c83cb0e`; postSHA `PENDING`; commitSHA `PENDING / ZERO_COMMIT`; tested SHA `pending`; tests `PARTIAL_PASS — 51/51 Head/Proc/Company Admin regressions; typecheck; static AST 9/9; browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+- [x] `A10-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
+- [x] `A10-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
+**Implementation fields:** preSHA `dd084c12dc380ae737039e4565b118731c83cb0e`; postSHA `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; commitSHA `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; tested SHA `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; tests `51/51 Head/Proc/Company Admin regressions PASS; typecheck PASS; static AST 9/9 PASS; browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 
 A10 evidence: A4-F01 source-confirmed; original active pages HeadPending.tsx and ProcNewOrders.tsx plus the Company Admin user search in CompanyDashboard.tsx. Added htmlFor/id pairs to four HeadPending selects and two ProcNewOrders selects; added localized accessible names to the HeadPending operation search and Company Admin user search. Filter/search state setters, query behavior and API contracts are unchanged. `TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.test.ts artifacts/mockup-sandbox/src/components/mockups/asab/phase1eProcurement.test.ts artifacts/mockup-sandbox/src/components/mockups/asab/companyAdminGuards.test.ts` exit 0 (51/51). `pnpm --filter @workspace/mockup-sandbox run typecheck` exit 0. Static TypeScript-AST assertions PASS 9/9 for label associations, local search labels, unique control identity and preserved state setters. Keyboard and AR/EN browser name announcement NOT_RUN; A10-04 remains unchecked.
+Post-commit checkpoint: A10 local commit `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; current branch was reopened at this SHA before A11.
 ### A11 — Role-local RTL/LTR exceptions only
-**Phase:** P4 · **Finding links:** `A4-F07; HA-F36; S1H-F12; R3-F07` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
+**Phase:** P4 · **Finding links:** `A4-F07; HA-F36; S1H-F12; R3-F07` · **Mode:** `IMPLEMENT` · **Current:** `IN_PROGRESS` · **Repository:** Dashboard
 **Scope:** ProcNewOrders; AccAssets import and direct role-specific overlays.
-- [ ] `A11-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `A11-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
-- [ ] `A11-03` Minimal action/disposition: Replace incorrect literal dir=rtl only on active role-local English-affected containers, derive dir from existing locale; keep localized numbers/text safe.
+- [x] `A11-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch. Evidence: GO-02; Phase 4 `A4-F07`; Phase 3 `R3-F07` disposition; crosswalk `HA-F36`/`S1H-F12`; GitHub base still `30d3d261b83ed4b0d9fa1dc1f875ae8592484261`; worktree HEAD `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`, clean.
+- [x] `A11-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code. Evidence: tracker A11 IN_PROGRESS, preSHA `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; files `ProcNewOrders.tsx`, `AccAssets.tsx`, Checklist, Tracker; no role/tenant/API logic changes; browser unavailable, visual/focus verification NOT_RUN.
+- [x] `A11-03` Minimal action/disposition: Replaced hard-coded RTL direction in ProcNewOrders page/filter/group/detail table/approval editors and AccAssets page/table/direct overlays with the existing locale `dir`; retained explicitly LTR number/value fragments and all locale text, API and financial behavior.
 - [ ] `A11-04` Targeted acceptance evidence: AR/EN tables, filters, dialog, focus order, logical icon positioning; verify without assuming 3.1.2 is proof of dir fault.
-- [ ] `A11-05` Gate and limits: Dashboard role-local; DO NOT reopen shared bidi already fixed R3-F07
-- [ ] `A11-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `A11-05` Gate and limits: Dashboard role-local; DO NOT reopen shared bidi already fixed R3-F07. No API/permission/business logic change; PUR-01 fail-closed code remains unchanged.
+- [x] `A11-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS. Focused 1E/1C tests 32/32, exit 0; typecheck exit 0; static source assertions 6/6; browser/viewport/keyboard/screen-reader NOT_RUN.
 - [ ] `A11-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `A11-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; tests `PARTIAL_PASS — 32/32 focused 1E/1C tests; typecheck PASS; static 6/6; browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 ### B01 — BranchOverview & affected shared summary grids — responsive layout
 **Phase:** P3 · **Finding links:** `R3-F03; HA-F30; 1D-COM-016` · **Mode:** `VERIFY_CONDITIONAL` · **Initial:** `VERIFY_FIRST` · **Repository:** Dashboard

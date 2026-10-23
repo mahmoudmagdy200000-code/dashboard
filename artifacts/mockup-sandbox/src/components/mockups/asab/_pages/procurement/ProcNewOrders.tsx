@@ -27,7 +27,7 @@ import { KpiCard } from "../../components/KpiCard";
 import { Badge } from "../../components/Badge";
 
 export function ProcNewOrders({ role }: PageProps) {
-  const { t } = useLang();
+  const { t, dir } = useLang();
   // PUR-01: Financial purchase-order approval and partial approval are gated pending verification of the approved Figma/Backend authorization contract.
   // Fail closed across all roles until explicit authorization contract is verified (no speculative role allowlist).
   const canApproveFinancial = false;
@@ -95,7 +95,7 @@ export function ProcNewOrders({ role }: PageProps) {
   const groupKeys = [...new Set(filteredOrders.map(o => groupBy === "branch" ? o.branch : o.supplier))];
 
   return (
-    <div className="space-y-5" dir="rtl">
+    <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("الطلبات الجديدة", "New Orders")}</h2>
@@ -113,7 +113,7 @@ export function ProcNewOrders({ role }: PageProps) {
       </div>
 
       {/* Filters panel */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir="rtl">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir={dir}>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label htmlFor="proc-new-branch-filter" className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع", "Branch")}</label>
@@ -147,7 +147,7 @@ export function ProcNewOrders({ role }: PageProps) {
       </div>
 
       {/* Group by toggle */}
-      <div className="flex items-center gap-3" dir="rtl">
+      <div className="flex items-center gap-3" dir={dir}>
         <span className="text-xs font-semibold text-gray-500">{t("تجميع حسب:", "Group by:")}</span>
         <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
           {(["branch", "supplier"] as const).map(g => (
@@ -229,7 +229,7 @@ export function ProcNewOrders({ role }: PageProps) {
                         {detailQ.isLoading && <p className="text-xs text-gray-400 py-2">{t("جاري تحميل التفاصيل...", "Loading details...")}</p>}
                         {!detailQ.isLoading && detailItems.length === 0 && <p className="text-xs text-gray-400 py-2">{t("لا توجد تفاصيل أصناف", "No item details available")}</p>}
                         {detailItems.length > 0 && (
-                          <table className="w-full border border-amber-100 rounded-xl overflow-hidden text-xs" dir="rtl">
+                          <table className="w-full border border-amber-100 rounded-xl overflow-hidden text-xs" dir={dir}>
                             <thead className="bg-amber-50">
                               <tr>
                                 <th className="px-3 py-2 text-right">{t("الصنف", "Item")}</th>
@@ -277,7 +277,7 @@ export function ProcNewOrders({ role }: PageProps) {
                         )}
                         {/* Actions / reject editors */}
                         {editMode === "partial" ? (
-                          <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2 mt-1" dir="rtl">
+                          <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2 mt-1" dir={dir}>
                             <p className="text-xs font-bold text-orange-800">⚠ {t("اعتماد جزئي — عدّل الكمية المعتمدة لكل صنف (صفر = رفض الصنف)", "Partial approve — set confirmed qty per item (0 = reject line)")}</p>
                             <div className="space-y-1.5 max-h-52 overflow-y-auto">
                               {detailItems.map((it: any) => (
@@ -303,7 +303,7 @@ export function ProcNewOrders({ role }: PageProps) {
                             </div>
                           </div>
                         ) : editMode === "reject" ? (
-                          <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-2 mt-1" dir="rtl">
+                          <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-2 mt-1" dir={dir}>
                             <p className="text-xs font-bold text-red-800">⛔ {t("رفض كلي — اذكر سبب الرفض", "Full reject — state the rejection reason")}</p>
                             <select value={rejectReason} onChange={e => setRejectReason(e.target.value)} className="w-full text-sm border border-red-200 rounded-lg px-3 py-2 bg-white">
                               <option value="">{t("— اختر سبب الرفض —", "— Select rejection reason —")}</option>
