@@ -81,24 +81,26 @@
 - [ ] `A01-04` Targeted acceptance evidence: Inspect labels/accessible names for email/password/OTP/reset in AR+EN; form errors; tab; existing auth unit tests.
 - [x] `A01-05` Gate and limits: Dashboard UI ONLY; no API / session changes
 - [x] `A01-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
-- [ ] `A01-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
-- [ ] `A01-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `ae2b998a6ff115e94c8732f3a0e55aede23c5d80`; postSHA `PENDING_COMMIT`; commitSHA `PENDING_COMMIT`; tested SHA `working tree based on ae2b998a6ff115e94c8732f3a0e55aede23c5d80`; tests `66/66 auth regression PASS; mockup typecheck PASS; six label/control AST assertions PASS; browser/keyboard NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+- [x] `A01-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
+- [x] `A01-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
+**Implementation fields:** preSHA `ae2b998a6ff115e94c8732f3a0e55aede23c5d80`; postSHA `ad7ef3fb5d897a74bf150e8ab309d582e5aa0365`; commitSHA `ad7ef3fb5d897a74bf150e8ab309d582e5aa0365`; tested SHA `ad7ef3fb5d897a74bf150e8ab309d582e5aa0365`; tests `66/66 auth regression PASS; mockup typecheck PASS; six AST associations PASS; browser/keyboard NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
-**A01 execution evidence (2026-10-23):** A4-F01 was source-confirmed in the Phase 4 audit ZIP; `1D-COM-018` is a related but non-duplicate crosswalk item. Added stable `htmlFor`/`id` pairs to LoginPage email/password/2FA and ForgotPasswordPage email/token/new-password controls. No API, 2FA/session, or authentication behavior changed. Static markup association check PASS (6/6). `TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/auth/roleAccess.test.ts artifacts/mockup-sandbox/src/api/authSession.test.ts` — exit 0, 66/66 PASS. `pnpm --filter @workspace/mockup-sandbox run typecheck` — exit 0. An initial attempt without the TSX loader failed to resolve the existing extensionless `featureFlags` import; rerun with the repo's TSX loader passed. Browser, keyboard interaction, screen reader and axe checks remain NOT_RUN. A01-04 and A01-07/A01-08 remain unchecked pending the missing interaction checks and commit/checkpoint evidence.
+A01 is committed as `ad7ef3fb5d897a74bf150e8ab309d582e5aa0365` and remains `PENDING_REVIEW` / `IMPLEMENTED_UNVERIFIED`; A01-04 remains open for actual keyboard/browser evidence.
 
 ### A02 — Login password reveal control — keyboard
 **Phase:** P4 · **Finding links:** `A4-F02` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
 **Scope:** LoginPage password visibility.
-- [ ] `A02-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `A02-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
-- [ ] `A02-03` Minimal action/disposition: Remove tabIndex=-1 from show/hide button; ensure native button with clear localized state and type=button.
+- [x] `A02-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
+- [x] `A02-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
+- [x] `A02-03` Minimal action/disposition: Remove tabIndex=-1 from show/hide button; ensure native button with clear localized state and type=button.
 - [ ] `A02-04` Targeted acceptance evidence: Tab / Shift-Tab, Enter / Space toggling, button does not submit, focus remains predictable, AR+EN.
-- [ ] `A02-05` Gate and limits: Dashboard UI ONLY; no auth rewrite
-- [ ] `A02-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `A02-05` Gate and limits: Dashboard UI ONLY; no auth rewrite
+- [x] `A02-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
 - [ ] `A02-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `A02-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `ad7ef3fb5d897a74bf150e8ab309d582e5aa0365`; postSHA `PENDING_COMMIT`; commitSHA `PENDING_COMMIT`; tested SHA `working tree based on ad7ef3fb5d897a74bf150e8ab309d582e5aa0365`; tests `66/66 auth regression PASS; mockup typecheck PASS; AST keyboard-reachability source assertions PASS; browser keyboard NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+
+A02 execution evidence: Removed only `tabIndex={-1}` from the native localized password visibility button; `type="button"` and Show/Hide labels remain. Auth regression command used the repository TSX loader, exit 0 (66/66); mockup typecheck exit 0; static TS AST assertion exit 0. Actual Tab/Shift-Tab/Enter/Space interaction remains NOT_RUN.
 
 ### A03 — Shared KpiCard — clickable button semantics only
 **Phase:** P3+P4 · **Finding links:** `R3-F08; HA-F33; S1H-F13` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard

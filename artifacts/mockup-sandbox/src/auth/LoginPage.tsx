@@ -131,7 +131,6 @@ export function LoginPage() {
         <button
           type="button"
           onClick={() => setShowPassword((v) => !v)}
-          tabIndex={-1}
           style={{
             position: "absolute",
             insetInlineStart: 8,
