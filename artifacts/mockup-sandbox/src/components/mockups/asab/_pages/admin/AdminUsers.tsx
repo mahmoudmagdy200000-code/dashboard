@@ -670,21 +670,33 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
                       {distAccs.filter(a => !h3HeadFilter || a.name.includes(h3HeadFilter)).map(acc => {
                         const head = distHeads.find(h => h.id === acc.headId);
                         const isSelected = h3AccSel === acc.id;
+                        const selectionId = `head-accountant-${encodeURIComponent(acc.id)}`;
                         return (
-                          <div key={acc.id} onClick={() => setH3AccSel(isSelected ? null : acc.id)}
-                            className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-all ${isSelected ? "bg-purple-50 border-r-4 border-purple-500" : "hover:bg-gray-50"}`}>
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 transition-all ${isSelected ? "bg-purple-200 text-purple-800 ring-2 ring-purple-400" : "bg-blue-100 text-blue-700"}`}>
-                              {acc.avatar}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className={`font-semibold text-sm truncate ${isSelected ? "text-purple-800" : "text-gray-800"}`}>{acc.name}</p>
-                              {head
-                                ? <p className="text-[10px] text-emerald-600 flex items-center gap-1"><Check size={9} /> {head.name}</p>
-                                : <p className="text-[10px] text-red-400">⚠ {t("غير مُعيَّن بعد", "Not yet assigned")}</p>
-                              }
-                            </div>
+                          <div key={acc.id}
+                            className={`flex items-center gap-3 px-4 py-3 transition-all ${isSelected ? "bg-purple-50 border-r-4 border-purple-500" : "hover:bg-gray-50"}`}>
+                            <label htmlFor={selectionId} className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer">
+                              <input
+                                id={selectionId}
+                                type="radio"
+                                name="head-accountant-selection"
+                                value={acc.id}
+                                checked={isSelected}
+                                onChange={() => setH3AccSel(acc.id)}
+                                className="h-4 w-4 shrink-0 accent-purple-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600"
+                              />
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 transition-all ${isSelected ? "bg-purple-200 text-purple-800 ring-2 ring-purple-400" : "bg-blue-100 text-blue-700"}`}>
+                                {acc.avatar}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`font-semibold text-sm truncate ${isSelected ? "text-purple-800" : "text-gray-800"}`}>{acc.name}</p>
+                                {head
+                                  ? <p className="text-[10px] text-emerald-600 flex items-center gap-1"><Check size={9} /> {head.name}</p>
+                                  : <p className="text-[10px] text-red-400">⚠ {t("غير مُعيَّن بعد", "Not yet assigned")}</p>
+                                }
+                              </div>
+                            </label>
                             {acc.headId && (
-                              <button onClick={e => { e.stopPropagation(); moveAccToHead(acc.id, null); setH3AccSel(null); }}
+                              <button type="button" onClick={e => { e.stopPropagation(); moveAccToHead(acc.id, null); setH3AccSel(null); }}
                                 className="w-6 h-6 rounded-full bg-red-100 text-red-500 hover:bg-red-200 flex items-center justify-center flex-shrink-0">
                                 <X size={10} />
                               </button>
@@ -699,7 +711,7 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
                         <p className="text-[11px] text-purple-700 font-semibold">
                           {distAccs.find(a => a.id === h3AccSel)?.name} — {t("اختر رئيساً لتعيينه", "Select a head to assign")}
                         </p>
-                        <button onClick={() => setH3AccSel(null)} className="mr-auto text-[10px] text-purple-500 hover:text-purple-700">{t("إلغاء", "Cancel")}</button>
+                        <button type="button" onClick={() => setH3AccSel(null)} className="mr-auto text-[10px] text-purple-500 hover:text-purple-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">{t("إلغاء", "Cancel")}</button>
                       </div>
                     )}
                   </div>
@@ -712,8 +724,7 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
                       const canAssign = h3AccSel && distAccs.find(a => a.id === h3AccSel)?.headId !== head.id;
                       return (
                         <div key={head.id}
-                          onClick={() => { if (canAssign && h3AccSel) { moveAccToHead(h3AccSel, head.id); setH3AccSel(null); } }}
-                          className={`bg-white rounded-xl border-2 shadow-sm overflow-hidden transition-all ${canAssign ? "border-purple-400 cursor-pointer hover:border-purple-600 hover:shadow-md" : "border-gray-100"}`}>
+                          className={`bg-white rounded-xl border-2 shadow-sm overflow-hidden transition-all ${canAssign ? "border-purple-400" : "border-gray-100"}`}>
                           {/* Head header */}
                           <div className={`px-4 py-3 flex items-center gap-3 ${head.id === "h1" ? "bg-amber-50" : "bg-purple-50"}`}>
                             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${head.color}`}>{head.avatar}</div>
@@ -722,9 +733,13 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
                               <p className="text-[11px] text-gray-500">{t("رئيس حسابات", "Accounting Head")} · {headAccs.length} {t("محاسب", "accountants")} · {totalRests} {t("مطعم", "restaurants")}</p>
                             </div>
                             {canAssign && (
-                              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 text-white text-[11px] font-semibold animate-pulse">
+                              <button
+                                type="button"
+                                onClick={() => { if (h3AccSel) { moveAccToHead(h3AccSel, head.id); setH3AccSel(null); } }}
+                                aria-label={t(`تعيين المحاسب المحدد إلى ${head.name}`, `Assign selected accountant to ${head.name}`)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 text-white text-[11px] font-semibold hover:bg-purple-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">
                                 <Plus size={11} /> {t("تعيين هنا", "Assign here")}
-                              </div>
+                              </button>
                             )}
                           </div>
                           {/* Assigned accountants */}
