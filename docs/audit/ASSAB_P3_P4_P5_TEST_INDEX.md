@@ -142,3 +142,13 @@ Raw logs are stored alongside this index. Historical GO-02/GO-04 hashes are in `
 - `GO07-DIFF-CHECK`: `git diff --check` — PASS, exit 0.
 - `GO07-BROWSER`: `NOT_RUN / BLOCKED_ENVIRONMENT`. Playwright 1.62.1 is installed in the shared runtime, but its reported Chromium executable is absent and no system Chromium/Chrome command is available. No browser/dependencies were installed. Dialog Escape/focus/viewport/AR-EN, A07 keyboard/accessibility-tree, and responsive viewport checks remain NOT_RUN.
 - Full unit suite, build, Staging, Backend/Flutter, HTTP, security and financial runtime tests were not run. Overall class: `DEVELOPER_REPORTED_EXECUTION`; independent review pending.
+
+
+## GO-08-P3 responsive verification — 2026-10-23
+
+- Worktree pre-documentation SHA: `92b8198fed73c043ed171061272cd1309ec29a0f`; tree `99d67b62e755fc91a71e1330ad9734a3b1a36cbc`; branch `work/dashboard-p345-remediation-v2-20261023`; clean before documentation.
+- Playwright package probe: Node `v24.19.0`, Playwright `1.62.1`, pnpm `11.25.0`; expected Chromium executable absent; no system browser found.
+- Authorized managed Chromium installation attempt: exit 1 (invalid/incomplete archive, then stale lock); see `evidence/p3-p5-go02/GO08/browser-availability.log`. This file summarizes the persisted facts; the installer raw transcript was not available at recovery.
+- Browser/viewport commands: `NOT_RUN`; no browser launched. B01–B10 browser acceptance evidence remains `NOT_RUN` (B09 also `BLOCKED_DECISION`).
+- GO-08 source/unit/typecheck/build tests: `NOT_RUN`; no source change was justified without VERIFY_FIRST browser reproduction. Earlier B01/B07 tests remain historical evidence only and are not reported as rerun.
+- Detailed finding matrix: `evidence/p3-p5-go02/GO08/GO08_P3_RESPONSIVE_RESULT.md`; B09 decision request: `evidence/p3-p5-go02/GO08/B09_OWNER_DECISION_REQUEST.md`.

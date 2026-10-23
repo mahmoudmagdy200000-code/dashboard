@@ -1,0 +1,9 @@
+GO-08 pre-push content scan — 2026-10-23
+Evidence class: DEVELOPER_REPORTED_EXECUTION
+Scan scope: all added lines in the full delta from audited Base 30d3d261b83ed4b0d9fa1dc1f875ae8592484261 through current working-tree changes including tracked and new evidence files (all 23 prior local commits plus GO-08 documentation).
+Candidate paths in Base-to-worktree plus new untracked evidence: 47.
+Sensitive config/key filename matches: 0.
+Added-line heuristic matches: GitHub tokens 0; AWS access keys 0; Bearer tokens 0; private-key headers 0; long secret assignments 0; email addresses 0; IBAN-like values 0; payment-card-like values 0.
+Changed tracked files larger than 1 MB: 0.
+Dedicated gitleaks/trufflehog binary: unavailable; this was a bounded pattern and path scan, not a certified secret-scanner result.
+Conclusion: no known credential, personal-data, or financial-data match was detected by these checks. This is a review aid, not a guarantee that sensitive content is absent.

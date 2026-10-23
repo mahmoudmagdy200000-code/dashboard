@@ -154,3 +154,8 @@ No item is labeled ACCEPTED or RUNTIME_VERIFIED. No production-ready or full-cov
 - Current docs reconcile A07 from its earlier blocked snapshot to source-implemented/pending review. A07 is distinct from A09; the prior snapshot is retained as historical. R3-F10 remains B06; R3-F15 remains B07.
 - D01 `BLOCKED_EVIDENCE`; D02 `BLOCKED_APPROVAL`; M01 `PENDING_REVIEW`. Master count remains 249 with no new/deleted IDs. Windows mirror NOT_RUN. All commits are local; no push/PR/merge/deploy.
 - Final local documentation commit SHA is stated in the GO-06 delivery report/evidence ledger; it is omitted here because a commit cannot contain its own final SHA.
+
+
+## GO-08-P3 status — 2026-10-23
+
+Responsive source work was not repeated. No browser was available after the authorized managed Chromium installation failed; B01–B08 and B10 runtime criteria remain `NOT_RUN`, with VERIFY_FIRST rows still `BLOCKED_EVIDENCE`. B09 remains `BLOCKED_DECISION`. No finding was closed or accepted. See `evidence/p3-p5-go02/GO08/GO08_P3_RESPONSIVE_RESULT.md` and `B09_OWNER_DECISION_REQUEST.md`. Pre-documentation source HEAD: `92b8198fed73c043ed171061272cd1309ec29a0f`. Any source test/typecheck/build not executed in GO-08 is recorded as `NOT_RUN`.

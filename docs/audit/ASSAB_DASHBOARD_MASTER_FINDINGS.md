@@ -2707,3 +2707,25 @@ This append-only update records the targeted GO-07 correction without changing h
 - Browser accessibility-tree, keyboard activation, Escape, focus containment/return, short viewport, soft keyboard, AR/EN and responsive runtime checks: `NOT_RUN / BLOCKED_ENVIRONMENT` because no Chromium executable is available. No install was attempted.
 - `B07`, `R3-F15`, and linked `CA-F15`, `HA-F31`, `S1H-F13` remain `PENDING_REVIEW` and are not `ACCEPTED` or `RUNTIME_VERIFIED`. The source correction addresses accessible naming and form-label associations only; it does not close dialog runtime behavior.
 - `D01` remains `BLOCKED_EVIDENCE`; `D02` remains pending independent acceptance; `M01` remains `PENDING_REVIEW`. GO-07 did not run the full suite, build, Staging, Backend/Flutter, HTTP, tenant-security or financial runtime tests. Phase 5 remains read-only and owner decisions remain open in the GO-06 blocker register and GO-07 request.
+
+
+---
+
+## GO-08-P3 Responsive verification checkpoint (2026-10-23)
+
+Evidence is limited to the local Dashboard source at pre-documentation HEAD `92b8198fed73c043ed171061272cd1309ec29a0f`. No Phase 3 source was changed in GO-08 because the batch rules require a real viewport reproduction before any correction, and Chromium could not be installed in the authorized isolated path. The detailed B01–B10 matrix is `docs/audit/evidence/p3-p5-go02/GO08/GO08_P3_RESPONSIVE_RESULT.md`; B09's owner decision request is `docs/audit/evidence/p3-p5-go02/GO08/B09_OWNER_DECISION_REQUEST.md`.
+
+| Batch | Finding mapping | GO-08 state | Runtime / review note |
+|---|---|---|---|
+| B01 | R3-F03; HA-F30; 1D-COM-016 | `PARTIAL_PASS / PENDING_REVIEW` | Existing source commit retained; required viewport/language matrix `NOT_RUN`. |
+| B02 | R3-F04; HA-F30; S1H-F18 | `BLOCKED_EVIDENCE` | KPI/filter behavior at 320–768 AR/EN `NOT_RUN`. |
+| B03 | R3-F05 | `BLOCKED_EVIDENCE` | Procurement table scrolling/touch/keyboard `NOT_RUN`. |
+| B04 | R3-F02; S1H-F14; S1H-F18 | `BLOCKED_EVIDENCE` | Prototype header and Sheet behavior `NOT_RUN`. |
+| B05 | R3-F11; CA-F05; S1H-F18 | `BLOCKED_EVIDENCE` | Search/notification toolbar at small widths `NOT_RUN`. |
+| B06 | R3-F10 | `BLOCKED_EVIDENCE` | Correct mapping retained: R3-F10 → B06; 320px/200% zoom `NOT_RUN`. |
+| B07 | R3-F15; CA-F15; HA-F31; S1H-F13 | `PENDING_REVIEW` | GO-08 scope is responsive scrolling/viewport only; short-height and mobile scroll checks `NOT_RUN`. No repeated Accessibility implementation. |
+| B08 | R3-F12; S1H-F05; S1H-F19 | `BLOCKED_EVIDENCE` | Soft-keyboard/visualViewport overlap and input visibility `NOT_RUN`. |
+| B09 | R3-F14; HA-F11; HA-F36; DIFF-07 | `BLOCKED_DECISION` | No monetary value/unit or display behavior changed; owner decision pending. |
+| B10 | R3-F01; R3-F06; R3-F07; R3-F09; R3-F13 | `BLOCKED_EVIDENCE` | Existing static source evidence is not browser runtime acceptance; checks `NOT_RUN`. |
+
+No original ID, severity, or historical status was changed. No finding is promoted to `CLOSED`, `ACCEPTED`, or `RUNTIME_VERIFIED`. No source test, typecheck, build, browser, Staging, Backend, Flutter, or financial runtime test was executed in GO-08. Independent review remains pending.

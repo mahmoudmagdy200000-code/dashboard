@@ -790,3 +790,35 @@ The original V2 plan's final line “EXECUTION NOT AUTHORIZED BY FILE CREATION�
 ### GO-07 source commit and current status
 
 The GO-07 source/test correction is committed locally as `5313b6f5bde200d2ce021c4833614647f7e20e4c` (parent `ed836185b0a2cebcf850367d85f0ce2af17bea18`; tree `278fb20cc54469c76bebb3a451faf5ec49cde128`). The exact source delta is two files: `CompanyDashboard.tsx` and `companyAdminGuards.test.ts`. Focused regression 15/15, typecheck, and diff check pass. Browser QA remains NOT_RUN/BLOCKED; no browser was installed. B07 remains PENDING_REVIEW, D01 BLOCKED_EVIDENCE, and no runtime acceptance is claimed.
+
+
+## GO-08-P3 Responsive verification checkpoint — 2026-10-23
+
+- [x] `GO08-01` Reopened Section 1 and B01–B10 criteria; verified branch `work/dashboard-p345-remediation-v2-20261023`, pre-documentation HEAD `92b8198fed73c043ed171061272cd1309ec29a0f`, tree `99d67b62e755fc91a71e1330ad9734a3b1a36cbc`, and clean worktree.
+- [x] `GO08-02` Confirmed the review branch is not currently present on GitHub; pinned Base `30d3d261b83ed4b0d9fa1dc1f875ae8592484261` is accessible.
+- [x] `GO08-03` Checked Playwright 1.62.1 and system browser availability; authorized managed Chromium setup had failed (invalid archive/stale lock). No repo dependency files changed.
+- [x] `GO08-04` Reconciled B01–B10 against existing source commits and original verification gates; preserved R3-F10 → B06 and R3-F15 → B07. See `docs/audit/evidence/p3-p5-go02/GO08/GO08_P3_RESPONSIVE_RESULT.md`.
+- [x] `GO08-05` Kept source unchanged because all pending responsive corrections are VERIFY_FIRST and browser reproduction was unavailable.
+- [ ] `GO08-06` Run real Playwright viewport checks for B01–B08 and B10 across required widths, languages, keyboard/touch, short-height and soft-keyboard states. `NOT_RUN / BLOCKED_ENVIRONMENT`.
+- [ ] `GO08-07` Obtain owner decision for B09; no financial display change made. Decision request: `docs/audit/evidence/p3-p5-go02/GO08/B09_OWNER_DECISION_REQUEST.md`.
+- [x] `GO08-08` Updated tracker, Master Findings, Test Index and Final Handoff with evidence-limited statuses; no finding promoted to CLOSED/ACCEPTED/RUNTIME_VERIFIED.
+- [ ] `GO08-09` Final source build and tests after code edits. No GO-08 source edit occurred; no build/test rerun is claimed.
+- [x] `GO08-10` Scanned the complete Base-to-worktree delta (all 23 prior local commits and GO-08 docs): no known token/secret/email/IBAN/card-like match, no sensitive config/key filenames, and no changed file over 1 MB; dedicated gitleaks/trufflehog unavailable. Evidence: `docs/audit/evidence/p3-p5-go02/GO08/pre-push-sensitive-content-scan.log`.
+
+### Finding-level GO-08 disposition
+
+| Batch | GO-08 status | Source changes | Browser evidence | Existing commit / note |
+|---|---|---|---|---|
+| B01 | `PARTIAL_PASS / PENDING_REVIEW` | None; existing reflow retained | `NOT_RUN` | `0e95364e09a784204df40da5d79d763137d72c5b` |
+| B02 | `BLOCKED_EVIDENCE` | None | `NOT_RUN` | VERIFY_FIRST; exact finance/KPI viewport acceptance pending |
+| B03 | `BLOCKED_EVIDENCE` | None | `NOT_RUN` | VERIFY_FIRST; procurement scroll/touch proof pending |
+| B04 | `BLOCKED_EVIDENCE` | None | `NOT_RUN` | Responsive header/Sheet runtime pending |
+| B05 | `BLOCKED_EVIDENCE` | None | `NOT_RUN` | Toolbar/search/notification runtime pending |
+| B06 | `BLOCKED_EVIDENCE` | None | `NOT_RUN` | R3-F10 remains assigned to B06; 320px/200% zoom pending |
+| B07 | `PENDING_REVIEW` | None; no Accessibility reimplementation | `NOT_RUN` | R3-F15 remains assigned to B07; responsive short-viewport scrolling pending |
+| B08 | `BLOCKED_EVIDENCE` | None | `NOT_RUN` | Soft-keyboard/visualViewport overlap not reproduced |
+| B09 | `BLOCKED_DECISION` | None | `NOT_RUN` | Owner must decide approximate-vs-exact display policy |
+| B10 | `BLOCKED_EVIDENCE` | None | `NOT_RUN` | Source-only verification is not runtime acceptance |
+
+No Phase 3 finding is closed by this checkpoint. No browser test, staging test or live API request was run.
+- [ ] `GO08-11` Normal Git push remains pending: the authorized remote review branch is absent and direct `git ls-remote` timed out; publish only after a normal authenticated push can verify the exact remote state. No force push or alternate target.
