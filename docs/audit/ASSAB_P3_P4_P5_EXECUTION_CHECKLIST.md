@@ -186,25 +186,27 @@ A07 dependency note: This finding touches the same AdminUsers distribution contr
 - [ ] `A08-04` Targeted acceptance evidence: Multiple rows with distinct names; select all; AR+EN labels; keyboard; asset import mapping unchanged.
 - [x] `A08-05` Gate and limits: Dashboard Accountant
 - [x] `A08-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
-- [ ] `A08-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
-- [ ] `A08-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `9db95d7445586b0adf8c2da4620a5a415107accb`; postSHA `PENDING`; commitSHA `PENDING / ZERO_COMMIT`; tested SHA `pending`; tests `PARTIAL_PASS — 11/11 Accountant regressions, typecheck, static AST 4/4; screen-reader and browser checks NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+- [x] `A08-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
+- [x] `A08-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
+**Implementation fields:** preSHA `9db95d7445586b0adf8c2da4620a5a415107accb`; postSHA `4c0ff2e106d94cf81485a950aa34370c15ca1cfb`; commitSHA `4c0ff2e106d94cf81485a950aa34370c15ca1cfb`; tested SHA `pre-commit source content equals committed AccAssets.tsx`; tests `PARTIAL_PASS — 11/11 Accountant regressions, typecheck, static AST 4/4; screen-reader and browser checks NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 
 A08 evidence: A4-F05 source-confirmed at pinned `AccAssets.tsx` lines 451/476; `R3-F15` concerns dialog context and is distinct. Added a localized row-specific `aria-label` using the asset name and row ID on the mapped import checkbox; checked state, rowId-only update logic and the select-all label remain unchanged. `TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/components/mockups/asab/phase1cAccountant.test.ts` exit 0 (11/11). `pnpm --filter @workspace/mockup-sandbox run typecheck` exit 0. Static TypeScript-AST checks PASS 4/4 for localized unique label inputs, selected binding, rowId update and select-all label. Multiple-row AR/EN accessibility tree, keyboard and screen-reader/browser verification remain NOT_RUN; A08-04 stays unchecked. No import or financial behavior changed.
 ### A09 — AdminUsers distribution mode — state semantics
 **Phase:** P4 · **Finding links:** `A4-F08` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
 **Scope:** restaurant/module/heads mode buttons.
-- [ ] `A09-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `A09-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
-- [ ] `A09-03` Minimal action/disposition: Expose active AdminUsers mode selection with aria-pressed on existing buttons (or audited tab pattern if necessary); avoid full UI rewrite.
+- [x] `A09-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
+- [x] `A09-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
+- [x] `A09-03` Minimal action/disposition: Expose active AdminUsers mode selection with aria-pressed on existing buttons (or audited tab pattern if necessary); avoid full UI rewrite.
 - [ ] `A09-04` Targeted acceptance evidence: Switch restaurant/module/heads: name, state, arrow/tab behavior appropriate to chosen pattern, AR+EN.
-- [ ] `A09-05` Gate and limits: Dashboard AdminUsers
-- [ ] `A09-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `A09-05` Gate and limits: Dashboard AdminUsers
+- [x] `A09-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
 - [ ] `A09-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `A09-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `4c0ff2e106d94cf81485a950aa34370c15ca1cfb`; postSHA `PENDING`; commitSHA `PENDING / ZERO_COMMIT`; tested SHA `pending`; tests `PARTIAL_PASS — 25/25 Platform Admin regression; typecheck; static AST 3/3; browser AR/EN NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
+
+A09 evidence: A4-F08 source-confirmed at pinned AdminUsers.tsx mode buttons refs 326/330/334; HA-F34 is analogous but not the same admin-mode state finding. Added `aria-pressed` derived from the existing `distModeType` state to the three existing native mode buttons; labels, callbacks, and conditional rendering are unchanged. `TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/components/mockups/asab/phase1fPlatformAdmin.test.ts` exit 0 (25/25). `pnpm --filter @workspace/mockup-sandbox run typecheck` exit 0. Static TypeScript-AST assertions PASS 3/3 for pressed-state bindings, original setters and labels. Browser/keyboard AR+EN state announcements remain NOT_RUN due browser runtime block; A09-04 stays unchecked. No permission/API changes.
 ### A10 — Head/Proc/Company filters — accessible labels
 **Phase:** P4 · **Finding links:** `A4-F01` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
 **Scope:** HeadPending; procurement filters; Company admin searches.

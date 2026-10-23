@@ -323,15 +323,15 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
           </div>
 
           <div className="flex items-center gap-0 bg-gray-100 p-1 rounded-xl w-fit">
-            <button onClick={() => setDistModeType("restaurant")}
+            <button aria-pressed={distModeType === "restaurant"} onClick={() => setDistModeType("restaurant")}
               className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-semibold transition-all ${distModeType === "restaurant" ? "bg-white text-purple-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
               🏢 {t("بالمطعم", "By Restaurant")}
             </button>
-            <button onClick={() => setDistModeType("module")}
+            <button aria-pressed={distModeType === "module"} onClick={() => setDistModeType("module")}
               className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-semibold transition-all ${distModeType === "module" ? "bg-white text-purple-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
               📦 {t("بالموديول", "By Module")}
             </button>
-            <button onClick={() => setDistModeType("heads")}
+            <button aria-pressed={distModeType === "heads"} onClick={() => setDistModeType("heads")}
               className={`flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-semibold transition-all ${distModeType === "heads" ? "bg-white text-purple-700 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
               👥 {t("توزيع المحاسبين على الرؤساء", "Assign Accountants to Heads")}
             </button>
