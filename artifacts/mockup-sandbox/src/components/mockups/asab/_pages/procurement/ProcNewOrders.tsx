@@ -116,14 +116,14 @@ export function ProcNewOrders({ role }: PageProps) {
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir="rtl">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع", "Branch")}</label>
-            <select value={filterBranch} onChange={e => setFilterBranch(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
+            <label htmlFor="proc-new-branch-filter" className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع", "Branch")}</label>
+            <select id="proc-new-branch-filter" value={filterBranch} onChange={e => setFilterBranch(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
               {branchList.map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الأولوية", "Priority")}</label>
-            <select value={filterUrgency} onChange={e => setFilterUrgency(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
+            <label htmlFor="proc-new-priority-filter" className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الأولوية", "Priority")}</label>
+            <select id="proc-new-priority-filter" value={filterUrgency} onChange={e => setFilterUrgency(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
               <option value="الكل">{t("الكل", "All")}</option>
               <option value="عاجل">{t("عاجل", "Urgent")}</option>
               <option value="عادي">{t("عادي", "Normal")}</option>

@@ -201,25 +201,27 @@ A08 evidence: A4-F05 source-confirmed at pinned `AccAssets.tsx` lines 451/476; `
 - [ ] `A09-04` Targeted acceptance evidence: Switch restaurant/module/heads: name, state, arrow/tab behavior appropriate to chosen pattern, AR+EN.
 - [x] `A09-05` Gate and limits: Dashboard AdminUsers
 - [x] `A09-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
-- [ ] `A09-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
-- [ ] `A09-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `4c0ff2e106d94cf81485a950aa34370c15ca1cfb`; postSHA `PENDING`; commitSHA `PENDING / ZERO_COMMIT`; tested SHA `pending`; tests `PARTIAL_PASS — 25/25 Platform Admin regression; typecheck; static AST 3/3; browser AR/EN NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+- [x] `A09-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
+- [x] `A09-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
+**Implementation fields:** preSHA `4c0ff2e106d94cf81485a950aa34370c15ca1cfb`; postSHA `dd084c12dc380ae737039e4565b118731c83cb0e`; commitSHA `dd084c12dc380ae737039e4565b118731c83cb0e`; tested SHA `pre-commit source content equals committed AdminUsers.tsx`; tests `PARTIAL_PASS — 25/25 Platform Admin regression; typecheck; static AST 3/3; browser AR/EN NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 
 A09 evidence: A4-F08 source-confirmed at pinned AdminUsers.tsx mode buttons refs 326/330/334; HA-F34 is analogous but not the same admin-mode state finding. Added `aria-pressed` derived from the existing `distModeType` state to the three existing native mode buttons; labels, callbacks, and conditional rendering are unchanged. `TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/components/mockups/asab/phase1fPlatformAdmin.test.ts` exit 0 (25/25). `pnpm --filter @workspace/mockup-sandbox run typecheck` exit 0. Static TypeScript-AST assertions PASS 3/3 for pressed-state bindings, original setters and labels. Browser/keyboard AR+EN state announcements remain NOT_RUN due browser runtime block; A09-04 stays unchecked. No permission/API changes.
 ### A10 — Head/Proc/Company filters — accessible labels
 **Phase:** P4 · **Finding links:** `A4-F01` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
 **Scope:** HeadPending; procurement filters; Company admin searches.
-- [ ] `A10-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `A10-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
-- [ ] `A10-03` Minimal action/disposition: Apply A4-F01 to HeadPending, ProcNewOrders and CompanyDashboard filters/searches with real labels or accessible names; no API filter semantics change.
+- [x] `A10-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
+- [x] `A10-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
+- [x] `A10-03` Minimal action/disposition: Apply A4-F01 to HeadPending, ProcNewOrders and CompanyDashboard filters/searches with real labels or accessible names; no API filter semantics change.
 - [ ] `A10-04` Targeted acceptance evidence: Each filter announced by accessible name; keyboard; search/filter/query contract unaffected; AR+EN.
-- [ ] `A10-05` Gate and limits: Dashboard multiple surfaces
-- [ ] `A10-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `A10-05` Gate and limits: Dashboard multiple surfaces
+- [x] `A10-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
 - [ ] `A10-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `A10-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `dd084c12dc380ae737039e4565b118731c83cb0e`; postSHA `PENDING`; commitSHA `PENDING / ZERO_COMMIT`; tested SHA `pending`; tests `PARTIAL_PASS — 51/51 Head/Proc/Company Admin regressions; typecheck; static AST 9/9; browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
+
+A10 evidence: A4-F01 source-confirmed; original active pages HeadPending.tsx and ProcNewOrders.tsx plus the Company Admin user search in CompanyDashboard.tsx. Added htmlFor/id pairs to four HeadPending selects and two ProcNewOrders selects; added localized accessible names to the HeadPending operation search and Company Admin user search. Filter/search state setters, query behavior and API contracts are unchanged. `TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/components/mockups/asab/headReviewGuards.test.ts artifacts/mockup-sandbox/src/components/mockups/asab/phase1eProcurement.test.ts artifacts/mockup-sandbox/src/components/mockups/asab/companyAdminGuards.test.ts` exit 0 (51/51). `pnpm --filter @workspace/mockup-sandbox run typecheck` exit 0. Static TypeScript-AST assertions PASS 9/9 for label associations, local search labels, unique control identity and preserved state setters. Keyboard and AR/EN browser name announcement NOT_RUN; A10-04 remains unchecked.
 ### A11 — Role-local RTL/LTR exceptions only
 **Phase:** P4 · **Finding links:** `A4-F07; HA-F36; S1H-F12; R3-F07` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
 **Scope:** ProcNewOrders; AccAssets import and direct role-specific overlays.

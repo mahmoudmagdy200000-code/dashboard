@@ -2312,7 +2312,7 @@ function CAUsers() {
         </div>
         <Btn variant="primary" onClick={()=>setShowAdd(true)}><Plus size={13}/> {t("إضافة مستخدم","Add User")}</Btn>
       </div>
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4"><div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2"><Search size={13} className="text-gray-400"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("بحث...","Search...")} className="flex-1 text-sm outline-none"/></div></div>
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4"><div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2"><Search size={13} className="text-gray-400"/><input aria-label={t("البحث عن المستخدمين بالاسم أو الدور","Search company users by name or role")} value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("بحث...","Search...")} className="flex-1 text-sm outline-none"/></div></div>
       {pendingInvites.length>0&&(
         <div className="bg-white rounded-xl border border-amber-100 shadow-sm overflow-hidden">
           <div className="px-5 py-3 bg-amber-50/60 border-b border-amber-100 flex items-center gap-2"><Send size={13} className="text-amber-600"/><span className="text-xs font-bold text-amber-700">{t("دعوات معلّقة","Pending Invitations")} — {pendingInvites.length}</span></div>

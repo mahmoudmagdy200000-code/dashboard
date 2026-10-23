@@ -181,29 +181,29 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir={dir}>
         <div className="grid grid-cols-4 gap-3 mb-3">
           <div>
-            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المحاسب المراجع", "Reviewing Accountant")}</label>
-            <select value={accFilter} onChange={e => setAccFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
+            <label htmlFor="head-pending-accountant-filter" className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المحاسب المراجع", "Reviewing Accountant")}</label>
+            <select id="head-pending-accountant-filter" value={accFilter} onChange={e => setAccFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
               <option>{t("الكل", "All")}</option>
               {HEAD_ACCS.map(a => <option key={a}>{a}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("العلامة التجارية", "Brand")}</label>
-            <select value={brandFilter} onChange={e => setBrandFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
+            <label htmlFor="head-pending-brand-filter" className="text-[11px] font-semibold text-gray-500 block mb-1">{t("العلامة التجارية", "Brand")}</label>
+            <select id="head-pending-brand-filter" value={brandFilter} onChange={e => setBrandFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
               <option>{allVal}</option>
               {BRAND_OPTS.map(b => <option key={b}>{b}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع", "Branch")}</label>
-            <select value={filters.branch} onChange={e => setFilters({ ...filters, branch: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
+            <label htmlFor="head-pending-branch-filter" className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع", "Branch")}</label>
+            <select id="head-pending-branch-filter" value={filters.branch} onChange={e => setFilters({ ...filters, branch: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
               <option value="">{t("الكل", "All")}</option>
               {BRANCH_OPTS.map(b => <option key={b}>{b}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المطابقة", "Match")}</label>
-            <select value={filters.match} onChange={e => setFilters({ ...filters, match: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
+            <label htmlFor="head-pending-match-filter" className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المطابقة", "Match")}</label>
+            <select id="head-pending-match-filter" value={filters.match} onChange={e => setFilters({ ...filters, match: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
               <option value="">{t("كل المطابقات", "All Matches")}</option>
               <option value="exact">{t("متطابق تاماً", "Exact Match")}</option>
               <option value="review">{t("يحتاج مراجعة", "Needs Review")}</option>
@@ -214,7 +214,7 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
         <div className="flex items-center gap-2">
           <div className="flex-1 flex items-center gap-1.5 border border-gray-200 rounded-lg px-3 py-2">
             <Search size={13} className="text-gray-400 flex-shrink-0" />
-            <input value={filters.search} onChange={e => setFilters({ ...filters, search: e.target.value })} placeholder={t("بحث بالفرع أو المطعم أو رقم العملية...", "Search by branch, restaurant or operation ID...")} className="flex-1 text-sm outline-none" />
+            <input aria-label={t("بحث بالفرع أو المطعم أو رقم العملية", "Search by branch, restaurant or operation ID")} value={filters.search} onChange={e => setFilters({ ...filters, search: e.target.value })} placeholder={t("بحث بالفرع أو المطعم أو رقم العملية...", "Search by branch, restaurant or operation ID...")} className="flex-1 text-sm outline-none" />
           </div>
           {hasFilters && (
             <button onClick={() => { setAccFilter(allVal); setBrandFilter(allVal); setFilters({ branch: "", status: "approved", match: "", search: "" }); }}
