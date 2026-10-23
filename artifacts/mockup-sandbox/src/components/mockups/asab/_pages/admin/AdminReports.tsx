@@ -318,11 +318,19 @@ export function AdminReports({ }: PageProps) {
       {adminRepTab === "reports" && (
         <div className="space-y-5">
           {/* Summary KPIs */}
-          <div className="grid grid-cols-4 gap-3">
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center"><p className="text-2xl font-extrabold font-mono text-gray-800">{allReports.length}</p><p className="text-[11px] text-gray-400">{t("إجمالي التقارير", "Total Reports")}</p></div>
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center"><p className="text-2xl font-extrabold font-mono text-emerald-700">{sentReports.size}</p><p className="text-[11px] text-gray-400">{t("تم الإرسال", "Sent")}</p></div>
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center"><p className="text-2xl font-extrabold font-mono text-amber-600">{allReports.length - sentReports.size}</p><p className="text-[11px] text-gray-400">{t("لم تُرسَل بعد", "Not Sent Yet")}</p></div>
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center"><p className="text-2xl font-extrabold font-mono text-blue-700">{RESTAURANTS.length}</p><p className="text-[11px] text-gray-400">{t("مطعم مشترك", "Subscribed Restaurants")}</p></div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+              <p className="text-2xl font-extrabold font-mono text-gray-800">{allReports.length}</p>
+              <p className="text-[11px] text-gray-400">{t("إجمالي التقارير", "Total Reports")}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+              <p className="text-2xl font-extrabold font-mono text-blue-700">{RESTAURANTS.length}</p>
+              <p className="text-[11px] text-gray-400">{t("مطعم مشترك", "Subscribed Restaurants")}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
+              <p className="text-2xl font-extrabold font-mono text-gray-400">—</p>
+              <p className="text-[11px] text-gray-400">{t("سجلات التسليم (بانتظار استعلام الخادم)", "Delivery Records (Pending Server)")}</p>
+            </div>
           </div>
 
           {/* Core Reports */}
@@ -333,9 +341,8 @@ export function AdminReports({ }: PageProps) {
             </div>
             <div className="space-y-2">
               {coreReports.map(rep => {
-                const isSent = sentReports.has(rep.id);
                 return (
-                  <div key={rep.id} className={`bg-white rounded-xl border shadow-sm p-4 flex items-center gap-4 hover:shadow transition-shadow cursor-pointer ${isSent ? "border-emerald-100" : "border-gray-100"}`}
+                  <div key={rep.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-4 hover:shadow transition-shadow cursor-pointer"
                     onClick={() => { setActiveReport(rep.id); setStep(0); setUploaded(false); setUploadResult(null); }}>
                     <div className={`w-11 h-11 rounded-xl ${rep.bc} border ${rep.brd} flex items-center justify-center text-xl flex-shrink-0`}>{rep.icon}</div>
                     <div className="flex-1 min-w-0">
@@ -345,10 +352,9 @@ export function AdminReports({ }: PageProps) {
                     {/* T15.6 — generate a backend-computed report as a binary (no wizard). */}
                     <button onClick={(e) => { e.stopPropagation(); generateMut.mutate({ reportKey: rep.id, period: { from: periodFrom, to: periodTo }, format: "pdf" }); }} disabled={generateMut.isPending} title="PDF" className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 flex-shrink-0"><Download size={13} /></button>
                     <button onClick={(e) => { e.stopPropagation(); generateMut.mutate({ reportKey: rep.id, period: { from: periodFrom, to: periodTo }, format: "xlsx" }); }} disabled={generateMut.isPending} title="Excel" className="p-1.5 rounded-lg text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 flex-shrink-0"><FileText size={13} /></button>
-                    {isSent
-                      ? <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 flex-shrink-0">✓ {t("مُرسَل", "Sent")}</Badge>
-                      : <Badge className="bg-amber-50 text-amber-700 border border-amber-200 flex-shrink-0">⏳ {t("لم يُرسَل", "Not Sent")}</Badge>
-                    }
+                    <Badge className="bg-gray-50 text-gray-600 border border-gray-200 flex-shrink-0">
+                      {t("جاهز للإعداد", "Ready")}
+                    </Badge>
                     <ChevronDown size={14} className="text-gray-400 rotate-[-90deg] flex-shrink-0" />
                   </div>
                 );
@@ -364,9 +370,8 @@ export function AdminReports({ }: PageProps) {
             </div>
             <div className="space-y-2">
               {specializedReports.map(rep => {
-                const isSent = sentReports.has(rep.id);
                 return (
-                  <div key={rep.id} className={`bg-white rounded-xl border shadow-sm p-4 flex items-center gap-4 hover:shadow transition-shadow cursor-pointer ${isSent ? "border-emerald-100" : "border-gray-100"}`}
+                  <div key={rep.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-4 hover:shadow transition-shadow cursor-pointer"
                     onClick={() => { setActiveReport(rep.id); setStep(0); setUploaded(false); setUploadResult(null); }}>
                     <div className={`w-11 h-11 rounded-xl ${rep.bc} border ${rep.brd} flex items-center justify-center text-xl flex-shrink-0`}>{rep.icon}</div>
                     <div className="flex-1 min-w-0">
@@ -376,10 +381,9 @@ export function AdminReports({ }: PageProps) {
                     {/* T15.6 — generate a backend-computed report as a binary (no wizard). */}
                     <button onClick={(e) => { e.stopPropagation(); generateMut.mutate({ reportKey: rep.id, period: { from: periodFrom, to: periodTo }, format: "pdf" }); }} disabled={generateMut.isPending} title="PDF" className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 flex-shrink-0"><Download size={13} /></button>
                     <button onClick={(e) => { e.stopPropagation(); generateMut.mutate({ reportKey: rep.id, period: { from: periodFrom, to: periodTo }, format: "xlsx" }); }} disabled={generateMut.isPending} title="Excel" className="p-1.5 rounded-lg text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 flex-shrink-0"><FileText size={13} /></button>
-                    {isSent
-                      ? <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 flex-shrink-0">✓ {t("مُرسَل", "Sent")}</Badge>
-                      : <Badge className="bg-amber-50 text-amber-700 border border-amber-200 flex-shrink-0">⏳ {t("لم يُرسَل", "Not Sent")}</Badge>
-                    }
+                    <Badge className="bg-gray-50 text-gray-600 border border-gray-200 flex-shrink-0">
+                      {t("جاهز للإعداد", "Ready")}
+                    </Badge>
                     <ChevronDown size={14} className="text-gray-400 rotate-[-90deg] flex-shrink-0" />
                   </div>
                 );
@@ -419,7 +423,7 @@ export function AdminReports({ }: PageProps) {
                     <p className="text-xs text-emerald-600">✅ {t("أُرسل التقرير (مؤكد)", "Report Sent (Confirmed)")}</p>
                   </div>
                   <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-center">
-                    <p className="text-2xl font-extrabold font-mono text-red-700">{hasConfirmedData ? notSent : RESTAURANTS.length}</p>
+                    <p className="text-2xl font-extrabold font-mono text-red-700">{hasConfirmedData ? notSent : "—"}</p>
                     <p className="text-xs text-red-600">❌ {t("لم يُرسَل بعد", "Not Sent Yet")}</p>
                   </div>
                   <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
@@ -436,7 +440,9 @@ export function AdminReports({ }: PageProps) {
                   <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
                     <span>{selRep?.icon}</span>
                     <p className="font-bold text-sm text-gray-700">{selRep ? rL(selRep) : ""} — {PERIOD}</p>
-                    <Badge className={`mr-auto ${sentReports.has(statusFilter) ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{sentReports.has(statusFilter) ? t("مُرسَل", "Sent") : t("لم يُرسَل بعد", "Not Sent Yet")}</Badge>
+                    <Badge className={`mr-auto ${hasConfirmedData ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-600 border border-gray-200"}`}>
+                      {hasConfirmedData ? (sent > 0 ? t("مُرسَل (مؤكد)", "Sent (Confirmed)") : t("لم يُرسَل بعد", "Not Sent Yet")) : t("بانتظار سجلات التسليم من الخادم", "Pending Server Delivery Records")}
+                    </Badge>
                   </div>
                   <table className="w-full" dir={dir}>
                     <thead className="bg-gray-50/50">

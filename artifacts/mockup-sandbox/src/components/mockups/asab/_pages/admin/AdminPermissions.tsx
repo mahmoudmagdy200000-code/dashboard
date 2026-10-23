@@ -54,39 +54,18 @@ export function AdminPermissions({ }: PageProps) {
   const [cloneDone, setCloneDone] = useState(false);
 
   const handleClone = () => {
-    if (!cloneFrom || !cloneTo || cloneFrom === cloneTo) return;
-    const fromIdx = roles.indexOf(cloneFrom);
-    const toIdx = roles.indexOf(cloneTo);
-    if (fromIdx < 0 || toIdx < 0) return;
-    setMatrix(prev => prev.map(row => ({
-      ...row,
-      perms: row.perms.map((p, j) => j === toIdx ? row.perms[fromIdx] : p)
-    })));
-    setCloneDone(true);
-    setChanges(c => c + 3);
-    setTimeout(() => { setShowClone(false); setCloneDone(false); setCloneFrom(""); setCloneTo(""); }, 1000);
+    // PERM-00: Unapproved role cloning is gated (APPROVAL_REQUIRED). Prevent state modification.
+    return;
   };
 
-  const cyclePermission = (rowIdx: number, colIdx: number) => {
-    if (!editMode) return;
-    setMatrix(prev => {
-      const next = prev.map((r, i) => i !== rowIdx ? r : {
-        ...r,
-        perms: r.perms.map((p, j) => {
-          if (j !== colIdx) return p;
-          const idx = PERM_CYCLE.indexOf(p);
-          return PERM_CYCLE[(idx + 1) % PERM_CYCLE.length];
-        })
-      });
-      return next;
-    });
-    setChanges(c => c + 1);
-    setSaved(false);
+  const cyclePermission = (_rowIdx: number, _colIdx: number) => {
+    // PERM-00: Unapproved role permission cycling is gated (APPROVAL_REQUIRED). Prevent matrix mutation.
+    return;
   };
 
   const saveChanges = () => {
-    // Hook wraps the array in { matrix } itself — pass the bare array, not { matrix }
-    // (double-wrapping produced body { matrix: { matrix: [...] } } → 422).
+    // PERM-00: Unapproved role permission persistence is gated (APPROVAL_REQUIRED).
+    if (changes === 0) return;
     updatePermsMut.mutate(matrix as any, {
       onSuccess: () => {
         setSaved(true);
@@ -164,16 +143,17 @@ export function AdminPermissions({ }: PageProps) {
               </select>
             </div>
             <div className="mt-4">
-              <button onClick={handleClone} disabled={!cloneFrom || !cloneTo}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${cloneDone ? "bg-emerald-600 text-white" : cloneFrom && cloneTo ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
-                {cloneDone ? t("✓ تم النسخ", "✓ Cloned") : t("تطبيق النسخ", "Apply Clone")}
+              <button onClick={handleClone} disabled={true}
+                title={t("استنساخ وتعديل صلاحيات الأدوار غير معتمد ومقيد بحوكمة PERM-00 (APPROVAL_REQUIRED)", "Role permission cloning is gated under PERM-00 (APPROVAL_REQUIRED)")}
+                className="px-4 py-2 rounded-lg text-xs font-bold bg-gray-200 text-gray-400 cursor-not-allowed">
+                {t("تطبيق النسخ (APPROVAL_REQUIRED)", "Apply Clone (APPROVAL_REQUIRED)")}
               </button>
             </div>
             <div className="mt-4">
               <button onClick={() => setShowClone(false)} className="text-xs text-gray-500 hover:underline">{t("إلغاء", "Cancel")}</button>
             </div>
           </div>
-          <p className="text-[11px] text-blue-600 mt-2">⚠ {t("سيتم استبدال صلاحيات الدور الهدف بصلاحيات الدور المصدر", "Target role permissions will be replaced with source role permissions")}</p>
+          <p className="text-[11px] text-blue-600 mt-2">⚠ {t("استنساخ الصلاحيات مقيد بحوكمة PERM-00 ويتطلب موافقة إدارية صريحة", "Cloning permissions is gated under PERM-00 and requires explicit administrative approval")}</p>
         </div>
       )}
 
@@ -183,14 +163,14 @@ export function AdminPermissions({ }: PageProps) {
         {(Object.keys(permCls) as Permission[]).filter(p => p !== "none").map(p => (
           <span key={p} className={`text-[10px] px-2.5 py-1 rounded-full border font-semibold ${permCls[p]}`}>{permLabel[p]}</span>
         ))}
-        {editMode && <span className="text-[10px] px-2.5 py-1 rounded-full border bg-gray-50 text-gray-500 border-gray-200 font-semibold animate-pulse">{t("اضغط على الخلايا للتعديل ←", "← Click cells to change")}</span>}
+        {editMode && <span className="text-[10px] px-2.5 py-1 rounded-full border bg-amber-50 text-amber-700 border-amber-200 font-semibold">{t("الصلاحيات معتمدة مركزياً (PERM-00 · APPROVAL_REQUIRED)", "Permissions are canonically defined (PERM-00 · APPROVAL_REQUIRED)")}</span>}
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
         {editMode && (
-          <div className="px-4 py-2.5 bg-purple-50 border-b border-purple-100 flex items-center gap-2">
-            <Edit2 size={13} className="text-purple-600" />
-            <p className="text-xs text-purple-700 font-semibold">{t("وضع التعديل نشط — اضغط على أي خلية لتدوير الصلاحية (—→عرض→إدخال→مراجعة→اعتماد→نهائي)", "Edit mode active — click any cell to cycle permission (—→View→Enter→Review→Approve→Final)")}</p>
+          <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
+            <Edit2 size={13} className="text-amber-600" />
+            <p className="text-xs text-amber-800 font-semibold">{t("مصفوفة الصلاحيات معتمدة مركزياً بموجب PERM-00 — تعديل أو تدوير الصلاحيات مقيد ويتطلب اعتماداً صريحاً (APPROVAL_REQUIRED)", "Permissions matrix is canonically defined under PERM-00 — modifying or cycling permissions is gated (APPROVAL_REQUIRED)")}</p>
           </div>
         )}
         <table className="w-full text-xs" dir="rtl">
@@ -215,8 +195,9 @@ export function AdminPermissions({ }: PageProps) {
                   <td key={j} className="px-3 py-2.5 text-center">
                     <button
                       onClick={() => cyclePermission(i, j)}
-                      disabled={!editMode}
-                      className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full border text-[10px] font-semibold min-w-[56px] transition-all ${permCls[p]} ${editMode ? "cursor-pointer hover:scale-110 hover:shadow-sm active:scale-95" : "cursor-default"}`}>
+                      disabled={true}
+                      title={t("تعديل الصلاحيات مقيد بحوكمة PERM-00 (APPROVAL_REQUIRED)", "Permission modification is gated under PERM-00 (APPROVAL_REQUIRED)")}
+                      className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full border text-[10px] font-semibold min-w-[56px] transition-all ${permCls[p]} cursor-not-allowed opacity-90`}>
                       {permLabel[p]}
                     </button>
                   </td>
@@ -230,7 +211,7 @@ export function AdminPermissions({ }: PageProps) {
       {editMode && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 text-amber-700 text-xs">
           <span className="flex-shrink-0 mt-0.5">ℹ️</span>
-          <p>{t("اضغط على أي خلية لتدوير مستوى الصلاحية. تسري التغييرات فور حفظها. صلاحيات", "Click any cell to cycle the permission level. Changes take effect upon saving. It is not recommended to reduce")} <strong>{t("الأدمن", "Admin")}</strong> {t("لا يُنصح بتخفيضها.", "permissions.")}</p>
+          <p>{t("مصفوفة الصلاحيات معتمدة مركزياً بموجب PERM-00. تعديل أو استنساخ حدود الصلاحيات الأساسية يتطلب اعتماداً صريحاً (APPROVAL_REQUIRED).", "Permissions matrix is canonically defined under PERM-00. Modification or cloning of core role boundaries requires explicit governance approval (APPROVAL_REQUIRED).")}</p>
         </div>
       )}
 
