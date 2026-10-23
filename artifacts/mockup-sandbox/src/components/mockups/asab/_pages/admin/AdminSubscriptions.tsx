@@ -38,7 +38,7 @@ function SubEditModal(props: {
   onClose: () => void;
 }) {
   const { edit, packages, moduleOptions, changePlan, addRestaurant, saveModules, pending, onClose } = props;
-  const { t, lang } = useLang();
+  const { t, lang, dir } = useLang();
   const { sub } = edit;
   const [plan, setPlan] = useState<string>(() => {
     if (packages.some((p) => p.code === sub.plan)) return sub.plan;
@@ -64,11 +64,11 @@ function SubEditModal(props: {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={(e) => e.stopPropagation()} dir="rtl">
+    <div role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} onKeyDown={e => { if (e.key === "Escape") onClose(); }} className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={(e) => e.stopPropagation()} dir={dir}>
         <div className="px-5 py-4 bg-gradient-to-l from-purple-700 to-purple-600 text-white flex items-center justify-between">
           <h3 className="font-bold">{title} · {sub.name}</h3>
-          <button onClick={onClose} className="text-purple-200 hover:text-white"><X size={18} /></button>
+          <button aria-label={t("إغلاق", "Close")} onClick={onClose} className="text-purple-200 hover:text-white"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-3">
           {edit.kind === "plan" && (
@@ -216,14 +216,33 @@ export function AdminSubscriptions({ }: PageProps) {
   const statusBadgeCls = { active: "bg-emerald-50 text-emerald-700", warning: "bg-amber-50 text-amber-700", danger: "bg-red-50 text-red-700", expired: "bg-red-100 text-red-800", none: "bg-gray-100 text-gray-600" };
   const statusLabel = { active: t("اشتراك نشط", "Active Subscription"), warning: t("ينتهي قريباً", "Expiring Soon"), danger: t("إنذار انتهاء", "Expiry Alert"), expired: t("منتهي الاشتراك", "Subscription Expired"), none: t("بدون اشتراك", "No subscription") };
   const renew = (id: string) => {
-    setSubs(p => p.map(s => s.id === id ? { ...s, subStatus: "active" as const, daysLeft: 365, expires: "14 مارس 2027" } : s) as typeof subs);
-    renewMut.mutate({ id });
+    renewMut.mutate({ id }, {
+      onSuccess: (res: any) => {
+        setSubs(p => p.map(s => s.id === id ? {
+          ...s,
+          subStatus: "active" as const,
+          daysLeft: res?.daysLeft ?? 365,
+          expires: res?.expiresAt ?? res?.expires ?? s.expires,
+        } : s));
+      }
+    });
   };
   // Side-effect bindings — call when status toggles or plan is changed.
-  const onSuspendSub = (id: string) => suspendSubMut.mutate(id);
-  const onActivateSub = (id: string) => activateSubMut.mutate(id);
+  const onSuspendSub = (id: string) => {
+    suspendSubMut.mutate(id, {
+      onSuccess: () => {
+        setSubs(p => p.map(s => s.id === id ? { ...s, subStatus: "danger" as const } : s));
+      }
+    });
+  };
+  const onActivateSub = (id: string) => {
+    activateSubMut.mutate(id, {
+      onSuccess: () => {
+        setSubs(p => p.map(s => s.id === id ? { ...s, subStatus: "active" as const } : s));
+      }
+    });
+  };
   const onChangePlan = (id: string, plan: string) => changePlanMut.mutate({ id, plan });
-  void onSuspendSub; void onActivateSub; void onChangePlan;
 
   const totalRestaurants = subs.reduce((s, b) => s + (b.restaurants?.length ?? 0), 0);
   const totalBranches = subs.reduce((s, b) => s + (b.restaurants ?? []).reduce((ss, r) => ss + (r.branches?.length ?? 0), 0), 0);
@@ -239,11 +258,11 @@ export function AdminSubscriptions({ }: PageProps) {
       </div>
 
       {showAddSub && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowAddSub(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()} dir="rtl">
+        <div role="dialog" aria-modal="true" aria-label={t("اشتراك جديد", "New Subscription")} tabIndex={-1} onKeyDown={e => { if (e.key === "Escape") setShowAddSub(false); }} className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowAddSub(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()} dir={dir}>
             <div className="px-5 py-4 bg-gradient-to-l from-purple-700 to-purple-600 text-white flex items-center justify-between">
               <h3 className="font-bold">{t("اشتراك جديد", "New Subscription")}</h3>
-              <button onClick={() => setShowAddSub(false)} className="text-purple-200 hover:text-white"><X size={18} /></button>
+              <button aria-label={t("إغلاق", "Close")} onClick={() => setShowAddSub(false)} className="text-purple-200 hover:text-white"><X size={18} /></button>
             </div>
             <div className="p-5 space-y-3">
               <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("العلامة التجارية", "Brand")}</label>
@@ -325,7 +344,16 @@ export function AdminSubscriptions({ }: PageProps) {
 
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div className="flex items-center gap-1.5">
-                    <button onClick={() => { const next = !autoReminders[sub.id]; setAutoReminders(p => ({ ...p, [sub.id]: next })); toggleReminderMut.mutate({ id: sub.id, enabled: next }); }}
+                    <button onClick={() => {
+                      const prev = autoReminders[sub.id];
+                      const next = !prev;
+                      setAutoReminders(p => ({ ...p, [sub.id]: next }));
+                      toggleReminderMut.mutate({ id: sub.id, enabled: next }, {
+                        onError: () => {
+                          setAutoReminders(p => ({ ...p, [sub.id]: prev }));
+                        }
+                      });
+                    }}
                       className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${autoReminders[sub.id] ? "bg-purple-600" : "bg-gray-200"}`}>
                       <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${autoReminders[sub.id] ? "translate-x-4" : "translate-x-0"}`} />
                     </button>
@@ -386,6 +414,13 @@ export function AdminSubscriptions({ }: PageProps) {
                     <Btn size="sm" variant="ghost" onClick={() => setSubEdit({ kind: "restaurant", sub })} disabled={!sub.brandId}>{t("إضافة مطعم", "Add Restaurant")}</Btn>
                     {sub.hasSub && (
                       <Btn size="sm" variant="ghost" onClick={() => setSubEdit({ kind: "modules", sub })}>{t("تعديل الموديولات", "Edit Modules")}</Btn>
+                    )}
+                    {sub.hasSub && (
+                      sub.subStatus === "active" ? (
+                        <Btn size="sm" variant="ghost" onClick={() => onSuspendSub(sub.id)}>{t("إيقاف الاشتراك", "Suspend Subscription")}</Btn>
+                      ) : (
+                        <Btn size="sm" variant="ghost" onClick={() => onActivateSub(sub.id)}>{t("تفعيل الاشتراك", "Activate Subscription")}</Btn>
+                      )
                     )}
                   </div>
                 </div>

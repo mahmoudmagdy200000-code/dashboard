@@ -14,7 +14,7 @@ import { Plus, Check, X } from "lucide-react";
 import type { PageProps } from "../../_shared/types";
 
 export function AdminPackages({ }: PageProps) {
-  const { t } = useLang();
+  const { t, dir } = useLang();
   const { data: packages = [], isLoading, isError } = useAdminPackages();
   const createMut = useCreateAdminPackage();
   const updateMut = useUpdateAdminPackage();
@@ -48,11 +48,11 @@ export function AdminPackages({ }: PageProps) {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("الباقات", "Packages")}</h2>
-          <p className="text-gray-400 text-sm mt-0.5">{t("باقات الاشتراك المتاحة عند إنشاء العلامات التجارية", "Subscription packages offered when creating brands")}</p>
+          <p className="text-gray-400 text-sm mt-0.5">{t("باقات الاشتراك المتاحة عند إنشاء العلامات التجارية (الأسعار استرشادية لكتالوج الباقات وفق SUB-01)", "Subscription packages offered when creating brands (reference catalog prices per SUB-01)")}</p>
         </div>
         <Btn variant="primary" onClick={openNew}><Plus size={14} /> {t("باقة جديدة", "New Package")}</Btn>
       </div>
@@ -69,7 +69,7 @@ export function AdminPackages({ }: PageProps) {
         ) : packages.length === 0 ? (
           <div className="p-8 text-center text-gray-400 text-sm">{t("لا توجد باقات بعد.", "No packages yet.")}</div>
         ) : (
-          <table className="w-full" dir="rtl">
+          <table className="w-full" dir={dir}>
             <thead className="bg-gray-50"><tr className="text-xs text-gray-500 font-semibold">
               <th className="px-4 py-3 text-right">{t("الكود", "Code")}</th>
               <th className="px-4 py-3 text-right">{t("الاسم", "Name")}</th>

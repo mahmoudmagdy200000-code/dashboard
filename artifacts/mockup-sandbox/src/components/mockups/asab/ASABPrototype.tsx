@@ -620,7 +620,7 @@ const NAV_CONFIG: Record<RoleId, NavEntry[]> = {
     { section: "الإدارة" },
     { id: "admin-users", label: "المستخدمون", icon: <Users size={16} /> },
     { id: "admin-restaurants", label: "المطاعم والفروع", icon: <Home size={16} /> },
-    // { id:"admin-branch-requests",label:"طلبات الفروع",      icon:<Building2 size={16}/> },  // مخفي مؤقتاً من السايد بار
+    { id: "admin-branch-requests", label: "طلبات الفروع", icon: <Building2 size={16} /> },
 
     { id: "admin-subscriptions", label: "الاشتراكات", icon: <Shield size={16} />, badgeColor: "yellow" as const },
     { id: "admin-packages", label: "الباقات", icon: <Package size={16} /> },
@@ -1565,7 +1565,6 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
         <AddUserModal
           onAdd={u => {
             const roleKey = ({ "محاسب": "accountant", "رئيس حسابات": "head", "مدير فرع": "branch", "مدير مشتريات": "procurement", "مورد": "supplier", "أدمن": "admin" } as Record<string, string>)[u.role] ?? u.role;
-            setAdminUsers(prev => [...prev, u]);
             // Drop empty scope arrays and `scope` itself — the backend derives scope,
             // and `restaurants` is now `prohibited` on this endpoint (422).
             const { restaurants: _r, scope: _s, ...rest } = u as any;
@@ -1576,24 +1575,25 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
             if (!body.reportsTo) delete body.reportsTo;
             createAdminUserMut.mutate(body, {
               onSuccess: (created: any) => {
+                setAdminUsers(prev => [...prev, created ? { ...u, ...created } : u]);
+                setModal(null);
                 // Passwords are emailed by default now; false = the user got nothing.
                 if (created?.emailSent === false) {
                   toast.warning("تم إنشاء المستخدم، لكن لم يصل بريد كلمة المرور — استخدم «إعادة تعيين كلمة المرور».");
                 }
               },
             });
-            setModal(null);
           }}
           onClose={() => setModal(null)} />
       )}
 
       {/* Contact Modal */}
       {state.modal === "contact" && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-[380px]" dir={dir}>
+        <div role="dialog" aria-modal="true" aria-label={tL("التواصل مع الموظف", "Contact Employee")} tabIndex={-1} onKeyDown={e => { if (e.key === "Escape") setModal(null); }} className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setModal(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-[380px]" onClick={e => e.stopPropagation()} dir={dir}>
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <h3 className="font-bold text-gray-800">{tL("التواصل مع الموظف", "Contact Employee")}</h3>
-              <button onClick={() => setModal(null)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+              <button aria-label={tL("إغلاق", "Close")} onClick={() => setModal(null)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
             </div>
             <div className="p-5">
               <div className="text-center mb-5">

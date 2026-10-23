@@ -48,9 +48,13 @@ export function AdminERP({ }: PageProps) {
           <h2 className="text-xl font-bold text-gray-800">{t("التصدير لـ ERP — كل الشركات", "ERP Export — All Companies")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{t("متابعة دفعات التصدير عبر جميع الشركات", "Cross-company export batches")}</p>
         </div>
-        <button onClick={() => exportMut.mutate({ allReady: true })} disabled={exportMut.isPending}
+        <button onClick={() => {
+          if (window.confirm(t("تأكيد إنشاء وتصدير ملفات دفعات ERP لجميع الشركات الجاهزة؟ وفق قاعدة INTG-01 يتم تصدير ملفات دون مزامنة مباشرة خارجية في هذه المرحلة.", "Confirm generating ERP export batch files for all ready companies? Per INTG-01, this generates export files without live external sync."))) {
+            exportMut.mutate({ allReady: true });
+          }
+        }} disabled={exportMut.isPending}
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 disabled:opacity-50">
-          <ChevronsRight size={13} /> {t("تصدير كل الجاهز", "Export all ready")}
+          <ChevronsRight size={13} /> {exportMut.isPending ? t("جارٍ التصدير...", "Exporting...") : t("تصدير كل الجاهز (ملفات)", "Export all ready (Files)")}
         </button>
       </div>
 

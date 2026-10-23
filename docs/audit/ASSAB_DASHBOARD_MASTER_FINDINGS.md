@@ -10,7 +10,8 @@
 > **Phase 1B Remediation Commit SHA:** `f878f5a`
 > **Phase 1C Remediation Commit SHA:** `b00971b`
 > **Phase 1D Remediation Commit SHA:** `4361ebf`
-> **Phase 1E Remediation Scope:** `PROC-F01` to `PROC-F25`
+> **Phase 1E Remediation Commit SHA:** `24b8f7f05c7d33a5ff684348dab84df0d319d075`
+> **Phase 1F Remediation Scope:** `ADM-F01` to `ADM-F37`
 > **Last Synchronized Date:** 2026-10-23
 
 ---
@@ -66,17 +67,17 @@
 
 | المقياس | العدد | النسبة |
 | :--- | :---: | :---: |
-| **إجمالي المشكلات المسجلة في التدقيق (Original Audit Findings)** | **161** (24 في 1A + 39 في 1B + 47 في 1C + 26 في 1D + 25 في 1E) | — |
+| **إجمالي المشكلات المسجلة في التدقيق (Original Audit Findings)** | **198** (24 في 1A + 39 في 1B + 47 في 1C + 26 في 1D + 25 في 1E + 37 في 1F) | — |
 | **تصحيحات مراجعة المرحلة 1A (Review Corrections)** | **5** | — |
-| **إجمالي بنود السجل المتابعة (Total Tracked Items)** | **166** | 100% |
-| **تم الإصلاح والتحقق الآلي (Fixed & Verified)** | **152** (25 في 1A + 34 في 1B + 46 في 1C + 22 في 1D + 25 في 1E) | 91.6% |
-| **معلقة لقرار / موافقة معمارية (Approval Required / Gated)** | **8** (4 في 1A + 4 في 1B لـ PR #1) | 4.8% |
-| **محجوبة بعيوب خادم قيد الباك إند (Backend Blocked / Proposal)** | **6** (HA-F39, ACC-F32, 1D-BRM-012, 1D-BRM-025, 1D-BRM-026) | 3.6% |
+| **إجمالي بنود السجل المتابعة (Total Tracked Items)** | **203** | 100% |
+| **تم الإصلاح والتحقق الآلي (Fixed & Verified)** | **189** (25 في 1A + 34 في 1B + 46 في 1C + 22 في 1D + 25 في 1E + 37 في 1F) | 93.1% |
+| **معلقة لقرار / موافقة معمارية (Approval Required / Gated)** | **8** (4 في 1A + 4 في 1B لـ PR #1) | 3.9% |
+| **محجوبة بعيوب خادم قيد الباك إند (Backend Blocked / Proposal)** | **6** (HA-F39, ACC-F32, 1D-BRM-012, 1D-BRM-025, 1D-BRM-026) | 3.0% |
 | **مفتوحة بلا إصلاح (Open)** | **0** | 0.0% |
 | **منفذة دون فحص (Implemented Unverified)** | **0** | 0.0% |
 | **محجوبة بموانع (Blocked)** | **0** | 0.0% |
 | **فاشلة (Failed)** | **0** | 0.0% |
-| **التحقق التشغيلي الحي (Runtime Live Staging)** | **165 NOT_RUN / 1 PENDING_REVIEW** | بانتظار الاعتماد المستقل وتزويد بيانات Staging الحي |
+| **التحقق التشغيلي الحي (Runtime Live Staging)** | **202 NOT_RUN / 1 PENDING_REVIEW** | بانتظار الاعتماد المستقل وتزويد بيانات Staging الحي |
 
 ---
 ## 4. Phase 1A — Company Admin Master Summary Table
@@ -2208,28 +2209,72 @@
 
 | ID | الأولوية | الموديول / الصفحة | عنوان المشكلة المعتمد | الحالة البرمجية | الفحص الحي | الملفات المتأثرة | الـ Commit SHA |
 | :---: | :---: | :--- | :--- | :---: | :---: | :--- | :---: |
-| **PROC-F01** | P2 | Overview / New Orders | دقة الهللات (`totalHalalas/100`) وفصل المرسل عن المسلّم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F02** | P2 | Procurement API | عزل استعلامات المشتريات بين المنصة والمستأجر | `FIXED_AND_VERIFIED` | `NOT_RUN` | `procurement.ts`, `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F03** | P2 | New Orders | إنشاء أوامر مسعرة (`unitPriceHalalas` و `totalHalalas`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F04** | P2 | New Orders | تعديل أوامر الشراء بالملاحظات ومعرف صالح | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F05** | P2 | New Orders | اشتراط كمية موجبة صريحة (`qty > 0`) وسعر صالح | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F06** | P2 | Create / Group Send | منع الأوامر المكررة وحماية الإرسال المتزامن (`isPending`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F07** | P2 | Grouped Orders | مطابقة حقول الأوامر المجمعة والفروع (`orderCount`/`branches`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F08** | P2 | Grouped Orders | إرسال الأوامر المجمعة بمعرف المورد والمجموعة الصحيح | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F09** | P2 | Grouped Orders | التسمية النزيهة لإجراء إعداد رابط واتساب دون ادعاء استلام خارجي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F10** | P2 | Sent Orders | استخدام `sentAt` و `inTransit` و `eta` وعزل قيد النقل عن التسليم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F11** | P2 | Lifecycle | ربط إجراءات دورة الشراء (اعتماد، رفض، تعديل) برمجياً | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F12** | P2 | Suppliers | احتساب إجمالي إنفاق المورد من بيانات الخادم (`lifetimeSpend`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F13** | P2 | Suppliers | معايرة تقييم المورد (0-50 إلى 0-5 نجوم) وبيانات الاتصال | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F14** | P2 | Suppliers (PUR-04) | احترام اختصاص المحاسب بإضافة الموردين وعرض إشعار رسمي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F15** | P2 | Items | اشتراط الوحدة والسعر الموجب (`price > 0`) عند إضافة الصنف | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F16** | P2 | Items | حفظ دقة الهللات بدون بتر وربط عدد الموردين الفعلي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F17** | P2 | Items / VAT (PUR-05) | إشعار الأسعار غير شاملة الضريبة وفق PUR-05 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F18** | P2 | Reports (INTG-01) | تصدير التقارير بصيغتي PDF و Excel/XLSX | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F19** | P2 | Shared Security | تطهير كاش استعلامات المشتريات عند تبديل الدور | `FIXED_AND_VERIFIED` | `NOT_RUN` | `roleAccess.ts` | Pending Commit 1 |
-| **PROC-F20** | P2 | Pagination | دعم البيانات المقسمة لصفحات والفلترة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F21** | P2 | Accessibility | نوافذ حوارية قابلة للوصول مع زر Escape و `htmlFor` | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F22** | P2 | Mobile / Responsive | تخطيط متجاوب لشبكات وكروت المشتريات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F23** | P2 | Cross-Module | توثيق حدود مسؤوليات الاستلام والفروقات المحاسبية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
-| **PROC-F24** | P2 | API Persistence | مطابقة وتمرير بدائل الوصف والملاحظات (`description`/`notes`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `procurement.ts` | Pending Commit 1 |
-| **PROC-F25** | P2 | Status Semantics | تمييز دلالات الشارات (مرسل، معتمد، قيد النقل، مسلّم، مرفوض) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F01** | P2 | Overview / New Orders | دقة الهللات (`totalHalalas/100`) وفصل المرسل عن المسلّم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F02** | P2 | Procurement API | عزل استعلامات المشتريات بين المنصة والمستأجر | `FIXED_AND_VERIFIED` | `NOT_RUN` | `procurement.ts`, `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F03** | P2 | New Orders | إنشاء أوامر مسعرة (`unitPriceHalalas` و `totalHalalas`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F04** | P2 | New Orders | تعديل أوامر الشراء بالملاحظات ومعرف صالح | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F05** | P2 | New Orders | اشتراط كمية موجبة صريحة (`qty > 0`) وسعر صالح | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F06** | P2 | Create / Group Send | منع الأوامر المكررة وحماية الإرسال المتزامن (`isPending`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F07** | P2 | Grouped Orders | مطابقة حقول الأوامر المجمعة والفروع (`orderCount`/`branches`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F08** | P2 | Grouped Orders | إرسال الأوامر المجمعة بمعرف المورد والمجموعة الصحيح | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F09** | P2 | Grouped Orders | التسمية النزيهة لإجراء إعداد رابط واتساب دون ادعاء استلام خارجي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F10** | P2 | Sent Orders | استخدام `sentAt` و `inTransit` و `eta` وعزل قيد النقل عن التسليم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F11** | P2 | Lifecycle | ربط إجراءات دورة الشراء (اعتماد، رفض، تعديل) برمجياً | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F12** | P2 | Suppliers | احتساب إجمالي إنفاق المورد من بيانات الخادم (`lifetimeSpend`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F13** | P2 | Suppliers | معايرة تقييم المورد (0-50 إلى 0-5 نجوم) وبيانات الاتصال | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F14** | P2 | Suppliers (PUR-04) | احترام اختصاص المحاسب بإضافة الموردين وعرض إشعار رسمي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F15** | P2 | Items | اشتراط الوحدة والسعر الموجب (`price > 0`) عند إضافة الصنف | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F16** | P2 | Items | حفظ دقة الهللات بدون بتر وربط عدد الموردين الفعلي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F17** | P2 | Items / VAT (PUR-05) | إشعار الأسعار غير شاملة الضريبة وفق PUR-05 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F18** | P2 | Reports (INTG-01) | تصدير التقارير بصيغتي PDF و Excel/XLSX | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F19** | P2 | Shared Security | تطهير كاش استعلامات المشتريات عند تبديل الدور | `FIXED_AND_VERIFIED` | `NOT_RUN` | `roleAccess.ts` | 24b8f7f |
+| **PROC-F20** | P2 | Pagination | دعم البيانات المقسمة لصفحات والفلترة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F21** | P2 | Accessibility | نوافذ حوارية قابلة للوصول مع زر Escape و `htmlFor` | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F22** | P2 | Mobile / Responsive | تخطيط متجاوب لشبكات وكروت المشتريات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F23** | P2 | Cross-Module | توثيق حدود مسؤوليات الاستلام والفروقات المحاسبية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+| **PROC-F24** | P2 | API Persistence | مطابقة وتمرير بدائل الوصف والملاحظات (`description`/`notes`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `procurement.ts` | 24b8f7f |
+| **PROC-F25** | P2 | Status Semantics | تمييز دلالات الشارات (مرسل، معتمد، قيد النقل، مسلّم، مرفوض) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 24b8f7f |
+
+---
+
+## 9. Phase 1F — Platform Admin Master Summary Table
+
+| ID | الأولوية | الموديول / الصفحة | عنوان المشكلة المعتمد | الحالة البرمجية | الفحص الحي | الملفات المتأثرة | الـ Commit SHA |
+| :---: | :---: | :--- | :--- | :---: | :---: | :--- | :---: |
+| **ADM-F01** | P2 | Security / Admin Grant | قصر صلاحيات الأدمن الشاملة على التخويل الصريح ومنع التسرب | `FIXED_AND_VERIFIED` | `NOT_RUN` | `roleAccess.ts` | Pending Commit 2 |
+| **ADM-F02** | P2 | Shared Shell | بحث المنصة المشترك وتأمين استدعاءات البحث للأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | Pending Commit 2 |
+| **ADM-F03** | P2 | Shared Shell | إشعارات الأدمن واستخدام مسارات تفضيلات المنصة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | Pending Commit 2 |
+| **ADM-F04** | P2 | Users | إضافة المستخدم لقائمة العرض فقط بعد نجاح الخادم المؤكد | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | Pending Commit 2 |
+| **ADM-F05** | P2 | Users | ربط زر "تعديل الصلاحيات" بمصفوفة الصلاحيات برمجياً | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | Pending Commit 2 |
+| **ADM-F06** | P2 | Users | قصر حذف المستخدم من الواجهة على تأكيد نجاح خادم API | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | Pending Commit 2 |
+| **ADM-F07** | P2 | Users | دعم التراجع التلقائي (Rollback) عند فشل تعيين المحاسبين | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | Pending Commit 2 |
+| **ADM-F08** | P2 | Users | مطابقة مفاتيح الموديولات المعتمدة مع المعايير البرمجية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | Pending Commit 2 |
+| **ADM-F09** | P2 | Users | عزل مستأجري التعيينات المتعددة وفق التسلسل الهرمي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | Pending Commit 2 |
+| **ADM-F10** | P2 | Restaurants & Branches | دعم الاستجابة المسطحة للعلامات دون حجب الهيكل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminRestaurants.tsx` | Pending Commit 2 |
+| **ADM-F11** | P2 | Restaurants & Branches | مؤشرات حالة الرفع وفق الاستجابة المستمرة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminRestaurants.tsx` | Pending Commit 2 |
+| **ADM-F12** | P2 | Restaurants & Branches | تعيين العلامة الافتراضية الأولى ديناميكياً من الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminRestaurants.tsx` | Pending Commit 2 |
+| **ADM-F13** | P2 | Branch Requests | إظهار وإتاحة صفحة طلبات الفروع بالقائمة الجانبية للأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | Pending Commit 2 |
+| **ADM-F14** | P2 | Subscriptions | تجديد الاشتراك دون تواريخ ثابتة واعتماد استجابة الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSubscriptions.tsx` | Pending Commit 2 |
+| **ADM-F15** | P2 | Subscriptions | دعم التراجع التلقائي عند فشل تبديل التذكير الآلي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSubscriptions.tsx` | Pending Commit 2 |
+| **ADM-F16** | P2 | Subscriptions | ربط أزرار إيقاف وتفعيل الاشتراك في كروت الاشتراكات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSubscriptions.tsx` | Pending Commit 2 |
+| **ADM-F17** | P2 | Company Subscriptions | قصر تغيير حالة وباقة اشتراك الشركة على تأكيد الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminCompanies.tsx` | Pending Commit 2 |
+| **ADM-F18** | P2 | Company Subscriptions | وسم الإيراد الشهري كتقدير لكتالوج الباقات وفق SUB-01 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminCompanies.tsx` | Pending Commit 2 |
+| **ADM-F19** | P3 | Packages | وسم أسعار الباقات كبيانات استرشادية لكتالوج الباقات (SUB-01) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPackages.tsx` | Pending Commit 2 |
+| **ADM-F20** | P2 | Permissions | استعادة مصفوفة الصلاحيات الأصلية بالكامل عند الإلغاء | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPermissions.tsx` | Pending Commit 2 |
+| **ADM-F21** | P2 | Permissions | تأكيد حفظ التغييرات فقط بعد نجاح تحديث الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPermissions.tsx` | Pending Commit 2 |
+| **ADM-F22** | P2 | Permissions | استنساخ الأدوار وفق عقد الصلاحيات المعتمد | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPermissions.tsx` | Pending Commit 2 |
+| **ADM-F23** | P2 | Permissions | مواءمة دورة انتقال الصلاحيات ومحددات PERM-00 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPermissions.tsx` | Pending Commit 2 |
+| **ADM-F24** | P2 | Reports Manager | حظر توليد أرقام وأرباح مالية مصطنعة عند غياب المعاينة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx` | Pending Commit 2 |
+| **ADM-F25** | P2 | Reports Manager | التحقق من خطوات معالج التقرير قبل استدعاء الإرسال | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx` | Pending Commit 2 |
+| **ADM-F26** | P2 | Reports Manager | حصر حالات استلام التقرير على السجلات المؤكدة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx` | Pending Commit 2 |
+| **ADM-F27** | P2 | Activity Log | مطابقة فلترة التواريخ بالزمن المعياري واليوم الحقيقي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminAudit.tsx` | Pending Commit 2 |
+| **ADM-F28** | P2 | Activity Log | مطابقة نطاق وتصفية سجل النشاطات الكامل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminAudit.tsx` | Pending Commit 2 |
+| **ADM-F29** | P2 | ERP Export | طلب تأكيد المستخدم قبل تصدير ملفات ERP (قاعدة INTG-01) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminERP.tsx` | Pending Commit 2 |
+| **ADM-F30** | P2 | ERP Export | التسمية النزيهة لتوليد ملفات التصدير دون ادعاء ربط خارجي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminERP.tsx` | Pending Commit 2 |
+| **ADM-F31** | P2 | System Settings | إشعار تسجيل الإعدادات كتفضيلات تخضع لتدقيق الخادم المستقل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSettings.tsx` | Pending Commit 2 |
+| **ADM-F32** | P3 | System Settings | الحفاظ على عزل مسارات المصادقة المعقدة (SSO/2FA) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSettings.tsx` | Pending Commit 2 |
+| **ADM-F33** | P2 | Mobile / Shell | تجاوب القائمة الجانبية والشاشات مع الشاشات الضيقة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | Pending Commit 2 |
+| **ADM-F34** | P2 | Accessibility | دعم سمات الحوارات ARIA وإغلاق Escape بنوافذ الأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx`, `AdminSubscriptions.tsx` | Pending Commit 2 |
+| **ADM-F35** | P3 | Localization | استخدام اتجاه النصوص الديناميكي dir={dir} بجداول الأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx`, `AdminPackages.tsx`, `AdminAudit.tsx` | Pending Commit 2 |
+| **ADM-F36** | P3 | Architecture | عزل بيانات النماذج المستقلة عن مسار تشغيل لوحة التحكم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminDashboard.tsx` | Pending Commit 2 |
+| **ADM-F37** | P2 | Policy | حظر منح الأدمن صلاحيات اعتماد العمليات المالية خارج المصفوفة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | Pending Commit 2 |

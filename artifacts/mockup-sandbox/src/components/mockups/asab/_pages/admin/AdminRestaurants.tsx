@@ -126,12 +126,15 @@ export function AdminRestaurants({ }: PageProps) {
   const apiBrands = brandsApi as any;
   // Drive entirely from GET /admin/brands. When the API returns brands with
   // nested restaurants/branches we render the full tree; otherwise we render
-  // whatever brands came back (flat) — never static mock data.
-  const apiHasNesting = Array.isArray(apiBrands)
-    && apiBrands.length > 0
-    && Array.isArray(apiBrands[0]?.restaurants);
-  const BRANDS = (apiHasNesting
-    ? apiBrands.map((b: any) => ({ ...b, restaurants: (b.restaurants ?? []).map((r: any) => ({ ...r, branches: r.branches ?? [] })) }))
+  // whatever brands came back (flat) — never hiding brands or blanking the structure.
+  const BRANDS = (Array.isArray(apiBrands)
+    ? apiBrands.map((b: any) => ({
+        ...b,
+        restaurants: (Array.isArray(b.restaurants) ? b.restaurants : []).map((r: any) => ({
+          ...r,
+          branches: Array.isArray(r.branches) ? r.branches : [],
+        })),
+      }))
     : []) as typeof BRANDS_DATA;
   const { t, dir } = useLang();
   const [expandedBrand, setExpandedBrand] = useState<string | null>("reem");
@@ -169,12 +172,12 @@ export function AdminRestaurants({ }: PageProps) {
   const [uploadRestFilter, setUploadRestFilter] = useState("");
   const [uploadBrandFilter, setUploadBrandFilter] = useState("");
   // The seeded default id ("reem") rarely matches a real API brand — once brands
-  // load, point the upload tab at the first real brand so it doesn't white-screen
-  // on an undefined selBrand.
+  // load, point the upload and expanded tabs at the first real brand.
   useEffect(() => {
     if (BRANDS.length && !BRANDS.some(b => b.id === uploadBrand)) setUploadBrand(BRANDS[0].id);
+    if (BRANDS.length && !BRANDS.some(b => b.id === expandedBrand)) setExpandedBrand(BRANDS[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brandsApi]);
+  }, [brandsApi, BRANDS.length]);
 
   // ── Real upload wiring (the tab was entirely local booleans before) ──────────
   const uploadBrandMut = useAdminUploadBrand();

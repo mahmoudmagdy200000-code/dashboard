@@ -189,14 +189,20 @@ export function AdminReports({ }: PageProps) {
                 <p className="font-bold">{selectedReport.icon} {rL(selectedReport)} — {PERIOD}</p>
                 <p className="text-purple-200 text-xs mt-0.5">{t("جميع المطاعم المشتركة", "All subscribed restaurants")} · {RESTAURANTS.length} {t("مطاعم", "restaurants")}</p>
               </div>
-              <table className="w-full" dir="rtl"><tbody className="divide-y divide-gray-200">
-                {(((previewApi?.rows && previewApi.rows.length > 0) ? previewApi.rows : (previewRows[activeReport] || previewRows["pl"])) as any[]).map((row, i) => (
-                  <tr key={i} className={row.header ? "bg-gray-100" : "bg-white"}>
-                    <td className={`px-5 py-2.5 text-sm ${row.header ? "font-bold text-gray-800" : "text-gray-600"}`}>{row.label}</td>
-                    <td className={`px-5 py-2.5 text-left font-mono text-sm ${row.type === "profit" ? "text-emerald-700 font-bold" : row.type === "expense" ? "text-red-600" : "text-gray-800"}`} dir="ltr">{row.value}</td>
-                  </tr>
-                ))}
-              </tbody></table>
+              {previewApi?.rows && previewApi.rows.length > 0 ? (
+                <table className="w-full" dir={dir}><tbody className="divide-y divide-gray-200">
+                  {previewApi.rows.map((row: any, i: number) => (
+                    <tr key={i} className={row.header ? "bg-gray-100" : "bg-white"}>
+                      <td className={`px-5 py-2.5 text-sm ${row.header ? "font-bold text-gray-800" : "text-gray-600"}`}>{row.label}</td>
+                      <td className={`px-5 py-2.5 text-left font-mono text-sm ${row.type === "profit" ? "text-emerald-700 font-bold" : row.type === "expense" ? "text-red-600" : "text-gray-800"}`} dir="ltr">{row.value}</td>
+                    </tr>
+                  ))}
+                </tbody></table>
+              ) : (
+                <div className="p-8 text-center text-gray-400 text-sm">
+                  {t("لا توجد بيانات معاينة معتمدة من الخادم لهذا التقرير بعد.", "No server-confirmed preview data available for this report yet.")}
+                </div>
+              )}
             </div>
             <div className="flex gap-3"><Btn onClick={() => setStep(1)}>{t("← رجوع", "← Back")}</Btn><Btn variant="primary" onClick={() => setStep(3 - 1 + 1)} className="flex-1 justify-center">{t("متابعة للإرسال →", "Continue to Send →")}</Btn></div>
           </div>}
@@ -393,7 +399,7 @@ export function AdminReports({ }: PageProps) {
                     <p className="font-bold text-sm text-gray-700">{selRep ? rL(selRep) : ""} — {PERIOD}</p>
                     <Badge className={`mr-auto ${sentReports.has(statusFilter) ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{sentReports.has(statusFilter) ? t("مُرسَل", "Sent") : t("لم يُرسَل بعد", "Not Sent Yet")}</Badge>
                   </div>
-                  <table className="w-full" dir="rtl">
+                  <table className="w-full" dir={dir}>
                     <thead className="bg-gray-50/50">
                       <tr className="text-xs text-gray-500 font-semibold">
                         <th className="px-4 py-3 text-right">{t("المطعم", "Restaurant")}</th>

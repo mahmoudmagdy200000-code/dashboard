@@ -150,23 +150,32 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
   // Contract 1.8: PATCH /admin/accountants/{accId}/assignments reconciles restaurants + headId.
   const assignMut = useUpdateAccountantAssignments();
   const modulesMut = useSetAccountantRestaurantModules();
-  const syncAssignments = (accId: string, restaurants: string[], headId: string | null) => assignMut.mutate({ accId, headId, restaurants });
+  const syncAssignments = (accId: string, restaurants: string[], headId: string | null, prevAccs?: typeof distAccs) => {
+    assignMut.mutate({ accId, headId, restaurants }, {
+      onError: () => {
+        if (prevAccs) setDistAccs(prevAccs);
+      }
+    });
+  };
   const removeRestFromAcc = (accId: string, rest: string) => {
     const acc = distAccs.find(a => a.id === accId); if (!acc) return;
+    const prev = distAccs;
     const restaurants = acc.restaurants.filter(r => r !== rest);
     setDistAccs(p => p.map(a => a.id === accId ? { ...a, restaurants } : a));
-    syncAssignments(accId, restaurants, acc.headId);
+    syncAssignments(accId, restaurants, acc.headId, prev);
   };
   const addRestToAcc = (accId: string, rest: string) => {
     const acc = distAccs.find(a => a.id === accId); if (!acc) return;
+    const prev = distAccs;
     const restaurants = [...acc.restaurants, rest];
     setDistAccs(p => p.map(a => a.id === accId ? { ...a, restaurants } : a));
-    syncAssignments(accId, restaurants, acc.headId);
+    syncAssignments(accId, restaurants, acc.headId, prev);
   };
   const moveAccToHead = (accId: string, headId: string | null) => {
     const acc = distAccs.find(a => a.id === accId); if (!acc) return;
+    const prev = distAccs;
     setDistAccs(p => p.map(a => a.id === accId ? { ...a, headId } : a));
-    syncAssignments(accId, acc.restaurants, headId);
+    syncAssignments(accId, acc.restaurants, headId, prev);
   };
 
   // ── Module distribution ──
@@ -264,8 +273,15 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
       "حذف هذا المستخدم؟ سيتم إلغاء دخوله من تطبيق الجوال أيضاً وإنهاء جلساته، وإعادة التفعيل لا تُرجِع صلاحية التطبيق.",
       "Delete this user? Their mobile app access is revoked and their app sessions ended. Reactivating does not restore mobile access.",
     ))) return;
-    setUsers((prev: AdminUserData[]) => prev.filter(u => u.email !== email));
-    if (target?.id) deleteUserMut.mutate(target.id);
+    if (target?.id) {
+      deleteUserMut.mutate(target.id, {
+        onSuccess: () => {
+          setUsers((prev: AdminUserData[]) => prev.filter(u => u.email !== email));
+        },
+      });
+    } else {
+      setUsers((prev: AdminUserData[]) => prev.filter(u => u.email !== email));
+    }
   };
 
   const byRole: Record<string, number> = {};
@@ -869,7 +885,7 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
                           </div>
                         )}
                         <div className="flex gap-2 pt-2 border-t border-gray-200">
-                          <Btn size="sm"><Edit2 size={12} /> {t("تعديل الصلاحيات", "Edit Permissions")}</Btn>
+                          <Btn size="sm" onClick={(e) => { e.stopPropagation(); navigate?.("admin-permissions"); }}><Edit2 size={12} /> {t("تعديل الصلاحيات", "Edit Permissions")}</Btn>
                           <Btn size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); if (u.id && window.confirm(t("إعادة تعيين كلمة مرور هذا المستخدم؟ سيتم إرسال كلمة مرور جديدة بالبريد.", "Reset this user's password? A new password will be emailed."))) resetPwdMut.mutate({ id: u.id }); }}>{t("إعادة تعيين كلمة المرور", "Reset Password")}</Btn>
                         </div>
                       </div>

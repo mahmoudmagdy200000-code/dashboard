@@ -24,18 +24,24 @@ export function AdminSettings({ }: PageProps) {
   const updateSettingsMut = useUpdateAdminSettings();
   const { user } = useAuth();
   const hasCompany = !!user?.companyId;
-  const { t, lang, setLang } = useLang();
+  const { t, lang, setLang, dir } = useLang();
   const langPrefMut = useLanguagePref();
   const [showPwd, setShowPwd] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
   const [show2FA, setShow2FA] = useState(false);
   const [settingsView, setSettingsView] = useState<"home" | "notifications" | "apikeys" | "webhooks">("home");
   const [showPermHistory, setShowPermHistory] = useState(false);
-  if (settingsView === "notifications") return (<div className="space-y-4"><button onClick={() => setSettingsView("home")} className="text-sm text-purple-600 hover:underline">← {t("رجوع للإعدادات", "Back to settings")}</button><NotificationPreferencesPage t={(ar, en) => t(ar, en)} /></div>);
-  if (settingsView === "apikeys") return (<div className="space-y-4"><button onClick={() => setSettingsView("home")} className="text-sm text-purple-600 hover:underline">← {t("رجوع للإعدادات", "Back to settings")}</button><ApiKeysPage t={(ar, en) => t(ar, en)} /></div>);
-  if (settingsView === "webhooks") return (<div className="space-y-4"><button onClick={() => setSettingsView("home")} className="text-sm text-purple-600 hover:underline">← {t("رجوع للإعدادات", "Back to settings")}</button><WebhooksPage t={(ar, en) => t(ar, en)} /></div>);
+  if (settingsView === "notifications") return (<div className="space-y-4" dir={dir}><button onClick={() => setSettingsView("home")} className="text-sm text-purple-600 hover:underline">← {t("رجوع للإعدادات", "Back to settings")}</button><NotificationPreferencesPage t={(ar, en) => t(ar, en)} /></div>);
+  if (settingsView === "apikeys") return (<div className="space-y-4" dir={dir}><button onClick={() => setSettingsView("home")} className="text-sm text-purple-600 hover:underline">← {t("رجوع للإعدادات", "Back to settings")}</button><ApiKeysPage t={(ar, en) => t(ar, en)} /></div>);
+  if (settingsView === "webhooks") return (<div className="space-y-4" dir={dir}><button onClick={() => setSettingsView("home")} className="text-sm text-purple-600 hover:underline">← {t("رجوع للإعدادات", "Back to settings")}</button><WebhooksPage t={(ar, en) => t(ar, en)} /></div>);
   return (
-    <div className="space-y-5"><h2 className="text-xl font-bold text-gray-800">{t("إعدادات النظام", "System Settings")}</h2>
+    <div className="space-y-5" dir={dir}>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">{t("إعدادات النظام", "System Settings")}</h2>
+          <p className="text-xs text-gray-400 mt-0.5">{t("ملاحظة أمنية: تغيير الإعدادات يسجل في الخادم كإعدادات تفضيلية؛ إنفاذ السياسات يخضع لمسارات المصادقة والخوادم المستقلة (PERM-00)", "Security Notice: Settings changes are saved as system preferences; policy enforcement is governed by independent server authentication flows (PERM-00)")}</p>
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-5">
         {/* B4: wired to GET/PATCH /admin/settings with the backend's authoritative field names.
             PATCH is a deep partial merge → send one section/key at a time. */}

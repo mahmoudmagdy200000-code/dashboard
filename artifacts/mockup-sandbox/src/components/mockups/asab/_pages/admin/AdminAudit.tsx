@@ -24,7 +24,7 @@ export function AdminAudit({ }: PageProps) {
   const exportAuditMut = useExportAdminAuditLogs();
   const { t, lang, dir } = useLang(); const en = lang === "en";
   // Driven by GET /admin/audit-logs — mapped to the row render shape. No static fallback.
-  type AuditRow = { action: string; user: string; time: string; icon: string; type: string; date: string };
+  type AuditRow = { action: string; user: string; time: string; icon: string; type: string; date: string; occurredAt: string };
   const apiLogsArr = (apiAuditLogs as any)?.data ?? (apiAuditLogs as any);
   const ALL_LOGS: AuditRow[] = Array.isArray(apiLogsArr)
     ? (apiLogsArr as any[]).map((l: any) => ({
@@ -35,6 +35,7 @@ export function AdminAudit({ }: PageProps) {
       icon: "📋",
       type: l.entityType ?? l.type ?? "",
       date: l.occurredAt ? new Date(l.occurredAt).toLocaleDateString("ar-SA") : "",
+      occurredAt: l.occurredAt ?? "",
     }))
     : [];
   const allVal = t("الكل", "All");
@@ -52,14 +53,23 @@ export function AdminAudit({ }: PageProps) {
     const arType = l.type;
     const enTypes: Record<string, string> = { مستخدمين: "Users", اعتمادات: "Approvals", اشتراكات: "Subscriptions", رفض: "Rejection", تصدير: "Export", مخزون: "Inventory", صلاحيات: "Permissions", مشتريات: "Purchases" };
     if (actionFilter !== allVal && t(arType, enTypes[arType]) !== actionFilter) return false;
-    const arDate = l.date;
-    const enDates: Record<string, string> = { اليوم: "Today", أمس: "Yesterday" };
-    if (dateFilter !== allVal && t(arDate, enDates[arDate]) !== dateFilter) return false;
+    if (dateFilter !== allVal) {
+      if (!l.occurredAt) return false;
+      const d = new Date(l.occurredAt);
+      if (isNaN(d.getTime())) return false;
+      const now = new Date();
+      const isToday = d.toDateString() === now.toDateString();
+      const yest = new Date(now);
+      yest.setDate(yest.getDate() - 1);
+      const isYest = d.toDateString() === yest.toDateString();
+      if (dateFilter === todayVal && !isToday) return false;
+      if (dateFilter === yestVal && !isYest) return false;
+    }
     return true;
   });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
         <div><h2 className="text-xl font-bold text-gray-800">{t("سجل النشاطات", "Activity Log")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{ALL_LOGS.length} {t("نشاط مسجل", "recorded activities")}</p>

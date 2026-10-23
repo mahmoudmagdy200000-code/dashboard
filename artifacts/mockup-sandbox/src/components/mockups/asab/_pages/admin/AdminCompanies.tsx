@@ -110,18 +110,27 @@ export function AdminCompanies({ navigate }: PageProps) {
   const totalUsers = companies.reduce((s, c) => s + c.users, 0);
 
   const suspend = (id: string) => {
-    setCompanies(p => p.map(c => c.id === id ? { ...c, status: "suspended" as const } : c));
-    suspendMut.mutate(id);
+    suspendMut.mutate(id, {
+      onSuccess: () => {
+        setCompanies(p => p.map(c => c.id === id ? { ...c, status: "suspended" as const } : c));
+      }
+    });
   };
   const activate = (id: string) => {
-    setCompanies(p => p.map(c => c.id === id ? { ...c, status: "active" as const, daysLeft: 365 } : c));
-    activateMut.mutate(id);
+    activateMut.mutate(id, {
+      onSuccess: () => {
+        setCompanies(p => p.map(c => c.id === id ? { ...c, status: "active" as const, daysLeft: 365 } : c));
+      }
+    });
   };
   const doUpgrade = (id: string, plan: CompanyPlan) => {
-    setCompanies(p => p.map(c => c.id === id ? { ...c, plan, maxUsers: COMPANY_PLANS_META[plan].maxUsers, monthlyRevenue: COMPANY_PLANS_META[plan].price } : c));
-    setShowUpgrade(null);
-    if (selected) setSelected(s => s ? { ...s, plan, maxUsers: COMPANY_PLANS_META[plan].maxUsers } : s);
-    upgradeMut.mutate({ id, plan: plan as "Basic" | "Professional" | "Enterprise" });
+    upgradeMut.mutate({ id, plan: plan as "Basic" | "Professional" | "Enterprise" }, {
+      onSuccess: () => {
+        setCompanies(p => p.map(c => c.id === id ? { ...c, plan, maxUsers: COMPANY_PLANS_META[plan].maxUsers, monthlyRevenue: COMPANY_PLANS_META[plan].price } : c));
+        setShowUpgrade(null);
+        if (selected) setSelected(s => s ? { ...s, plan, maxUsers: COMPANY_PLANS_META[plan].maxUsers } : s);
+      }
+    });
   };
 
   return (
@@ -130,7 +139,7 @@ export function AdminCompanies({ navigate }: PageProps) {
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("اشتراكات الشركات — بوابة المجموعات", "Company Subscriptions — Groups Portal")}</h2>
-          <p className="text-gray-400 text-sm mt-0.5">{companies.length} {t("شركة مسجلة", "registered companies")} · {companies.filter(c => c.status === "active" || c.status === "warning").length} {t("نشطة", "active")} · {t("إيراد شهري", "Monthly Revenue")} {(totalRevenue / 1000).toFixed(0)}K {t("ر.س", "SAR")}</p>
+          <p className="text-gray-400 text-sm mt-0.5">{companies.length} {t("شركة مسجلة", "registered companies")} · {companies.filter(c => c.status === "active" || c.status === "warning").length} {t("نشطة", "active")} · {t("إيراد شهري تقديري (كتالوج SUB-01)", "Est. Monthly Plan Revenue (SUB-01 Catalog)")} {(totalRevenue / 1000).toFixed(0)}K {t("ر.س", "SAR")}</p>
         </div>
         <button onClick={() => setShowAdd(true)}
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-bold hover:bg-purple-700 shadow-sm">
@@ -143,7 +152,7 @@ export function AdminCompanies({ navigate }: PageProps) {
         <KpiCard label={t("شركات نشطة", "Active Companies")} value={String(companies.filter(c => ["active", "warning", "danger"].includes(c.status)).length)} sub={t("من إجمالي الشركات", "of all companies")} icon={<CheckCircle2 size={16} className="text-emerald-600" />} accent="emerald" />
         <KpiCard label={t("تجريبي", "Trial")} value={String(companies.filter(c => c.status === "trial").length)} sub={t("يحتاج تحويل", "needs conversion")} icon={<Star size={16} className="text-blue-500" />} accent="blue" />
         <KpiCard label={t("ينتهي خلال 30 يوم", "Expires in 30 Days")} value={String(companies.filter(c => c.daysLeft > 0 && c.daysLeft <= 30).length)} sub={t("شركات تحتاج تجديد", "companies need renewal")} icon={<AlertTriangle size={16} className="text-amber-600" />} accent="amber" />
-        <KpiCard label={t("الإيراد الشهري", "Monthly Revenue")} value={`${(totalRevenue / 1000).toFixed(0)}K`} sub={t("ر.س من الشركات", "SAR from companies")} icon={<Wallet size={16} className="text-purple-600" />} accent="purple" />
+        <KpiCard label={t("إيراد الباقات التقديري (SUB-01)", "Est. Plan Revenue (SUB-01)")} value={`${(totalRevenue / 1000).toFixed(0)}K`} sub={t("ر.س تقديري وفق كتالوج الباقات", "SAR estimate per plan catalog")} icon={<Wallet size={16} className="text-purple-600" />} accent="purple" />
         <KpiCard label={t("فروع مدارة", "Managed Branches")} value={String(totalBranches)} sub={`${totalUsers} ${t("مستخدم", "users")}`} icon={<Building2 size={16} className="text-cyan-600" />} accent="cyan" />
       </div>
 

@@ -85,15 +85,29 @@ export function AdminPermissions({ }: PageProps) {
   };
 
   const saveChanges = () => {
-    setSaved(true); setChanges(0);
     // Hook wraps the array in { matrix } itself — pass the bare array, not { matrix }
     // (double-wrapping produced body { matrix: { matrix: [...] } } → 422).
-    updatePermsMut.mutate(matrix as any);
+    updatePermsMut.mutate(matrix as any, {
+      onSuccess: () => {
+        setSaved(true);
+        setChanges(0);
+      },
+      onError: () => {
+        setSaved(false);
+      }
+    });
   };
-  const resetAll = () => { setMatrix(prev => prev); setSaved(false); setChanges(0); };
+  const resetAll = () => {
+    const orig = (permsApi as any)?.matrix;
+    if (Array.isArray(orig)) {
+      setMatrix(JSON.parse(JSON.stringify(orig)));
+    }
+    setSaved(false);
+    setChanges(0);
+  };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("مصفوفة الصلاحيات", "Permissions Matrix")}</h2>
