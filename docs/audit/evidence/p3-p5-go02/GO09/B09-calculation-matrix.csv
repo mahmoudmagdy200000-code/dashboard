@@ -1,0 +1,9 @@
+totalAmt,pre-change KPI,post-change KPI,exact fmtAmt summary (unchanged)
+0,0K,0K,٠٫٠٠
+499,0K,0K,٤٩٩٫٠٠
+500,1K,1K,٥٠٠٫٠٠
+999,1K,1K,٩٩٩٫٠٠
+1000,1K,1K,١٬٠٠٠٫٠٠
+1499,1K,1K,١٬٤٩٩٫٠٠
+1500,2K,2K,١٬٥٠٠٫٠٠
+123456789,123457K,123457K,١٢٣٬٤٥٦٬٧٨٩٫٠٠

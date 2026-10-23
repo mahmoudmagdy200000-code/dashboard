@@ -159,3 +159,15 @@ No item is labeled ACCEPTED or RUNTIME_VERIFIED. No production-ready or full-cov
 ## GO-08-P3 status — 2026-10-23
 
 Responsive source work was not repeated. No browser was available after the authorized managed Chromium installation failed; B01–B08 and B10 runtime criteria remain `NOT_RUN`, with VERIFY_FIRST rows still `BLOCKED_EVIDENCE`. B09 remains `BLOCKED_DECISION`. No finding was closed or accepted. See `evidence/p3-p5-go02/GO08/GO08_P3_RESPONSIVE_RESULT.md` and `B09_OWNER_DECISION_REQUEST.md`. Pre-documentation source HEAD: `92b8198fed73c043ed171061272cd1309ec29a0f`. Any source test/typecheck/build not executed in GO-08 is recorded as `NOT_RUN`.
+
+
+## GO-09-P3 Phase 3 final completion checkpoint — 2026-10-23
+
+B09 received Owner approval for a visible approximate label (`تقريبي` / `Approximate`). The Dashboard change adds optional `KpiCard.valueLabel` and uses it only for the HeadPending abbreviated KPI. `fmtAmt(totalAmt)`, the `(totalAmt / 1000).toFixed(0) + "K"` formula, the SAR unit, and all data/API behavior remain unchanged. Numeric fixtures 0, 499, 500, 999, 1000, 1499, 1500 and 123456789 preserve the same old/new K output; exact Arabic-formatted amounts are recorded in the calculation matrix. Focused 5/5 test, related companyAdmin 15/15, typecheck, build and diff check pass.
+
+The authorized isolated Chromium attempt failed because the Playwright CDN returned an invalid/truncated archive. No browser was launched. Therefore B01–B08 and B10 remain `NOT_RUN`; B09 targeted source checks pass but its required viewport checks remain NOT_RUN. One unrelated stale assertion appeared in the combined BranchManager suite; no test or source outside B09 was changed to mask it.
+
+B01–B10 matrix and all evidence are in `docs/audit/evidence/p3-p5-go02/GO09/GO09_P3_RESPONSIVE_RESULT.md`. B09 source commit: `b7e23e509970ec978586ed8d728caaf45407f805` (parent `2c0f7ecc3b695a41f646e0af1184a7f71e2dfacd`; tree `cf0637695811d49b9bcab45a1a7b3ac47f9fa7a4`). Current classification: `P3_IMPLEMENTATION_COMPLETED_WITH_BLOCKERS`, not closed/accepted. Publishing status and local source/documentation commit SHAs are recorded in the GO-09 delivery report after commit attempts.
+
+
+GO-09 GitHub publication remains `BLOCKED_AUTHENTICATION`: the authorized branch was absent at read check and normal Git push dry-run could not read a GitHub username (exit 128). No alternate API write was attempted. Source commit and evidence remain local. See `evidence/p3-p5-go02/GO09/GO09_P3_DELIVERY_REPORT.md`.

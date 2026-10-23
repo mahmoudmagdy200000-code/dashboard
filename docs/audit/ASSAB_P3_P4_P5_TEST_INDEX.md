@@ -152,3 +152,16 @@ Raw logs are stored alongside this index. Historical GO-02/GO-04 hashes are in `
 - Browser/viewport commands: `NOT_RUN`; no browser launched. B01–B10 browser acceptance evidence remains `NOT_RUN` (B09 also `BLOCKED_DECISION`).
 - GO-08 source/unit/typecheck/build tests: `NOT_RUN`; no source change was justified without VERIFY_FIRST browser reproduction. Earlier B01/B07 tests remain historical evidence only and are not reported as rerun.
 - Detailed finding matrix: `evidence/p3-p5-go02/GO08/GO08_P3_RESPONSIVE_RESULT.md`; B09 decision request: `evidence/p3-p5-go02/GO08/B09_OWNER_DECISION_REQUEST.md`.
+
+
+## GO-09-P3 targeted Phase 3 evidence — 2026-10-23
+
+- Tested Dashboard source commit: `b7e23e509970ec978586ed8d728caaf45407f805` (parent `2c0f7ecc3b695a41f646e0af1184a7f71e2dfacd`, tree `cf0637695811d49b9bcab45a1a7b3ac47f9fa7a4`). Source paths: `HeadPending.tsx`, `KpiCard.tsx`; test file `headPendingB09.test.ts`; exact source SHA-256 values are in `evidence/p3-p5-go02/GO09/source-sha256-tested.txt`.
+- Red-first: pre-source B09 test 1 pass / 1 fail / 0 skipped, exit 1; missing localized approximation label was the failure. Summary: `GO09/B09-red-first-summary.log`.
+- Focused B09 + KpiCard regression: 5/5 PASS, 0 skipped, exit 0. It checks actual KpiCard SSR output in AR/EN, once-only label text, exact K expression, `fmtAmt` summary and numeric fixtures. Raw TAP: `GO09/targeted-tests.tap`.
+- Adjacent `companyAdminGuards.test.ts`: 15/15 PASS, 0 skipped, exit 0.
+- Typecheck `pnpm --filter @workspace/mockup-sandbox run typecheck`: PASS, exit 0. Build `pnpm --filter @workspace/mockup-sandbox run build`: PASS, exit 0; existing sourcemap/chunk warnings. Diff check `git -c core.whitespace=cr-at-eol diff --check`: PASS, exit 0. Logs in `evidence/p3-p5-go02/GO09/`.
+- Additional combined diagnostic: 28/29 pass, 1 fail, exit 1. The unchanged B07 static assertion at `phase1dBranchManager.test.ts:263` expects the pre-Radix `{editAsset && (` JSX, while the committed source uses `DialogPrimitive.Root open={Boolean(editAsset)}`. Not caused by GO-09 and not modified.
+- Playwright 1.62.1 available; no compatible browser executable. GO-09 isolated Chromium download failed with an invalid/truncated archive; no browser launched. All viewport/browser checks B01–B10 are `NOT_RUN/BLOCKED_ENVIRONMENT`; see `GO09/browser-install.log`.
+- Evidence classification is `DEVELOPER_REPORTED_EXECUTION`; no runtime acceptance or independent acceptance is claimed.
+- GitHub normal-push dry run: `GIT_TERMINAL_PROMPT=0 timeout 20s git push --dry-run --set-upstream origin HEAD:refs/heads/work/dashboard-p345-remediation-v2-20261023` — BLOCKED_AUTHENTICATION, exit 128 (`could not read Username`). No push or API write was attempted. Raw status: `GO09/GIT_DELIVERY_EVIDENCE.txt`.

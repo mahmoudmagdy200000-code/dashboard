@@ -358,8 +358,8 @@ GO-04 identified that `editAsset` lacked dialog semantics/title, Escape handling
 - [x] `B09-04` Test frozen numeric fixtures (0, 499, 500, 999, 1000, 1499, 1500 and large values) against the unchanged pre-change K expression; exact summary formatting unchanged; verify AR/EN label and no duplicate assistive announcement. Browser viewport check is separate.
 - [x] `B09-05` Owner decision approved in GO-09-P3: Arabic `تقريبي`; English `Approximate`.
 - [x] `B09-06` Record focused test commands/exit codes and browser runtime status; do not claim `RUNTIME_VERIFIED` without Browser QA.
-- [ ] `B09-07` If source/tests change and pass focused checks, commit cohesive Dashboard source/test changes once; no empty commit.
-- [ ] `B09-08` Record commit/tree and tested SHA; independent review remains pending.
+- [x] `B09-07` Source/test changes committed atomically as `b7e23e509970ec978586ed8d728caaf45407f805`; no empty commit.
+- [x] `B09-08` Recorded source commit `b7e23e509970ec978586ed8d728caaf45407f805`, parent `2c0f7ecc3b695a41f646e0af1184a7f71e2dfacd`, tree `cf0637695811d49b9bcab45a1a7b3ac47f9fa7a4`; tested source is identical. Independent review remains pending.
 **Approval:** GO-09-P3. **Status before implementation:** `IN_PROGRESS`; Browser QA `NOT_RUN` pending Chromium recovery.
 
 ### B10 — No-code verification of already-resolved Phase3 findings
@@ -832,4 +832,6 @@ Section 1 and the B01–B10 records were reopened before work. Starting branch/H
 - Chromium setup was attempted once in a fresh isolated path after confirming no installer process. CDN returned a truncated/invalid 0 MiB archive and Playwright exited 1. Browser QA B01–B10 remains NOT_RUN/BLOCKED_ENVIRONMENT; no viewport finding is closed.
 - B01–B08/B10 were not altered without reproduced browser defects. R3-F10 → B06 and R3-F15 → B07 remain unchanged.
 - A combined related diagnostic had one unrelated stale test assertion in `phase1dBranchManager.test.ts:263`; raw TAP and explanation are in GO09 evidence. The test was not weakened.
-- B09 current source state: `SOURCE_FIXED — TARGETED_TEST_PASS`; browser/mobile fit and independent review remain pending. Phase 3 final state: `P3_IMPLEMENTATION_COMPLETED_WITH_BLOCKERS`.
+- B09 current source state: `SOURCE_FIXED — TARGETED_TEST_PASS`; source commit `b7e23e509970ec978586ed8d728caaf45407f805` (parent `2c0f7ecc3b695a41f646e0af1184a7f71e2dfacd`, tree `cf0637695811d49b9bcab45a1a7b3ac47f9fa7a4`). Browser/mobile fit and independent review remain pending. Phase 3 final state: `P3_IMPLEMENTATION_COMPLETED_WITH_BLOCKERS`.
+
+- GO-09 review publishing gate: origin verified as `mohameelsherbini/dashboard`; GitHub review branch search returned absent; normal `git push --dry-run` exit 128 due unavailable HTTPS username. `BLOCKED_AUTHENTICATION`; no push or alternative API write.

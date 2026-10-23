@@ -1,0 +1,41 @@
+TAP version 13
+# Subtest: interactive KpiCard uses a native focused button and valid phrasing content
+ok 1 - interactive KpiCard uses a native focused button and valid phrasing content
+  ---
+  duration_ms: 1.494541
+  type: 'test'
+  ...
+# Subtest: informational KpiCard remains a noninteractive div
+ok 2 - informational KpiCard remains a noninteractive div
+  ---
+  duration_ms: 0.399842
+  type: 'test'
+  ...
+# Subtest: jsxTag reads opening tags for paired and self-closing JSX elements
+ok 3 - jsxTag reads opening tags for paired and self-closing JSX elements
+  ---
+  duration_ms: 1.149261
+  type: 'test'
+  ...
+# Subtest: B09 preserves the exact summary and existing K calculation for financial boundary fixtures
+ok 4 - B09 preserves the exact summary and existing K calculation for financial boundary fixtures
+  ---
+  duration_ms: 12.149362
+  type: 'test'
+  ...
+# Subtest: B09 renders one visible localized approximation label beside the unchanged KPI value
+ok 5 - B09 renders one visible localized approximation label beside the unchanged KPI value
+  ---
+  duration_ms: 6.417608
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1003.944617
+Exit code: 0

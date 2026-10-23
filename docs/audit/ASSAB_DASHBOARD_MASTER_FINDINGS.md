@@ -2729,3 +2729,25 @@ Evidence is limited to the local Dashboard source at pre-documentation HEAD `92b
 | B10 | R3-F01; R3-F06; R3-F07; R3-F09; R3-F13 | `BLOCKED_EVIDENCE` | Existing static source evidence is not browser runtime acceptance; checks `NOT_RUN`. |
 
 No original ID, severity, or historical status was changed. No finding is promoted to `CLOSED`, `ACCEPTED`, or `RUNTIME_VERIFIED`. No source test, typecheck, build, browser, Staging, Backend, Flutter, or financial runtime test was executed in GO-08. Independent review remains pending.
+
+
+### GO-09-P3 Phase 3 current-status supplement — 2026-10-23
+
+This append-only update preserves all 249 historical finding IDs and mappings. It supersedes only the current B09 decision state: Owner approved option 1 in GO-09-P3; a visible AR/EN approximation label was added while retaining the prior exact amount, formula, unit and API. B09 source/unit evidence is `TARGETED_TEST_PASS`; source commit is `b7e23e509970ec978586ed8d728caaf45407f805` (parent `2c0f7ecc3b695a41f646e0af1184a7f71e2dfacd`, tree `cf0637695811d49b9bcab45a1a7b3ac47f9fa7a4`). Responsive browser verification and independent review remain pending.
+
+| Batch / existing finding IDs | GO-09 current status | Evidence / open gate |
+|---|---|---|
+| B01 / R3-F03; HA-F30; 1D-COM-016 | `NOT_RUN` for viewport acceptance | Prior source commit retained; required language/width browser matrix blocked. |
+| B02 / R3-F04; HA-F30; S1H-F18 | `NOT_RUN` | KPI/filter viewport and readability proof blocked. |
+| B03 / R3-F05 | `NOT_RUN` | Procurement horizontal touch/keyboard scroll proof blocked. |
+| B04 / R3-F02; S1H-F14; S1H-F18 | `NOT_RUN` | Header/Sheet 320–430 AR/EN proof blocked. |
+| B05 / R3-F11; CA-F05; S1H-F18 | `NOT_RUN` | Toolbar/search/notification anchoring proof blocked. |
+| B06 / R3-F10 | `NOT_RUN` | 320px/200% zoom proof blocked; R3-F10 remains assigned to B06. |
+| B07 / R3-F15; CA-F15; HA-F31; S1H-F13 | `NOT_RUN` | Responsive short-height/scroll proof blocked; no Accessibility reimplementation; R3-F15 remains assigned to B07. |
+| B08 / R3-F12; S1H-F05; S1H-F19 | `NOT_RUN` | VisualViewport/soft-keyboard proof blocked. |
+| B09 / R3-F14; HA-F11; HA-F36; DIFF-07 | `SOURCE_FIXED — TARGETED_TEST_PASS`; browser `NOT_RUN` | GO-09 B09 focused tests 5/5, typecheck/build pass; approximation label only, original math/format/unit retained. |
+| B10 / R3-F01; R3-F06; R3-F07; R3-F09; R3-F13 | `NOT_RUN` | Static source state is not browser acceptance. |
+
+Playwright 1.62.1 was present, but managed Chromium installation failed on an invalid/truncated 0 MiB archive. No browser was launched. `P3_IMPLEMENTATION_COMPLETED_WITH_BLOCKERS`; no R3 finding is `RUNTIME_VERIFIED` or `ACCEPTED`. Raw logs and the matrix are under `docs/audit/evidence/p3-p5-go02/GO09/`.
+
+GO-09 publication checkpoint: source commit remains local and is `PENDING_INDEPENDENT_REVIEW`. The authorized review branch was absent in the read-only branch search; HTTPS `git push --dry-run` failed because no Git username credential was available (exit 128). No GitHub write, PR, merge or deploy was performed. This is a delivery blocker, not a finding acceptance.

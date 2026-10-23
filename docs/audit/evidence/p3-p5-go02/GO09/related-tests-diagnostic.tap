@@ -1,0 +1,201 @@
+TAP version 13
+# Subtest: interactive KpiCard uses a native focused button and valid phrasing content
+ok 1 - interactive KpiCard uses a native focused button and valid phrasing content
+  ---
+  duration_ms: 2.176388
+  type: 'test'
+  ...
+# Subtest: informational KpiCard remains a noninteractive div
+ok 2 - informational KpiCard remains a noninteractive div
+  ---
+  duration_ms: 0.595477
+  type: 'test'
+  ...
+# Subtest: jsxTag reads opening tags for paired and self-closing JSX elements
+ok 3 - jsxTag reads opening tags for paired and self-closing JSX elements
+  ---
+  duration_ms: 1.472077
+  type: 'test'
+  ...
+# Subtest: B09 preserves the exact summary and existing K calculation for financial boundary fixtures
+ok 4 - B09 preserves the exact summary and existing K calculation for financial boundary fixtures
+  ---
+  duration_ms: 12.926519
+  type: 'test'
+  ...
+# Subtest: B09 renders one visible localized approximation label beside the unchanged KPI value
+ok 5 - B09 renders one visible localized approximation label beside the unchanged KPI value
+  ---
+  duration_ms: 5.56394
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F39: ClarifyModal retains input on failure and manages submission state
+ok 6 - Phase 1C ACC-F39: ClarifyModal retains input on failure and manages submission state
+  ---
+  duration_ms: 1.134598
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F35: Employee account note aligns with Business Rules v3.5 (no automatic payroll deduction)
+ok 7 - Phase 1C ACC-F35: Employee account note aligns with Business Rules v3.5 (no automatic payroll deduction)
+  ---
+  duration_ms: 10.794589
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F04: Sales variance allocation is restricted to shortages (surplus cannot create employee debit)
+ok 8 - Phase 1C ACC-F04: Sales variance allocation is restricted to shortages (surplus cannot create employee debit)
+  ---
+  duration_ms: 6.25525
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F07: Bulk sales approval is scoped to active filtered pending entries
+ok 9 - Phase 1C ACC-F07: Bulk sales approval is scoped to active filtered pending entries
+  ---
+  duration_ms: 6.702585
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F12: Expense approval decisions are restricted from Accountant view per EXP-06
+ok 10 - Phase 1C ACC-F12: Expense approval decisions are restricted from Accountant view per EXP-06
+  ---
+  duration_ms: 7.473135
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F14 & ACC-F15: Asset draft conversion preserves invoiceIndex and handles async outcome
+ok 11 - Phase 1C ACC-F14 & ACC-F15: Asset draft conversion preserves invoiceIndex and handles async outcome
+  ---
+  duration_ms: 6.387891
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F20: Asset book value preserves exact halalas on edit open
+ok 12 - Phase 1C ACC-F20: Asset book value preserves exact halalas on edit open
+  ---
+  duration_ms: 7.936894
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F28 & ACC-F29: Waste allocations avoid stale state and bulk approve preserves non-pending entries
+ok 13 - Phase 1C ACC-F28 & ACC-F29: Waste allocations avoid stale state and bulk approve preserves non-pending entries
+  ---
+  duration_ms: 0.879124
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F26: Daily inventory variance allocation button is wired to mutation
+ok 14 - Phase 1C ACC-F26: Daily inventory variance allocation button is wired to mutation
+  ---
+  duration_ms: 1.447239
+  type: 'test'
+  ...
+# Subtest: Phase 1C EXP-06: Negative authorization ensures Accountant and Head Accountant cannot approve or reject expenses
+ok 15 - Phase 1C EXP-06: Negative authorization ensures Accountant and Head Accountant cannot approve or reject expenses
+  ---
+  duration_ms: 10.163868
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F02: Halala precision preserves exact two decimals without integer-SAR rounding
+ok 16 - Phase 1C ACC-F02: Halala precision preserves exact two decimals without integer-SAR rounding
+  ---
+  duration_ms: 24.487286
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-BRM-001 & 1D-BRM-015: Branch settings updates manager field correctly
+ok 17 - Phase 1D 1D-BRM-001 & 1D-BRM-015: Branch settings updates manager field correctly
+  ---
+  duration_ms: 12.507798
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-BRM-002: Supplier request payload includes contactPhone and reason
+ok 18 - Phase 1D 1D-BRM-002: Supplier request payload includes contactPhone and reason
+  ---
+  duration_ms: 11.622184
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-BRM-003 & 1D-BRM-014: Purchase requests contract mapping and quantity validation
+ok 19 - Phase 1D 1D-BRM-003 & 1D-BRM-014: Purchase requests contract mapping and quantity validation
+  ---
+  duration_ms: 6.701663
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-BRM-004, 1D-BRM-005 & 1D-BRM-013: Inventory item stock absence vs zero and count submission validation
+ok 20 - Phase 1D 1D-BRM-004, 1D-BRM-005 & 1D-BRM-013: Inventory item stock absence vs zero and count submission validation
+  ---
+  duration_ms: 7.169799
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-BRM-006, 1D-BRM-008 & 1D-BRM-024: Branch upload attachment inputs, validation and reset lifecycle
+ok 21 - Phase 1D 1D-BRM-006, 1D-BRM-008 & 1D-BRM-024: Branch upload attachment inputs, validation and reset lifecycle
+  ---
+  duration_ms: 7.465705
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-BRM-009: Branch staff maps shift, status, and phone correctly without inferring presence from active membership
+ok 22 - Phase 1D 1D-BRM-009: Branch staff maps shift, status, and phone correctly without inferring presence from active membership
+  ---
+  duration_ms: 11.03834
+  type: 'test'
+  ...
+# Subtest: Phase 1D Follow-up: BranchUpload blocks dual attachments with clear validation and UI warning
+ok 23 - Phase 1D Follow-up: BranchUpload blocks dual attachments with clear validation and UI warning
+  ---
+  duration_ms: 12.624154
+  type: 'test'
+  ...
+# Subtest: Phase 1D Follow-up: Attendance semantics unit mapping prevents false physical attendance
+ok 24 - Phase 1D Follow-up: Attendance semantics unit mapping prevents false physical attendance
+  ---
+  duration_ms: 0.419462
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-BRM-010: Sidebar navigation includes branch shifts and purchase requests
+ok 25 - Phase 1D 1D-BRM-010: Sidebar navigation includes branch shifts and purchase requests
+  ---
+  duration_ms: 10.865474
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-BRM-011: Branch overview avoids hardcoded branch name and hardcoded +5.2% delta
+ok 26 - Phase 1D 1D-BRM-011: Branch overview avoids hardcoded branch name and hardcoded +5.2% delta
+  ---
+  duration_ms: 9.900441
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-COM-016: Responsive layout classes applied across branch screens
+ok 27 - Phase 1D 1D-COM-016: Responsive layout classes applied across branch screens
+  ---
+  duration_ms: 10.415648
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-COM-017 & 1D-COM-018: Modal accessibility attributes and input labeling
+not ok 28 - Phase 1D 1D-COM-017 & 1D-COM-018: Modal accessibility attributes and input labeling
+  ---
+  duration_ms: 11.926172
+  type: 'test'
+  location: '/workspace/scratch/a7556329ed86/dashboard-p345-remediation-v2-20261023/artifacts/mockup-sandbox/src/components/mockups/asab/phase1dBranchManager.test.ts:1:9792'
+  failureType: 'testCodeFailure'
+  error: 'Company asset edit modal must remain present'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (/workspace/scratch/a7556329ed86/dashboard-p345-remediation-v2-20261023/artifacts/mockup-sandbox/src/components/mockups/asab/phase1dBranchManager.test.ts:263:10)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1382:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+    Test.postRun (node:internal/test_runner/test:1522:19)
+    Test.run (node:internal/test_runner/test:1447:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+  ...
+# Subtest: Phase 1D 1D-COM-023: Sensitive query prefixes clear branch cache upon role switch
+ok 29 - Phase 1D 1D-COM-023: Sensitive query prefixes clear branch cache upon role switch
+  ---
+  duration_ms: 0.344629
+  type: 'test'
+  ...
+1..29
+# tests 29
+# suites 0
+# pass 28
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1013.211018
+Exit code: 1
