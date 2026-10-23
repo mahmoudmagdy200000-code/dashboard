@@ -191,26 +191,32 @@ export function ProcNewOrders({ role }: PageProps) {
                 const isOpen = expandedId === r.id;
                 return (
                   <div key={r.id} className={`border-b border-gray-100 last:border-0 ${r.urgency === "عاجل" ? "border-r-4 border-r-red-400" : ""}`}>
-                    <div className={`px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50 cursor-pointer ${isOpen ? "bg-amber-50/20" : ""}`}
-                      onClick={() => { setExpandedId(isOpen ? null : r.id); setEditMode(null); }}>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-xs text-purple-600">{r.orderNumber}</span>
-                          <span className="text-gray-300">·</span>
-                          <span className="text-xs text-gray-600">{groupBy === "branch" ? r.supplier : r.branch}</span>
-                          <Badge className={r.urgency === "عاجل" ? "bg-red-50 text-red-700 text-[10px]" : "bg-gray-50 text-gray-600 text-[10px]"}>{r.urgency}</Badge>
-                        </div>
-                        <p className="text-[11px] text-gray-400 mt-0.5">{r.items} {t("أصناف", "items")}</p>
-                      </div>
+                    <div className={`px-5 py-3.5 flex items-center gap-4 ${isOpen ? "bg-amber-50/20" : ""}`}>
+                      <button
+                        type="button"
+                        aria-expanded={isOpen}
+                        aria-label={t(`عرض تفاصيل الطلب ${r.orderNumber}`, `Toggle details for order ${r.orderNumber}`)}
+                        onClick={() => { setExpandedId(isOpen ? null : r.id); setEditMode(null); }}
+                        className="flex flex-1 min-w-0 items-center gap-4 rounded-md text-right focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-700">
+                        <span className="flex-1 min-w-0">
+                          <span className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono text-xs text-purple-600">{r.orderNumber}</span>
+                            <span className="text-gray-300">·</span>
+                            <span className="text-xs text-gray-600">{groupBy === "branch" ? r.supplier : r.branch}</span>
+                            <Badge className={r.urgency === "عاجل" ? "bg-red-50 text-red-700 text-[10px]" : "bg-gray-50 text-gray-600 text-[10px]"}>{r.urgency}</Badge>
+                          </span>
+                          <span className="block text-[11px] text-gray-400 mt-0.5">{r.items} {t("أصناف", "items")}</span>
+                        </span>
+                        {isOpen ? <ChevronUp size={13} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={13} className="text-gray-400 flex-shrink-0" />}
+                      </button>
                       <span className="font-mono font-bold text-gray-800 text-sm">{fmtAmt(r.total)} {t("ر.س", "SAR")}</span>
-                      <div className="flex gap-1.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                      <div className="flex gap-1.5 flex-shrink-0">
                         <span title={!canApproveFinancial ? t("الاعتماد المالي لأوامر الشراء مقيد لحين التحقق من عقد التخويل المعتمد (PUR-01 · APPROVAL_REQUIRED)", "Purchase financial approval is gated pending verification of the authorized contract (PUR-01 · APPROVAL_REQUIRED)") : undefined}>
                           <Btn size="sm" variant="success" disabled={!canApproveFinancial || approveMut.isPending} onClick={() => { if (canApproveFinancial) approveOne(r.id); }}>
                             <CheckCircle2 size={12} /> {t("اعتماد", "Approve")}
                           </Btn>
                         </span>
                       </div>
-                      {isOpen ? <ChevronUp size={13} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={13} className="text-gray-400 flex-shrink-0" />}
                     </div>
                     {/* Consumption intelligence expansion panel */}
                     {isOpen && (

@@ -141,25 +141,27 @@ A04 evidence: A4-F06 source-confirmed at the pinned baseline; `CA-F19`, `HA-F36`
 - [ ] `A05-04` Targeted acceptance evidence: Select/deselect/assign by keyboard, focus/ARIA state, role gates, no accidental mutation, AR+EN.
 - [x] `A05-05` Gate and limits: Dashboard AdminUsers; permission edits forbidden
 - [x] `A05-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
-- [ ] `A05-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
-- [ ] `A05-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `d565129d304be4f9bb984412f3240b7d67f87a14`; postSHA `PENDING`; commitSHA `PENDING / ZERO_COMMIT`; tested SHA `pending`; tests `NOT_RUN — pre-edit`; review `PENDING`; approval ref `GO-02`.
+- [x] `A05-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
+- [x] `A05-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
+**Implementation fields:** preSHA `d565129d304be4f9bb984412f3240b7d67f87a14`; postSHA `66fe26a9253e8f12e52c6f14b23e61445a991482`; commitSHA `66fe26a9253e8f12e52c6f14b23e61445a991482`; tested SHA `pre-commit source content equals committed AdminUsers.tsx`; tests `PARTIAL_PASS — 42/42 shared/admin tests; 66/66 Auth/session; typecheck and static AST 8/8 pass; browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 
 A05 evidence: A4-F03 source-confirmed in Phase 4 register at pinned AdminUsers role-distribution source (baseline lines 674/715); HA-F33/HA-F34 are related historical IDs, not duplicates. Replaced clickable accountant row with a controlled native radio group and associated label; unassignment buttons remain siblings outside the label. Removed parent-card click-to-assign and added an explicitly named native assignment button, keeping `moveAccToHead` and its API mutation unchanged. Static TypeScript-AST checks PASS 8/8 (radio semantics, label association, state setter, assignment button name/type/callback, no clickable div, unlink callbacks retained). `pnpm --filter @workspace/mockup-sandbox run typecheck` exit 0. `TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/components/mockups/asab/phase1fPlatformAdmin.test.ts artifacts/mockup-sandbox/src/components/mockups/asab/phase1hShared.test.ts` exit 0 (42/42); Auth/session regression same loader command with `roleAccess.test.ts` and `authSession.test.ts` exit 0 (66/66). Real keyboard activation, AR+EN interaction, role-gate interaction, no-mutation interaction, and browser accessibility remain NOT_RUN/BLOCKED because Chromium is absent and Vite dev is blocked by `uv_interface_addresses`; A05-04 remains unchecked. No permission/API contract changes.
 ### A06 — ProcNewOrders — accessible expansion control
 **Phase:** P4 · **Finding links:** `A4-F03; R3-F05` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
 **Scope:** procurement order accordion rows.
-- [ ] `A06-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `A06-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
-- [ ] `A06-03` Minimal action/disposition: Turn procurement order-row expand action into explicit named button with aria-expanded/controls if needed; retain business callbacks.
+- [x] `A06-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
+- [x] `A06-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
+- [x] `A06-03` Minimal action/disposition: Turn procurement order-row expand action into explicit named button with aria-expanded/controls if needed; retain business callbacks.
 - [ ] `A06-04` Targeted acceptance evidence: Tab/Enter/Space expand-collapse; click-equivalence; filters; purchase permission & status unchanged.
-- [ ] `A06-05` Gate and limits: Dashboard Procurement; keep API/status flow intact
-- [ ] `A06-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `A06-05` Gate and limits: Dashboard Procurement; keep API/status flow intact
+- [x] `A06-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
 - [ ] `A06-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `A06-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `66fe26a9253e8f12e52c6f14b23e61445a991482`; postSHA `PENDING`; commitSHA `PENDING / ZERO_COMMIT`; tested SHA `pending`; tests `PARTIAL_PASS — 21/21 Phase 1E Procurement tests, typecheck, static AST 6/6; keyboard/browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
+
+A06 evidence: A4-F03 source-confirmed at baseline `ProcNewOrders.tsx` line 193; R3-F05 is a separate responsive-table concern and is not closed by this change. Replaced the order-row clickable div with a native `type="button"` that exposes localized order-specific naming and `aria-expanded`; kept expansion and edit reset callbacks, and kept the approval button as a sibling. Approval authority and mutation code remain unchanged. `TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/components/mockups/asab/phase1eProcurement.test.ts` exit 0 (21/21). `pnpm --filter @workspace/mockup-sandbox run typecheck` exit 0. Static TypeScript-AST assertions PASS 6/6 for button semantics, expanded state, localized name, preserved callback, no wrapper mutation, and existing PUR-01 gate. Actual keyboard activation, click-equivalence, and narrow viewport tests NOT_RUN because browser runtime is unavailable; A06-04 remains unchecked.
 ### A07 — AdminUsers — contextual icon button names
 **Phase:** P4 · **Finding links:** `A4-F04` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
 **Scope:** unlink/add/clear icons in distribution.
