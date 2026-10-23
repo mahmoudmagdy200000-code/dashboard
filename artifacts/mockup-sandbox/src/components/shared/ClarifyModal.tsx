@@ -23,16 +23,32 @@ export function ClarifyModal({
   t = (ar) => ar,
 }: Props) {
   const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!open) return null;
 
-  const canSubmit = message.trim().length > 0;
+  const canSubmit = message.trim().length > 0 && !isSubmitting;
 
-  function handleSubmit() {
-    if (!canSubmit) return;
-    onSubmit({ message: message.trim() });
-    setMessage("");
-    onClose();
+  async function handleSubmit() {
+    if (!canSubmit || isSubmitting) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      await onSubmit({ message: message.trim() });
+      setMessage("");
+      onClose();
+    } catch (err: any) {
+      setSubmitError(
+        err?.message ||
+          t(
+            "فشل إرسال طلب الإيضاح، يرجى المحاولة مرة أخرى",
+            "Failed to send clarification request. Please try again.",
+          ),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -152,6 +168,22 @@ export function ClarifyModal({
             marginBottom: 16,
           }}
         />
+
+        {submitError && (
+          <div
+            style={{
+              padding: "8px 12px",
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              borderRadius: 8,
+              color: "#b91c1c",
+              fontSize: 12,
+              marginBottom: 16,
+            }}
+          >
+            {submitError}
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-start" }}>
           <button

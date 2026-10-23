@@ -248,13 +248,13 @@ type CAssetDraft = {
 };
 type CAssetDraftCtx = {
   drafts:CAssetDraft[];
-  addDraft:(d:CAssetDraft)=>void;
+  addDraft:(d:CAssetDraft)=>Promise<any>|void;
   discardDraft:(id:string)=>void;
   confirmDraft:(id:string)=>void;
   getConvertedInvNums:()=>Set<string>;
 };
 const CAssetDraftContext = createContext<CAssetDraftCtx>({
-  drafts:[], addDraft:()=>{}, discardDraft:()=>{}, confirmDraft:()=>{}, getConvertedInvNums:()=>new Set(),
+  drafts:[], addDraft:()=>Promise.resolve(), discardDraft:()=>{}, confirmDraft:()=>{}, getConvertedInvNums:()=>new Set(),
 });
 function CAssetDraftProvider({ children }:{ children:ReactNode }) {
   const { data: serverDrafts = [] } = useAssetDrafts();
@@ -278,12 +278,12 @@ function CAssetDraftProvider({ children }:{ children:ReactNode }) {
     qty: d.qty,
     custodian: d.custodian,
     targetBranches: d.targetBranches,
-    invoiceIndex: 0,
+    invoiceIndex: (d as any).invoiceIndex ?? 0,
     status: d.status === "draft" ? "draft" : "confirmed",
   }));
 
   const addDraft = (d:CAssetDraft) => {
-    convertMut.mutate({
+    return convertMut.mutateAsync({
       invoiceId: d.expOpId,
       invoiceIndex: d.invoiceIndex,
       assetName: d.assetName,
@@ -340,20 +340,30 @@ function ConvertToAssetModalCD({
   const [usefulLife, setUseful]    = useState(60);
   const [qty,        setQty]       = useState(1);
   const [custodian,  setCustodian] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg,   setErrorMsg]   = useState<string|null>(null);
 
   // Draft value is the invoice's PRE-TAX amount (VAT is not capitalised).
   const amtBeforeVat = preTaxHalalas != null ? Math.round(preTaxHalalas/100) : Math.round(amount/1.15);
   const draftId = `cd-draft-${opId}-${invoiceIndex}`;
-  const canConfirm = assetName.trim().length>0 && custodian.trim().length>0 && qty>=1 && Boolean(branchId);
+  const canConfirm = assetName.trim().length>0 && custodian.trim().length>0 && qty>=1 && Boolean(branchId) && !submitting;
 
-  const handleConfirm = () => {
-    if (!canConfirm) return;
-    const catLabel = catOptions.find(c=>c.key===cat)?.labelAr;
-    addDraft({ draftId, invNum, vendor, desc, amount:amtBeforeVat, branch, date, expOpId:opId, invoiceIndex,
-      assetName, category:cat, categoryLabelAr:catLabel, usefulLife, qty, custodian,
-      targetBranches: branchId ? [branchId] : [], status:"draft" });
-    onSuccess(draftId);
-    onClose();
+  const handleConfirm = async () => {
+    if (!canConfirm || submitting) return;
+    setSubmitting(true);
+    setErrorMsg(null);
+    try {
+      const catLabel = catOptions.find(c=>c.key===cat)?.labelAr;
+      await addDraft({ draftId, invNum, vendor, desc, amount:amtBeforeVat, branch, date, expOpId:opId, invoiceIndex,
+        assetName, category:cat, categoryLabelAr:catLabel, usefulLife, qty, custodian,
+        targetBranches: branchId ? [branchId] : [], status:"draft" });
+      onSuccess(draftId);
+      onClose();
+    } catch (err: any) {
+      setErrorMsg(err?.message || "فشل تحويل المصروف إلى أصل ثابت");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const { t, dir } = useCLang();
@@ -435,6 +445,11 @@ function ConvertToAssetModalCD({
                 <div className="flex justify-between"><span className="text-gray-500">الكمية</span><span className="font-semibold text-gray-800">{qty}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">الفرع</span><span className="font-semibold text-gray-800">{branch}</span></div>
               </div>
+            </div>
+          )}
+          {errorMsg && (
+            <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 font-semibold">
+              {errorMsg}
             </div>
           )}
         </div>
@@ -1299,10 +1314,13 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
   const totals = recon?.totals;
   const isLocked = recon?.isLocked ?? (op.status==="final-approved");
   const varianceH = totals?.varianceHalalas ?? null;
+  const isShortage = varianceH != null && varianceH < 0;
+  const isSurplus = varianceH != null && varianceH > 0;
   const hasVariance = varianceH != null && varianceH !== 0;
   const effRemainingH = remainingH ?? (varianceH == null ? null : Math.abs(varianceH));
   const assignedH = varEmps.reduce((s,e)=>s + Math.round((parseFloat(e.amount)||0)*100), 0);
   const leftH = effRemainingH == null ? null : effRemainingH - assignedH;
+  const [editError, setEditError] = useState<string|null>(null);
 
   const coreCh = channels.filter(c=>c.group==="core");
   const deliveryCh = channels.filter(c=>c.group==="delivery");
@@ -1323,9 +1341,19 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
   function saveEdit() {
     if (!recon) return;
     runSalesAction(salesContext, "save", () => {
+      // Validate all draft amounts — blank or invalid numeric input is rejected (ACC-F03)
+      for (const c of channels) {
+        const raw = draft[c.key];
+        if (raw !== undefined) {
+          const trimmed = String(raw).trim();
+          if (trimmed === "" || isNaN(Number(trimmed)) || Number(trimmed) < 0) {
+            return;
+          }
+        }
+      }
       const payloadChannels = channels.map(c=>({
         key: c.key,
-        actualAmountHalalas: Math.round((parseFloat(draft[c.key] ?? String(c.actualAmountHalalas/100))||0)*100),
+        actualAmountHalalas: Math.round(Number(draft[c.key] !== undefined ? draft[c.key] : c.actualAmountHalalas / 100) * 100),
         posAmountHalalas: c.posAmountHalalas,
       }));
       patchMut.mutate(
@@ -1335,7 +1363,7 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
     });
   }
   function confirmAssign() {
-    if (totals?.varianceHalalas == null) return;
+    if (totals?.varianceHalalas == null || totals.varianceHalalas >= 0) return;
     runSalesAction(salesContext, "assign", () => {
       const allocations = varEmps
         .filter(e=>e.empId.trim() && (parseFloat(e.amount)||0)>0)
@@ -1380,6 +1408,12 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
           {isLocked && <span className="flex items-center gap-1 text-[11px] text-slate-400"><Lock size={11}/> {t("مقفل","Locked")}</span>}
         </div>
 
+        {editError && (
+          <div className="px-4 py-2 bg-red-50 text-red-700 text-xs font-medium border-b border-red-100">
+            {editError}
+          </div>
+        )}
+
         {detailQ.isLoading && <p className="text-[11px] text-gray-400 text-center py-4">{t("جارٍ تحميل التسوية…","Loading reconciliation…")}</p>}
         {!detailQ.isLoading && !recon && (
           <p className="text-[11px] text-gray-400 text-center py-4">{t("لم تتم التسوية بعد لهذه العملية","This operation has not been reconciled yet")}</p>
@@ -1417,12 +1451,12 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
               </div>
             )}
 
-            {/* تحميل الفرق على موظفين */}
-            {hasVariance && salesPolicy.assign && (
+            {/* تحميل الفرق على موظفين — يتاح فقط في حالة العجز وليس الفائض (ACC-F04) */}
+            {isShortage && salesPolicy.assign && (
               <div className="mx-4 my-2 bg-red-50 border border-red-200 rounded-xl overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-2.5 bg-red-100/60 border-b border-red-200">
                   <AlertTriangle size={13} className="text-red-600 flex-shrink-0"/>
-                  <p className="text-xs font-bold text-red-800">{t("تحميل الفرق على موظفين","Allocate variance to employees")} — {t("الفرق","Variance")}: <span className="font-mono">{fmtH(varianceH == null ? null : Math.abs(varianceH))} ر.س</span></p>
+                  <p className="text-xs font-bold text-red-800">{t("تحميل الفرق على موظفين","Allocate variance to employees")} — {t("العجز","Shortage")}: <span className="font-mono">{fmtH(Math.abs(varianceH))} ر.س</span></p>
                   <span className={`mr-auto text-[10px] font-bold px-2 py-0.5 rounded-lg ${leftH != null && leftH<=0?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}`}>
                     {leftH != null && leftH<=0?"✓ محمَّل بالكامل":`${t("متبقي","Remaining")} ${fmtH(leftH)} ر.س`}
                   </span>
@@ -1444,6 +1478,13 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
                     </Btn>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {isSurplus && (
+              <div className="mx-4 my-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2">
+                <CheckCircle2 size={13} className="text-emerald-600 flex-shrink-0"/>
+                <p className="text-xs font-bold text-emerald-800">{t("فائض في المبيعات — لا يتم تحميله كمديونية على الموظفين وفق القواعد","Sales surplus — not allocated as employee liability per rules")}: <span className="font-mono">+{fmtH(varianceH)} {t("ر.س","SAR")}</span></p>
               </div>
             )}
 
@@ -4393,8 +4434,6 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
 
   const mOps = ops.filter(o=>o.module==="sales");
   const pending = mOps.filter(o=>o.status==="pending");
-  const bulkSalesIds = salesBulkApprovalIds(mOps, pending.map(op => op.id), "accountant",
-    op => queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)));
   const brandNames = cBrandNamesFromOps(ops);
 
   // Live day-completeness pills (T04 §3) + sales KPIs (T04 §2).
@@ -4412,6 +4451,9 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
     if(search && !op.branch.includes(search) && !op.submittedBy.includes(search) && !op.refNum.includes(search)) return false;
     return true;
   });
+  const shownPending = shown.filter(o=>o.status==="pending");
+  const bulkSalesIds = salesBulkApprovalIds(shown, shownPending.map(op => op.id), "accountant",
+    op => queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)));
   const clearFilters = () => { setBranchFilter(""); setStatusFilter(""); setMatchFilter(""); setBrandFilter("الكل"); setDateFilter("الكل"); setSearch(""); };
   const hasFilters = branchFilter||statusFilter||matchFilter||brandFilter!=="الكل"||dateFilter!=="الكل"||search;
   const totalShown = sumCOpAmounts(shown.filter(o=>o.status!=="rejected"));
@@ -4755,9 +4797,8 @@ function ExpenseStatementPanel({ op, onApprove, onReject, onConvert, convertedIn
       )}
 
       {op.status==="pending" && !isLocked && (
-        <div className="flex gap-2">
-          <Btn variant="success" size="sm" onClick={onApprove}><ThumbsUp size={12}/> {t("موافقة على البيان","Approve Statement")}</Btn>
-          <Btn variant="danger" size="sm" onClick={onReject}><ThumbsDown size={12}/> {t("رفض","Reject")}</Btn>
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+          {t("اعتماد/رفض المصروفات من صلاحية مالك العلامة وفق سياسة EXP-06 — دور المحاسب يقتصر على المراجعة والمطابقة والتحويل لأصول", "Expense decision is restricted to Brand Owner per EXP-06 — Accountant role is limited to review, matching and asset conversion")}
         </div>
       )}
 
@@ -4797,7 +4838,7 @@ function AccCompanyExpenses({ ops, approve, reject, bulkApprove }:{ ops:COp[]; a
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
         <div><h2 className="text-xl font-bold text-gray-800">{t("موديول المصروفات","Expenses Module")}</h2><p className="text-gray-400 text-sm mt-0.5">{pending.length} {t("بيان معلق — كل بيان قد يحتوي فواتير متعددة","pending entries — each may contain multiple invoices")}</p></div>
-        {pending.length>0 && <Btn variant="success" size="sm" onClick={()=>bulkApprove(pending.map(o=>o.id))}>✓ {t("موافقة على الكل","Approve All")} ({pending.length})</Btn>}
+        {pending.length>0 && <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">{t("اعتماد المصروفات من صلاحية مالك العلامة (EXP-06)","Expense approval is restricted to Brand Owner (EXP-06)")}</span>}
       </div>
       <div className="grid grid-cols-4 gap-4">
         <KpiCard label={t("إجمالي البيانات المرفوعة","Total Entries")}  value={String(mOps.length)} sub={t("كل الحالات","all statuses")} icon={<FileText size={18} className="text-purple-600"/>} accent="purple"/>
@@ -5714,7 +5755,7 @@ function AccCompanyAssets() {
   };
   const [editAsset, setEditAsset] = useState<Asset|null>(null);
   const [eForm, setEForm] = useState({ name:"", category:"", custodian:"", serial:"", bookValue:"", status:"active", branchId:"" });
-  const openEdit = (a:Asset) => { setEditAsset(a); setEForm({ name:a.name, category:a.category, custodian:a.custodian??"", serial:a.serial??"", bookValue:String(Math.round((a.bookValueHalalas??0)/100)), status:a.status, branchId:a.branchId??"" }); };
+  const openEdit = (a:Asset) => { setEditAsset(a); setEForm({ name:a.name, category:a.category, custodian:a.custodian??"", serial:a.serial??"", bookValue:((a.bookValueHalalas??0)/100).toFixed(2), status:a.status, branchId:a.branchId??"" }); };
   const submitEdit = () => {
     if (!editAsset) return;
     patchAssetMut.mutate(
@@ -6710,7 +6751,7 @@ function AccCompanyEmployees() {
                 {statement?.autoDeductFromSalary && (
                   <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
                     <AlertTriangle size={13} className="text-amber-600 flex-shrink-0"/>
-                    <p className="text-[11px] text-amber-800 font-semibold">{t("سيتم خصم الرصيد السالب من الراتب القادم","The negative balance will be deducted from the next salary")}</p>
+                    <p className="text-[11px] text-amber-800 font-semibold">{t("رصيد مدين مسجل في كشف الحساب للتسوية وفق سياسة المنشأة","Debit balance recorded on employee statement for settlement per company policy")}</p>
                   </div>
                 )}
               </div>
