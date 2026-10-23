@@ -9,9 +9,10 @@ import { getErrorMessage } from "../errors";
 import type { AppNotification, Page } from "../types";
 import { queryKeys } from "./keys";
 
-export function useNotifications(filter?: { unread?: boolean }) {
+export function useNotifications(filter?: { unread?: boolean }, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: queryKeys.notifications(filter),
+    enabled: options.enabled !== false,
     queryFn: async () => {
       const res = await api.get<Page<AppNotification>>(
         "/company/me/notifications",

@@ -129,7 +129,7 @@ test("actual preview path parser recognizes empty and unknown hash/path URLs for
   }
 });
 
-test("financial cache cancellation excludes unrelated queries and ignores late responses", async () => {
+test("financial and shared cache cancellation preserves auth queries and ignores late responses", async () => {
   const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
   let finish!: (value:string)=>void;
   const pending = new Promise<string>(resolve => {finish = resolve;});
@@ -139,7 +139,8 @@ test("financial cache cancellation excludes unrelated queries and ignores late r
   client.setQueryData(["asset-drafts"],{secret:"draft"});
   client.setQueryData(["platform","accountant","operations"],{secret:"platform"});
   client.setQueryData(["platform","admin","overview"],{secret:"admin"});
-  client.setQueryData(["notifications",{}],{safe:true});
+  client.setQueryData(["notifications",{}],{privateNotification:true});
+  client.setQueryData(["auth","me"],{safe:true});
   const inFlight = observer.refetch();
   await purgeFinancialQueries(client);
   finish("late financial data");
@@ -149,7 +150,8 @@ test("financial cache cancellation excludes unrelated queries and ignores late r
   assert.equal(client.getQueryData(["asset-drafts"]),undefined);
   assert.equal(client.getQueryData(["platform","accountant","operations"]),undefined);
   assert.equal(client.getQueryData(["platform","admin","overview"]),undefined);
-  assert.deepEqual(client.getQueryData(["notifications",{}]),{safe:true});
+  assert.equal(client.getQueryData(["notifications",{}]),undefined);
+  assert.deepEqual(client.getQueryData(["auth","me"]),{safe:true});
   unsubscribe();
   client.clear();
 });

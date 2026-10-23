@@ -102,6 +102,9 @@ const sensitivePrefixes: readonly (readonly string[])[] = [
   ["branch"], ["platform", "branch"],
   ["procurement"], ["platform", "procurement"], ["purchase-orders"],
   ["platform", "supplier"],
+  ["search"], ["notifications"], ["support"], ["lookups"], ["suppliers"],
+  ["company-admin"], ["company-users"], ["company-invitations"],
+  ["company-brands"], ["company-modules"], ["company-settings"], ["subscription"],
 ];
 
 /** Cancel before removal so a prior role's late response cannot restore financial cache. */

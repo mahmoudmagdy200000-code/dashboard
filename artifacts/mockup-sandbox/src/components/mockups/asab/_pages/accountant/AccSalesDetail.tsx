@@ -542,7 +542,7 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
           open={clarifyOpen}
           subject={op.id}
           onClose={() => setClarifyOpen(false)}
-          onSubmit={({ message }) => { clarifyMut.mutate({ id: op.id, message }); }}
+          onSubmit={({ message }) => clarifyMut.mutateAsync({ id: op.id, message })}
           t={t}
         />
       )}

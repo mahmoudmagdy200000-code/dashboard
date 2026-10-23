@@ -1,3 +1,4 @@
+import { useLang } from "../_shared/LangContext";
 import { ChevronRight } from "lucide-react";
 
 export interface BreadcrumbItem {
@@ -10,8 +11,9 @@ export interface BreadcrumbProps {
 }
 
 export function Breadcrumb({ items }: BreadcrumbProps) {
+  const { dir, t } = useLang();
   return (
-    <div className="flex items-center gap-1.5 text-sm mb-5 bg-white rounded-xl border border-gray-100 px-4 py-2.5 w-fit shadow-sm" dir="rtl">
+    <nav aria-label={t("مسار الصفحة", "Breadcrumb")} className="flex flex-wrap items-center gap-1.5 text-sm mb-5 bg-white rounded-xl border border-gray-100 px-4 py-2.5 w-fit shadow-sm" dir={dir}>
       {items.map((item, i) => (
         <div key={i} className="flex items-center gap-1.5">
           {i > 0 && <ChevronRight size={13} className="text-gray-300 rotate-180" />}
@@ -21,6 +23,6 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
           }
         </div>
       ))}
-    </div>
+    </nav>
   );
 }

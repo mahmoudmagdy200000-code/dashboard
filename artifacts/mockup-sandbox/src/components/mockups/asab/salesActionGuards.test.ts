@@ -163,14 +163,15 @@ test("actual reject confirmation and return handlers recheck review before HTTP 
         currentRole: { current:role }, operationFor: () => operation, detailFor: () => undefined,
         actionLock: { current:false }, setActionsPending: () => {},
         loadFreshDetail: async () => operation, getHeadReviewPolicy, getSalesActionPolicy,
-        runOperationAction: (_id: string, _action: string, effect: () => void) => effect(),
+        runOperationAction: (_id: string, _action: string, effect: () => void) => { effect(); return true; },
         setRejectingId: () => {}, now: () => "now", appState: { role },
         setOps: (update: unknown) => changes.push(update),
         rejectMut: { mutate: () => requests.push("POST reject"), mutateAsync: async () => { requests.push("POST reject"); } },
         returnReviewMut: { mutate: () => requests.push("POST return-for-review") },
       };
       const [confirm] = uiHandlers("CompanyDashboard.tsx", "useSharedOps", ["rejectModalProps.onSubmit"], scope);
-      await confirm({ reason: "reason" });
+      if (pkg6) await assert.rejects(async () => { await confirm({ reason: "reason" }); });
+      else await confirm({ reason: "reason" });
       const [reject, returnForReview] = uiHandlers("ASABPrototype.tsx", "ASABPrototype", ["rejectOp", "returnForReview"], scope);
       reject("legacy", "reason");
       returnForReview("legacy");

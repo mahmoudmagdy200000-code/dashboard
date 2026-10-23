@@ -221,7 +221,7 @@ const fmt = (n:number|null|undefined) => n == null ? "—" : n.toLocaleString("a
 // ═══════════════════════════════════════════════════
 // COMPANY & HIERARCHY DATA
 // ═══════════════════════════════════════════════════
-const COMPANY = { name:"مجموعة التاج للمطاعم", logo:"👑", plan:"Professional", city:"الرياض" };
+const COMPANY = { name:"—", logo:"ع", plan:"—", city:"—" };
 const PLAN_AR: Record<string,string> = { Basic:"أساسي", Professional:"احترافي", Enterprise:"مؤسسي" };
 
 // Brand → restaurant → branch tree comes from the platform API (useCompanyBrands / dashboard
@@ -1019,7 +1019,7 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, a
             <p className="text-white font-bold text-sm leading-tight truncate">{COMPANY.name}</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-xs text-cyan-400 font-semibold">{t(PLAN_AR[COMPANY.plan]||COMPANY.plan, COMPANY.plan)}</span>
-              <span className="w-1 h-1 rounded-full bg-emerald-400"/>
+              {COMPANY.plan !== "—" && <span className="w-1 h-1 rounded-full bg-emerald-400"/>}
             </div>
           </div>
         </div>
@@ -1142,8 +1142,8 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, a
         inert={mobileOpen ? true : undefined}
         aria-hidden={mobileOpen ? true : undefined}
       >
-        <header className="bg-white border-b border-gray-100 px-3 sm:px-4 md:px-6 py-2.5 sm:py-3 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-2 text-sm text-gray-500 min-w-0">
+        <header className="bg-white border-b border-gray-100 px-3 sm:px-4 md:px-6 py-2.5 sm:py-3 flex flex-wrap gap-3 items-center justify-between flex-shrink-0">
+          <nav aria-label={t("مسار الصفحة", "Breadcrumb")} className="flex items-center gap-2 text-sm text-gray-500 min-w-0">
             <button
               ref={menuBtnRef}
               type="button"
@@ -1156,13 +1156,13 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, a
             </button>
             <span className="font-bold text-gray-800 truncate">{COMPANY.name}</span>
             <ChevronRight size={12} className={`text-gray-300 hidden sm:inline ${dir === "ltr" ? "rotate-180" : ""}`} />
-            <span className="hidden sm:inline truncate">{pageLabel}</span>
-          </div>
-          <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
-            <Badge className="hidden sm:inline-flex bg-emerald-50 text-emerald-700 border border-emerald-100">● {t(PLAN_AR[COMPANY.plan] || COMPANY.plan, COMPANY.plan)}</Badge>
+            <span aria-current="page" className="truncate">{pageLabel}</span>
+          </nav>
+          <div className="flex items-center gap-1.5 sm:gap-3 w-full sm:w-auto min-w-0">
+            {COMPANY.plan !== "—" && <Badge className="hidden sm:inline-flex bg-emerald-50 text-emerald-700 border border-emerald-100">● {t(PLAN_AR[COMPANY.plan] || COMPANY.plan, COMPANY.plan)}</Badge>}
             <Badge className="hidden md:inline-flex bg-purple-50 text-purple-700 border border-purple-100">{meta.icon} {t(meta.label, enMeta.label)}</Badge>
-            <GlobalSearch t={t} theme="light" />
-            <NotificationBell t={t} theme="light" />
+            <GlobalSearch t={t} theme="light" role={role} pages={nav.flatMap(entry => "id" in entry ? [entry.id] : [])} onNavigate={handleNav} />
+            <NotificationBell t={t} theme="light" role={role} pages={nav.flatMap(entry => "id" in entry ? [entry.id] : [])} onNavigate={handleNav} />
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">{children}</main>
@@ -4246,25 +4246,32 @@ function useSharedOps(role: CRole | null, fingerprint: string) {
             throw error;
           }
           finally { actionLock.current = false; setActionsPending(false); }
-        }
+        } else { throw new Error("Action unavailable or operation changed"); }
       } else if (rejectingId && (rejectingModule !== "shifts" || rejectReasons?.some(r => r.key === reason))) {
-        runOperationAction(rejectingId, "returnToManager", () =>
-          runSalesAction(() => salesContextFor(rejectingId), "return", async () => {
-            try {
-              if (typeof rejectMut.mutateAsync === "function") {
-                await rejectMut.mutateAsync({ id: rejectingId, reason, notes });
-              } else {
-                await new Promise<void>((resolve, reject) => {
-                  rejectMut.mutate({ id: rejectingId, reason, notes }, { onSuccess: () => resolve(), onError: reject });
-                });
+        if (actionLock.current) throw new Error("Action already in progress");
+        actionLock.current = true; setActionsPending(true);
+        try {
+          let request: unknown;
+          const allowed = runOperationAction(rejectingId, "returnToManager", () => {
+            request = runSalesAction(() => salesContextFor(rejectingId), "return", async () => {
+              try {
+                if (typeof rejectMut.mutateAsync === "function") {
+                  await rejectMut.mutateAsync({ id: rejectingId, reason, notes });
+                } else {
+                  await new Promise<void>((resolve, reject) => {
+                    rejectMut.mutate({ id: rejectingId, reason, notes }, { onSuccess: () => resolve(), onError: reject });
+                  });
+                }
+              } catch (error) {
+                if (typeof toast !== "undefined") toast.error(getErrorMessage(error, "ar"));
+                throw error;
               }
-            } catch (error) {
-              if (typeof toast !== "undefined") toast.error(getErrorMessage(error, "ar"));
-              throw error;
-            }
-          })
-        );
-      }
+            });
+          });
+          if (!allowed || !request || typeof (request as Promise<unknown>).then !== "function") throw new Error("Operation changed; refresh before returning it");
+          await request;
+        } finally { actionLock.current = false; setActionsPending(false); }
+      } else { throw new Error("Action unavailable"); }
       setRejectingId(null);
     },
   };
@@ -4274,9 +4281,18 @@ function useSharedOps(role: CRole | null, fingerprint: string) {
     open: clarifyingId !== null,
     subject: clarifyingOp && ("refNum" in clarifyingOp ? clarifyingOp.refNum : clarifyingOp.publicId),
     onClose: () => setClarifyingId(null),
-    onSubmit: ({ message }: { message: string }) => {
-      if (clarifyingId) runOperationAction(clarifyingId, "clarify", () => clarifyMut.mutate({ id: clarifyingId, message }));
-      setClarifyingId(null);
+    onSubmit: async ({ message }: { message: string }) => {
+      if (!clarifyingId || actionLock.current) throw new Error("Action unavailable or already in progress");
+      actionLock.current = true; setActionsPending(true);
+      try {
+        let request: Promise<unknown> | undefined;
+        const allowed = runOperationAction(clarifyingId, "clarify", () => {
+          request = clarifyMut.mutateAsync({ id: clarifyingId, message });
+        });
+        if (!allowed || !request) throw new Error("Operation changed; refresh before requesting clarification");
+        await request;
+        setClarifyingId(null);
+      } finally { actionLock.current = false; setActionsPending(false); }
     },
   };
 
@@ -8456,7 +8472,7 @@ function CompanyDashboardInner() {
       {(currentRole==="accountant" || currentRole==="head") && <RejectModal {...rejectModalProps} t={t}/>}
       {(currentRole==="accountant" || currentRole==="head") && <ClarifyModal {...clarifyModalProps} t={t}/>}
       {/* Floating live-support chat — available to every company role. */}
-      <LiveChatWidget t={t}/>
+      <LiveChatWidget key={currentRole} t={t}/>
     </Shell>
   );
   return currentRole==="accountant"

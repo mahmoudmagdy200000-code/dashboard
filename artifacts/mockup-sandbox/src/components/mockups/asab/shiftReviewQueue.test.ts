@@ -146,13 +146,16 @@ test("SHF return confirmation sends only an API reason in a still-returnable pha
   ] as const) {
     const requests: string[] = [];
     const row = shift(phase === "manager_returned" ? "rejected" : "pending", phase);
-    const onSubmit = new Function("rejectingId", "rejectingModule", "rejectReasons", "runOperationAction", "runSalesAction", "salesContextFor", "rejectMut", "setRejectingId", "currentRole", js)(
+    const lock = { current:false };
+    const onSubmit = new Function("rejectingId", "rejectingModule", "rejectReasons", "runOperationAction", "runSalesAction", "salesContextFor", "rejectMut", "setRejectingId", "currentRole", "actionLock", "setActionsPending", js)(
       "shf-1", "shifts", [{ key: "valid" }],
       (_id: string, action: "returnToManager", effect: () => void) => runShfReviewAction(row, "accountant", action, effect),
       (_context: unknown, _action: unknown, effect: () => void) => effect(), () => ({ operation: row, role: "accountant" }),
-      { mutate: () => requests.push("POST reject") }, () => {}, {current:"accountant"},
+      { mutateAsync: async () => { requests.push("POST reject"); } }, () => {}, {current:"accountant"}, lock, () => {},
     ) as (payload: { reason: string }) => Promise<void>;
-    await onSubmit({ reason });
+    if (expected) await onSubmit({ reason });
+    else await assert.rejects(onSubmit({ reason }));
     assert.deepEqual(requests, expected ? ["POST reject"] : [], `${phase}/${reason}`);
+    assert.equal(lock.current, false);
   }
 });

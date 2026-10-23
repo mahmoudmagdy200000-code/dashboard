@@ -1,3 +1,6 @@
+import { Menu } from "lucide-react";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "../../ui/sheet";
+import { useDialogFocus } from "../../shared/useDialogFocus";
 import "./_group.css";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Operation as ApiOperation } from "../../../api/types";
@@ -511,11 +514,11 @@ const EN_REPORT_SUBS: Record<string, string> = {
   "menu-eng": "Item performance KPIs and comparisons",
 };
 const EN_ROLE_LABELS: Record<string, { name: string; label: string }> = {
-  admin: { name: "Abdullah Al-Ahmad", label: "System Admin" },
-  head: { name: "Khaled Al-Omari", label: "Head Accountant" },
-  accountant: { name: "Ahmed Mohammed", label: "Accountant — Branches 1–50" },
-  branch: { name: "Ahmed Al-Shammari", label: "Branch Manager — Riyadh Al-Olaya" },
-  procurement: { name: "Saeed Ahmed", label: "Procurement Manager" },
+  admin: { name: "—", label: "System Admin" },
+  head: { name: "—", label: "Head Accountant" },
+  accountant: { name: "—", label: "Accountant" },
+  branch: { name: "—", label: "Branch Manager" },
+  procurement: { name: "—", label: "Procurement Manager" },
   supplier: { name: "—", label: "Supplier" },
 };
 const EN_PAGE_LABELS: Record<string, string> = {
@@ -670,11 +673,11 @@ const NAV_CONFIG: Record<RoleId, NavEntry[]> = {
 };
 
 const ROLE_PROFILES: Record<RoleId, { name: string; avatar: string; label: string; defaultPage: PageId }> = {
-  admin: { name: "عبدالله الأحمد", avatar: "عب", label: "أدمن النظام", defaultPage: "admin-overview" },
-  head: { name: "خالد العمري", avatar: "خع", label: "رئيس الحسابات", defaultPage: "head-dashboard" },
-  accountant: { name: "أحمد محمد", avatar: "أم", label: "محاسب — الفروع 1–50", defaultPage: "acc-dashboard" },
-  branch: { name: "أحمد الشمري", avatar: "أش", label: "مدير فرع الرياض - العليا", defaultPage: "branch-overview" },
-  procurement: { name: "سعيد أحمد", avatar: "سأ", label: "مدير المشتريات", defaultPage: "proc-overview" },
+  admin: { name: "—", avatar: "؟", label: "أدمن النظام", defaultPage: "admin-overview" },
+  head: { name: "—", avatar: "؟", label: "رئيس الحسابات", defaultPage: "head-dashboard" },
+  accountant: { name: "—", avatar: "؟", label: "محاسب", defaultPage: "acc-dashboard" },
+  branch: { name: "—", avatar: "؟", label: "مدير فرع", defaultPage: "branch-overview" },
+  procurement: { name: "—", avatar: "؟", label: "مدير المشتريات", defaultPage: "proc-overview" },
   supplier: { name: "—", avatar: "؟", label: "مورد", defaultPage: "sup-overview" },
 };
 
@@ -931,7 +934,7 @@ function LoginScreen({ onLogin }: { onLogin: (r: RoleId) => void }) {
 // ─────────────────────────────────────────────
 // REJECT MODAL  (captures reason, calls rejectOp)
 // ─────────────────────────────────────────────
-function RejectModal({ opId, onReject, onClose }: { opId: string; onReject: (id: string, reason: string) => void; onClose: () => void }) {
+function RejectModal({ opId, onReject, onClose }: { opId: string; onReject: (id: string, reason: string) => Promise<unknown>; onClose: () => void }) {
   const { t, dir, lang } = useLang();
   const REJECT_REASONS_AR = ["بيانات غير مكتملة", "فاتورة مفقودة أو غير واضحة", "تناقض في المبالغ", "فرق في الكميات", "مورد غير معتمد", "تاريخ غير صحيح", "أخرى"];
   const REJECT_REASONS_EN = ["Incomplete data", "Missing or unclear invoice", "Amount discrepancy", "Quantity difference", "Unapproved supplier", "Incorrect date", "Other"];
@@ -939,34 +942,45 @@ function RejectModal({ opId, onReject, onClose }: { opId: string; onReject: (id:
   const placeholder = t("اختر السبب...", "Select reason...");
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
-  const canSubmit = reason !== "" && reason !== placeholder;
+  const [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const lock = useRef(false), ref = useRef<HTMLDivElement>(null);
+  useDialogFocus(true, ref, onClose, busy);
+  const canSubmit = reason !== "" && reason !== placeholder && !busy;
+  const submit = async () => {
+    if (!canSubmit || lock.current) return;
+    lock.current = true; setBusy(true); setError("");
+    try { await onReject(opId, notes ? `${reason}: ${notes}` : reason); }
+    catch { setError(t("تعذر تنفيذ الإرجاع. السبب والملاحظات محفوظة.", "Return failed. The reason and notes are retained.")); }
+    finally { lock.current = false; setBusy(false); }
+  };
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-[480px] max-w-full" dir={dir}>
+      <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="prototype-reject-title" className="bg-white rounded-2xl shadow-2xl w-[480px] max-w-full max-h-[90dvh] overflow-y-auto" dir={dir}>
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h3 className="font-bold text-gray-800 text-base">{t("رفض العملية", "Reject Operation")} {opId}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+          <h3 id="prototype-reject-title" className="font-bold text-gray-800 text-base">{t("رفض العملية", "Reject Operation")} {opId}</h3>
+          <button aria-label={t("إغلاق", "Close")} disabled={busy} onClick={() => { if (!lock.current) onClose(); }} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-4">
           <p className="text-gray-500 text-sm">{t("ستُعاد العملية إلى مدير الفرع مع سبب الرفض.", "The operation will be returned to the branch manager with the rejection reason.")}</p>
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">{t("سبب الرفض", "Rejection Reason")} <span className="text-red-500">*</span></label>
-            <select value={reason} onChange={e => setReason(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700">
+            <label htmlFor="prototype-reject-reason" className="text-sm font-semibold text-gray-700 block mb-1.5">{t("سبب الرفض", "Rejection Reason")} <span className="text-red-500">*</span></label>
+            <select id="prototype-reject-reason" disabled={busy} value={reason} onChange={e => setReason(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700">
               <option value="">{placeholder}</option>
               {reasons.map(r => <option key={r}>{r}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1.5">{t("ملاحظات إضافية", "Additional Notes")}</label>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 resize-none" rows={3} placeholder={t("تفاصيل إضافية (اختياري)...", "Additional details (optional)...")} />
+            <label htmlFor="prototype-reject-notes" className="text-sm font-semibold text-gray-700 block mb-1.5">{t("ملاحظات إضافية", "Additional Notes")}</label>
+            <textarea id="prototype-reject-notes" disabled={busy} value={notes} onChange={e => setNotes(e.target.value)} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 resize-none" rows={3} placeholder={t("تفاصيل إضافية (اختياري)...", "Additional details (optional)...")} />
           </div>
-          <div className="flex gap-3 pt-2">
-            <button onClick={() => canSubmit && onReject(opId, notes ? `${reason}: ${notes}` : reason)}
+          {error && <p role="alert">{error}</p>}
+          <div className="flex flex-wrap gap-3 pt-2">
+            <button onClick={submit}
               className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors ${canSubmit ? "bg-red-600 text-white hover:bg-red-700" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}
               disabled={!canSubmit}>
               ✕ {t("تأكيد الرفض وإعادة للفرع", "Confirm Rejection & Return to Branch")}
             </button>
-            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50">{t("إلغاء", "Cancel")}</button>
+            <button disabled={busy} onClick={() => { if (!lock.current) onClose(); }} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm hover:bg-gray-50">{t("إلغاء", "Cancel")}</button>
           </div>
         </div>
       </div>
@@ -1319,10 +1333,11 @@ function AddUserModal({ onAdd, onClose }: { onAdd: (user: AdminUserData) => void
 // ─────────────────────────────────────────────
 // SIDEBAR
 // ─────────────────────────────────────────────
-function Sidebar({ role, ops, page, navigate, logout, collapsed, setCollapsed }: {
+function Sidebar({ role, ops, page, navigate, logout, collapsed, setCollapsed, mobile = false, onClose }: {
   role: RoleId; ops: Op[]; page: PageId;
   navigate: (p: PageId) => void; logout: () => void;
   collapsed: boolean; setCollapsed: (v: boolean) => void;
+  mobile?: boolean; onClose?: () => void;
 }) {
   const { lang, setLang, dir } = useLang();
   const { user } = useAuth();
@@ -1390,7 +1405,7 @@ function Sidebar({ role, ops, page, navigate, logout, collapsed, setCollapsed }:
 
   return (
     <aside className="flex flex-col flex-shrink-0 transition-all duration-200"
-      style={{ width: collapsed ? 64 : 252, background: "linear-gradient(180deg,#0F1C35 0%,#1B3A6B 100%)", minHeight: "100vh", direction: dir }}>
+      style={{ width: mobile ? "100%" : collapsed ? 64 : 252, height: mobile ? "100%" : undefined, background: "linear-gradient(180deg,#0F1C35 0%,#1B3A6B 100%)", minHeight: mobile ? undefined : "100vh", direction: dir }}>
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-3 py-4 border-b border-white/10">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -1398,8 +1413,10 @@ function Sidebar({ role, ops, page, navigate, logout, collapsed, setCollapsed }:
           <span className="text-white font-black text-sm">ع</span>
         </div>
         {!collapsed && <div className="flex-1 min-w-0"><div className="text-white font-bold text-base">عصب</div><div className="text-white/40 text-[10px]">ASAB System</div></div>}
-        <button onClick={() => setCollapsed(!collapsed)} className="text-white/30 hover:text-white transition-colors ml-auto">
-          <ChevronRight size={16} className={collapsed ? "" : "rotate-180"} />
+        <button onClick={() => mobile ? onClose?.() : setCollapsed(!collapsed)}
+          aria-label={mobile ? (lang === "ar" ? "إغلاق القائمة" : "Close menu") : (lang === "ar" ? "طي القائمة أو توسيعها" : "Collapse or expand menu")}
+          className="min-w-11 min-h-11 text-white/70 hover:text-white transition-colors ms-auto">
+          {mobile ? <X size={18} /> : <ChevronRight size={16} className={collapsed ? "" : "rotate-180"} />}
         </button>
       </div>
       {/* Role */}
@@ -1437,7 +1454,7 @@ function Sidebar({ role, ops, page, navigate, logout, collapsed, setCollapsed }:
           const active = page === entry.id || (entry.id === "acc-sales" && page === "acc-sales-detail") || (entry.id === "acc-inventory" && page === "acc-inventory-items");
           const badge = getBadge(entry);
           return (
-            <button key={entry.id} onClick={() => navigate(entry.id)}
+            <button key={entry.id} onClick={() => navigate(entry.id)} aria-current={active ? "page" : undefined} aria-label={lang === "ar" ? entry.label : (EN_NAV_LABELS[entry.id] || entry.label)}
               className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors ${dir === "ltr" ? "text-left" : "text-right"} ${active ? "bg-white/15 text-white" : "text-white/55 hover:bg-white/8 hover:text-white/90"}`}>
               <span className={`flex-shrink-0 ${active ? "text-[#00D9FF]" : ""}`}>{entry.icon}</span>
               {!collapsed && (<>
@@ -1457,7 +1474,7 @@ function Sidebar({ role, ops, page, navigate, logout, collapsed, setCollapsed }:
               <div className="text-white text-sm font-medium truncate">{profile.name}</div>
               <div className="text-white/40 text-[10px] truncate">{profile.label}</div>
             </div>
-            <button onClick={logout} className="text-white/30 hover:text-red-300 transition-colors"><LogOut size={14} /></button>
+            <button aria-label={lang === "ar" ? "تسجيل الخروج" : "Logout"} onClick={logout} className="text-white/30 hover:text-red-300 transition-colors"><LogOut size={14} /></button>
           </>)}
         </div>
       </div>
@@ -1481,6 +1498,14 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
 }) {
   const { lang, setLang, t: tL, dir } = useLang();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => { setMobileOpen(false); }, [state.page, state.role]);
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px)");
+    const closeOnDesktop = () => { if (media.matches) setMobileOpen(false); };
+    media.addEventListener("change", closeOnDesktop);
+    return () => media.removeEventListener("change", closeOnDesktop);
+  }, []);
   // Seeded empty; AdminUsers syncs this from GET /admin/users (useAdminUsers).
   const [adminUsers, setAdminUsers] = useState<AdminUserData[]>([]);
   const createAdminUserMut = useCreateAdminUser();
@@ -1506,18 +1531,29 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
   const enProfile = lang === "ar" ? profile : { ...profile, ...EN_ROLE_LABELS[role] };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F0F4FA]" dir={dir}>
-      <Sidebar role={role} ops={ops} page={state.page} navigate={navigate} logout={logout}
-        collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
+    <div className="flex h-dvh overflow-hidden bg-[#F0F4FA]" dir={dir}>
+      <div className="hidden md:flex"><Sidebar role={role} ops={ops} page={state.page} navigate={navigate} logout={logout}
+        collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} /></div>
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetTrigger asChild><button type="button" className="md:hidden fixed top-3 z-20 min-w-11 min-h-11 bg-white rounded-lg border" style={{ insetInlineStart: 8 }} aria-label={tL("فتح القائمة", "Open menu")}><Menu size={20} /></button></SheetTrigger>
+        <SheetContent side={dir === "rtl" ? "right" : "left"} dir={dir} aria-describedby={undefined} className="w-[min(90vw,280px)] p-0 [&>button]:hidden">
+          <SheetTitle className="sr-only">{tL("القائمة الرئيسية", "Main menu")}</SheetTitle>
+          <Sidebar role={role} ops={ops} page={state.page} navigate={page => { navigate(page); setMobileOpen(false); }} logout={logout}
+            collapsed={false} setCollapsed={setSidebarCollapsed} mobile onClose={() => setMobileOpen(false)} />
+        </SheetContent>
+      </Sheet>
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Topbar */}
-        <header className="bg-white border-b border-gray-100 px-5 py-3 flex items-center gap-4 flex-shrink-0 shadow-sm z-10">
+        <header className="bg-white border-b border-gray-100 ps-16 md:ps-5 pe-3 py-3 flex flex-wrap items-center gap-3 flex-shrink-0 shadow-sm z-10">
           <div className="flex-1 min-w-0">
             <h1 className="text-gray-800 font-bold text-base leading-tight">{pageLabel}</h1>
-            <p className="text-gray-400 text-xs">{supplierName || enProfile.label}</p>
+            <nav aria-label={tL("مسار الصفحة", "Breadcrumb")} className="text-gray-500 text-xs flex flex-wrap gap-2">
+              <button type="button" onClick={() => navigate(ROLE_PROFILES[role].defaultPage)}>{supplierName || enProfile.label}</button>
+              <span aria-current="page">{pageLabel}</span>
+            </nav>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
             {allowedRoles.length > 1 && <select aria-label={tL("الدور الممنوح", "Granted role")} value={role}
               onChange={e => onSelectRole(e.target.value as RoleId)}
               className="text-xs border border-gray-200 rounded-lg px-2 py-1.5">
@@ -1554,7 +1590,7 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
             ) : role === "supplier" ? (
               <span className="text-xs text-gray-500">{tL("بحث المورد غير متاح بعقد الخادم الحالي", "Supplier search requires an approved Backend contract")}</span>
             ) : (
-              <GlobalSearch t={tL} theme="light" />
+              <GlobalSearch t={tL} theme="light" role={role} pages={NAV_CONFIG[role].flatMap(entry => isSection(entry) ? [] : [entry.id])} onNavigate={navigate} />
             )}
             {/* Language Globe */}
             <button onClick={() => setLang(lang === "ar" ? "en" : "ar")}
@@ -1577,7 +1613,7 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
             ) : role === "supplier" ? (
               <span className="text-xs text-gray-500">{tL("إشعارات المورد غير متاحة بعقد الخادم الحالي", "Supplier notifications require an approved Backend contract")}</span>
             ) : (
-              <NotificationBell t={tL} theme="light" />
+              <NotificationBell t={tL} theme="light" role={role} pages={NAV_CONFIG[role].flatMap(entry => isSection(entry) ? [] : [entry.id])} onNavigate={navigate} />
             )}
             <button onClick={logout} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 flex items-center gap-1">
               <LogOut size={13} /> {tL("خروج", "Logout")}
@@ -1586,7 +1622,7 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-5">
+        <main className="flex-1 min-w-0 overflow-y-auto p-3 sm:p-5">
           <PageRouter state={state} pageProps={pageProps} adminUsers={adminUsers} setAdminUsers={setAdminUsers} />
         </main>
       </div>
@@ -1594,7 +1630,11 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
       {/* Reject Modal */}
       {state.modal === "reject" && state.detailId && (
         <RejectModal opId={state.detailId}
-          onReject={(id, reason) => { rejectOp(id, reason); setModal(null); }}
+          onReject={async (id, reason) => {
+            const result: unknown = rejectOp(id, reason);
+            if (!result || typeof (result as Promise<unknown>).then !== "function") throw new Error("Return unavailable");
+            await result; setModal(null);
+          }}
           onClose={() => setModal(null)} />
       )}
 
@@ -2390,7 +2430,7 @@ export function ASABPrototype() {
   return (
     <LangContext.Provider value={{ lang, setLang, t, dir }}>
       {currentRole === "accountant" ? <AssetDraftProvider>{dashboard}</AssetDraftProvider> : dashboard}
-      {currentRole !== "admin" && currentRole !== "supplier" && <LiveChatWidget t={t} />}
+      {currentRole !== "admin" && currentRole !== "supplier" && <LiveChatWidget key={currentRole} t={t} />}
     </LangContext.Provider>
   );
 }

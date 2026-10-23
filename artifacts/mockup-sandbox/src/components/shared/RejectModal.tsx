@@ -1,3 +1,4 @@
+import { useDialogFocus } from "./useDialogFocus";
 import { useState, useRef, useEffect } from "react";
 import { X, RefreshCw } from "lucide-react";
 
@@ -63,46 +64,9 @@ export function RejectModal({
     }
   }, [options, reasonKey]);
 
-  // Escape key support
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !isSubmitting) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, isSubmitting, onClose]);
-
-  // Focus trap
-  useEffect(() => {
-    if (!open || !modalRef.current) return;
-    const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-    );
-    const firstEl = focusable[0];
-    const lastEl = focusable[focusable.length - 1];
-    firstEl?.focus();
-
-    const handleTab = (e: KeyboardEvent) => {
-      if (e.key !== "Tab") return;
-      if (e.shiftKey) {
-        if (document.activeElement === firstEl) {
-          e.preventDefault();
-          lastEl?.focus();
-        }
-      } else {
-        if (document.activeElement === lastEl) {
-          e.preventDefault();
-          firstEl?.focus();
-        }
-      }
-    };
-    const node = modalRef.current;
-    node.addEventListener("keydown", handleTab);
-    return () => node.removeEventListener("keydown", handleTab);
-  }, [open]);
+  const submitLock = useRef(false);
+  const dir = t("rtl", "ltr") as "rtl" | "ltr";
+  useDialogFocus(open, modalRef, onClose, isSubmitting);
 
   if (!open) return null;
 
@@ -111,7 +75,8 @@ export function RejectModal({
   const canSubmit = finalReason.length > 0 && (isOther || options.some(option => option.key === reasonKey)) && !isSubmitting;
 
   async function handleSubmit() {
-    if (!canSubmit || isSubmitting) return;
+    if (!canSubmit || submitLock.current) return;
+    submitLock.current = true;
     setIsSubmitting(true);
     setSubmitError(null);
     try {
@@ -125,13 +90,14 @@ export function RejectModal({
       // HA-F21: Retain draft on failure, do NOT wipe fields and do NOT close modal!
       setSubmitError(err?.message || t("فشل إرسال الطلب، يرجى التحقق وإعادة المحاولة", "Submission failed. Please check and try again"));
     } finally {
+      submitLock.current = false;
       setIsSubmitting(false);
     }
   }
 
   return (
     <div
-      onClick={() => { if (!isSubmitting) onClose(); }}
+      onClick={() => { if (!submitLock.current) onClose(); }}
       style={{
         position: "fixed",
         inset: 0,
@@ -145,14 +111,18 @@ export function RejectModal({
     >
       <div
         ref={modalRef}
+        tabIndex={-1}
+        aria-busy={isSubmitting}
         role="dialog"
         aria-modal="true"
         aria-labelledby="reject-modal-title"
         onClick={(e) => e.stopPropagation()}
-        dir="rtl"
+        dir={dir}
         style={{
           width: "100%",
           maxWidth: 480,
+          maxHeight: "90dvh",
+          overflowY: "auto",
           background: "white",
           borderRadius: 16,
           padding: 24,
@@ -197,7 +167,7 @@ export function RejectModal({
             </div>
           </div>
           <button
-            onClick={() => { if (!isSubmitting) onClose(); }}
+            onClick={() => { if (!submitLock.current) onClose(); }}
             disabled={isSubmitting}
             aria-label={t("إغلاق", "Close")}
             style={{
@@ -360,7 +330,7 @@ export function RejectModal({
             <span>{returnToManager || returnToAccountant ? t("تأكيد الإرجاع", "Confirm return") : t("تأكيد الرفض", "Confirm Reject")}</span>
           </button>
           <button
-            onClick={onClose}
+            onClick={() => { if (!submitLock.current) onClose(); }}
             disabled={isSubmitting}
             style={{
               padding: "10px 20px",
