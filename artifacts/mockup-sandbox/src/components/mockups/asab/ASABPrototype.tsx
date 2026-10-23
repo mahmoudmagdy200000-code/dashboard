@@ -86,6 +86,9 @@ import { BranchSuppliers } from "./_pages/branch/BranchSuppliers";
 import { BranchEmployees } from "./_pages/branch/BranchEmployees";
 import { BranchUpload } from "./_pages/branch/BranchUpload";
 import { BranchSettings } from "./_pages/branch/BranchSettings";
+import { SupOverview } from "./_pages/supplier/SupOverview";
+import { SupRejected } from "./_pages/supplier/SupRejected";
+import { SupReports } from "./_pages/supplier/SupReports";
 import { AssetDraftProvider, AssetDraftContext, type AssetDraft, type AssetCatType } from "./_shared/assetDraft";
 import { toast } from "sonner";
 import { useState, useEffect, useMemo, ReactNode, createContext, useContext, useRef, type MouseEvent as ReactMouseEvent } from "react";
@@ -3962,44 +3965,6 @@ function HeadERP({ ops, markErpPosted }: PageProps) {
 // ════════════════════════════════════════════════════════════
 // SUPPLIER PAGES
 // ════════════════════════════════════════════════════════════
-// T13 §1 — GET /asab/supplier/overview. Money is integer halalas (÷100 → SAR).
-function SupOverview({ navigate }: PageProps) {
-  const { data: apiOverview } = useSupplierOverview();
-  const { t } = useLang();
-  const kpis = (apiOverview as any)?.kpis ?? {};
-  const newOrders = kpis.newOrders ?? 0;
-  const accepted = kpis.acceptedThisMonth ?? 0;
-  const salesSar = kpis.totalSalesThisMonth != null ? kpis.totalSalesThisMonth / 100 : 0;
-  const trendPct = kpis.totalSalesTrendPct;
-  const activeItems = kpis.activeItems ?? 0;
-  const totalItems = kpis.totalItems ?? 0;
-  const recent = ((apiOverview as any)?.recentOrders ?? []) as any[];
-  const statusChip = (k?: string) => k === "delivered" ? "bg-emerald-50 text-emerald-700" : k === "accepted" ? "bg-blue-50 text-blue-700" : k === "rejected" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700";
-  return (
-    <div className="space-y-5">
-      <div><h2 className="text-xl font-bold text-gray-800">{t("لوحة تحكم المورد", "Supplier Dashboard")}</h2><p className="text-gray-400 text-sm mt-0.5">{t("شركة الدواجن الوطنية", "National Poultry Company")}</p></div>
-      <div className="grid grid-cols-4 gap-4">
-        <KpiCard label={t("طلبات جديدة", "New Orders")} value={String(newOrders)} sub={t("تنتظر ردك", "awaiting your response")} icon={<ShoppingCart size={18} className="text-red-600" />} accent="red" />
-        <KpiCard label={t("مقبولة هذا الشهر", "Accepted This Month")} value={String(accepted)} sub={t("هذا الشهر", "this month")} icon={<CheckCircle2 size={18} className="text-emerald-600" />} accent="emerald" />
-        <KpiCard label={t("إجمالي مبيعاتي", "Total Sales")} value={`${fmtAmt(salesSar)} ${t("ر.س", "SAR")}`} sub={trendPct != null ? `${trendPct >= 0 ? "▲" : "▼"} ${Math.abs(trendPct)}% ${t("عن الشهر السابق", "vs last month")}` : t("هذا الشهر", "this month")} icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
-        <KpiCard label={t("أصناف نشطة", "Active Items")} value={`${activeItems}/${totalItems}`} sub={t("من كتالوجك", "of your catalog")} icon={<Package size={18} className="text-blue-600" />} accent="blue" />
-      </div>
-      <Card title={`${t("آخر الطلبات", "Recent Orders")} — ${recent.length}`} actions={<button onClick={() => navigate?.("sup-new")} className="text-xs text-purple-600 font-semibold hover:underline">{t("عرض الطلبات الجديدة", "View new orders")}</button>}>
-        {recent.length === 0 && <div className="px-5 py-8 text-center text-sm text-gray-400">{t("لا توجد طلبات", "No orders yet")}</div>}
-        {recent.map((o, i) => (
-          <div key={o.id ?? i} className="px-5 py-4 flex items-center gap-4 border-b border-gray-100 last:border-0 hover:bg-gray-50">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2"><p className="font-semibold text-sm text-gray-800 truncate">{o.from ?? "—"}</p>{o.publicId && <span className="font-mono text-[10px] text-gray-400">{o.publicId}</span>}</div>
-              <p className="text-xs text-gray-400 mt-1 truncate">{o.itemsText ?? "—"}{o.deliveryDate ? ` · ${t("التسليم:", "Delivery:")} ${String(o.deliveryDate).slice(0, 10)}` : ""}</p>
-            </div>
-            <span className="font-mono font-bold text-gray-800 flex-shrink-0">{fmtAmt((o.total ?? 0) / 100)} {t("ر.س", "SAR")}</span>
-            <Badge className={`${statusChip(o.statusKey)} flex-shrink-0`}>{o.statusLabel ?? o.statusKey ?? o.status}</Badge>
-          </div>
-        ))}
-      </Card>
-    </div>
-  );
-}
 
 // T13 §2-4 — GET /asab/supplier/orders?status=pending + accept/reject.
 // The hook already unwraps the page to an array. Order rows carry itemsText
@@ -4114,37 +4079,6 @@ function SupAccepted({ }: PageProps) {
   );
 }
 
-// T13 §2 — GET orders?status=rejected. The order row does not carry the
-// rejection reason back, so we render the summary + amount only.
-function SupRejected({ }: PageProps) {
-  const { data: apiRejected } = useSupplierOrders({ status: "rejected" });
-  const { t } = useLang();
-  const orders = (Array.isArray(apiRejected) ? apiRejected : []) as any[];
-
-  return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-gray-800">{t("الطلبات المرفوضة", "Rejected Orders")}</h2><p className="text-gray-400 text-sm mt-0.5">{orders.length} {t("طلب مرفوض", "rejected orders")}</p></div>
-      </div>
-      {orders.length === 0 && <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-10 text-center text-sm text-gray-400">{t("لا توجد طلبات مرفوضة", "No rejected orders")}</div>}
-      {orders.length > 0 && (
-        <Card title={t("سجل الرفض", "Rejection Log")}>
-          {orders.map((o, i) => (
-            <div key={o.id ?? i} className="px-5 py-4 flex items-center gap-4 border-b border-gray-100 last:border-0 hover:bg-gray-50">
-              <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0"><XCircle size={16} className="text-red-500" /></div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2"><span className="font-semibold text-sm text-gray-800 truncate">{o.from ?? "—"}</span>{o.publicId && <span className="font-mono text-xs text-gray-400">{o.publicId}</span>}</div>
-                <p className="text-xs text-gray-400 mt-0.5 truncate">{o.itemsText ?? "—"}{o.orderDate ? ` · ${String(o.orderDate).slice(0, 10)}` : ""}</p>
-              </div>
-              <Badge className="bg-red-50 text-red-700 flex-shrink-0">{o.statusLabel ?? t("مرفوض", "Rejected")}</Badge>
-              <span className="font-mono font-bold text-gray-800 flex-shrink-0">{fmtAmt((o.total ?? 0) / 100)} {t("ر.س", "SAR")}</span>
-            </div>
-          ))}
-        </Card>
-      )}
-    </div>
-  );
-}
 
 // T13 §7-12 — supplier catalog CRUD. Prices are integer halalas end-to-end:
 // display priceHalalas÷100, and submit priceHalalas = SAR×100.
@@ -4310,31 +4244,6 @@ function SupItems({ }: PageProps) {
   );
 }
 
-// T13 §13 — GET /asab/supplier/reports. Flat aggregates over fulfilled
-// (accepted + delivered) orders only; money in halalas. SUP-3 breakdowns
-// (topItems / topBranches / monthly) are DEFERRED — no placeholders rendered.
-function SupReports({ }: PageProps) {
-  const { data: apiReports } = useSupplierReports();
-  const { t } = useLang();
-  const r = (apiReports as any) ?? {};
-  const totalRevenue = r.totalRevenue != null ? r.totalRevenue / 100 : 0;
-  const orderCount = r.orderCount ?? 0;
-  const avgOrderValue = r.averageOrderValue != null ? r.averageOrderValue / 100 : 0;
-
-  return (
-    <div className="space-y-5">
-      <div><h2 className="text-xl font-bold text-gray-800">{t("التقارير", "Reports")}</h2><p className="text-gray-400 text-sm mt-0.5">{t("ملخص أداء المبيعات (الطلبات المنفَّذة)", "Sales performance summary (fulfilled orders)")}</p></div>
-      <div className="grid grid-cols-3 gap-4">
-        <KpiCard label={t("إجمالي الإيرادات", "Total Revenue")} value={`${fmtAmt(totalRevenue)} ${t("ر.س", "SAR")}`} sub={t("الطلبات المنفَّذة", "fulfilled orders")} icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
-        <KpiCard label={t("عدد الطلبات", "Order Count")} value={String(orderCount)} sub={t("مقبولة + مسلَّمة", "accepted + delivered")} icon={<CheckCircle2 size={18} className="text-emerald-600" />} accent="emerald" />
-        <KpiCard label={t("متوسط قيمة الطلب", "Avg Order Value")} value={`${fmtAmt(avgOrderValue)} ${t("ر.س", "SAR")}`} sub={t("لكل طلب", "per order")} icon={<BarChart3 size={18} className="text-blue-600" />} accent="blue" />
-      </div>
-      <div className="bg-blue-50/60 border border-blue-100 rounded-xl px-4 py-3 text-xs text-blue-700">
-        {t("التقارير التفصيلية (أفضل الأصناف والعملاء والاتجاه الشهري) قيد التطوير.", "Detailed reports (top items, top clients, monthly trend) are under development.")}
-      </div>
-    </div>
-  );
-}
 
 // ════════════════════════════════════════════════════════════
 // MAIN EXPORT
