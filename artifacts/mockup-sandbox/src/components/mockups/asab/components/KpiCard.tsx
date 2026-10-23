@@ -27,11 +27,8 @@ export function KpiCard({
   };
   const borderCls = accents[accent]?.split(" ")[0] || "border-t-purple-500";
   const iconBg = accents[accent]?.split(" ")[1] || "bg-purple-500";
-  return (
-    <div
-      onClick={onClick}
-      className={`bg-white rounded-xl shadow-sm border border-gray-100 border-t-2 ${borderCls} p-5 flex items-start gap-4 ${onClick ? "cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all" : ""}`}
-    >
+  const content = (
+    <>
       <div className={`w-10 h-10 rounded-xl ${iconBg} bg-opacity-10 flex items-center justify-center flex-shrink-0`}>
         {icon}
       </div>
@@ -41,6 +38,23 @@ export function KpiCard({
         {sub && <p className="text-gray-400 text-xs mt-1.5">{sub}</p>}
         {onClick && <p className="text-[10px] text-purple-500 mt-1">← اضغط للتفاصيل</p>}
       </div>
-    </div>
+    </>
   );
+
+  const cardClassName = `bg-white rounded-xl shadow-sm border border-gray-100 border-t-2 ${borderCls} p-5 flex items-start gap-4 ${onClick ? "cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all" : ""}`;
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={`${cardClassName} w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2`}
+        style={{ fontFamily: "inherit", textAlign: "start" }}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return <div className={cardClassName}>{content}</div>;
 }

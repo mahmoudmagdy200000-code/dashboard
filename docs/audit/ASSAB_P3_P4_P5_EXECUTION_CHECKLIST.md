@@ -96,24 +96,26 @@ A01 is committed as `ad7ef3fb5d897a74bf150e8ab309d582e5aa0365` and remains `PEND
 - [ ] `A02-04` Targeted acceptance evidence: Tab / Shift-Tab, Enter / Space toggling, button does not submit, focus remains predictable, AR+EN.
 - [x] `A02-05` Gate and limits: Dashboard UI ONLY; no auth rewrite
 - [x] `A02-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
-- [ ] `A02-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
-- [ ] `A02-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `ad7ef3fb5d897a74bf150e8ab309d582e5aa0365`; postSHA `PENDING_COMMIT`; commitSHA `PENDING_COMMIT`; tested SHA `working tree based on ad7ef3fb5d897a74bf150e8ab309d582e5aa0365`; tests `66/66 auth regression PASS; mockup typecheck PASS; AST keyboard-reachability source assertions PASS; browser keyboard NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+- [x] `A02-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
+- [x] `A02-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
+**Implementation fields:** preSHA `ad7ef3fb5d897a74bf150e8ab309d582e5aa0365`; postSHA `b44afbdf4d741404a165330966809785148f1b0b`; commitSHA `b44afbdf4d741404a165330966809785148f1b0b`; tested SHA `b44afbdf4d741404a165330966809785148f1b0b`; tests `66/66 auth regression PASS; mockup typecheck PASS; AST reachability assertion PASS; actual keyboard/browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
-A02 execution evidence: Removed only `tabIndex={-1}` from the native localized password visibility button; `type="button"` and Show/Hide labels remain. Auth regression command used the repository TSX loader, exit 0 (66/66); mockup typecheck exit 0; static TS AST assertion exit 0. Actual Tab/Shift-Tab/Enter/Space interaction remains NOT_RUN.
+A02 committed as `b44afbdf4d741404a165330966809785148f1b0b`; status remains `PENDING_REVIEW` / `IMPLEMENTED_UNVERIFIED` pending runtime keyboard interaction.
 
 ### A03 — Shared KpiCard — clickable button semantics only
 **Phase:** P3+P4 · **Finding links:** `R3-F08; HA-F33; S1H-F13` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
 **Scope:** shared KpiCard interactive usages.
-- [ ] `A03-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `A03-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
-- [ ] `A03-03` Minimal action/disposition: Convert onClick KpiCard interactive variant to native button (or semantically equivalent), leave informational cards outside tab order, no nested interactive controls.
+- [x] `A03-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
+- [x] `A03-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
+- [x] `A03-03` Minimal action/disposition: Convert onClick KpiCard interactive variant to native button (or semantically equivalent), leave informational cards outside tab order, no nested interactive controls.
 - [ ] `A03-04` Targeted acceptance evidence: Keyboard focus/Enter/Space; role navigation; static cards not focused; reflow 320px; AR+EN.
-- [ ] `A03-05` Gate and limits: Dashboard Shared Component; cross-role regression
-- [ ] `A03-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `A03-05` Gate and limits: Dashboard Shared Component; cross-role regression
+- [x] `A03-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
 - [ ] `A03-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `A03-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `b44afbdf4d741404a165330966809785148f1b0b`; postSHA `PENDING_COMMIT`; commitSHA `PENDING_COMMIT`; tested SHA `working tree based on b44afbdf4d741404a165330966809785148f1b0b`; tests `interactive/informational KPI SSR assertions PASS; mockup typecheck PASS; keyboard/browser/320px NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+
+A03 evidence: R3-F08 source confirms `components/KpiCard.tsx` is a clickable `div`; the audit links `HA-F33` and `S1H-F13` are retained without adding IDs. AST scan found five actual interactive call sites, all in HeadDashboard; other KpiCard uses are informational. Interactive variant is a native `type="button"` with visible focus ring; informational variant remains a `div` with no pointer/focus affordance. SSR variant assertions PASS. `pnpm --filter @workspace/mockup-sandbox run typecheck` exit 0. Keyboard activation, role navigation and 320px reflow remain NOT_RUN.
 
 ### A04 — Document language metadata
 **Phase:** P4 · **Finding links:** `A4-F06; CA-F19; HA-F36; S1H-F12` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
