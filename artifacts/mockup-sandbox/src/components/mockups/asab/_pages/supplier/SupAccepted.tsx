@@ -15,6 +15,11 @@ import { Badge } from "../../components/Badge";
 import { Btn } from "../../components/Btn";
 
 // T13 §2/§5 — GET orders?status=accepted + mark-delivered (accepted → delivered).
+// SUP-F07 / SUP-F08: Only orders with statusKey === "accepted" under status === "accepted" filter permit declaration.
+export function canDeclareSupplierDelivery(filterStatus?: string | null, orderStatusKey?: string | null): boolean {
+  return filterStatus === "accepted" && orderStatusKey === "accepted";
+}
+
 export function SupAccepted({ }: PageProps) {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<"accepted" | "delivered">("accepted");

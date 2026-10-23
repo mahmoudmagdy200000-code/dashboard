@@ -909,3 +909,49 @@ test("bootstrap /auth/me response is discarded after a later session boundary", 
   resolveFetch(accountant);await pending;
   assert.deepEqual(writes,[]);
 });
+
+test("S1H-F06: role change cache isolation covers reports, audit-logs, attachments, platform/reminders, company, modules, exceptions, exports and preserves auth identity", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { gcTime: 0, retry: false } } });
+
+  const testNamespaces: Array<[readonly unknown[], unknown]> = [
+    [["reports", "catalog"], { report: "secret" }],
+    [["audit-logs", { filter: "recent" }], { log: "sensitive-audit" }],
+    [["attachments", "att-42"], { file: "doc.pdf" }],
+    [["reminders", "missing"], { count: 3 }],
+    [["platform", "reminders", "rules"], { rule: "active" }],
+    [["company", "subscription"], { plan: "enterprise" }],
+    [["modules", "aggregation"], { modules: ["fin", "ops"] }],
+    [["exceptions", { unresolved: true }], { err: "critical" }],
+    [["exports", "job", "job-99"], { status: "ready" }],
+  ];
+
+  for (const [key, data] of testNamespaces) {
+    client.setQueryData(key, data);
+  }
+  client.setQueryData(["auth", "me"], { id: "user-123", email: "user@example.com" });
+
+  // Verify delayed in-flight responses across sensitive namespaces cannot restore purged cache
+  let resolveDelayed!: (value: unknown) => void;
+  const delayedPromise = new Promise(resolve => { resolveDelayed = resolve; });
+  const inFlightQuery = client.fetchQuery({
+    queryKey: ["reports", "pending-run"],
+    queryFn: () => delayedPromise,
+  });
+  const inFlightHandled = inFlightQuery.catch(() => "cancelled");
+
+  await purgeFinancialQueries(client);
+
+  resolveDelayed({ report: "late-arriving-data" });
+  await inFlightHandled;
+
+  // Assert all sensitive namespaces were purged
+  for (const [key] of testNamespaces) {
+    assert.equal(client.getQueryData(key), undefined, `Query key ${JSON.stringify(key)} must be removed from cache`);
+  }
+  assert.equal(client.getQueryData(["reports", "pending-run"]), undefined, "Late arriving query response must not restore purged cache");
+
+  // Assert auth identity query data is strictly preserved
+  assert.deepEqual(client.getQueryData(["auth", "me"]), { id: "user-123", email: "user@example.com" });
+
+  client.clear();
+});
