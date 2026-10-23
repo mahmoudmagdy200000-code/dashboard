@@ -2241,40 +2241,40 @@
 
 | ID | الأولوية | الموديول / الصفحة | عنوان المشكلة المعتمد | الحالة البرمجية | الفحص الحي | الملفات المتأثرة | الـ Commit SHA |
 | :---: | :---: | :--- | :--- | :---: | :---: | :--- | :---: |
-| **ADM-F01** | P2 | Security / Admin Grant | قصر صلاحيات الأدمن الشاملة على التخويل الصريح ومنع التسرب | `FIXED_AND_VERIFIED` | `NOT_RUN` | `roleAccess.ts` | Pending Commit 2 |
-| **ADM-F02** | P2 | Shared Shell | بحث المنصة المشترك وتأمين استدعاءات البحث للأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | Pending Commit 2 |
-| **ADM-F03** | P2 | Shared Shell | إشعارات الأدمن واستخدام مسارات تفضيلات المنصة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | Pending Commit 2 |
-| **ADM-F04** | P2 | Users | إضافة المستخدم لقائمة العرض فقط بعد نجاح الخادم المؤكد | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | Pending Commit 2 |
-| **ADM-F05** | P2 | Users | ربط زر "تعديل الصلاحيات" بمصفوفة الصلاحيات برمجياً | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | Pending Commit 2 |
-| **ADM-F06** | P2 | Users | قصر حذف المستخدم من الواجهة على تأكيد نجاح خادم API | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | Pending Commit 2 |
-| **ADM-F07** | P2 | Users | دعم التراجع التلقائي (Rollback) عند فشل تعيين المحاسبين | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | Pending Commit 2 |
-| **ADM-F08** | P2 | Users | مطابقة مفاتيح الموديولات المعتمدة مع المعايير البرمجية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | Pending Commit 2 |
-| **ADM-F09** | P2 | Users | عزل مستأجري التعيينات المتعددة وفق التسلسل الهرمي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | Pending Commit 2 |
-| **ADM-F10** | P2 | Restaurants & Branches | دعم الاستجابة المسطحة للعلامات دون حجب الهيكل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminRestaurants.tsx` | Pending Commit 2 |
-| **ADM-F11** | P2 | Restaurants & Branches | مؤشرات حالة الرفع وفق الاستجابة المستمرة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminRestaurants.tsx` | Pending Commit 2 |
-| **ADM-F12** | P2 | Restaurants & Branches | تعيين العلامة الافتراضية الأولى ديناميكياً من الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminRestaurants.tsx` | Pending Commit 2 |
-| **ADM-F13** | P2 | Branch Requests | إظهار وإتاحة صفحة طلبات الفروع بالقائمة الجانبية للأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | Pending Commit 2 |
-| **ADM-F14** | P2 | Subscriptions | تجديد الاشتراك دون تواريخ ثابتة واعتماد استجابة الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSubscriptions.tsx` | Pending Commit 2 |
-| **ADM-F15** | P2 | Subscriptions | دعم التراجع التلقائي عند فشل تبديل التذكير الآلي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSubscriptions.tsx` | Pending Commit 2 |
-| **ADM-F16** | P2 | Subscriptions | ربط أزرار إيقاف وتفعيل الاشتراك في كروت الاشتراكات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSubscriptions.tsx` | Pending Commit 2 |
-| **ADM-F17** | P2 | Company Subscriptions | قصر تغيير حالة وباقة اشتراك الشركة على تأكيد الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminCompanies.tsx` | Pending Commit 2 |
-| **ADM-F18** | P2 | Company Subscriptions | وسم الإيراد الشهري كتقدير لكتالوج الباقات وفق SUB-01 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminCompanies.tsx` | Pending Commit 2 |
-| **ADM-F19** | P3 | Packages | وسم أسعار الباقات كبيانات استرشادية لكتالوج الباقات (SUB-01) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPackages.tsx` | Pending Commit 2 |
-| **ADM-F20** | P2 | Permissions | استعادة مصفوفة الصلاحيات الأصلية بالكامل عند الإلغاء | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPermissions.tsx` | Pending Commit 2 |
-| **ADM-F21** | P2 | Permissions | تأكيد حفظ التغييرات فقط بعد نجاح تحديث الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPermissions.tsx` | Pending Commit 2 |
-| **ADM-F22** | P2 | Permissions | استنساخ الأدوار وفق عقد الصلاحيات المعتمد | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPermissions.tsx` | Pending Commit 2 |
-| **ADM-F23** | P2 | Permissions | مواءمة دورة انتقال الصلاحيات ومحددات PERM-00 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPermissions.tsx` | Pending Commit 2 |
-| **ADM-F24** | P2 | Reports Manager | حظر توليد أرقام وأرباح مالية مصطنعة عند غياب المعاينة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx` | Pending Commit 2 |
-| **ADM-F25** | P2 | Reports Manager | التحقق من خطوات معالج التقرير قبل استدعاء الإرسال | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx` | Pending Commit 2 |
-| **ADM-F26** | P2 | Reports Manager | حصر حالات استلام التقرير على السجلات المؤكدة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx` | Pending Commit 2 |
-| **ADM-F27** | P2 | Activity Log | مطابقة فلترة التواريخ بالزمن المعياري واليوم الحقيقي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminAudit.tsx` | Pending Commit 2 |
-| **ADM-F28** | P2 | Activity Log | مطابقة نطاق وتصفية سجل النشاطات الكامل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminAudit.tsx` | Pending Commit 2 |
-| **ADM-F29** | P2 | ERP Export | طلب تأكيد المستخدم قبل تصدير ملفات ERP (قاعدة INTG-01) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminERP.tsx` | Pending Commit 2 |
-| **ADM-F30** | P2 | ERP Export | التسمية النزيهة لتوليد ملفات التصدير دون ادعاء ربط خارجي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminERP.tsx` | Pending Commit 2 |
-| **ADM-F31** | P2 | System Settings | إشعار تسجيل الإعدادات كتفضيلات تخضع لتدقيق الخادم المستقل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSettings.tsx` | Pending Commit 2 |
-| **ADM-F32** | P3 | System Settings | الحفاظ على عزل مسارات المصادقة المعقدة (SSO/2FA) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSettings.tsx` | Pending Commit 2 |
-| **ADM-F33** | P2 | Mobile / Shell | تجاوب القائمة الجانبية والشاشات مع الشاشات الضيقة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | Pending Commit 2 |
-| **ADM-F34** | P2 | Accessibility | دعم سمات الحوارات ARIA وإغلاق Escape بنوافذ الأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx`, `AdminSubscriptions.tsx` | Pending Commit 2 |
-| **ADM-F35** | P3 | Localization | استخدام اتجاه النصوص الديناميكي dir={dir} بجداول الأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx`, `AdminPackages.tsx`, `AdminAudit.tsx` | Pending Commit 2 |
-| **ADM-F36** | P3 | Architecture | عزل بيانات النماذج المستقلة عن مسار تشغيل لوحة التحكم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminDashboard.tsx` | Pending Commit 2 |
-| **ADM-F37** | P2 | Policy | حظر منح الأدمن صلاحيات اعتماد العمليات المالية خارج المصفوفة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | Pending Commit 2 |
+| **ADM-F01** | P2 | Security / Admin Grant | قصر صلاحيات الأدمن الشاملة على التخويل الصريح ومنع التسرب | `FIXED_AND_VERIFIED` | `NOT_RUN` | `roleAccess.ts` | 7bc73a0 |
+| **ADM-F02** | P2 | Shared Shell | حجب بحث المنصة الموحد للأدمن غير المقيد بشركة مع تلميح نزيه | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 7bc73a0 |
+| **ADM-F03** | P2 | Shared Shell | حجب إشعارات المنصة الموحدة للأدمن غير المقيد بشركة مع تلميح نزيه | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 7bc73a0 |
+| **ADM-F04** | P2 | Users | إضافة المستخدم لقائمة العرض فقط بعد نجاح الخادم المؤكد | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 7bc73a0 |
+| **ADM-F05** | P2 | Users | ربط زر "تعديل الصلاحيات" بمصفوفة الصلاحيات برمجياً | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | 7bc73a0 |
+| **ADM-F06** | P2 | Users | قصر حذف المستخدم من الواجهة على تأكيد نجاح خادم API | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | 7bc73a0 |
+| **ADM-F07** | P2 | Users | دعم التراجع التلقائي (Rollback) عند فشل تعيين المحاسبين | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | 7bc73a0 |
+| **ADM-F08** | P2 | Users | مطابقة مفاتيح الموديولات المعتمدة مع المعايير البرمجية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | 7bc73a0 |
+| **ADM-F09** | P2 | Users | عزل مستأجري التعيينات المتعددة وفق التسلسل الهرمي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | 7bc73a0 |
+| **ADM-F10** | P2 | Restaurants & Branches | دعم الاستجابة المسطحة للعلامات دون حجب الهيكل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminRestaurants.tsx` | 7bc73a0 |
+| **ADM-F11** | P2 | Restaurants & Branches | مؤشرات حالة الرفع وفق الاستجابة المستمرة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminRestaurants.tsx` | 7bc73a0 |
+| **ADM-F12** | P2 | Restaurants & Branches | تعيين العلامة الافتراضية الأولى ديناميكياً من الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminRestaurants.tsx` | 7bc73a0 |
+| **ADM-F13** | P2 | Branch Requests | إظهار وإتاحة صفحة طلبات الفروع بالقائمة الجانبية للأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 7bc73a0 |
+| **ADM-F14** | P2 | Subscriptions | تجديد الاشتراك دون تواريخ ثابتة واعتماد استجابة الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSubscriptions.tsx` | 7bc73a0 |
+| **ADM-F15** | P2 | Subscriptions | دعم التراجع التلقائي عند فشل تبديل التذكير الآلي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSubscriptions.tsx` | 7bc73a0 |
+| **ADM-F16** | P2 | Subscriptions | ربط أزرار إيقاف وتفعيل الاشتراك في كروت الاشتراكات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSubscriptions.tsx` | 7bc73a0 |
+| **ADM-F17** | P2 | Company Subscriptions | قصر تغيير حالة وباقة اشتراك الشركة على تأكيد الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminCompanies.tsx` | 7bc73a0 |
+| **ADM-F18** | P2 | Company Subscriptions | وسم الإيراد الشهري كتقدير لكتالوج الباقات وفق SUB-01 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminCompanies.tsx` | 7bc73a0 |
+| **ADM-F19** | P3 | Packages | وسم أسعار الباقات كبيانات استرشادية لكتالوج الباقات (SUB-01) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPackages.tsx` | 7bc73a0 |
+| **ADM-F20** | P2 | Permissions | استعادة مصفوفة الصلاحيات الأصلية بالكامل عند الإلغاء | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPermissions.tsx` | 7bc73a0 |
+| **ADM-F21** | P2 | Permissions | تأكيد حفظ التغييرات فقط بعد نجاح تحديث الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPermissions.tsx` | 7bc73a0 |
+| **ADM-F22** | P2 | Permissions | تأطير استنساخ الأدوار بحوكمة النظام (PERM-00) ووسمها كـ APPROVAL_REQUIRED | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPermissions.tsx` | 7bc73a0 |
+| **ADM-F23** | P2 | Permissions | حظر تجاوز حدود الصلاحيات الأساسية والتناسخ التلقائي غير المعتمد (PERM-00) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPermissions.tsx` | 7bc73a0 |
+| **ADM-F24** | P2 | Reports Manager | حظر توليد أرقام وأرباح مالية مصطنعة عند غياب المعاينة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx` | 7bc73a0 |
+| **ADM-F25** | P2 | Reports Manager | التحقق من خطوات معالج التقرير وحظر الانتقال للخطوة 4 دون ملف ومعاينة معتمدة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx` | 7bc73a0 |
+| **ADM-F26** | P2 | Reports Manager | حصر مؤشرات وسجلات استلام التقرير على السجلات المؤكدة من الخادم ومنع الادعاء الزائف | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx` | 7bc73a0 |
+| **ADM-F27** | P2 | Activity Log | مطابقة فلترة التواريخ بالزمن المعياري واليوم الحقيقي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminAudit.tsx` | 7bc73a0 |
+| **ADM-F28** | P2 | Activity Log | مطابقة نطاق وتصفية سجل النشاطات الكامل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminAudit.tsx` | 7bc73a0 |
+| **ADM-F29** | P2 | ERP Export | طلب تأكيد المستخدم قبل تصدير ملفات ERP (قاعدة INTG-01) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminERP.tsx` | 7bc73a0 |
+| **ADM-F30** | P2 | ERP Export | التسمية النزيهة لتوليد ملفات التصدير دون ادعاء ربط خارجي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminERP.tsx` | 7bc73a0 |
+| **ADM-F31** | P2 | System Settings | إشعار تسجيل الإعدادات كتفضيلات تخضع لتدقيق الخادم المستقل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSettings.tsx` | 7bc73a0 |
+| **ADM-F32** | P3 | System Settings | الحفاظ على عزل مسارات المصادقة المعقدة (SSO/2FA) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSettings.tsx` | 7bc73a0 |
+| **ADM-F33** | P2 | Mobile / Shell | تجاوب القائمة الجانبية والشاشات مع الشاشات الضيقة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 7bc73a0 |
+| **ADM-F34** | P2 | Accessibility | دعم سمات الحوارات ARIA وإغلاق Escape بنوافذ الأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx`, `AdminSubscriptions.tsx` | 7bc73a0 |
+| **ADM-F35** | P3 | Localization | استخدام اتجاه النصوص الديناميكي dir={dir} بجداول الأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx`, `AdminPackages.tsx`, `AdminAudit.tsx` | 7bc73a0 |
+| **ADM-F36** | P3 | Architecture | عزل بيانات النماذج المستقلة عن مسار تشغيل لوحة التحكم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminDashboard.tsx` | 7bc73a0 |
+| **ADM-F37** | P2 | Policy | حظر منح الأدمن صلاحيات اعتماد العمليات المالية خارج المصفوفة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 7bc73a0 |

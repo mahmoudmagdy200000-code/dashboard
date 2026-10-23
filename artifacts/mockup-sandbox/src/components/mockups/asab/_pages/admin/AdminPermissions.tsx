@@ -134,10 +134,19 @@ export function AdminPermissions({ }: PageProps) {
         </div>
       </div>
 
-      {/* Clone role panel */}
+      {/* Clone role panel (ADM-F22 / ADM-F23: Gated under PERM-00 governance) */}
       {showClone && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <p className="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2"><Copy size={14} /> {t("نسخ صلاحيات دور إلى دور آخر", "Clone role permissions to another role")}</p>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+          <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+            <span className="font-bold">⚠️ {t("حوكمة الصلاحيات (PERM-00):", "Permissions Governance (PERM-00):")}</span>
+            <span>
+              {t(
+                "استنساخ وتعديل صلاحيات الأدوار مقيد بحدود النظام المعتمدة (APPROVAL_REQUIRED). لا يجوز تجاوز حدود الصلاحيات المحاسبية والمالية الصارمة.",
+                "Role permission cloning is gated under approved system policy (APPROVAL_REQUIRED). Fundamental financial and accounting boundaries remain immutable."
+              )}
+            </span>
+          </div>
+          <p className="text-sm font-bold text-blue-800 flex items-center gap-2"><Copy size={14} /> {t("نسخ صلاحيات دور إلى دور آخر", "Clone role permissions to another role")}</p>
           <div className="flex items-center gap-3 flex-wrap">
             <div>
               <label className="text-[11px] font-semibold text-blue-700 block mb-1">{t("من دور", "From Role")}</label>

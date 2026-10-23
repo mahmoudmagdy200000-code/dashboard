@@ -171,3 +171,57 @@ test("Phase 1F ADM-F34 & ADM-F35: Modals and tables use dynamic dir and dialog a
   assert.ok(reports.includes('table className="w-full" dir={dir}'), "Reports tables use dir={dir}");
   assert.ok(packages.includes('table className="w-full" dir={dir}'), "Packages table uses dir={dir}");
 });
+
+test("Phase 1F ADM-F02 & ADM-F03: ASABPrototype guards search and notifications for companyless platform admin", () => {
+  const code = norm(readFileSync(new URL("./ASABPrototype.tsx", import.meta.url), "utf8"));
+  assert.ok(
+    code.includes('role === "admin" ?') &&
+    code.includes("بحث المنصة الموحد يتطلب تحديد نطاق مستأجر"),
+    "Global search must be guarded with honest tooltip for platform admin"
+  );
+  assert.ok(
+    code.includes('role === "admin" ?') &&
+    code.includes("إشعارات المنصة تتطلب تفعيل مركز إشعارات النظام الإداري"),
+    "Notification bell must be guarded with honest tooltip for platform admin"
+  );
+});
+
+test("Phase 1F ADM-F25: AdminReports guards wizard progression and blocks step 4 without verified file and preview", () => {
+  const code = norm(readFileSync(new URL("./_pages/admin/AdminReports.tsx", import.meta.url), "utf8"));
+  assert.ok(
+    code.includes("const canNavigateToStep = (targetStep: number) =>"),
+    "canNavigateToStep guard must be implemented"
+  );
+  assert.ok(
+    code.includes('targetStep === 3) return uploaded && uploadResult?.status === "verified" && Boolean(previewApi?.rows && previewApi.rows.length > 0)'),
+    "Step 4 (index 3) must require verified upload and non-empty preview rows"
+  );
+  assert.ok(
+    code.includes("disabled={!canNavigateToStep(3)}"),
+    "Step 2 continue button must be disabled when canNavigateToStep(3) is false"
+  );
+});
+
+test("Phase 1F ADM-F26: AdminReports guards delivery status KPI from false confirmation", () => {
+  const code = norm(readFileSync(new URL("./_pages/admin/AdminReports.tsx", import.meta.url), "utf8"));
+  assert.ok(
+    code.includes("const hasConfirmedData = Boolean(statusApi && (statusApi.rows?.length > 0 || statusApi.summary));"),
+    "hasConfirmedData check must ensure real server response before reporting metrics"
+  );
+  assert.ok(
+    code.includes('hasConfirmedData ? sent : "—"'),
+    "Sent metric must show dash when no confirmed data exists"
+  );
+  assert.ok(
+    code.includes("لم يُرسَل هذا التقرير بعد أو لا توجد سجلات تسليم مؤكدة من الخادم"),
+    "Empty table must honestly indicate absence of confirmed delivery records"
+  );
+});
+
+test("Phase 1F ADM-F22 & ADM-F23: AdminPermissions guards role cloning under PERM-00 governance", () => {
+  const code = norm(readFileSync(new URL("./_pages/admin/AdminPermissions.tsx", import.meta.url), "utf8"));
+  assert.ok(
+    code.includes("PERM-00") && code.includes("APPROVAL_REQUIRED"),
+    "Role cloning panel must display PERM-00 governance notice and mark cloning as APPROVAL_REQUIRED"
+  );
+});

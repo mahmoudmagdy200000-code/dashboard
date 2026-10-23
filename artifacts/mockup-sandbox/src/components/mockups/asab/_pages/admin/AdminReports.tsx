@@ -106,6 +106,15 @@ export function AdminReports({ }: PageProps) {
     "menu-eng": [{ label: "البنود النجمية ⭐", value: "12 صنف", type: "profit", header: false }, { label: "بنود البقرة النقدية 🐄", value: "8 أصناف", type: "income", header: false }, { label: "بنود الاستفهام ❓", value: "5 أصناف", type: "expense", header: false }, { label: "بنود الكلب 🐕", value: "3 أصناف", type: "expense", header: false }, { label: "هامش الربح العلوي", value: "الجمبري المشوي", type: "profit", header: true }],
   };
 
+  // ADM-F25: Guard report wizard progression — step 4 cannot be reached without verified file and preview
+  const canNavigateToStep = (targetStep: number) => {
+    if (targetStep === 0) return true;
+    if (targetStep === 1) return true;
+    if (targetStep === 2) return uploaded && uploadResult?.status === "verified";
+    if (targetStep === 3) return uploaded && uploadResult?.status === "verified" && Boolean(previewApi?.rows && previewApi.rows.length > 0);
+    return false;
+  };
+
   const selectedReport = allReports.find(r => r.id === activeReport);
 
   // ── 4-step flow for active report ──
@@ -125,14 +134,21 @@ export function AdminReports({ }: PageProps) {
             <div><p className="font-bold text-gray-800">{rL(selectedReport)}</p><p className="text-xs text-gray-400">{rS(selectedReport)}</p></div>
           </div>
           <div className="flex items-center gap-0 mb-6">
-            {[{ n: 1, label: t("تصدير من ERP", "ERP Export"), icon: "🔗" }, { n: 2, label: t("رفع Excel", "Upload Excel"), icon: "📊" }, { n: 3, label: t("مراجعة", "Review"), icon: "👁" }, { n: 4, label: t("إرسال لكل المطاعم", "Send to All"), icon: "📤" }].map((s, i) => (
-              <div key={i} className="flex items-center flex-1">
-                <button onClick={() => setStep(s.n - 1)} className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl transition-all ${step === s.n - 1 ? "bg-purple-600 text-white" : step > s.n - 1 ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-400"}`}>
-                  <span className="text-xs">{step >= s.n ? "✓" : s.icon}</span><span className="text-xs font-semibold whitespace-nowrap">{s.label}</span>
-                </button>
-                {i < 3 && <div className={`flex-1 h-0.5 mx-1 ${step > i ? "bg-emerald-300" : "bg-gray-200"}`} />}
-              </div>
-            ))}
+            {[{ n: 1, label: t("تصدير من ERP", "ERP Export"), icon: "🔗" }, { n: 2, label: t("رفع Excel", "Upload Excel"), icon: "📊" }, { n: 3, label: t("مراجعة", "Review"), icon: "👁" }, { n: 4, label: t("إرسال لكل المطاعم", "Send to All"), icon: "📤" }].map((s, i) => {
+              const isAllowed = canNavigateToStep(s.n - 1);
+              return (
+                <div key={i} className="flex items-center flex-1">
+                  <button
+                    onClick={() => { if (isAllowed) setStep(s.n - 1); }}
+                    disabled={!isAllowed}
+                    className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl transition-all ${!isAllowed ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400" : step === s.n - 1 ? "bg-purple-600 text-white" : step > s.n - 1 ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-400"}`}
+                  >
+                    <span className="text-xs">{step >= s.n ? "✓" : s.icon}</span><span className="text-xs font-semibold whitespace-nowrap">{s.label}</span>
+                  </button>
+                  {i < 3 && <div className={`flex-1 h-0.5 mx-1 ${step > i ? "bg-emerald-300" : "bg-gray-200"}`} />}
+                </div>
+              );
+            })}
           </div>
 
           {step === 0 && <div className="text-center py-6 space-y-4">
@@ -204,7 +220,17 @@ export function AdminReports({ }: PageProps) {
                 </div>
               )}
             </div>
-            <div className="flex gap-3"><Btn onClick={() => setStep(1)}>{t("← رجوع", "← Back")}</Btn><Btn variant="primary" onClick={() => setStep(3 - 1 + 1)} className="flex-1 justify-center">{t("متابعة للإرسال →", "Continue to Send →")}</Btn></div>
+            <div className="flex gap-3">
+              <Btn onClick={() => setStep(1)}>{t("← رجوع", "← Back")}</Btn>
+              <Btn
+                variant="primary"
+                disabled={!canNavigateToStep(3)}
+                onClick={() => setStep(3)}
+                className="flex-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t("متابعة للإرسال →", "Continue to Send →")}
+              </Btn>
+            </div>
           </div>}
 
           {step === 3 && !sentReports.has(activeReport) && <div className="space-y-4">
@@ -376,21 +402,34 @@ export function AdminReports({ }: PageProps) {
             ))}
           </div>
 
-          {/* Status summary cards */}
+          {/* Status summary cards (ADM-F26: Guard delivery status KPI from claiming false confirmation) */}
           {(() => {
+            const hasConfirmedData = Boolean(statusApi && (statusApi.rows?.length > 0 || statusApi.summary));
             const statusRows = (statusApi?.rows ?? []) as any[];
             const sent = statusApi?.summary?.sent ?? statusRows.filter(r => r.sent).length;
-            const notSent = statusApi?.summary?.notSent ?? Math.max(0, RESTAURANTS.length - sent);
+            const notSent = statusApi?.summary?.notSent ?? (hasConfirmedData ? Math.max(0, RESTAURANTS.length - sent) : RESTAURANTS.length);
             const viewed = statusApi?.summary?.viewed ?? statusRows.filter(r => r.viewed).length;
-            const notView = statusApi?.summary?.notViewed ?? Math.max(0, sent - viewed);
+            const notView = statusApi?.summary?.notViewed ?? (hasConfirmedData ? Math.max(0, sent - viewed) : 0);
             const selRep = allReports.find(r => r.id === statusFilter)!;
             return (
               <>
                 <div className="grid grid-cols-4 gap-3">
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center"><p className="text-2xl font-extrabold font-mono text-emerald-700">{sent}</p><p className="text-xs text-emerald-600">✅ {t("أُرسل التقرير", "Report Sent")}</p></div>
-                  <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-center"><p className="text-2xl font-extrabold font-mono text-red-700">{notSent}</p><p className="text-xs text-red-600">❌ {t("لم يُرسَل بعد", "Not Sent Yet")}</p></div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center"><p className="text-2xl font-extrabold font-mono text-blue-700">{viewed}</p><p className="text-xs text-blue-600">👁 {t("اطّلع صاحب المطعم", "Owner Viewed")}</p></div>
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center"><p className="text-2xl font-extrabold font-mono text-amber-700">{notView}</p><p className="text-xs text-amber-600">⏳ {t("لم يطّلع بعد", "Not Viewed Yet")}</p></div>
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
+                    <p className="text-2xl font-extrabold font-mono text-emerald-700">{hasConfirmedData ? sent : "—"}</p>
+                    <p className="text-xs text-emerald-600">✅ {t("أُرسل التقرير (مؤكد)", "Report Sent (Confirmed)")}</p>
+                  </div>
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-center">
+                    <p className="text-2xl font-extrabold font-mono text-red-700">{hasConfirmedData ? notSent : RESTAURANTS.length}</p>
+                    <p className="text-xs text-red-600">❌ {t("لم يُرسَل بعد", "Not Sent Yet")}</p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
+                    <p className="text-2xl font-extrabold font-mono text-blue-700">{hasConfirmedData ? viewed : "—"}</p>
+                    <p className="text-xs text-blue-600">👁 {t("اطّلع صاحب المطعم (مؤكد)", "Owner Viewed (Confirmed)")}</p>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
+                    <p className="text-2xl font-extrabold font-mono text-amber-700">{hasConfirmedData ? notView : "—"}</p>
+                    <p className="text-xs text-amber-600">⏳ {t("لم يطّلع بعد", "Not Viewed Yet")}</p>
+                  </div>
                 </div>
 
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -411,7 +450,7 @@ export function AdminReports({ }: PageProps) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {statusRows.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">{t("لم يُرسَل هذا التقرير بعد", "This report has not been sent yet")}</td></tr>}
+                      {statusRows.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">{t("لم يُرسَل هذا التقرير بعد أو لا توجد سجلات تسليم مؤكدة من الخادم", "This report has not been sent yet or has no confirmed delivery records from server")}</td></tr>}
                       {statusRows.map((st: any) => (
                         <tr key={st.restaurantId} className="hover:bg-gray-50/50">
                           <td className="px-4 py-3 font-semibold text-sm text-gray-800">{st.restaurantName}</td>

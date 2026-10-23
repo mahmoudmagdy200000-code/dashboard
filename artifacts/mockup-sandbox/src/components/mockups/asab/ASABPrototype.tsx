@@ -1532,7 +1532,27 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
               <option value="week">{tL("هذا الأسبوع", "This Week")}</option>
               <option value="today">{tL("اليوم", "Today")}</option>
             </select>
-            <GlobalSearch t={tL} theme="light" />
+            {/* ADM-F02: Guard shared search for platform admin */}
+            {role === "admin" ? (
+              <div
+                className="opacity-60 cursor-not-allowed"
+                title={tL(
+                  "بحث المنصة الموحد يتطلب تحديد نطاق مستأجر (شركة) أو تفعيل نقطة نهاية إدارية مركزية",
+                  "Platform search requires company tenant scope or central admin endpoint",
+                )}
+              >
+                <div className="relative">
+                  <input
+                    disabled
+                    type="text"
+                    placeholder={tL("بحث المنصة غير متاح بدون شركة...", "Platform search unavailable...")}
+                    className="text-xs bg-gray-100 border border-gray-200 rounded-lg px-3 py-1.5 text-gray-400 cursor-not-allowed w-44"
+                  />
+                </div>
+              </div>
+            ) : (
+              <GlobalSearch t={tL} theme="light" />
+            )}
             {/* Language Globe */}
             <button onClick={() => setLang(lang === "ar" ? "en" : "ar")}
               className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 font-semibold transition-colors"
@@ -1540,7 +1560,20 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
               <Globe size={13} />
               {lang === "ar" ? "EN" : "عربي"}
             </button>
-            <NotificationBell t={tL} theme="light" />
+            {/* ADM-F03: Guard shared notifications for platform admin */}
+            {role === "admin" ? (
+              <div
+                className="opacity-60 cursor-not-allowed p-1.5 text-gray-400"
+                title={tL(
+                  "إشعارات المنصة تتطلب تفعيل مركز إشعارات النظام الإداري",
+                  "Platform notifications require system admin notification center",
+                )}
+              >
+                <Bell size={16} />
+              </div>
+            ) : (
+              <NotificationBell t={tL} theme="light" />
+            )}
             <button onClick={logout} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 flex items-center gap-1">
               <LogOut size={13} /> {tL("خروج", "Logout")}
             </button>
