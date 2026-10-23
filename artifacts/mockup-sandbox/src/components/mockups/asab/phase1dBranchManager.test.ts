@@ -259,11 +259,48 @@ test("Phase 1D 1D-COM-017 & 1D-COM-018: Modal accessibility attributes and input
     dash.includes('aria-label='),
     "Modals and close buttons must have accessible aria-labels"
   );
-  const editAssetStart = dash.indexOf("{editAsset && (");
-  assert.ok(editAssetStart >= 0, "Company asset edit modal must remain present");
+  const editAssetStart = dash.indexOf("<DialogPrimitive.Root open={Boolean(editAsset)}");
+  assert.ok(editAssetStart >= 0, "Company asset edit dialog must remain present and controlled by editAsset");
+  const editAssetEnd = dash.indexOf("</DialogPrimitive.Root>", editAssetStart);
+  assert.ok(editAssetEnd > editAssetStart, "Company asset edit dialog must close its Radix root");
+  const editAssetDialog = dash.slice(editAssetStart, editAssetEnd);
   assert.ok(
-    dash.slice(editAssetStart, editAssetStart + 500).includes("max-h-[90dvh] overflow-y-auto"),
+    editAssetDialog.includes("<DialogPrimitive.Portal>") &&
+      editAssetDialog.includes("<DialogPrimitive.Overlay") &&
+      editAssetDialog.includes("<DialogPrimitive.Content"),
+    "Company asset edit dialog must use the Radix portal, overlay and content semantics"
+  );
+  assert.ok(
+    editAssetDialog.includes("<DialogPrimitive.Title") &&
+      editAssetDialog.includes('t("تعديل الأصل","Edit Asset")'),
+    "Company asset edit dialog must expose its localized accessible title"
+  );
+  assert.ok(
+    editAssetDialog.includes("max-h-[90dvh]") && editAssetDialog.includes("overflow-y-auto"),
     "Company asset edit form must remain scrollable within the dynamic viewport height"
+  );
+  assert.ok(
+    editAssetDialog.includes("onCloseAutoFocus") && editAssetDialog.includes("editAssetTriggerRef.current?.focus()"),
+    "Closing the dialog must restore focus to its opener"
+  );
+  for (const id of [
+    "edit-asset-name",
+    "edit-asset-category",
+    "edit-asset-status",
+    "edit-asset-branch",
+    "edit-asset-book-value",
+    "edit-asset-serial",
+    "edit-asset-custodian",
+  ]) {
+    assert.ok(editAssetDialog.includes(`htmlFor="${id}"`) && editAssetDialog.includes(`id="${id}"`),
+      `Company asset edit field ${id} must retain an associated label`);
+  }
+  assert.ok(
+    editAssetDialog.includes('onClick={submitEdit}') &&
+      editAssetDialog.includes('t("حفظ","Save")') &&
+      editAssetDialog.includes('onClick={()=>setEditAsset(null)}') &&
+      editAssetDialog.includes('t("إلغاء","Cancel")'),
+    "Company asset edit dialog must preserve its save and cancel actions"
   );
   assert.ok(
     dash.includes('htmlFor="b-req-item"') || dash.includes('htmlFor="b-sup-name"'),
