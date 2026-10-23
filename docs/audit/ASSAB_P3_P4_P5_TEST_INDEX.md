@@ -132,3 +132,13 @@ Raw logs are stored alongside this index. Historical GO-02/GO-04 hashes are in `
 - P4 result, raw focused TAP, typecheck and build logs are in `evidence/p3-p5-go02/GO06/`; `SHA256SUMS.txt` covers all four files.
 - No additional tests were run during documentation closeout. Full 332 suite remains historical; browser/accessibility-runtime and Backend/Flutter integration remain NOT_RUN/BLOCKED.
 - Overall evidence classification: `DEVELOPER_REPORTED_EXECUTION`; independent review PENDING.
+
+## GO-07 targeted B07 source verification — 2026-10-23
+
+- Tested source commit: `5313b6f5bde200d2ce021c4833614647f7e20e4c` (parent `ed836185b0a2cebcf850367d85f0ce2af17bea18`; tree `278fb20cc54469c76bebb3a451faf5ec49cde128`).
+- `GO07-B07-RED`: pre-change targeted run of `companyAdminGuards.test.ts` exited 1; 13 passed, 2 new assertions failed, 0 skipped. The failures identified the missing contextual Edit Asset accessible name and missing `htmlFor`/`id` links on the seven edit form controls. `RED-summary.log` preserves the execution result; the full original console transcript remains in the session tool output.
+- `GO07-B07-FOCUSED`: `TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/components/mockups/asab/companyAdminGuards.test.ts` — PASS 15/15, 0 skipped, exit 0. This is source-level/unit evidence, not a DOM/accessibility-tree/browser interaction test. Raw TAP and metadata are in `evidence/p3-p5-go02/GO07/`.
+- `GO07-TYPECHECK`: `pnpm --filter @workspace/mockup-sandbox run typecheck` — PASS, exit 0.
+- `GO07-DIFF-CHECK`: `git diff --check` — PASS, exit 0.
+- `GO07-BROWSER`: `NOT_RUN / BLOCKED_ENVIRONMENT`. Playwright 1.62.1 is installed in the shared runtime, but its reported Chromium executable is absent and no system Chromium/Chrome command is available. No browser/dependencies were installed. Dialog Escape/focus/viewport/AR-EN, A07 keyboard/accessibility-tree, and responsive viewport checks remain NOT_RUN.
+- Full unit suite, build, Staging, Backend/Flutter, HTTP, security and financial runtime tests were not run. Overall class: `DEVELOPER_REPORTED_EXECUTION`; independent review pending.

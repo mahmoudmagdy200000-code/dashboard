@@ -2697,3 +2697,13 @@ This section supersedes only the **current status** of the earlier Phase 3/4 sna
 | B07 / R3-F15 and linked roots | `editAsset` dialog semantics/title/close name/focus return committed; existing cap/scroll retained | `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3`; static source regression included in 60/60; typecheck/build pass | Browser Escape/focus containment/return/viewport/AR-EN NOT_RUN; finding remains open and review PENDING |
 
 D01 remains `BLOCKED_EVIDENCE`; D02 remains `BLOCKED_APPROVAL`; M01 remains `PENDING_REVIEW`. GO-06 ran 60 focused tests (zero skipped), typecheck and build successfully, but did not rerun the full unit suite or any browser, accessibility-runtime, Backend, Flutter, tenant-security or financial HTTP tests. All source commits remain local and pending independent review. Windows Master mirror synchronization remains NOT_RUN.
+
+### GO-07 current-status supplement — B07 Edit Asset accessible naming and labels
+
+This append-only update records the targeted GO-07 correction without changing historical finding IDs, severities, or prior audit text. The existing Edit Asset trigger now has a contextual Arabic/English accessible name, and all seven edit dialog labels are associated with their controls using matching `htmlFor`/`id` attributes. The click callback, `openEdit`, form state, API mutation, Save and Cancel behavior were preserved.
+
+- Source commit: `5313b6f5bde200d2ce021c4833614647f7e20e4c` (parent `ed836185b0a2cebcf850367d85f0ce2af17bea18`; tree `278fb20cc54469c76bebb3a451faf5ec49cde128`).
+- Focused source regression: 15/15 PASS, zero skipped; mockup TypeScript typecheck PASS; `git diff --check` PASS.
+- Browser accessibility-tree, keyboard activation, Escape, focus containment/return, short viewport, soft keyboard, AR/EN and responsive runtime checks: `NOT_RUN / BLOCKED_ENVIRONMENT` because no Chromium executable is available. No install was attempted.
+- `B07`, `R3-F15`, and linked `CA-F15`, `HA-F31`, `S1H-F13` remain `PENDING_REVIEW` and are not `ACCEPTED` or `RUNTIME_VERIFIED`. The source correction addresses accessible naming and form-label associations only; it does not close dialog runtime behavior.
+- `D01` remains `BLOCKED_EVIDENCE`; `D02` remains pending independent acceptance; `M01` remains `PENDING_REVIEW`. GO-07 did not run the full suite, build, Staging, Backend/Flutter, HTTP, tenant-security or financial runtime tests. Phase 5 remains read-only and owner decisions remain open in the GO-06 blocker register and GO-07 request.

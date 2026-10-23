@@ -767,3 +767,26 @@ The original V2 plan's final line “EXECUTION NOT AUTHORIZED BY FILE CREATION�
 - D02: independent review is required and remains BLOCKED_APPROVAL/PENDING.
 - M01: local append-only Master reconciliation is prepared; its independent acceptance and Windows mirror synchronization remain PENDING/NOT_RUN. Final documentation commit SHA is captured in the separate GO-06 delivery report because a commit cannot contain its own SHA.
 - Local only: no push, PR, merge, deploy, Backend/Flutter write, staging/production access, migration, or financial operation.
+
+## GO-07 targeted B07 closeout — 2026-10-23
+
+**Scope:** Dashboard `CompanyDashboard.tsx` + the existing `companyAdminGuards.test.ts` only for source/test changes. No Backend, Flutter, API, permission, business-rule, or financial behavior changes.
+
+- [x] `GO07-01` Verified isolated worktree, branch `work/dashboard-p345-remediation-v2-20261023`, expected pre-SHA `ed836185b0a2cebcf850367d85f0ce2af17bea18`, clean pre-state, and previous source commit `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3`.
+- [x] `GO07-02` Read the B07 acceptance scope and current source. The edit icon trigger had no accessible name; seven labels in `editAsset` had no programmatic control association.
+- [x] `GO07-03` Added a contextual Arabic/English `aria-label` to the existing Edit Asset button; `openEdit(a, e.currentTarget)` remains unchanged.
+- [x] `GO07-04` Added unique `id`/`htmlFor` pairs for all seven existing `editAsset` controls. Values, state setters, API callbacks, Save and Cancel behavior remain unchanged.
+- [x] `GO07-05` Added targeted source regressions. TDD RED on the pre-change source: 13 pass, 2 GO-07 failures, 0 skipped, exit 1. GREEN after correction: `companyAdminGuards.test.ts` 15/15 pass, 0 skipped, exit 0. Evidence: `docs/audit/evidence/p3-p5-go02/GO07/`.
+- [x] `GO07-06` Mockup TypeScript typecheck and `git diff --check` exit 0. Full unit suite/build were not run for this targeted correction.
+- [ ] `GO07-07` Browser QA for B07/A07/Phase 3 responsive runtime: `NOT_RUN / BLOCKED_ENVIRONMENT`. Playwright package is resolvable, but its Chromium executable path does not exist; no system Chromium/Chrome command is available. No browser or dependencies were installed.
+- [ ] `GO07-08` Independent review and runtime acceptance remain pending. B07/R3-F15 and linked CA-F15/HA-F31/S1H-F13 remain open; no status is `ACCEPTED` or `RUNTIME_VERIFIED`.
+
+**GO-07 source files:**
+- `artifacts/mockup-sandbox/src/components/mockups/asab/CompanyDashboard.tsx`
+- `artifacts/mockup-sandbox/src/components/mockups/asab/companyAdminGuards.test.ts`
+
+**Evidence classification:** `DEVELOPER_REPORTED_EXECUTION`. See the GO-07 delivery report and raw focused test/typecheck logs in `docs/audit/evidence/p3-p5-go02/GO07/`. No browser, Staging, Backend, Flutter, or financial runtime test was executed. Phase 5 remains read-only and blocked on the owner decisions in `ASSAB_P3_P4_P5_GO06_BLOCKER_REGISTER.md`.
+
+### GO-07 source commit and current status
+
+The GO-07 source/test correction is committed locally as `5313b6f5bde200d2ce021c4833614647f7e20e4c` (parent `ed836185b0a2cebcf850367d85f0ce2af17bea18`; tree `278fb20cc54469c76bebb3a451faf5ec49cde128`). The exact source delta is two files: `CompanyDashboard.tsx` and `companyAdminGuards.test.ts`. Focused regression 15/15, typecheck, and diff check pass. Browser QA remains NOT_RUN/BLOCKED; no browser was installed. B07 remains PENDING_REVIEW, D01 BLOCKED_EVIDENCE, and no runtime acceptance is claimed.
