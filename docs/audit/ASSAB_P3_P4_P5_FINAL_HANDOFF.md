@@ -123,6 +123,6 @@ Backend, Flutter, auth lifecycle, permissions, routes, API contracts, schema, mi
 - `docs/audit/ASSAB_DASHBOARD_MASTER_FINDINGS.md` — appended GO-02 reconciliation; local, PENDING_REVIEW.
 - `docs/audit/ASSAB_P3_P4_P5_EXECUTION_CHECKLIST.md` and `...BATCH_TRACKER.csv` — batch state/evidence.
 - `docs/audit/ASSAB_P3_P4_P5_TEST_INDEX.md` and `docs/audit/evidence/p3-p5-go02/` — logs and hashes.
-- This report is committed in the final documentation checkpoint; its commit SHA is reported in the final response.
+- M01 documentation commit: `b348bda3b0b010b8d27196e34b4a0c41c3607598` (parent `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`, tree `7cfab5c11c003a3c66f6366bcbaac161504b6edd`). A follow-up metadata checkpoint records this SHA; neither commit is pushed.
 
 No item is labeled ACCEPTED or RUNTIME_VERIFIED. No production-ready or full-coverage claim is made.

@@ -683,8 +683,8 @@ At Dashboard SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`, C01–C19 were reco
 - [x] `M01-08` Carried 176 P3, 704+8 P4, 37 P5 and 156 historical 1G/1H runtime scenarios separately; no 100%/universal PASS claim.
 - [x] `M01-09` Revalidated canonical 249 ID membership and crosswalk equality; preserved open finance/security decisions and no new IDs.
 - [ ] `M01-10` Master delta is prepared under GO-02, but independent reviewer sign-off is not available. Record `PENDING_REVIEW`; do not describe the update as accepted.
-- [ ] `M01-11` After the local documentation commit, record the full SHA in the final handoff; no merge/push/deploy.
-- [ ] `M01-12` Publish final evidence handoff with batch ledger, all code/docs SHAs, NOT_RUN/BLOCKED items, owner decisions, residual risk and recommended acceptance tests.
+- [x] `M01-11` Local documentation commit `b348bda3b0b010b8d27196e34b4a0c41c3607598` recorded in the final handoff; no merge/push/deploy.
+- [x] `M01-12` Final handoff includes batch ledger, local code/docs SHAs, NOT_RUN/BLOCKED items, unresolved owner decisions, residual risk and recommended acceptance tests.
 
 ## 7. Standard batch handoff template (mandatory after each micro-batch)
 ```text
