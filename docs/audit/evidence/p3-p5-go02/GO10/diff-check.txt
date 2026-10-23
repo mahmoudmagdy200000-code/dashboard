@@ -1,0 +1,5 @@
+git show --check --format=oneline 2650ab5cf479a085a1505a65ac1888f8f893dd01
+PASS, exit 0
+
+git diff --check
+PASS, exit 0 (clean post-commit worktree)

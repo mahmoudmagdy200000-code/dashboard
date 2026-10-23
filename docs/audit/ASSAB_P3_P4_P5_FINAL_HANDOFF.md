@@ -171,3 +171,12 @@ B01–B10 matrix and all evidence are in `docs/audit/evidence/p3-p5-go02/GO09/GO
 
 
 GO-09 GitHub publication remains `BLOCKED_AUTHENTICATION`: the authorized branch was absent at read check and normal Git push dry-run could not read a GitHub username (exit 128). No alternate API write was attempted. Source commit and evidence remain local. See `evidence/p3-p5-go02/GO09/GO09_P3_DELIVERY_REPORT.md`.
+
+
+## GO-10-P3 source/test checkpoint — 2026-10-23
+
+The GO-10 source correction is committed at `2650ab5cf479a085a1505a65ac1888f8f893dd01` (parent `65d45a441387a0e4dffd712ab46ac1b1fe5b6194`; tree `97fdb5529e569caa0ead2e639141e959a04798d7`). It changes only `HeadPending.tsx`, `headPendingB09.test.ts`, and `phase1dBranchManager.test.ts`.
+
+B09 now passes the approximation label only when `totalAmt != null`: `null` keeps `—` and SAR without the label; numeric zero remains `0K` with the localized label. Existing K formula, exact `fmtAmt(totalAmt)` summary, unit and API behavior are unchanged. B09 + KpiCard targeted tests: 6/6 PASS, 0 skipped, exit 0. `phase1dBranchManager.test.ts`: 13/13 PASS, 0 skipped, exit 0. The stale JSX matcher was replaced with assertions against the actual Radix Dialog structure, title, scroll constraints, focus return, all seven label/id pairs, and Save/Cancel handlers. `CompanyDashboard.tsx` was not changed. Typecheck, one final build, and diff check passed; full suite was not run.
+
+B07 remains `PENDING_REVIEW`; static contract tests pass, but Browser QA remains `NOT_RUN`. B09 remains source-fixed with targeted tests passing, but B01–B10 Browser QA and independent acceptance remain pending. Current checkpoint: `P3_SOURCE_IMPLEMENTATION_COMPLETE — BROWSER_QA_PENDING`; no finding is `RUNTIME_VERIFIED`, `ACCEPTED`, or `P3_CLOSED`. Detailed report and checksums: `docs/audit/evidence/p3-p5-go02/GO10/`.
