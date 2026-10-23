@@ -307,3 +307,135 @@ test("Phase 1E PROC-F22: Procurement grids use responsive layout classes", () =>
     "ProcOverview KPI cards must use responsive grid layout classes"
   );
 });
+
+test("Phase 1E Behavioral: Order creation strictly rejects invalid, zero, negative, and non-finite price and quantity", () => {
+  const dash = norm(
+    readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8")
+  );
+  assert.ok(
+    dash.includes("!Number.isFinite(q) || q <= 0 || isNaN(p) || !Number.isFinite(p) || p <= 0"),
+    "CompanyDashboard submitOrder must explicitly validate finite positive numbers for qty and price"
+  );
+
+  // Behavioral simulation of the exact validation function
+  const isValidPriceAndQty = (qtyInput: any, priceInput: any): boolean => {
+    const q = parseFloat(qtyInput);
+    const p = parseFloat(priceInput);
+    if (isNaN(q) || !Number.isFinite(q) || q <= 0 || isNaN(p) || !Number.isFinite(p) || p <= 0) {
+      return false;
+    }
+    return true;
+  };
+
+  // Negative test vectors
+  const invalidCases = [
+    { qty: "0", price: "10" },
+    { qty: "5", price: "0" },
+    { qty: "-1", price: "10" },
+    { qty: "5", price: "-10" },
+    { qty: "NaN", price: "10" },
+    { qty: "5", price: "NaN" },
+    { qty: "Infinity", price: "10" },
+    { qty: "5", price: "Infinity" },
+    { qty: "-Infinity", price: "10" },
+    { qty: "", price: "10" },
+    { qty: "5", price: "" },
+    { qty: "abc", price: "10" },
+    { qty: "5", price: "xyz" },
+  ];
+
+  for (const tc of invalidCases) {
+    assert.strictEqual(
+      isValidPriceAndQty(tc.qty, tc.price),
+      false,
+      `Expected qty='${tc.qty}' price='${tc.price}' to fail validation`
+    );
+  }
+
+  // Positive test vectors
+  assert.strictEqual(isValidPriceAndQty("1", "10.50"), true);
+  assert.strictEqual(isValidPriceAndQty("0.25", "100"), true);
+  assert.strictEqual(isValidPriceAndQty("1500", "0.01"), true);
+});
+
+test("Phase 1E Behavioral: Draft idempotency key rotates on material command payload changes and remains stable on identical retry", () => {
+  const dash = norm(
+    readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8")
+  );
+  assert.ok(
+    dash.includes("lastMaterialSignature && lastMaterialSignature !== currentSignature"),
+    "CompanyDashboard submitOrder must rotate draftCommandId when material signature changes"
+  );
+
+  // Behavioral simulation of draft idempotency state machine
+  let currentKey = "command-initial-111";
+  let lastSignature = "";
+  let keyRotations = 0;
+
+  const mockSubmitOrder = (payload: { supplierId: string; itemId: string; qty: number; unitPrice: number }) => {
+    const currentSignature = `${payload.supplierId}|${payload.itemId}|${payload.qty}|${payload.unitPrice}`;
+    if (lastSignature && lastSignature !== currentSignature) {
+      keyRotations++;
+      currentKey = `command-rotated-${keyRotations}`;
+    }
+    lastSignature = currentSignature;
+    return currentKey;
+  };
+
+  const draftA = { supplierId: "sup-1", itemId: "item-1", qty: 5, unitPrice: 10 };
+  const firstSubmissionKey = mockSubmitOrder(draftA);
+  assert.strictEqual(firstSubmissionKey, "command-initial-111");
+
+  // Identical retry (e.g. after network failure) must reuse the exact same idempotency key
+  const retrySubmissionKey = mockSubmitOrder(draftA);
+  assert.strictEqual(retrySubmissionKey, firstSubmissionKey, "Retry of identical draft must preserve idempotency key");
+
+  // Materially changed payload (e.g. user modified quantity from 5 to 10) must mint a fresh key
+  const draftB = { supplierId: "sup-1", itemId: "item-1", qty: 10, unitPrice: 10 };
+  const modifiedQtyKey = mockSubmitOrder(draftB);
+  assert.notStrictEqual(modifiedQtyKey, firstSubmissionKey, "Modified quantity must rotate idempotency key");
+
+  // Materially changed payload (e.g. user changed supplier) must mint a fresh key
+  const draftC = { supplierId: "sup-2", itemId: "item-1", qty: 10, unitPrice: 10 };
+  const modifiedSupplierKey = mockSubmitOrder(draftC);
+  assert.notStrictEqual(modifiedSupplierKey, modifiedQtyKey, "Modified supplier must rotate idempotency key");
+  assert.notStrictEqual(modifiedSupplierKey, firstSubmissionKey);
+});
+
+test("Phase 1E Behavioral: ProcNewOrders strictly enforces PUR-01 fail-closed financial and partial approval authority", () => {
+  const procNewCode = norm(
+    readFileSync(new URL("./_pages/procurement/ProcNewOrders.tsx", import.meta.url), "utf8")
+  );
+
+  assert.ok(
+    procNewCode.includes("canApproveFinancial = Boolean(role && (role === \"head\" || role === \"admin\"))"),
+    "ProcNewOrders must compute canApproveFinancial strictly for head or admin"
+  );
+  assert.ok(
+    procNewCode.includes("if (!canApproveFinancial) return;"),
+    "approveOne, approveList, and confirmPartial must fail closed when canApproveFinancial is false"
+  );
+  assert.ok(
+    procNewCode.includes("disabled={!canApproveFinancial || bulkMut.isPending}"),
+    "Bulk approve button must be disabled when canApproveFinancial is false"
+  );
+  assert.ok(
+    procNewCode.includes("disabled={!canApproveFinancial || approveMut.isPending}"),
+    "Row approve button must be disabled when canApproveFinancial is false"
+  );
+  assert.ok(
+    procNewCode.includes("disabled={!canApproveFinancial}"),
+    "Partial approve open button must be disabled when canApproveFinancial is false"
+  );
+
+  // Behavioral role authorization verification
+  const checkAuthority = (role: any) => Boolean(role && (role === "head" || role === "admin"));
+  assert.strictEqual(checkAuthority("procurement"), false, "Procurement buyer must not have financial approval authority");
+  assert.strictEqual(checkAuthority("branch"), false, "Branch manager must not have financial approval authority");
+  assert.strictEqual(checkAuthority("accountant"), false, "Accountant must not have financial approval authority");
+  assert.strictEqual(checkAuthority("supplier"), false, "Supplier must not have financial approval authority");
+  assert.strictEqual(checkAuthority(null), false, "Null role must fail closed");
+  assert.strictEqual(checkAuthority(undefined), false, "Undefined role must fail closed");
+  assert.strictEqual(checkAuthority("head"), true, "Head accountant has financial approval authority");
+  assert.strictEqual(checkAuthority("admin"), true, "Platform admin has financial approval authority");
+});

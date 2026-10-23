@@ -26,8 +26,12 @@ import { Btn } from "../../components/Btn";
 import { KpiCard } from "../../components/KpiCard";
 import { Badge } from "../../components/Badge";
 
-export function ProcNewOrders({ }: PageProps) {
+export function ProcNewOrders({ role }: PageProps) {
   const { t } = useLang();
+  // PUR-01: Financial approval and partial approval require authorized approval role (Head Accountant or Admin).
+  // Fail-closed when authority is not established.
+  const canApproveFinancial = Boolean(role && (role === "head" || role === "admin"));
+
   // Incoming branch orders come from the purchase-orders BRIDGE (SAR floats).
   const { data: apiOrdersPage } = usePurchaseOrders({ status: "incoming" });
   const rows = (((apiOrdersPage as any)?.data ?? []) as any[]).map((r) => ({
@@ -63,12 +67,23 @@ export function ProcNewOrders({ }: PageProps) {
   const rejectMut = useRejectPurchaseOrder();
   const partialMut = usePartialApprovePurchaseOrder();
 
-  const approveOne = (id: string) => { approveMut.mutate(id, { onSuccess: () => setApprovedCount(c => c + 1) }); setExpandedId(null); };
-  const approveList = (ids: string[]) => { if (ids.length) bulkMut.mutate(ids, { onSuccess: (res: any) => setApprovedCount(c => c + (res?.count ?? res?.approved?.length ?? ids.length)) }); };
+  const approveOne = (id: string) => {
+    if (!canApproveFinancial) return;
+    approveMut.mutate(id, { onSuccess: () => setApprovedCount(c => c + 1) });
+    setExpandedId(null);
+  };
+  const approveList = (ids: string[]) => {
+    if (!canApproveFinancial) return;
+    if (ids.length) bulkMut.mutate(ids, { onSuccess: (res: any) => setApprovedCount(c => c + (res?.count ?? res?.approved?.length ?? ids.length)) });
+  };
   const openReject = (id: string) => { setExpandedId(id); setEditMode("reject"); setRejectReason(""); setRejectNote(""); };
   const confirmReject = (id: string) => { const reason = [rejectReason, rejectNote].filter(Boolean).join(" — ") || t("رفض من المشتريات", "Rejected by procurement"); rejectMut.mutate({ id, reason }, { onSuccess: () => { setEditMode(null); setExpandedId(null); } }); };
-  const openPartial = (id: string) => { setExpandedId(id); setEditMode("partial"); setPartialNote(""); setQtyMap({}); };
-  const confirmPartial = (id: string) => { const items = detailItems.map((it: any) => ({ orderItemId: it.orderItemId, quantity: qtyMap[it.orderItemId] ?? it.quantityOrdered ?? 0 })); partialMut.mutate({ id, items, note: partialNote || undefined }, { onSuccess: () => { setEditMode(null); setExpandedId(null); } }); };
+  const openPartial = (id: string) => { if (!canApproveFinancial) return; setExpandedId(id); setEditMode("partial"); setPartialNote(""); setQtyMap({}); };
+  const confirmPartial = (id: string) => {
+    if (!canApproveFinancial) return;
+    const items = detailItems.map((it: any) => ({ orderItemId: it.orderItemId, quantity: qtyMap[it.orderItemId] ?? it.quantityOrdered ?? 0 }));
+    partialMut.mutate({ id, items, note: partialNote || undefined }, { onSuccess: () => { setEditMode(null); setExpandedId(null); } });
+  };
 
   const branchList = ["الكل", ...[...new Set(rows.map(o => o.branch))]];
   const filteredOrders = rows.filter(o => {
@@ -163,10 +178,12 @@ export function ProcNewOrders({ }: PageProps) {
                   <span className="font-mono font-bold text-gray-600 text-sm">{fmtAmt(groupTotal)} {t("ر.س", "SAR")}</span>
                 </div>
                 {groupOrders.length > 1 && (
-                  <Btn size="sm" variant="success" disabled={bulkMut.isPending}
-                    onClick={() => approveList(groupOrders.map(o => o.id))}>
-                    <CheckCircle2 size={11} /> {t("اعتماد الكل", "Approve All")} ({groupOrders.length} {t("طلب", "orders")})
-                  </Btn>
+                  <span title={!canApproveFinancial ? t("الاعتماد المالي من صلاحية الإدارة المالية / المحاسب الرئيسي وفق PUR-01", "Financial approval requires authorized approval role per PUR-01") : undefined}>
+                    <Btn size="sm" variant="success" disabled={!canApproveFinancial || bulkMut.isPending}
+                      onClick={() => { if (canApproveFinancial) approveList(groupOrders.map(o => o.id)); }}>
+                      <CheckCircle2 size={11} /> {t("اعتماد الكل", "Approve All")} ({groupOrders.length} {t("طلب", "orders")})
+                    </Btn>
+                  </span>
                 )}
               </div>
               {/* Orders in group */}
@@ -187,7 +204,11 @@ export function ProcNewOrders({ }: PageProps) {
                       </div>
                       <span className="font-mono font-bold text-gray-800 text-sm">{fmtAmt(r.total)} {t("ر.س", "SAR")}</span>
                       <div className="flex gap-1.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                        <Btn size="sm" variant="success" disabled={approveMut.isPending} onClick={() => approveOne(r.id)}><CheckCircle2 size={12} /> {t("اعتماد", "Approve")}</Btn>
+                        <span title={!canApproveFinancial ? t("الاعتماد المالي من صلاحية الإدارة المالية / المحاسب الرئيسي وفق PUR-01", "Financial approval requires authorized approval role per PUR-01") : undefined}>
+                          <Btn size="sm" variant="success" disabled={!canApproveFinancial || approveMut.isPending} onClick={() => { if (canApproveFinancial) approveOne(r.id); }}>
+                            <CheckCircle2 size={12} /> {t("اعتماد", "Approve")}
+                          </Btn>
+                        </span>
                       </div>
                       {isOpen ? <ChevronUp size={13} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={13} className="text-gray-400 flex-shrink-0" />}
                     </div>
@@ -267,9 +288,11 @@ export function ProcNewOrders({ }: PageProps) {
                               placeholder={t("سبب / ملاحظة (اختياري)...", "Reason / note (optional)...")}
                               className="w-full text-sm border border-orange-200 rounded-lg px-3 py-2 bg-white outline-none" />
                             <div className="flex gap-2">
-                              <Btn size="sm" variant="danger" disabled={partialMut.isPending || detailItems.length === 0} onClick={() => confirmPartial(r.id)}>
-                                <ThumbsDown size={11} /> {t("تأكيد الاعتماد الجزئي", "Confirm Partial Approve")}
-                              </Btn>
+                              <span title={!canApproveFinancial ? t("الاعتماد الجزئي يتطلب صلاحية مالية وفق PUR-01", "Partial approval requires authorized financial role per PUR-01") : undefined}>
+                                <Btn size="sm" variant="danger" disabled={!canApproveFinancial || partialMut.isPending || detailItems.length === 0} onClick={() => { if (canApproveFinancial) confirmPartial(r.id); }}>
+                                  <ThumbsDown size={11} /> {t("تأكيد الاعتماد الجزئي", "Confirm Partial Approve")}
+                                </Btn>
+                              </span>
                               <Btn size="sm" onClick={() => setEditMode(null)}>{t("إلغاء", "Cancel")}</Btn>
                             </div>
                           </div>
@@ -296,13 +319,18 @@ export function ProcNewOrders({ }: PageProps) {
                           </div>
                         ) : (
                           <div className="flex gap-2 pt-1 flex-wrap">
-                            <span title={t("الاعتماد المالي من صلاحية الإدارة المالية / المحاسب الرئيسي وفق PUR-01", "Financial approval requires authorized approval role per PUR-01")}>
-                              <Btn size="sm" variant="success" disabled={true}><CheckCircle2 size={12} /> {t("اعتماد (يتطلب صلاحية مالية PUR-01)", "Approve (Requires PUR-01 Role)")}</Btn>
+                            <span title={!canApproveFinancial ? t("الاعتماد المالي من صلاحية الإدارة المالية / المحاسب الرئيسي وفق PUR-01", "Financial approval requires authorized approval role per PUR-01") : undefined}>
+                              <Btn size="sm" variant="success" disabled={!canApproveFinancial || approveMut.isPending} onClick={() => { if (canApproveFinancial) approveOne(r.id); }}>
+                                <CheckCircle2 size={12} /> {t("اعتماد (يتطلب صلاحية مالية PUR-01)", "Approve (Requires PUR-01 Role)")}
+                              </Btn>
                             </span>
-                            <button onClick={() => openPartial(r.id)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-orange-700 border border-orange-200 text-xs font-semibold hover:bg-orange-100">
-                              <AlertTriangle size={11} /> {t("اعتماد/رفض جزئي", "Partial")}
-                            </button>
+                            <span title={!canApproveFinancial ? t("الاعتماد الجزئي يتطلب صلاحية مالية وفق PUR-01", "Partial approval requires authorized financial role per PUR-01") : undefined}>
+                              <button onClick={() => { if (canApproveFinancial) openPartial(r.id); }}
+                                disabled={!canApproveFinancial}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold ${!canApproveFinancial ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed opacity-60" : "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"}`}>
+                                <AlertTriangle size={11} /> {t("اعتماد/رفض جزئي", "Partial")}
+                              </button>
+                            </span>
                             <Btn size="sm" variant="danger" onClick={() => openReject(r.id)}><ThumbsDown size={12} /> {t("رفض كلي", "Full Reject")}</Btn>
                             <Btn size="sm" onClick={() => setExpandedId(null)}>{t("إغلاق", "Close")}</Btn>
                           </div>

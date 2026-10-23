@@ -7862,6 +7862,7 @@ function ProcNew() {
   const { data: itemOpts = [] } = useProcurementItems();
   const SAR = t("ر.س","SAR");
   const [draftCommandId, setDraftCommandId] = useState<string>(() => generateCommandId());
+  const [lastMaterialSignature, setLastMaterialSignature] = useState<string>("");
   const [orderForm, setOrderForm] = useState({ supplierId:"", itemId:"", qty:"", unitPrice:"", notes:"" });
   const [editingOrder, setEditingOrder] = useState<any|null>(null);
   const [editNotes, setEditNotes] = useState("");
@@ -7878,10 +7879,19 @@ function ProcNew() {
   const submitOrder = () => {
     const q = parseFloat(orderForm.qty);
     const p = parseFloat(orderForm.unitPrice);
-    if (!orderForm.supplierId || !orderForm.itemId || isNaN(q) || q <= 0 || isNaN(p) || p <= 0) {
+    if (!orderForm.supplierId || !orderForm.itemId || isNaN(q) || !Number.isFinite(q) || q <= 0 || isNaN(p) || !Number.isFinite(p) || p <= 0) {
       alert(t("يرجى اختيار المورد والصنف وإدخال كمية وسعر صحيحين أكبر من صفر", "Please select supplier and item and enter valid quantity and price greater than zero"));
       return;
     }
+    // Prevent draft idempotency key reuse when material command payload changes (supplier, item, qty, price)
+    const currentSignature = `${orderForm.supplierId}|${orderForm.itemId}|${q}|${p}`;
+    let commandIdToUse = draftCommandId;
+    if (lastMaterialSignature && lastMaterialSignature !== currentSignature) {
+      commandIdToUse = generateCommandId();
+      setDraftCommandId(commandIdToUse);
+    }
+    setLastMaterialSignature(currentSignature);
+
     const unitPriceHalalas = Math.round(p * 100);
     const totalHalalas = Math.round(unitPriceHalalas * q);
     createOrderMut.mutate(
@@ -7890,12 +7900,13 @@ function ProcNew() {
         items: [{ itemId: orderForm.itemId, qty: q, unitPriceHalalas, totalHalalas }],
         notes: orderForm.notes.trim() || undefined,
         description: orderForm.notes.trim() || undefined,
-        commandId: draftCommandId,
+        commandId: commandIdToUse,
       } as any,
       {
         onSuccess: () => {
           setShowAdd(false);
           setOrderForm({ supplierId:"", itemId:"", qty:"", unitPrice:"", notes:"" });
+          setLastMaterialSignature("");
           setDraftCommandId(generateCommandId());
         },
       },
