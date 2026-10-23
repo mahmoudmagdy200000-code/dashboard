@@ -822,6 +822,8 @@ const NAV:Record<CRole,NavEntry[]> = {
     { id:"branch-overview",   label:"نظرة عامة",         icon:<LayoutDashboard size={16}/> },
     { section:"إدارة البيانات" },
     { id:"branch-upload",     label:"رفع البيانات",      icon:<Upload size={16}/>          },
+    { id:"branch-shifts",     label:"شفتات الفرع",        icon:<Clock size={16}/>           },
+    { id:"branch-requests",   label:"طلبات الشراء",      icon:<ShoppingCart size={16}/>   },
     { id:"branch-employees",  label:"الموظفون",           icon:<Users size={16}/>           },
     { id:"branch-items",      label:"الأصناف",            icon:<Package size={16}/>         },
     { id:"branch-suppliers",  label:"الموردون",           icon:<Building2 size={16}/>       },
@@ -7213,19 +7215,19 @@ function BranchOverview() {
     : (apiEmployees as any[]).slice(0,4).map((e: any) => [e.name, e.role || "—", "", (e.status==="active"||e.active) ? t("نشط","Active") : t("غائب","Absent")]);
   return (
     <div className="space-y-5" dir={dir}>
-      <div><h2 className="text-xl font-bold text-gray-800">{t("لوحة فرع العليا","Al-Ulia Branch Dashboard")} — {branchName}</h2><p className="text-gray-400 text-sm">{branchBrand} · {branchCity}</p></div>
+      <div><h2 className="text-xl font-bold text-gray-800">{branchName ? `${t("لوحة الفرع","Branch Dashboard")} — ${branchName}` : t("لوحة الفرع","Branch Dashboard")}</h2><p className="text-gray-400 text-sm">{branchBrand}{branchCity ? ` · ${branchCity}` : ""}</p></div>
       <div className="bg-gradient-to-l from-emerald-600 to-teal-700 rounded-2xl p-5 text-white">
         <div className="flex items-center justify-between mb-3"><div><p className="font-black text-xl">{t("إنجاز الشهر","Monthly Achievement")}</p><p className="text-white/70 text-sm mt-0.5">{t("الهدف:","Target:")} {fmt(apiTarget)} {SAR}</p></div><div className={dir==="rtl"?"text-left":"text-right"}><p className="text-3xl font-black">{pct}%</p><p className="text-white/60 text-xs">{t("من الهدف","of target")}</p></div></div>
         <div className="w-full h-3 bg-white/20 rounded-full"><div className="h-3 bg-white rounded-full" style={{width:`${Math.min(100,pct)}%`}}/></div>
         <div className="flex justify-between mt-2 text-xs text-white/60"><span>0</span><span>{fmt(apiTarget)}</span></div>
       </div>
-      <div className="grid grid-cols-4 gap-4">
-        <KpiCard label={t("مبيعات اليوم","Today's Sales")}   value={fmt(todaySales)} sub={SAR} icon={<TrendingUp size={18} className="text-emerald-600"/>} accent="emerald" delta="+5.2%"/>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard label={t("مبيعات اليوم","Today's Sales")}   value={fmt(todaySales)} sub={SAR} icon={<TrendingUp size={18} className="text-emerald-600"/>} accent="emerald" delta={apiKpis.todaySalesTrendPct != null ? `${apiKpis.todaySalesTrendPct > 0 ? "+" : ""}${apiKpis.todaySalesTrendPct}%` : undefined}/>
         <KpiCard label={t("مبيعات الشهر","Monthly Sales")}   value={`${fmt(Math.round(apiSalesM/1000))}K`} sub={SAR} icon={<BarChart3 size={18} className="text-blue-600"/>} accent="blue"/>
         <KpiCard label={t("مصروفات الشهر","Monthly Expenses")} value={`${fmt(Math.round(apiExpM/1000))}K`} sub={SAR} icon={<Wallet size={18} className="text-amber-600"/>} accent="amber"/>
         <KpiCard label={t("صافي الربح","Net Profit")}         value={`${fmt(Math.round(netProfit/1000))}K`} sub={SAR} icon={<CheckCircle2 size={18} className="text-purple-600"/>} accent="purple"/>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <h3 className="font-bold text-gray-800 text-sm mb-3">📋 {t("مهام اليوم","Today's Tasks")}</h3>
           <div className="space-y-2">
@@ -7263,40 +7265,86 @@ function BranchUpload() {
   const [expAmt,setExpAmt]=useState("");
   const [shift,setShift]=useState("morning");
   const [expenseNote,setExpenseNote]=useState("");
+  const [salesFile, setSalesFile]=useState<File|null>(null);
+  const [invFile, setInvFile]=useState<File|null>(null);
   const [submitted,setSubmitted]=useState(false);
+  const salesFileRef = useRef<HTMLInputElement|null>(null);
+  const invFileRef = useRef<HTMLInputElement|null>(null);
+
   const submit=()=>{
-    if(!salesAmt){alert(t("أدخل قيمة المبيعات","Enter sales amount"));return;}
+    const s = parseFloat(salesAmt);
+    if (!salesAmt.trim() || isNaN(s) || s <= 0) {
+      alert(t("أدخل قيمة مبيعات صحيحة أكبر من صفر","Enter a valid sales amount greater than zero"));
+      return;
+    }
+    const exp = expAmt.trim() ? parseFloat(expAmt) : undefined;
+    if (exp !== undefined && (isNaN(exp) || exp < 0)) {
+      alert(t("قيمة المصروفات يجب ألا تكون سالبة","Expenses amount cannot be negative"));
+      return;
+    }
     uploadMut.mutate(
-      { reportType:"sales", salesHalalas: Math.round((parseFloat(salesAmt)||0)*100), shift, expensesHalalas: expAmt?Math.round((parseFloat(expAmt)||0)*100):undefined, expenseNote: expenseNote||undefined },
+      {
+        reportType:"sales",
+        salesHalalas: Math.round(s*100),
+        shift,
+        expensesHalalas: exp !== undefined ? Math.round(exp*100) : undefined,
+        expenseNote: expenseNote.trim() || undefined,
+        file: salesFile || invFile || undefined,
+      },
       { onSuccess: ()=>setSubmitted(true) },
     );
   };
+
+  const handleResetUpload = () => {
+    setSubmitted(false);
+    setSalesAmt("");
+    setExpAmt("");
+    setShift("morning");
+    setExpenseNote("");
+    setSalesFile(null);
+    setInvFile(null);
+  };
+
   if(submitted) return (
     <div className="flex flex-col items-center justify-center h-64 space-y-4 text-center" dir={dir}>
       <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center"><CheckCircle2 size={40} className="text-emerald-600"/></div>
       <h3 className="text-xl font-bold text-gray-800">{t("تم رفع البيانات بنجاح!","Data submitted successfully!")}</h3>
       <p className="text-gray-500 text-sm">{t("سيقوم المحاسب بمراجعة البيانات وإعادة الإبلاغ","The accountant will review and respond")}</p>
-      <button onClick={()=>setSubmitted(false)} className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-bold hover:bg-purple-700">{t("رفع جديد","Upload New")}</button>
+      <button onClick={handleResetUpload} className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-bold hover:bg-purple-700">{t("رفع جديد","Upload New")}</button>
     </div>
   );
   return (
     <div className="space-y-5" dir={dir}>
-      <div><h2 className="text-xl font-bold text-gray-800">{t("الرفع اليومي","Daily Upload")}</h2><p className="text-gray-400 text-sm">{MY_BRANCH.name} · {new Date().toLocaleDateString("ar-SA")}</p></div>
-      <div className="grid grid-cols-2 gap-5">
+      <div><h2 className="text-xl font-bold text-gray-800">{t("الرفع اليومي","Daily Upload")}</h2><p className="text-gray-400 text-sm">{new Date().toLocaleDateString("ar-SA")}</p></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
           <h3 className="font-bold text-gray-800">💰 {t("المبيعات","Sales")}</h3>
-          <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t(`إجمالي المبيعات (${SAR}) *`,`Total Sales (${SAR}) *`)}</label><input type="number" value={salesAmt} onChange={e=>setSalesAmt(e.target.value)} placeholder="0.00" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-emerald-400"/></div>
+          <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t(`إجمالي المبيعات (${SAR}) *`,`Total Sales (${SAR}) *`)}</label><input type="number" min="0.01" step="0.01" value={salesAmt} onChange={e=>setSalesAmt(e.target.value)} placeholder="0.00" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-emerald-400"/></div>
           <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الشفت","Shift")}</label><select value={shift} onChange={e=>setShift(e.target.value)} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"><option value="morning">{t("صباحي","Morning")}</option><option value="evening">{t("مسائي","Evening")}</option><option value="full">{t("كامل اليوم","Full Day")}</option></select></div>
-          <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("مرفق (صورة / PDF)","Attachment (image / PDF)")}</label><div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-purple-300"><Upload size={20} className="text-gray-400 mx-auto mb-1"/><p className="text-xs text-gray-400">{t("رفع مرفق","Upload attachment")}</p></div></div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 block mb-1">{t("مرفق (صورة / PDF)","Attachment (image / PDF)")}</label>
+            <input type="file" ref={salesFileRef} className="hidden" accept="image/*,.pdf" onChange={e=>setSalesFile(e.target.files?.[0]||null)}/>
+            <div onClick={()=>salesFileRef.current?.click()} className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-purple-300">
+              <Upload size={20} className="text-gray-400 mx-auto mb-1"/>
+              <p className="text-xs text-gray-600 font-medium">{salesFile ? salesFile.name : t("اضغط لاختيار مرفق المبيعات","Click to select sales attachment")}</p>
+            </div>
+          </div>
         </div>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
           <h3 className="font-bold text-gray-800">💸 {t("المصروفات","Expenses")}</h3>
-          <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t(`إجمالي المصروفات (${SAR})`,`Total Expenses (${SAR})`)}</label><input type="number" value={expAmt} onChange={e=>setExpAmt(e.target.value)} placeholder="0.00" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-red-400"/></div>
+          <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t(`إجمالي المصروفات (${SAR})`,`Total Expenses (${SAR})`)}</label><input type="number" min="0" step="0.01" value={expAmt} onChange={e=>setExpAmt(e.target.value)} placeholder="0.00" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-red-400"/></div>
           <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("تفصيل المصروفات","Expense breakdown")}</label><textarea rows={3} value={expenseNote} onChange={e=>setExpenseNote(e.target.value)} placeholder={t("وصف مختصر...","Brief description...")} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none resize-none"/></div>
-          <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الفاتورة","Invoice")}</label><div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-red-300"><Paperclip size={20} className="text-gray-400 mx-auto mb-1"/><p className="text-xs text-gray-400">{t("رفع الفاتورة","Upload invoice")}</p></div></div>
+          <div>
+            <label className="text-xs font-semibold text-gray-600 block mb-1">{t("الفاتورة","Invoice")}</label>
+            <input type="file" ref={invFileRef} className="hidden" accept="image/*,.pdf" onChange={e=>setInvFile(e.target.files?.[0]||null)}/>
+            <div onClick={()=>invFileRef.current?.click()} className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-red-300">
+              <Paperclip size={20} className="text-gray-400 mx-auto mb-1"/>
+              <p className="text-xs text-gray-600 font-medium">{invFile ? invFile.name : t("اضغط لاختيار فاتورة المصروفات","Click to select expense invoice")}</p>
+            </div>
+          </div>
         </div>
       </div>
-      <button onClick={submit} className="w-full py-3 rounded-xl bg-purple-600 text-white font-bold text-base hover:bg-purple-700 shadow-sm flex items-center justify-center gap-2"><Send size={16}/>{t("رفع البيانات للمحاسب","Submit Data to Accountant")}</button>
+      <button onClick={submit} disabled={uploadMut.isPending} className="w-full py-3 rounded-xl bg-purple-600 text-white font-bold text-base hover:bg-purple-700 shadow-sm flex items-center justify-center gap-2"><Send size={16}/>{uploadMut.isPending ? t("جارٍ الإرسال...","Submitting...") : t("رفع البيانات للمحاسب","Submit Data to Accountant")}</button>
     </div>
   );
 }
@@ -7305,49 +7353,86 @@ function BranchRequests() {
   const { t, dir } = useCLang();
   const { data: apiRequests = [] } = useBranchPurchaseRequests();
   const createReqMut = useCreateBranchPurchaseRequest();
-  // Driven by GET /company/me/branch/purchase-requests. No static seed.
+  // Driven by GET /company/me/branch/purchase-requests. Map both field contracts.
   const requests = apiRequests.map(r => ({
     id: r.publicId || r.id,
-    item: r.itemName || "—",
+    item: (r as any).item || r.itemName || "—",
     qty: r.qty ?? 0,
     unit: r.unit || "",
-    status: r.status === "submitted" ? "pending" : r.status,
-    date: r.createdAt,
-    urgency: ((r as any).priority === "urgent" ? "urgent" : "normal") as "normal" | "urgent",
+    status: r.status === "submitted" ? "pending" : (r.status || "pending"),
+    date: (r as any).date || r.createdAt || "",
+    urgency: (((r as any).urgency || (r as any).priority) === "urgent" ? "urgent" : "normal") as "normal" | "urgent",
   }));
-  const [showAdd,setShowAdd]=useState(false);
-  const [reqForm,setReqForm]=useState({ itemName:"", qty:"", unit:"كجم", priority:"normal" as "normal"|"urgent" });
-  const submitRequest=()=>{
-    if(!reqForm.itemName.trim()||!reqForm.qty)return;
+  const [showAdd, setShowAdd] = useState(false);
+  const [reqForm, setReqForm] = useState({ itemName: "", qty: "", unit: "كجم", priority: "normal" as "normal" | "urgent" });
+  const submitRequest = () => {
+    const q = Number(reqForm.qty);
+    if (!reqForm.itemName.trim() || isNaN(q) || q <= 0) return;
     createReqMut.mutate(
-      { itemName:reqForm.itemName, qty:Number(reqForm.qty), unit:reqForm.unit, priority:reqForm.priority },
-      { onSuccess: ()=>{ setShowAdd(false); setReqForm({ itemName:"", qty:"", unit:"كجم", priority:"normal" }); } },
+      { itemName: reqForm.itemName.trim(), qty: q, unit: reqForm.unit, priority: reqForm.priority },
+      { onSuccess: () => { setShowAdd(false); setReqForm({ itemName: "", qty: "", unit: "كجم", priority: "normal" }); } },
     );
   };
-  const SC:Record<string,string>={pending:"bg-amber-50 text-amber-700 border-amber-200",approved:"bg-blue-50 text-blue-700 border-blue-200",delivered:"bg-emerald-50 text-emerald-700 border-emerald-200"};
-  const SL:Record<string,string>={pending:t("معلق","Pending"),approved:t("معتمد","Approved"),delivered:t("تم التسليم","Delivered")};
+  const SC: Record<string, string> = { pending: "bg-amber-50 text-amber-700 border-amber-200", approved: "bg-blue-50 text-blue-700 border-blue-200", delivered: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+  const SL: Record<string, string> = { pending: t("معلق", "Pending"), approved: t("معتمد", "Approved"), delivered: t("تم التسليم", "Delivered") };
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between"><div><h2 className="text-xl font-bold text-gray-800">{t("طلبات الشراء","Purchase Requests")}</h2><p className="text-gray-400 text-sm">{requests.filter(r=>r.status==="pending").length} {t("طلب معلق","pending requests")}</p></div><Btn variant="primary" onClick={()=>setShowAdd(true)}><Plus size={13}/> {t("طلب جديد","New Request")}</Btn></div>
+      <div className="flex items-center justify-between"><div><h2 className="text-xl font-bold text-gray-800">{t("طلبات الشراء", "Purchase Requests")}</h2><p className="text-gray-400 text-sm">{requests.filter(r => r.status === "pending").length} {t("طلب معلق", "pending requests")}</p></div><Btn variant="primary" onClick={() => setShowAdd(true)}><Plus size={13} /> {t("طلب جديد", "New Request")}</Btn></div>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        {requests.map(r=>(
+        {requests.map(r => (
           <div key={r.id} className="px-5 py-4 flex items-center gap-4 border-b border-gray-50 last:border-0">
             <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-lg flex-shrink-0">📦</div>
             <div className="flex-1"><p className="font-semibold text-gray-800 text-sm">{r.item}</p><p className="text-xs text-gray-400">{r.qty} {r.unit} · {r.date}</p></div>
-            {r.urgency==="urgent"&&<Badge className="bg-red-50 text-red-700 border border-red-200 text-[10px]">⚡ {t("عاجل","Urgent")}</Badge>}
+            {r.urgency === "urgent" && <Badge className="bg-red-50 text-red-700 border border-red-200 text-[10px]">⚡ {t("عاجل", "Urgent")}</Badge>}
             <Badge className={`text-[10px] border ${SC[r.status]}`}>{SL[r.status]}</Badge>
           </div>
         ))}
       </div>
-      {showAdd&&(
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setShowAdd(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e=>e.stopPropagation()} dir={dir}>
-            <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">{t("طلب شراء جديد","New Purchase Request")}</h3><button onClick={()=>setShowAdd(false)} className="text-gray-400 hover:text-gray-600"><X size={18}/></button></div>
+      {showAdd && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowAdd(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("طلب شراء جديد", "New Purchase Request")}
+          onKeyDown={e => { if (e.key === "Escape") setShowAdd(false); }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()} dir={dir}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-800">{t("طلب شراء جديد", "New Purchase Request")}</h3>
+              <button onClick={() => setShowAdd(false)} aria-label={t("إغلاق", "Close")} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
             <div className="space-y-3">
-              <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الصنف","Item")}</label><input value={reqForm.itemName} onChange={e=>setReqForm(f=>({...f,itemName:e.target.value}))} placeholder={t("اسم الصنف","Item name")} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
-              <div className="grid grid-cols-2 gap-3"><div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الكمية","Quantity")}</label><input type="number" value={reqForm.qty} onChange={e=>setReqForm(f=>({...f,qty:e.target.value}))} placeholder="0" dir="ltr" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div><div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الوحدة","Unit")}</label><select value={reqForm.unit} onChange={e=>setReqForm(f=>({...f,unit:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"><option value="كجم">{t("كجم","kg")}</option><option value="كرتون">{t("كرتون","carton")}</option><option value="قطعة">{t("قطعة","piece")}</option><option value="لتر">{t("لتر","liter")}</option></select></div></div>
-              <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الأولوية","Priority")}</label><select value={reqForm.priority} onChange={e=>setReqForm(f=>({...f,priority:e.target.value as "normal"|"urgent"}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"><option value="normal">{t("عادي","Normal")}</option><option value="urgent">{t("عاجل","Urgent")}</option></select></div>
-              <div className="flex gap-2 justify-end"><Btn onClick={()=>setShowAdd(false)}>{t("إلغاء","Cancel")}</Btn><Btn variant="primary" onClick={submitRequest} disabled={!reqForm.itemName.trim()||!reqForm.qty||createReqMut.isPending}><Send size={13}/> {t("إرسال","Send")}</Btn></div>
+              <div>
+                <label htmlFor="b-req-item" className="text-xs font-semibold text-gray-600 block mb-1">{t("الصنف", "Item")}</label>
+                <input id="b-req-item" value={reqForm.itemName} onChange={e => setReqForm(f => ({ ...f, itemName: e.target.value }))} placeholder={t("اسم الصنف", "Item name")} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="b-req-qty" className="text-xs font-semibold text-gray-600 block mb-1">{t("الكمية", "Quantity")}</label>
+                  <input id="b-req-qty" type="number" min="0.01" step="any" value={reqForm.qty} onChange={e => setReqForm(f => ({ ...f, qty: e.target.value }))} placeholder="0" dir="ltr" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400" />
+                </div>
+                <div>
+                  <label htmlFor="b-req-unit" className="text-xs font-semibold text-gray-600 block mb-1">{t("الوحدة", "Unit")}</label>
+                  <select id="b-req-unit" value={reqForm.unit} onChange={e => setReqForm(f => ({ ...f, unit: e.target.value }))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none">
+                    <option value="كجم">{t("كجم", "kg")}</option>
+                    <option value="كرتون">{t("كرتون", "carton")}</option>
+                    <option value="قطعة">{t("قطعة", "piece")}</option>
+                    <option value="لتر">{t("لتر", "liter")}</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="b-req-prio" className="text-xs font-semibold text-gray-600 block mb-1">{t("الأولوية", "Priority")}</label>
+                <select id="b-req-prio" value={reqForm.priority} onChange={e => setReqForm(f => ({ ...f, priority: e.target.value as "normal" | "urgent" }))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none">
+                  <option value="normal">{t("عادي", "Normal")}</option>
+                  <option value="urgent">{t("عاجل", "Urgent")}</option>
+                </select>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Btn onClick={() => setShowAdd(false)}>{t("إلغاء", "Cancel")}</Btn>
+                <Btn variant="primary" onClick={submitRequest} disabled={!reqForm.itemName.trim() || !reqForm.qty || Number(reqForm.qty) <= 0 || createReqMut.isPending}><Send size={13} /> {t("إرسال", "Send")}</Btn>
+              </div>
             </div>
           </div>
         </div>
@@ -7360,68 +7445,101 @@ function BranchItems() {
   const { t, dir } = useCLang();
   const { data: apiItems = [] } = useBranchItems();
   const submitCountMut = useBranchSubmitItemsCount();
-  const [showInvForm,setShowInvForm]=useState(false);
-  const [invCounts,setInvCounts]=useState<Record<string,string>>({});
-  const [invSubmitted,setInvSubmitted]=useState(false);
-  // Driven by GET /company/me/branch/items — read the server-derived stock status.
+  const [showInvForm, setShowInvForm] = useState(false);
+  const [invCounts, setInvCounts] = useState<Record<string, string>>({});
+  const [invSubmitted, setInvSubmitted] = useState(false);
+  // Driven by GET /company/me/branch/items — preserve absence vs zero.
   const items = apiItems.map(i => {
-    const qty = i.expectedQty ?? i.currQty ?? 0;
+    const rawQty = (i as any).expectedQty ?? (i as any).currQty;
+    const qty = rawQty != null ? Number(rawQty) : null;
     const min = i.minLevel ?? 0;
-    const status = i.stockStatus ?? (min>0 ? (qty<=min?"critical":qty<=min*1.5?"low":"ok") : "ok");
+    const status = i.stockStatus ?? (min > 0 && qty != null ? (qty <= min ? "critical" : qty <= min * 1.5 ? "low" : "ok") : "ok");
     return { name: i.name, qty, unit: i.unit || "", min, status, id: i.id, statusLabel: i.stockStatusLabel };
   });
   const submitInventory = () => {
-    // T12 §4 — counts keyed by inventoryItemId; ids must be on the countable list.
+    // T12 §4 — counts keyed by inventoryItemId; require at least one valid positive count.
     const counts = Object.entries(invCounts)
-      .filter(([,v]) => v !== "")
-      .map(([inventoryItemId, v]) => ({ inventoryItemId, actualQty: Number(v) || 0 }));
-    if (counts.length > 0) {
-      submitCountMut.mutate({ counts }, { onSuccess: () => setInvSubmitted(true) });
-    } else {
-      setInvSubmitted(true);
+      .filter(([, v]) => v !== "" && !isNaN(Number(v)) && Number(v) >= 0)
+      .map(([inventoryItemId, v]) => ({ inventoryItemId, actualQty: Number(v) }));
+    if (counts.length === 0) {
+      alert(t("يرجى إدخال كمية فعلية واحدة على الأقل قبل الإرسال", "Please enter at least one actual count before submitting"));
+      return;
     }
+    submitCountMut.mutate({ counts }, { onSuccess: () => setInvSubmitted(true) });
   };
-  const SC:Record<string,string>={ok:"bg-emerald-50 text-emerald-700",low:"bg-amber-50 text-amber-700",critical:"bg-red-50 text-red-700"};
+  const SC: Record<string, string> = { ok: "bg-emerald-50 text-emerald-700", low: "bg-amber-50 text-amber-700", critical: "bg-red-50 text-red-700" };
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between"><div><h2 className="text-xl font-bold text-gray-800">{t("الجرد اليومي","Daily Inventory")}</h2><p className="text-gray-400 text-sm">{MY_BRANCH.name} · {new Date().toLocaleDateString("ar-SA")}</p></div><Btn variant="primary" onClick={()=>setShowInvForm(true)}><Clipboard size={13}/> {t("تسجيل جرد","Record Count")}</Btn></div>
-      {showInvForm&&(
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setShowInvForm(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-5" onClick={e=>e.stopPropagation()} dir={dir}>
-            <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">{t("تسجيل جرد يومي","Daily Inventory Count")}</h3><button onClick={()=>setShowInvForm(false)} className="text-gray-400 hover:text-gray-600"><X size={18}/></button></div>
-            {invSubmitted?(
-              <div className="text-center py-6"><div className="text-4xl mb-3">✅</div><p className="font-bold text-gray-800">{t("تم إرسال الجرد للمحاسب","Inventory sent to accountant")}</p><p className="text-sm text-gray-400 mt-1">{t("سيتم مراجعته خلال 24 ساعة","Will be reviewed within 24 hours")}</p><Btn onClick={()=>{setInvSubmitted(false);setInvCounts({});setShowInvForm(false);}}>{t("إغلاق","Close")}</Btn></div>
-            ):(
+      <div className="flex items-center justify-between"><div><h2 className="text-xl font-bold text-gray-800">{t("الجرد اليومي", "Daily Inventory")}</h2><p className="text-gray-400 text-sm">{MY_BRANCH.name} · {new Date().toLocaleDateString("ar-SA")}</p></div><Btn variant="primary" onClick={() => setShowInvForm(true)}><Clipboard size={13} /> {t("تسجيل جرد", "Record Count")}</Btn></div>
+      {showInvForm && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowInvForm(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("تسجيل جرد يومي", "Daily Inventory Count")}
+          onKeyDown={e => { if (e.key === "Escape") setShowInvForm(false); }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-5" onClick={e => e.stopPropagation()} dir={dir}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-800">{t("تسجيل جرد يومي", "Daily Inventory Count")}</h3>
+              <button onClick={() => setShowInvForm(false)} aria-label={t("إغلاق", "Close")} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
+            {invSubmitted ? (
+              <div className="text-center py-6" role="status">
+                <div className="text-4xl mb-3">✅</div>
+                <p className="font-bold text-gray-800">{t("تم إرسال الجرد للمحاسب", "Inventory sent to accountant")}</p>
+                <p className="text-sm text-gray-400 mt-1">{t("سيتم مراجعته خلال 24 ساعة", "Will be reviewed within 24 hours")}</p>
+                <Btn onClick={() => { setInvSubmitted(false); setInvCounts({}); setShowInvForm(false); }}>{t("إغلاق", "Close")}</Btn>
+              </div>
+            ) : (
               <div className="space-y-2 max-h-80 overflow-y-auto">
-                {items.map(item=>(
+                {items.map(item => (
                   <div key={item.id} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-xl">
-                    <div className="flex-1"><p className="text-sm font-semibold text-gray-800">{item.name}</p><p className="text-[11px] text-gray-400">{t("المتوقع:","Expected:")} {item.qty} {item.unit}</p></div>
-                    <input type="number" value={invCounts[item.id]??""} onChange={e=>setInvCounts(p=>({...p,[item.id]:e.target.value}))} placeholder={String(item.qty)} className="w-20 text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none text-center focus:border-purple-400"/>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-800">{item.name}</p>
+                      <p className="text-[11px] text-gray-400">{t("المتوقع:", "Expected:")} {item.qty != null ? item.qty : "—"} {item.unit}</p>
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={invCounts[item.id] ?? ""}
+                      onChange={e => setInvCounts(p => ({ ...p, [item.id]: e.target.value }))}
+                      placeholder={item.qty != null ? String(item.qty) : "0"}
+                      aria-label={item.name}
+                      className="w-20 text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none text-center focus:border-purple-400"
+                    />
                     <span className="text-xs text-gray-400 w-8">{item.unit}</span>
                   </div>
                 ))}
-                <div className="flex gap-2 justify-end pt-2"><Btn onClick={()=>setShowInvForm(false)}>{t("إلغاء","Cancel")}</Btn><Btn variant="primary" onClick={submitInventory}><Send size={13}/> {t("إرسال الجرد","Submit Count")}</Btn></div>
+                <div className="flex gap-2 justify-end pt-2">
+                  <Btn onClick={() => setShowInvForm(false)}>{t("إلغاء", "Cancel")}</Btn>
+                  <Btn variant="primary" onClick={submitInventory} disabled={submitCountMut.isPending}><Send size={13} /> {t("إرسال الجرد", "Submit Count")}</Btn>
+                </div>
               </div>
             )}
           </div>
         </div>
       )}
-      <div className="grid grid-cols-3 gap-4">
-        <KpiCard label={t("أصناف كافية","Sufficient")} value={String(items.filter(i=>i.status==="ok").length)} sub={t("من إجمالي الأصناف","of total items")} icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
-        <KpiCard label={t("منخفض","Low")} value={String(items.filter(i=>i.status==="low").length)} sub={t("يحتاج طلب شراء","needs purchase order")} icon={<AlertTriangle size={18} className="text-amber-600"/>} accent="amber"/>
-        <KpiCard label={t("حرج","Critical")} value={String(items.filter(i=>i.status==="critical").length)} sub={t("طلب عاجل!","urgent order!")} icon={<XCircle size={18} className="text-red-500"/>} accent="red"/>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KpiCard label={t("أصناف كافية", "Sufficient")} value={String(items.filter(i => i.status === "ok").length)} sub={t("من إجمالي الأصناف", "of total items")} icon={<CheckCircle2 size={18} className="text-emerald-600" />} accent="emerald" />
+        <KpiCard label={t("منخفض", "Low")} value={String(items.filter(i => i.status === "low").length)} sub={t("يحتاج طلب شراء", "needs purchase order")} icon={<AlertTriangle size={18} className="text-amber-600" />} accent="amber" />
+        <KpiCard label={t("حرج", "Critical")} value={String(items.filter(i => i.status === "critical").length)} sub={t("طلب عاجل!", "urgent order!")} icon={<XCircle size={18} className="text-red-500" />} accent="red" />
       </div>
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="grid grid-cols-4 gap-4 px-5 py-3 border-b border-gray-100 bg-gray-50 text-[10px] font-semibold text-gray-500">
-          <span className="col-span-2">{t("الصنف","Item")}</span><span>{t("الكمية الفعلية","Actual Qty")}</span><span>{t("الحالة","Status")}</span>
-        </div>
-        {items.map(item=>(
-          <div key={item.name} className="grid grid-cols-4 gap-4 px-5 py-4 border-b border-gray-50 last:border-0 items-center">
-            <div className="col-span-2"><p className="font-semibold text-gray-800 text-sm">{item.name}</p><p className="text-xs text-gray-400">{t("الحد الأدنى:","Min:")} {item.min} {item.unit}</p></div>
-            <div className="flex items-center gap-2"><span className="font-mono font-bold text-gray-800">{item.qty}</span><span className="text-gray-400 text-sm">{item.unit}</span></div>
-            <Badge className={`text-[10px] ${SC[item.status]}`}>{item.status==="ok"?`✓ ${t("كافٍ","OK")}`:item.status==="low"?`⚠ ${t("منخفض","Low")}`:`🔴 ${t("حرج","Critical")}`}</Badge>
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
+        <div className="min-w-[480px]">
+          <div className="grid grid-cols-4 gap-4 px-5 py-3 border-b border-gray-100 bg-gray-50 text-[10px] font-semibold text-gray-500">
+            <span className="col-span-2">{t("الصنف", "Item")}</span><span>{t("الكمية الفعلية", "Actual Qty")}</span><span>{t("الحالة", "Status")}</span>
           </div>
-        ))}
+          {items.map(item => (
+            <div key={item.name} className="grid grid-cols-4 gap-4 px-5 py-4 border-b border-gray-50 last:border-0 items-center">
+              <div className="col-span-2"><p className="font-semibold text-gray-800 text-sm">{item.name}</p><p className="text-xs text-gray-400">{t("الحد الأدنى:", "Min:")} {item.min} {item.unit}</p></div>
+              <div className="flex items-center gap-2"><span className="font-mono font-bold text-gray-800">{item.qty != null ? item.qty : "—"}</span><span className="text-gray-400 text-sm">{item.unit}</span></div>
+              <Badge className={`text-[10px] ${SC[item.status]}`}>{item.status === "ok" ? `✓ ${t("كافٍ", "OK")}` : item.status === "low" ? `⚠ ${t("منخفض", "Low")}` : `🔴 ${t("حرج", "Critical")}`}</Badge>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -7431,17 +7549,26 @@ function BranchEmployees() {
   const { t, dir } = useCLang();
   const { data: apiStaff = [] } = useBranchEmployees();
   // Staff comes from the platform API; empty until the backend returns it (no static seed).
-  const staff = apiStaff.map(s => ({ name: s.name, role: s.role || "—", shift: "", status: s.active ? "present" : "absent", phone: "" }));
+  const staff = apiStaff.map(s => ({
+    name: s.name || "—",
+    role: s.role || "—",
+    shift: (s as any).shiftType || (s as any).shift || "",
+    status: (s as any).status || (s.active ? "present" : "absent"),
+    phone: (s as any).phone || (s as any).contactPhone || "",
+  }));
   return (
     <div className="space-y-5" dir={dir}>
-      <div><h2 className="text-xl font-bold text-gray-800">{t("طاقم الموظفين","Staff")}</h2><p className="text-gray-400 text-sm">{staff.filter(s=>s.status==="present").length} {t("حاضر اليوم","present today")}</p></div>
+      <div><h2 className="text-xl font-bold text-gray-800">{t("طاقم الموظفين", "Staff")}</h2><p className="text-gray-400 text-sm">{staff.filter(s => s.status === "present").length} {t("حاضر اليوم", "present today")}</p></div>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        {staff.map(s=>(
+        {staff.map(s => (
           <div key={s.name} className="px-5 py-4 flex items-center gap-4 border-b border-gray-50 last:border-0">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold flex-shrink-0">{s.name[0]}</div>
-            <div className="flex-1"><p className="font-semibold text-gray-800 text-sm">{s.name}</p><p className="text-xs text-gray-400">{s.role} · {t("شفت","shift")} {s.shift}</p></div>
+            <div className="flex-1">
+              <p className="font-semibold text-gray-800 text-sm">{s.name}</p>
+              <p className="text-xs text-gray-400">{s.role}{s.shift ? ` · ${t("شفت", "shift")} ${s.shift}` : ""}</p>
+            </div>
             <span className="text-xs text-gray-400" dir="ltr">{s.phone}</span>
-            <Badge className={`text-[10px] ${s.status==="present"?"bg-emerald-50 text-emerald-700 border border-emerald-100":s.status==="upcoming"?"bg-blue-50 text-blue-700 border border-blue-100":"bg-red-50 text-red-700 border border-red-200"}`}>{s.status==="present"?`● ${t("حاضر","Present")}`:s.status==="upcoming"?t("قادم","Incoming"):t("غائب","Absent")}</Badge>
+            <Badge className={`text-[10px] ${s.status === "present" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : s.status === "upcoming" ? "bg-blue-50 text-blue-700 border border-blue-100" : "bg-red-50 text-red-700 border border-red-200"}`}>{s.status === "present" ? `● ${t("حاضر", "Present")}` : s.status === "upcoming" ? t("قادم", "Incoming") : t("غائب", "Absent")}</Badge>
           </div>
         ))}
       </div>
@@ -7454,15 +7581,15 @@ function BranchShifts() {
   const { data: activeShift, isLoading, isError } = useBranchActiveShift();
   return (
     <div className="space-y-5" dir={dir}>
-      <h2 className="text-xl font-bold text-gray-800">{t("شفتات الفرع","Branch Shifts")}</h2>
-      {isLoading ? <p role="status" className="text-sm text-gray-500">{t("جارٍ التحميل…","Loading…")}</p>
-        : isError ? <p role="alert" className="text-sm text-red-700">{t("تعذر تحميل الشفت النشط","Could not load the active shift")}</p>
-        : !activeShift ? <p className="text-sm text-gray-500">{t("لا يوجد شفت نشط حالياً","No active shift")}</p>
+      <h2 className="text-xl font-bold text-gray-800">{t("شفتات الفرع", "Branch Shifts")}</h2>
+      {isLoading ? <p role="status" className="text-sm text-gray-500">{t("جارٍ التحميل…", "Loading…")}</p>
+        : isError ? <p role="alert" className="text-sm text-red-700">{t("تعذر تحميل الشفت النشط", "Could not load the active shift")}</p>
+        : !activeShift ? <p className="text-sm text-gray-500">{t("لا يوجد شفت نشط حالياً", "No active shift")}</p>
         : <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-2">
-            <p className="font-semibold text-gray-800">{t("الشفت النشط","Active shift")}: <bdi>{activeShift.id || "—"}</bdi></p>
-            <p className="text-sm text-gray-600">{t("المشرف","Supervisor")}: {activeShift.supervisorName || "—"}</p>
-            <p className="text-sm text-gray-600">{t("وقت البدء","Started at")}: {activeShift.startedAt || "—"}</p>
-            <p className="text-sm text-gray-600">{t("العهدة الافتتاحية","Opening float")}: <bdi>{formatShiftHalalas(activeShift.registerOpeningHalalas, lang)}</bdi> {t("ر.س","SAR")}</p>
+            <p className="font-semibold text-gray-800">{t("الشفت النشط", "Active shift")}: <bdi>{activeShift.id || "—"}</bdi></p>
+            <p className="text-sm text-gray-600">{t("المشرف", "Supervisor")}: {activeShift.supervisorName || "—"}</p>
+            <p className="text-sm text-gray-600">{t("وقت البدء", "Started at")}: {activeShift.startedAt || "—"}</p>
+            <p className="text-sm text-gray-600">{t("العهدة الافتتاحية", "Opening float")}: <bdi>{formatShiftHalalas(activeShift.registerOpeningHalalas, lang)}</bdi> {t("ر.س", "SAR")}</p>
           </div>}
     </div>
   );
@@ -7473,47 +7600,79 @@ function BranchSuppliers() {
   const { data: apiSuppliers = [] } = useBranchSuppliers();
   const requestNewMut = useBranchRequestNewSupplier();
   const [showReq, setShowReq] = useState(false);
-  const [reqForm, setReqForm] = useState({ name:"", category:"", phone:"", reason:"" });
+  const [reqForm, setReqForm] = useState({ name: "", category: "", phone: "", reason: "" });
   const submitReq = () => {
-    if(!reqForm.name.trim()) return;
+    if (!reqForm.name.trim()) return;
     requestNewMut.mutate(
-      { name: reqForm.name.trim(), category: reqForm.category || undefined, phone: reqForm.phone || undefined, notes: reqForm.reason || undefined },
-      { onSuccess: () => { setShowReq(false); setReqForm({ name:"", category:"", phone:"", reason:"" }); } },
+      {
+        name: reqForm.name.trim(),
+        category: reqForm.category || undefined,
+        phone: reqForm.phone || undefined,
+        notes: reqForm.reason || undefined,
+        contactPhone: reqForm.phone || undefined,
+        reason: reqForm.reason || undefined,
+      } as any,
+      { onSuccess: () => { setShowReq(false); setReqForm({ name: "", category: "", phone: "", reason: "" }); } },
     );
   };
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-gray-800">{t("الموردون","Suppliers")}</h2><p className="text-gray-400 text-sm">{t("موردو","Suppliers of")} {MY_BRANCH.name}</p></div>
-        <Btn variant="primary" size="sm" onClick={()=>setShowReq(true)}><Plus size={12}/> {t("طلب مورد جديد","Request New Supplier")}</Btn>
+        <div><h2 className="text-xl font-bold text-gray-800">{t("الموردون", "Suppliers")}</h2><p className="text-gray-400 text-sm">{t("موردو", "Suppliers of")} {MY_BRANCH.name}</p></div>
+        <Btn variant="primary" size="sm" onClick={() => setShowReq(true)}><Plus size={12} /> {t("طلب مورد جديد", "Request New Supplier")}</Btn>
       </div>
       {showReq && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setShowReq(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e=>e.stopPropagation()} dir={dir}>
-            <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">{t("طلب مورد جديد","Request New Supplier")}</h3><button onClick={()=>setShowReq(false)} className="text-gray-400 hover:text-gray-600"><X size={18}/></button></div>
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowReq(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("طلب مورد جديد", "Request New Supplier")}
+          onKeyDown={e => { if (e.key === "Escape") setShowReq(false); }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()} dir={dir}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-800">{t("طلب مورد جديد", "Request New Supplier")}</h3>
+              <button onClick={() => setShowReq(false)} aria-label={t("إغلاق", "Close")} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
             <div className="space-y-3">
-              <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("اسم المورد","Supplier name")}</label><input value={reqForm.name} onChange={e=>setReqForm(p=>({...p,name:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-400"/></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("التصنيف","Category")}</label><input value={reqForm.category} onChange={e=>setReqForm(p=>({...p,category:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-400"/></div>
-                <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الهاتف","Phone")}</label><input value={reqForm.phone} onChange={e=>setReqForm(p=>({...p,phone:e.target.value}))} dir="ltr" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-400"/></div>
+              <div>
+                <label htmlFor="b-sup-name" className="text-[11px] font-semibold text-gray-500 block mb-1">{t("اسم المورد", "Supplier name")}</label>
+                <input id="b-sup-name" value={reqForm.name} onChange={e => setReqForm(p => ({ ...p, name: e.target.value }))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-400" />
               </div>
-              <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("السبب (اختياري)","Reason (optional)")}</label><textarea rows={2} value={reqForm.reason} onChange={e=>setReqForm(p=>({...p,reason:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:border-purple-400"/></div>
-              <div className="flex justify-end gap-2"><button onClick={()=>setShowReq(false)} className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50">{t("إلغاء","Cancel")}</button><Btn variant="primary" onClick={submitReq} disabled={!reqForm.name.trim()||requestNewMut.isPending}><Plus size={11}/> {t("إرسال الطلب","Submit")}</Btn></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="b-sup-cat" className="text-[11px] font-semibold text-gray-500 block mb-1">{t("التصنيف", "Category")}</label>
+                  <input id="b-sup-cat" value={reqForm.category} onChange={e => setReqForm(p => ({ ...p, category: e.target.value }))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-400" />
+                </div>
+                <div>
+                  <label htmlFor="b-sup-phone" className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الهاتف", "Phone")}</label>
+                  <input id="b-sup-phone" value={reqForm.phone} onChange={e => setReqForm(p => ({ ...p, phone: e.target.value }))} dir="ltr" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-400" />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="b-sup-reason" className="text-[11px] font-semibold text-gray-500 block mb-1">{t("السبب (اختياري)", "Reason (optional)")}</label>
+                <textarea id="b-sup-reason" rows={2} value={reqForm.reason} onChange={e => setReqForm(p => ({ ...p, reason: e.target.value }))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:border-purple-400" />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setShowReq(false)} className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50">{t("إلغاء", "Cancel")}</button>
+                <Btn variant="primary" onClick={submitReq} disabled={!reqForm.name.trim() || requestNewMut.isPending}><Plus size={11} /> {t("إرسال الطلب", "Submit")}</Btn>
+              </div>
             </div>
           </div>
         </div>
       )}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        {apiSuppliers.length===0 && <div className="px-5 py-10 text-center text-sm text-gray-400">{t("لا يوجد موردون","No suppliers")}</div>}
-        {apiSuppliers.map((s,i)=>{
+        {apiSuppliers.length === 0 && <div className="px-5 py-10 text-center text-sm text-gray-400">{t("لا يوجد موردون", "No suppliers")}</div>}
+        {apiSuppliers.map((s, i) => {
           const isReq = s.isRequest === true;
-          const chip = s.statusLabel ?? (isReq ? t("قيد المراجعة","Under Review") : t("معتمد","Approved"));
+          const chip = s.statusLabel ?? (isReq ? t("قيد المراجعة", "Under Review") : t("معتمد", "Approved"));
           return (
-          <div key={s.id ?? i} className="px-5 py-4 flex items-center gap-4 border-b border-gray-50 last:border-0">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0 text-lg">🏭</div>
-            <div className="flex-1"><p className="font-semibold text-gray-800 text-sm">{s.name}</p><p className="text-xs text-gray-400">{s.category || "—"}{(s.contactName||s.contactPhone||s.phone)?` · ${s.contactName ?? s.contactPhone ?? s.phone}`:""}</p></div>
-            <Badge className={`text-[10px] ${isReq?"bg-amber-50 text-amber-700 border border-amber-200":"bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>{chip}</Badge>
-          </div>
+            <div key={s.id ?? i} className="px-5 py-4 flex items-center gap-4 border-b border-gray-50 last:border-0">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center flex-shrink-0 text-lg">🏭</div>
+              <div className="flex-1"><p className="font-semibold text-gray-800 text-sm">{s.name}</p><p className="text-xs text-gray-400">{s.category || "—"}{(s.contactName || s.contactPhone || s.phone) ? ` · ${s.contactName ?? s.contactPhone ?? s.phone}` : ""}</p></div>
+              <Badge className={`text-[10px] ${isReq ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>{chip}</Badge>
+            </div>
           );
         })}
       </div>
@@ -7526,33 +7685,33 @@ function BranchSettings() {
   const { data: apiSettings } = useBranchSettings();
   const updateBranchMut = useUpdateBranchSettings();
   const [branchName, setBranchName] = useState(apiSettings?.branchName || MY_BRANCH.name);
-  const [manager,    setManager]    = useState(apiSettings?.managerName || "فاطمة السالم");
-  const [phone,      setPhone]      = useState(apiSettings?.phone || "+966 11 234 5678");
-  useEffect(()=>{
+  const [manager, setManager] = useState(apiSettings?.managerName || "فاطمة السالم");
+  const [phone, setPhone] = useState(apiSettings?.phone || "+966 11 234 5678");
+  useEffect(() => {
     if (apiSettings) {
-      if (apiSettings.branchName)  setBranchName(apiSettings.branchName);
+      if (apiSettings.branchName) setBranchName(apiSettings.branchName);
       if (apiSettings.managerName) setManager(apiSettings.managerName);
-      if (apiSettings.phone)       setPhone(apiSettings.phone);
+      if (apiSettings.phone) setPhone(apiSettings.phone);
     }
   }, [apiSettings]);
   const branchBrand = apiSettings?.brandName || MY_BRANCH.brand;
-  const branchCity  = apiSettings?.city      || MY_BRANCH.city;
+  const branchCity = apiSettings?.city || MY_BRANCH.city;
   // branchName / phone / address are admin-owned now; the backend ignores edits.
-  const readOnlyFields = new Set(apiSettings?.readOnlyFields ?? ["branchName","phone","address"]);
+  const readOnlyFields = new Set(apiSettings?.readOnlyFields ?? ["branchName", "phone", "address"]);
   const lockedInput = "w-full text-sm border border-gray-100 rounded-xl px-3 py-2.5 bg-gray-50 text-gray-400 cursor-not-allowed";
-  const editInput   = "w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400";
+  const editInput = "w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400";
   return (
     <div className="space-y-5" dir={dir}>
-      <div><h2 className="text-xl font-bold text-gray-800">{t("إعدادات الفرع","Branch Settings")}</h2><p className="text-gray-400 text-sm">{branchBrand}</p></div>
+      <div><h2 className="text-xl font-bold text-gray-800">{t("إعدادات الفرع", "Branch Settings")}</h2><p className="text-gray-400 text-sm">{branchBrand}</p></div>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
-        <h3 className="font-bold text-gray-800 text-sm border-b border-gray-100 pb-2">{t("بيانات الفرع الأساسية","Basic Branch Info")}</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("اسم الفرع","Branch Name")}{readOnlyFields.has("branchName") && <span className="text-gray-300 font-normal"> · {t("من إدارة النظام","set by admin")}</span>}</label><input value={branchName} onChange={e=>setBranchName(e.target.value)} readOnly={readOnlyFields.has("branchName")} className={readOnlyFields.has("branchName")?lockedInput:editInput}/></div>
-          <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("مدير الفرع","Branch Manager")}</label><input value={manager} onChange={e=>setManager(e.target.value)} className={editInput}/></div>
-          <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("رقم الهاتف","Phone")}{readOnlyFields.has("phone") && <span className="text-gray-300 font-normal"> · {t("من إدارة النظام","set by admin")}</span>}</label><input value={phone} onChange={e=>setPhone(e.target.value)} readOnly={readOnlyFields.has("phone")} className={readOnlyFields.has("phone")?lockedInput:editInput} dir="ltr"/></div>
-          <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("المدينة","City")}</label><input value={branchCity} readOnly className="w-full text-sm border border-gray-100 rounded-xl px-3 py-2.5 bg-gray-50 text-gray-400"/></div>
+        <h3 className="font-bold text-gray-800 text-sm border-b border-gray-100 pb-2">{t("بيانات الفرع الأساسية", "Basic Branch Info")}</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div><label htmlFor="b-sett-name" className="text-xs font-semibold text-gray-600 block mb-1">{t("اسم الفرع", "Branch Name")}{readOnlyFields.has("branchName") && <span className="text-gray-300 font-normal"> · {t("من إدارة النظام", "set by admin")}</span>}</label><input id="b-sett-name" value={branchName} onChange={e => setBranchName(e.target.value)} readOnly={readOnlyFields.has("branchName")} className={readOnlyFields.has("branchName") ? lockedInput : editInput} /></div>
+          <div><label htmlFor="b-sett-mgr" className="text-xs font-semibold text-gray-600 block mb-1">{t("مدير الفرع", "Branch Manager")}</label><input id="b-sett-mgr" value={manager} onChange={e => setManager(e.target.value)} className={editInput} /></div>
+          <div><label htmlFor="b-sett-phone" className="text-xs font-semibold text-gray-600 block mb-1">{t("رقم الهاتف", "Phone")}{readOnlyFields.has("phone") && <span className="text-gray-300 font-normal"> · {t("من إدارة النظام", "set by admin")}</span>}</label><input id="b-sett-phone" value={phone} onChange={e => setPhone(e.target.value)} readOnly={readOnlyFields.has("phone")} className={readOnlyFields.has("phone") ? lockedInput : editInput} dir="ltr" /></div>
+          <div><label htmlFor="b-sett-city" className="text-xs font-semibold text-gray-600 block mb-1">{t("المدينة", "City")}</label><input id="b-sett-city" value={branchCity} readOnly className="w-full text-sm border border-gray-100 rounded-xl px-3 py-2.5 bg-gray-50 text-gray-400" /></div>
         </div>
-        <div className="flex justify-end pt-2"><Btn variant="primary" onClick={()=>updateBranchMut.mutate({branchName, managerName:manager} as any)}><Check size={13}/> {t("حفظ التغييرات","Save Changes")}</Btn></div>
+        <div className="flex justify-end pt-2"><Btn variant="primary" onClick={() => updateBranchMut.mutate({ manager: manager.trim(), managerName: manager.trim() } as any)}><Check size={13} /> {t("حفظ التغييرات", "Save Changes")}</Btn></div>
       </div>
     </div>
   );

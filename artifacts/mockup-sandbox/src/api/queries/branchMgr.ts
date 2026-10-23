@@ -386,10 +386,20 @@ export function useBranchRequestNewSupplier() {
       category?: string;
       phone?: string;
       notes?: string;
+      contactPhone?: string;
+      reason?: string;
     }) => {
+      const payload = {
+        name: body.name,
+        category: body.category,
+        phone: body.phone ?? body.contactPhone,
+        contactPhone: body.contactPhone ?? body.phone,
+        notes: body.notes ?? body.reason,
+        reason: body.reason ?? body.notes,
+      };
       const res = await api.post<BranchSupplier>(
         "/company/me/branch/suppliers/request-new",
-        body,
+        payload,
       );
       return res.data;
     },

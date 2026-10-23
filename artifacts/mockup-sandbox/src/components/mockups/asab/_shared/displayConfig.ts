@@ -169,6 +169,7 @@ export const EN_NAV_LABELS: Record<string, string> = {
   "branch-overview": "Overview", "branch-employees": "Employees",
   "branch-items": "Items", "branch-suppliers": "Suppliers",
   "branch-upload": "Upload Data", "branch-settings": "Branch Settings",
+  "branch-requests": "Purchase Requests", "branch-shifts": "Branch Shifts",
   "proc-overview": "Dashboard", "proc-new": "New Orders",
   "proc-grouped": "Grouped Orders", "proc-sent": "Sent to Suppliers",
   "proc-items": "Items", "proc-suppliers": "Suppliers", "proc-reports": "Reports",
