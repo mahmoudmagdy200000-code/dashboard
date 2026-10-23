@@ -28,9 +28,9 @@ import { Badge } from "../../components/Badge";
 
 export function ProcNewOrders({ role }: PageProps) {
   const { t } = useLang();
-  // PUR-01: Financial approval and partial approval require authorized approval role (Head Accountant or Admin).
-  // Fail-closed when authority is not established.
-  const canApproveFinancial = Boolean(role && (role === "head" || role === "admin"));
+  // PUR-01: Financial purchase-order approval and partial approval are gated pending verification of the approved Figma/Backend authorization contract.
+  // Fail closed across all roles until explicit authorization contract is verified (no speculative role allowlist).
+  const canApproveFinancial = false;
 
   // Incoming branch orders come from the purchase-orders BRIDGE (SAR floats).
   const { data: apiOrdersPage } = usePurchaseOrders({ status: "incoming" });
@@ -178,7 +178,7 @@ export function ProcNewOrders({ role }: PageProps) {
                   <span className="font-mono font-bold text-gray-600 text-sm">{fmtAmt(groupTotal)} {t("ر.س", "SAR")}</span>
                 </div>
                 {groupOrders.length > 1 && (
-                  <span title={!canApproveFinancial ? t("الاعتماد المالي من صلاحية الإدارة المالية / المحاسب الرئيسي وفق PUR-01", "Financial approval requires authorized approval role per PUR-01") : undefined}>
+                  <span title={!canApproveFinancial ? t("الاعتماد المالي لأوامر الشراء مقيد لحين التحقق من عقد التخويل المعتمد (PUR-01 · APPROVAL_REQUIRED)", "Purchase financial approval is gated pending verification of the authorized contract (PUR-01 · APPROVAL_REQUIRED)") : undefined}>
                     <Btn size="sm" variant="success" disabled={!canApproveFinancial || bulkMut.isPending}
                       onClick={() => { if (canApproveFinancial) approveList(groupOrders.map(o => o.id)); }}>
                       <CheckCircle2 size={11} /> {t("اعتماد الكل", "Approve All")} ({groupOrders.length} {t("طلب", "orders")})
@@ -204,7 +204,7 @@ export function ProcNewOrders({ role }: PageProps) {
                       </div>
                       <span className="font-mono font-bold text-gray-800 text-sm">{fmtAmt(r.total)} {t("ر.س", "SAR")}</span>
                       <div className="flex gap-1.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                        <span title={!canApproveFinancial ? t("الاعتماد المالي من صلاحية الإدارة المالية / المحاسب الرئيسي وفق PUR-01", "Financial approval requires authorized approval role per PUR-01") : undefined}>
+                        <span title={!canApproveFinancial ? t("الاعتماد المالي لأوامر الشراء مقيد لحين التحقق من عقد التخويل المعتمد (PUR-01 · APPROVAL_REQUIRED)", "Purchase financial approval is gated pending verification of the authorized contract (PUR-01 · APPROVAL_REQUIRED)") : undefined}>
                           <Btn size="sm" variant="success" disabled={!canApproveFinancial || approveMut.isPending} onClick={() => { if (canApproveFinancial) approveOne(r.id); }}>
                             <CheckCircle2 size={12} /> {t("اعتماد", "Approve")}
                           </Btn>
@@ -288,7 +288,7 @@ export function ProcNewOrders({ role }: PageProps) {
                               placeholder={t("سبب / ملاحظة (اختياري)...", "Reason / note (optional)...")}
                               className="w-full text-sm border border-orange-200 rounded-lg px-3 py-2 bg-white outline-none" />
                             <div className="flex gap-2">
-                              <span title={!canApproveFinancial ? t("الاعتماد الجزئي يتطلب صلاحية مالية وفق PUR-01", "Partial approval requires authorized financial role per PUR-01") : undefined}>
+                              <span title={!canApproveFinancial ? t("الاعتماد الجزئي مقيد لحين التحقق من عقد التخويل المعتمد (PUR-01 · APPROVAL_REQUIRED)", "Partial financial approval is gated pending verification of the authorized contract (PUR-01 · APPROVAL_REQUIRED)") : undefined}>
                                 <Btn size="sm" variant="danger" disabled={!canApproveFinancial || partialMut.isPending || detailItems.length === 0} onClick={() => { if (canApproveFinancial) confirmPartial(r.id); }}>
                                   <ThumbsDown size={11} /> {t("تأكيد الاعتماد الجزئي", "Confirm Partial Approve")}
                                 </Btn>
@@ -319,12 +319,12 @@ export function ProcNewOrders({ role }: PageProps) {
                           </div>
                         ) : (
                           <div className="flex gap-2 pt-1 flex-wrap">
-                            <span title={!canApproveFinancial ? t("الاعتماد المالي من صلاحية الإدارة المالية / المحاسب الرئيسي وفق PUR-01", "Financial approval requires authorized approval role per PUR-01") : undefined}>
+                            <span title={!canApproveFinancial ? t("الاعتماد المالي لأوامر الشراء مقيد لحين التحقق من عقد التخويل المعتمد (PUR-01 · APPROVAL_REQUIRED)", "Purchase financial approval is gated pending verification of the authorized contract (PUR-01 · APPROVAL_REQUIRED)") : undefined}>
                               <Btn size="sm" variant="success" disabled={!canApproveFinancial || approveMut.isPending} onClick={() => { if (canApproveFinancial) approveOne(r.id); }}>
-                                <CheckCircle2 size={12} /> {t("اعتماد (يتطلب صلاحية مالية PUR-01)", "Approve (Requires PUR-01 Role)")}
+                                <CheckCircle2 size={12} /> {t("اعتماد", "Approve")}
                               </Btn>
                             </span>
-                            <span title={!canApproveFinancial ? t("الاعتماد الجزئي يتطلب صلاحية مالية وفق PUR-01", "Partial approval requires authorized financial role per PUR-01") : undefined}>
+                            <span title={!canApproveFinancial ? t("الاعتماد الجزئي مقيد لحين التحقق من عقد التخويل المعتمد (PUR-01 · APPROVAL_REQUIRED)", "Partial financial approval is gated pending verification of the authorized contract (PUR-01 · APPROVAL_REQUIRED)") : undefined}>
                               <button onClick={() => { if (canApproveFinancial) openPartial(r.id); }}
                                 disabled={!canApproveFinancial}
                                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold ${!canApproveFinancial ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed opacity-60" : "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"}`}>

@@ -70,9 +70,9 @@
 | **إجمالي المشكلات المسجلة في التدقيق (Original Audit Findings)** | **198** (24 في 1A + 39 في 1B + 47 في 1C + 26 في 1D + 25 في 1E + 37 في 1F) | — |
 | **تصحيحات مراجعة المرحلة 1A (Review Corrections)** | **5** | — |
 | **إجمالي بنود السجل المتابعة (Total Tracked Items)** | **203** | 100% |
-| **تم الإصلاح والتحقق الآلي (Fixed & Verified)** | **187** (25 في 1A + 34 في 1B + 46 في 1C + 22 في 1D + 25 في 1E + 35 في 1F) | 92.1% |
+| **تم الإصلاح والتحقق الآلي (Fixed & Verified)** | **188** (25 في 1A + 34 في 1B + 46 في 1C + 23 في 1D + 25 في 1E + 35 في 1F) | 92.6% |
 | **معلقة لقرار / موافقة معمارية (Approval Required / Gated)** | **10** (4 في 1A + 4 في 1B لـ PR #1 + 2 في 1F لـ PERM-00) | 4.9% |
-| **محجوبة بعيوب خادم قيد الباك إند (Backend Blocked / Proposal)** | **6** (HA-F39, ACC-F32, 1D-BRM-012, 1D-BRM-025, 1D-BRM-026) | 3.0% |
+| **محجوبة بعيوب خادم قيد الباك إند (Backend Blocked / Proposal)** | **5** (HA-F39, ACC-F32, 1D-BRM-012, 1D-BRM-025, 1D-BRM-026) | 2.5% |
 | **مفتوحة بلا إصلاح (Open)** | **0** | 0.0% |
 | **منفذة دون فحص (Implemented Unverified)** | **0** | 0.0% |
 | **محجوبة بموانع (Blocked)** | **0** | 0.0% |
@@ -766,44 +766,44 @@
 
 | ID | الأولوية | النطاق / الموديول | عنوان المشكلة المعتمد | الحالة البرمجية | الفحص الآلي | حالة البند العامة | ملاحظات الحوكمة |
 | :---: | :---: | :--- | :--- | :---: | :---: | :---: | :--- |
-| **HA-F01** | P1 | Company | اعتماد SAL الفردي مقفل كليًا في Baseline Company | `GATED` | `PASS` | `APPROVAL_REQUIRED` | محجوب — يتطلب اعتماد دمج PR #1 أو قرار معماري بشأن اعتماد SAL الفردي |
-| **HA-F02** | P1 | Both | غياب reportReview قد يحوّل SAL غير المميزة إلى Legacy في الحارس | `GATED` | `PASS` | `APPROVAL_REQUIRED` | محجوب — يتطلب اعتماد دمج PR #1 لـ workflowKind والتحقق الخادمي |
-| **HA-F03** | P1 | Prototype | Prototype يعرض نجاح Final Approval قبل استجابة الخادم | `GATED` | `NOT_RUN` | `APPROVAL_REQUIRED` | محجوب — يتطلب اعتماد PR #1 لربط اعتماد Final خادمياً |
-| **HA-F04** | P1 | Prototype | Prototype Bulk/Reject/Return ما زالت متفائلة وغير متسقة مع Company | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F05** | P1 | Prototype | إلغاء نافذة إرجاع Prototype لا يلغي طلب الإرجاع | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F06** | P1 | Prototype | ERP Prototype يختلق نجاحًا وBatch ID بعد فشل الطلب | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F07** | P1 | Prototype | مرشحات معالج ERP شكلية ولا تحدد العمليات المرسلة | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F08** | P2 | Prototype | Wizard ERP يسمح بالانتقال لشاشة النجاح دون إرسال ويتجاهل preflight gate | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F09** | P1 | Company | Company ERP يضع posted محليًا قبل نجاح الترحيل | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F10** | P1 | Both | طوابير Head ناقصة بسبب إسقاط Pagination | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F11** | P1 | Prototype | Prototype يفقد الهللات ويحوّل مبلغًا مفقودًا إلى صفر | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F12** | P2 | Company | Company Head Dashboard يقرأ API وأسماء KPI غير متوافقة | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F13** | P1 | Company | تفاصيل جرد المخزون في Company مصدرها بيانات ثابتة بحسب اسم الفرع | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F14** | P1 | Prototype | Owner reports تمزج البيانات الحية بمقارنات مالية مصطنعة | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F15** | P1 | Prototype | أسماء محاسبين مصطنعة عند غياب accountantName | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F16** | P2 | Company | تذكيرات Company تخالف شكل الاستجابة واسم حقل التحديث | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F17** | P2 | Company | تعديل/توثيق المشتريات مرئي لـHead لكن hook يستدعي طريق Accountant | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F18** | P2 | Company | صفحة الهدر في Company تسلك محرر المحاسب دون تكييف Head | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F19** | P2 | Both | اعتماد/رفض المصروفات ظاهر رغم منع قرار Head خادميًا | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F20** | P2 | Prototype | Conditional approval يعرض badge قبل الرد ويسمح بملاحظة فارغة | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F21** | P2 | Company | مودال رفض Company يغلق ويمسح الإدخال قبل معرفة نتيجة الخادم | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F22** | P1 | Prototype | Prototype يحتفظ بعمليات قديمة عند رجوع فترة خالية | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F23** | P2 | Prototype | تصدير pending بينما جدول Head يعرض approved؛ وتصدير الأداء يصدر عمليات | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F24** | P2 | Company | نص تفاصيل المصروف يطلب فتح بيان لا يملك مسارًا من Head | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F25** | P2 | Both | Native Bulk API/UI compatibility reservation | `GATED` | `PASS` | `APPROVAL_REQUIRED` | محجوب — حجز توافق Native Bulk API/UI يتطلب اعتماد PR #1 |
-| **HA-F26** | P2 | Both | Loading/error غير مفصولين عن empty/success في عدة صفحات Head | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F27** | P2 | Both | حالات approved/rejected تفتقد مسار تفاصيل/تفسير إرجاع كافٍ | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F28** | P2 | Both | مؤشرات الأداء والحالة تحتوي ثوابت غير مثبتة | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F29** | P2 | Both | بنية sidebar ثابتة وتستهلك مساحة الهاتف | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F30** | P2 | Both | شبكات وملخصات مالية متعددة الأعمدة بلا breakpoint مناسب | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F31** | P2 | Both | مودالات Head غير مكتملة كحوار accessible | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F32** | P2 | Prototype | قائمة رفض hover-only وbutton متداخل في عناوين المجموعات | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F33** | P2 | Both | توسيع الصفوف وبطاقات KPI مبني على div للنقر فقط | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F34** | P2 | Both | أسماء برمجية وحالات expanded/selected غير متسقة | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F35** | P2 | Both | Viewport يقيد التكبير | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F36** | P2 | Both | اللغة/RTL/التواريخ والعملة غير موحدة | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F37** | P2 | Both | مشكلات shared search/notifications/chat/renewal تستمر لـHead | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
-| **HA-F38** | P2 | Both | match المفقودة/غير المعروفة قد تعرض exact | `IMPLEMENTED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F01** | P1 | Company | اعتماد SAL الفردي مقفل كليًا في Baseline Company | `APPROVAL_REQUIRED` | `PASS` | `APPROVAL_REQUIRED` | محجوب — يتطلب اعتماد دمج PR #1 أو قرار معماري بشأن اعتماد SAL الفردي |
+| **HA-F02** | P1 | Both | غياب reportReview قد يحوّل SAL غير المميزة إلى Legacy في الحارس | `APPROVAL_REQUIRED` | `PASS` | `APPROVAL_REQUIRED` | محجوب — يتطلب اعتماد دمج PR #1 لـ workflowKind والتحقق الخادمي |
+| **HA-F03** | P1 | Prototype | Prototype يعرض نجاح Final Approval قبل استجابة الخادم | `APPROVAL_REQUIRED` | `NOT_RUN` | `APPROVAL_REQUIRED` | محجوب — يتطلب اعتماد PR #1 لربط اعتماد Final خادمياً |
+| **HA-F04** | P1 | Prototype | Prototype Bulk/Reject/Return ما زالت متفائلة وغير متسقة مع Company | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F05** | P1 | Prototype | إلغاء نافذة إرجاع Prototype لا يلغي طلب الإرجاع | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F06** | P1 | Prototype | ERP Prototype يختلق نجاحًا وBatch ID بعد فشل الطلب | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F07** | P1 | Prototype | مرشحات معالج ERP شكلية ولا تحدد العمليات المرسلة | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F08** | P2 | Prototype | Wizard ERP يسمح بالانتقال لشاشة النجاح دون إرسال ويتجاهل preflight gate | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F09** | P1 | Company | Company ERP يضع posted محليًا قبل نجاح الترحيل | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F10** | P1 | Both | طوابير Head ناقصة بسبب إسقاط Pagination | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F11** | P1 | Prototype | Prototype يفقد الهللات ويحوّل مبلغًا مفقودًا إلى صفر | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F12** | P2 | Company | Company Head Dashboard يقرأ API وأسماء KPI غير متوافقة | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F13** | P1 | Company | تفاصيل جرد المخزون في Company مصدرها بيانات ثابتة بحسب اسم الفرع | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F14** | P1 | Prototype | Owner reports تمزج البيانات الحية بمقارنات مالية مصطنعة | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F15** | P1 | Prototype | أسماء محاسبين مصطنعة عند غياب accountantName | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F16** | P2 | Company | تذكيرات Company تخالف شكل الاستجابة واسم حقل التحديث | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F17** | P2 | Company | تعديل/توثيق المشتريات مرئي لـHead لكن hook يستدعي طريق Accountant | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F18** | P2 | Company | صفحة الهدر في Company تسلك محرر المحاسب دون تكييف Head | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F19** | P2 | Both | اعتماد/رفض المصروفات ظاهر رغم منع قرار Head خادميًا | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F20** | P2 | Prototype | Conditional approval يعرض badge قبل الرد ويسمح بملاحظة فارغة | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F21** | P2 | Company | مودال رفض Company يغلق ويمسح الإدخال قبل معرفة نتيجة الخادم | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F22** | P1 | Prototype | Prototype يحتفظ بعمليات قديمة عند رجوع فترة خالية | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F23** | P2 | Prototype | تصدير pending بينما جدول Head يعرض approved؛ وتصدير الأداء يصدر عمليات | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F24** | P2 | Company | نص تفاصيل المصروف يطلب فتح بيان لا يملك مسارًا من Head | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F25** | P2 | Both | Native Bulk API/UI compatibility reservation | `APPROVAL_REQUIRED` | `PASS` | `APPROVAL_REQUIRED` | محجوب — حجز توافق Native Bulk API/UI يتطلب اعتماد PR #1 |
+| **HA-F26** | P2 | Both | Loading/error غير مفصولين عن empty/success في عدة صفحات Head | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F27** | P2 | Both | حالات approved/rejected تفتقد مسار تفاصيل/تفسير إرجاع كافٍ | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F28** | P2 | Both | مؤشرات الأداء والحالة تحتوي ثوابت غير مثبتة | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F29** | P2 | Both | بنية sidebar ثابتة وتستهلك مساحة الهاتف | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F30** | P2 | Both | شبكات وملخصات مالية متعددة الأعمدة بلا breakpoint مناسب | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F31** | P2 | Both | مودالات Head غير مكتملة كحوار accessible | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F32** | P2 | Prototype | قائمة رفض hover-only وbutton متداخل في عناوين المجموعات | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F33** | P2 | Both | توسيع الصفوف وبطاقات KPI مبني على div للنقر فقط | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F34** | P2 | Both | أسماء برمجية وحالات expanded/selected غير متسقة | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F35** | P2 | Both | Viewport يقيد التكبير | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F36** | P2 | Both | اللغة/RTL/التواريخ والعملة غير موحدة | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F37** | P2 | Both | مشكلات shared search/notifications/chat/renewal تستمر لـHead | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
+| **HA-F38** | P2 | Both | match المفقودة/غير المعروفة قد تعرض exact | `FIXED_AND_VERIFIED` | `PASS` | `FIXED_AND_VERIFIED` | تم الإصلاح برمجياً واجتياز الفحوصات الآلية بنسبة 100% |
 | **HA-F39** | P1 | Prototype exports / Backend linked consumer | Operations export يمرر company IDs كـarray إلى helper يتطلب string | `PENDING_BACKEND_EXECUTION` | `NOT_RUN` | `ANALYZED_BACKEND_PROPOSAL` | تحليل جذري دقيق وتصحيح PHP مقترح واختبار وحدة مقترح — دون تعديل Backend أو تشغيل اختبار غير منفذ |
 
 ---
@@ -1752,9 +1752,9 @@
 | **Phase 1A** | Company Admin | مكتمل وموثق | `29` | 25 مُصلح ومُتحقق، 4 معلق لموافقة إدارية. |
 | **Phase 1B** | Head Accountant | مكتمل وموثق | `39` | 34 مُصلح ومُتحقق، 4 معلق لـ PR#1، 1 مقترح تحليل backend. |
 | **Phase 1C** | Accountant | مكتمل وموثق | `47` | 46 مُصلح ومُتحقق، 1 محجوب بالباك إند (ACC-F32). |
-| **Phase 1D** | Branch Manager | مكتمل وموثق | `26` | 22 مُصلح ومُتحقق، 3 محجوب بالباك إند (1D-BRM-012, 025, 026), 1 توثيقي. |
-| **Phase 1E** | Procurement Manager | مكتمل وموثق | `25` | 24 مُصلح ومُتحقق ومُصحح، 1 محجوب بالباك إند وتوافق السياسات (PROC-F14). |
-| **Phase 1F** | Platform Admin | مكتمل وموثق | `37` | خاضع لجولة التصحيح المستهدفة المعتمدة من المراجعة المستقلة. |
+| **Phase 1D** | Branch Manager | مكتمل وموثق | `26` | 23 مُصلح ومُتحقق، 3 محجوب بالباك إند (1D-BRM-012, 025, 026). |
+| **Phase 1E** | Procurement Manager | مكتمل وموثق | `25` | 25 مُصلح ومُتحقق (PROC-F14 مقيد وفق PUR-04 وإرشادات المحاسب). |
+| **Phase 1F** | Platform Admin | مكتمل وموثق | `37` | 35 مُصلح ومُتحقق، 2 معلق لموافقة إدارية تحت PERM-00 (ADM-F22, ADM-F23). |
 | **Phase 1G** | Supplier Portal | ميزة مشروطة بتفعيل الباك إند | `0` | تدقيق مستقل ومخطط له. |
 | **Phase 1H** | Shared Components | مراجعة المكونات المشتركة | `0` | التوفيق بين المكونات المشتركة ومنع تكرار القيود. |
 | **Phases 2–6** | Runtime, Accessibility, API & E2E | مراجعات لاحقة مجمعة | `0` | ربط نتائج الفحص الحي والاستقرار التعاقدي. |
@@ -2209,31 +2209,31 @@
 
 | ID | الأولوية | الموديول / الصفحة | عنوان المشكلة المعتمد | الحالة البرمجية | الفحص الحي | الملفات المتأثرة | الـ Commit SHA |
 | :---: | :---: | :--- | :--- | :---: | :---: | :--- | :---: |
-| **PROC-F01** | P2 | Overview / New Orders | دقة الهللات (`totalHalalas/100`) وفصل المرسل عن المسلّم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F02** | P2 | Procurement API | عزل استعلامات المشتريات وتوجيهها عبر `procBase()` لبيئتي المنصة والشركة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `procurement.ts`, `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F03** | P2 | New Orders | إنشاء أوامر مسعرة صريحة واشتراط سعر وكمية موجبة وقيم منتهية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `procurement.ts` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F04** | P2 | New Orders | Order edit — تعديل أوامر الشراء بالملاحظات وتأكيد الحفظ بالخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `procurement.ts` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F05** | P2 | New Orders | اشتراط كمية موجبة صريحة وسعر وحدة صحيح موجب (`qty > 0 && price > 0`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F06** | P2 | Create / Group Send | Idempotency — حماية الإرسال بمفتاح تطابق نية وتدويره عند تغير المحتوى | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `procurement.ts` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F07** | P2 | Grouped Orders | مطابقة حقول الأوامر المجمعة والفروع (`orderCount`/`branches`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F08** | P2 | Grouped Orders | Grouped order send — إرسال الأوامر المجمعة بمعرف المورد والمجموعة الصحيح | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F09** | P2 | Grouped Orders | التسمية النزيهة لإجراء إعداد رابط واتساب دون ادعاء استلام خارجي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F10** | P2 | Sent Orders | Sent order status — استخدام sentAt و inTransit و eta والتمييز بين النقل والتسليم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F11** | P2 | Lifecycle | ربط إجراءات دورة الشراء وحصر الاعتماد والاعتماد الجزئي وفق PUR-01 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `ProcNewOrders.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F12** | P2 | Suppliers | احتساب إجمالي إنفاق المورد من بيانات الخادم (`lifetimeSpend`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F13** | P2 | Suppliers | معايرة تقييم المورد (0-50 إلى 0-5 نجوم) وبيانات الاتصال | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F14** | P2 | Suppliers (PUR-04) | Supplier creation ownership — حظر إنشاء الموردين وقصره على المحاسب وفق PUR-04 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `ProcSuppliers.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F15** | P2 | Items | اشتراط الوحدة والسعر الموجب (`price > 0`) عند إضافة الصنف | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F16** | P2 | Items | حفظ دقة الهللات بدون بتر وربط عدد الموردين الفعلي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F17** | P2 | Items / VAT (PUR-05) | VAT treatment — خلو الأسعار من الضريبة واحتساب الضريبة التقديرية 15% وفق PUR-05 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F18** | P2 | Reports (INTG-01) | تصدير التقارير بصيغتي PDF و Excel/XLSX | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F19** | P2 | Shared Security | تطهير كاش استعلامات المشتريات عند تبديل الدور | `FIXED_AND_VERIFIED` | `NOT_RUN` | `roleAccess.ts` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F20** | P2 | Pagination | Pagination — دعم تجزئة الصفحات Server Pagination والفلترة وحفظ metadata | `FIXED_AND_VERIFIED` | `NOT_RUN` | `procurement.ts`, `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F21** | P2 | Accessibility | نوافذ حوارية قابلة للوصول مع زر Escape و `htmlFor` | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F22** | P2 | Mobile / Responsive | تخطيط متجاوب لشبكات وكروت المشتريات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F23** | P2 | Cross-Module | توثيق حدود مسؤوليات الاستلام والفروقات المحاسبية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F24** | P2 | API Persistence | مطابقة وتمرير بدائل الوصف والملاحظات (`description`/`notes`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `procurement.ts` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
-| **PROC-F25** | P2 | Status Semantics | تمييز دلالات الشارات (مرسل، معتمد، قيد النقل، مسلّم، مرفوض) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 1dad0d26e979bc981e513ba7486c4359433b32ee |
+| **PROC-F01** | P2 | Overview / New Orders | دقة الهللات (`totalHalalas/100`) وفصل المرسل عن المسلّم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F02** | P2 | Procurement API | عزل استعلامات المشتريات وتوجيهها عبر `procBase()` لبيئتي المنصة والشركة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `procurement.ts`, `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F03** | P2 | New Orders | إنشاء أوامر مسعرة صريحة واشتراط سعر وكمية موجبة وقيم منتهية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `procurement.ts` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F04** | P2 | New Orders | Order edit — تعديل أوامر الشراء بالملاحظات وتأكيد الحفظ بالخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `procurement.ts` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F05** | P2 | New Orders | اشتراط كمية موجبة صريحة وسعر وحدة صحيح موجب (`qty > 0 && price > 0`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F06** | P2 | Create / Group Send | Idempotency — حماية الإرسال بمفتاح تطابق نية وتدويره عند تغير المحتوى | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `procurement.ts` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F07** | P2 | Grouped Orders | مطابقة حقول الأوامر المجمعة والفروع (`orderCount`/`branches`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F08** | P2 | Grouped Orders | Grouped order send — إرسال الأوامر المجمعة بمعرف المورد والمجموعة الصحيح | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F09** | P2 | Grouped Orders | التسمية النزيهة لإجراء إعداد رابط واتساب دون ادعاء استلام خارجي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F10** | P2 | Sent Orders | Sent order status — استخدام sentAt و inTransit و eta والتمييز بين النقل والتسليم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F11** | P2 | Lifecycle | ربط إجراءات دورة الشراء وحصر الاعتماد والاعتماد الجزئي وفق PUR-01 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `ProcNewOrders.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F12** | P2 | Suppliers | احتساب إجمالي إنفاق المورد من بيانات الخادم (`lifetimeSpend`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F13** | P2 | Suppliers | معايرة تقييم المورد (0-50 إلى 0-5 نجوم) وبيانات الاتصال | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F14** | P2 | Suppliers (PUR-04) | Supplier creation ownership — حظر إنشاء الموردين وقصره على المحاسب وفق PUR-04 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `ProcSuppliers.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F15** | P2 | Items | اشتراط الوحدة والسعر الموجب (`price > 0`) عند إضافة الصنف | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F16** | P2 | Items | حفظ دقة الهللات بدون بتر وربط عدد الموردين الفعلي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F17** | P2 | Items / VAT (PUR-05) | VAT treatment — خلو الأسعار من الضريبة واحتساب الضريبة التقديرية 15% وفق PUR-05 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F18** | P2 | Reports (INTG-01) | تصدير التقارير بصيغتي PDF و Excel/XLSX | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F19** | P2 | Shared Security | تطهير كاش استعلامات المشتريات عند تبديل الدور | `FIXED_AND_VERIFIED` | `NOT_RUN` | `roleAccess.ts` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F20** | P2 | Pagination | Pagination — دعم تجزئة الصفحات Server Pagination والفلترة وحفظ metadata | `FIXED_AND_VERIFIED` | `NOT_RUN` | `procurement.ts`, `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F21** | P2 | Accessibility | نوافذ حوارية قابلة للوصول مع زر Escape و `htmlFor` | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F22** | P2 | Mobile / Responsive | تخطيط متجاوب لشبكات وكروت المشتريات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F23** | P2 | Cross-Module | توثيق حدود مسؤوليات الاستلام والفروقات المحاسبية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F24** | P2 | API Persistence | مطابقة وتمرير بدائل الوصف والملاحظات (`description`/`notes`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `procurement.ts` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
+| **PROC-F25** | P2 | Status Semantics | تمييز دلالات الشارات (مرسل، معتمد، قيد النقل، مسلّم، مرفوض) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | 8c1e7ee3fe4cab4777859657a6c7552b31858a05 |
 
 ---
 
@@ -2241,40 +2241,40 @@
 
 | ID | الأولوية | الموديول / الصفحة | عنوان المشكلة المعتمد | الحالة البرمجية | الفحص الحي | الملفات المتأثرة | الـ Commit SHA |
 | :---: | :---: | :--- | :--- | :---: | :---: | :--- | :---: |
-| **ADM-F01** | P2 | Security / Admin Grant | قصر صلاحيات الأدمن الشاملة على التخويل الصريح ومنع التسرب | `FIXED_AND_VERIFIED` | `NOT_RUN` | `roleAccess.ts` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F02** | P2 | Shared Shell | حجب بحث المنصة الموحد للأدمن غير المقيد بشركة مع تلميح نزيه | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F03** | P2 | Shared Shell | حجب إشعارات المنصة الموحدة للأدمن غير المقيد بشركة مع تلميح نزيه | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F04** | P2 | Users | إضافة المستخدم لقائمة العرض فقط بعد نجاح الخادم المؤكد | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F05** | P2 | Users | ربط زر "تعديل الصلاحيات" بمصفوفة الصلاحيات برمجياً | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F06** | P2 | Users | قصر حذف المستخدم من الواجهة على تأكيد نجاح خادم API | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F07** | P2 | Users | دعم التراجع التلقائي (Rollback) عند فشل تعيين المحاسبين | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F08** | P2 | Users | مطابقة مفاتيح الموديولات المعتمدة مع المعايير البرمجية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F09** | P2 | Users | عزل مستأجري التعيينات المتعددة وفق التسلسل الهرمي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F10** | P2 | Restaurants & Branches | دعم الاستجابة المسطحة للعلامات دون حجب الهيكل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminRestaurants.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F11** | P2 | Restaurants & Branches | مؤشرات حالة الرفع وفق الاستجابة المستمرة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminRestaurants.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F12** | P2 | Restaurants & Branches | تعيين العلامة الافتراضية الأولى ديناميكياً من الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminRestaurants.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F13** | P2 | Branch Requests | إظهار وإتاحة صفحة طلبات الفروع بالقائمة الجانبية للأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F14** | P2 | Subscriptions | تجديد الاشتراك دون تواريخ ثابتة واعتماد استجابة الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSubscriptions.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F15** | P2 | Subscriptions | دعم التراجع التلقائي عند فشل تبديل التذكير الآلي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSubscriptions.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F16** | P2 | Subscriptions | ربط أزرار إيقاف وتفعيل الاشتراك في كروت الاشتراكات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSubscriptions.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F17** | P2 | Company Subscriptions | قصر تغيير حالة وباقة اشتراك الشركة على تأكيد الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminCompanies.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F18** | P2 | Company Subscriptions | وسم الإيراد الشهري كتقدير لكتالوج الباقات وفق SUB-01 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminCompanies.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F19** | P3 | Packages | وسم أسعار الباقات كبيانات استرشادية لكتالوج الباقات (SUB-01) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPackages.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F20** | P2 | Permissions | استعادة مصفوفة الصلاحيات الأصلية بالكامل عند الإلغاء | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPermissions.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F21** | P2 | Permissions | تأكيد حفظ التغييرات فقط بعد نجاح تحديث الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPermissions.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F22** | P2 | Permissions | استنساخ صلاحيات الأدوار مقيد بحوكمة النظام الأساسية (PERM-00) | `APPROVAL_REQUIRED` | `NOT_RUN` | `AdminPermissions.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F23** | P2 | Permissions | تعديل وتدوير مصفوفة الصلاحيات الأساسية مقيد مركزياً (PERM-00) | `APPROVAL_REQUIRED` | `NOT_RUN` | `AdminPermissions.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F24** | P2 | Reports Manager | حظر توليد أرقام وأرباح مالية مصطنعة عند غياب المعاينة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F25** | P2 | Reports Manager | التحقق من خطوات معالج التقرير وحظر الانتقال للخطوة 4 دون ملف ومعاينة معتمدة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F26** | P2 | Reports Manager | حصر مؤشرات وسجلات استلام التقرير على السجلات المؤكدة من الخادم ومنع الادعاء الزائف | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F27** | P2 | Activity Log | مطابقة فلترة التواريخ بالزمن المعياري واليوم الحقيقي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminAudit.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F28** | P2 | Activity Log | مطابقة نطاق وتصفية سجل النشاطات الكامل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminAudit.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F29** | P2 | ERP Export | طلب تأكيد المستخدم قبل تصدير ملفات ERP (قاعدة INTG-01) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminERP.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F30** | P2 | ERP Export | التسمية النزيهة لتوليد ملفات التصدير دون ادعاء ربط خارجي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminERP.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F31** | P2 | System Settings | إشعار تسجيل الإعدادات كتفضيلات تخضع لتدقيق الخادم المستقل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSettings.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F32** | P3 | System Settings | الحفاظ على عزل مسارات المصادقة المعقدة (SSO/2FA) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSettings.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F33** | P2 | Mobile / Shell | تجاوب القائمة الجانبية والشاشات مع الشاشات الضيقة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F34** | P2 | Accessibility | دعم سمات الحوارات ARIA وإغلاق Escape بنوافذ الأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx`, `AdminSubscriptions.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F35** | P3 | Localization | استخدام اتجاه النصوص الديناميكي dir={dir} بجداول الأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx`, `AdminPackages.tsx`, `AdminAudit.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F36** | P3 | Architecture | عزل بيانات النماذج المستقلة عن مسار تشغيل لوحة التحكم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminDashboard.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
-| **ADM-F37** | P2 | Policy | حظر منح الأدمن صلاحيات اعتماد العمليات المالية خارج المصفوفة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 02ac5272b0c0f735013e52ca8a3f10aa455a57eb |
+| **ADM-F01** | P2 | Security / Admin Grant | قصر صلاحيات الأدمن الشاملة على التخويل الصريح ومنع التسرب | `FIXED_AND_VERIFIED` | `NOT_RUN` | `roleAccess.ts` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F02** | P2 | Shared Shell | حجب بحث المنصة الموحد للأدمن غير المقيد بشركة مع تلميح نزيه | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F03** | P2 | Shared Shell | حجب إشعارات المنصة الموحدة للأدمن غير المقيد بشركة مع تلميح نزيه | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F04** | P2 | Users | إضافة المستخدم لقائمة العرض فقط بعد نجاح الخادم المؤكد | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F05** | P2 | Users | ربط زر "تعديل الصلاحيات" بمصفوفة الصلاحيات برمجياً | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F06** | P2 | Users | قصر حذف المستخدم من الواجهة على تأكيد نجاح خادم API | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F07** | P2 | Users | دعم التراجع التلقائي (Rollback) عند فشل تعيين المحاسبين | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F08** | P2 | Users | مطابقة مفاتيح الموديولات المعتمدة مع المعايير البرمجية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F09** | P2 | Users | عزل مستأجري التعيينات المتعددة وفق التسلسل الهرمي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminUsers.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F10** | P2 | Restaurants & Branches | دعم الاستجابة المسطحة للعلامات دون حجب الهيكل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminRestaurants.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F11** | P2 | Restaurants & Branches | مؤشرات حالة الرفع وفق الاستجابة المستمرة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminRestaurants.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F12** | P2 | Restaurants & Branches | تعيين العلامة الافتراضية الأولى ديناميكياً من الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminRestaurants.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F13** | P2 | Branch Requests | إظهار وإتاحة صفحة طلبات الفروع بالقائمة الجانبية للأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F14** | P2 | Subscriptions | تجديد الاشتراك دون تواريخ ثابتة واعتماد استجابة الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSubscriptions.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F15** | P2 | Subscriptions | دعم التراجع التلقائي عند فشل تبديل التذكير الآلي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSubscriptions.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F16** | P2 | Subscriptions | ربط أزرار إيقاف وتفعيل الاشتراك في كروت الاشتراكات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSubscriptions.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F17** | P2 | Company Subscriptions | قصر تغيير حالة وباقة اشتراك الشركة على تأكيد الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminCompanies.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F18** | P2 | Company Subscriptions | وسم الإيراد الشهري كتقدير لكتالوج الباقات وفق SUB-01 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminCompanies.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F19** | P3 | Packages | وسم أسعار الباقات كبيانات استرشادية لكتالوج الباقات (SUB-01) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPackages.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F20** | P2 | Permissions | استعادة مصفوفة الصلاحيات الأصلية بالكامل عند الإلغاء | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPermissions.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F21** | P2 | Permissions | تأكيد حفظ التغييرات فقط بعد نجاح تحديث الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminPermissions.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F22** | P2 | Permissions | استنساخ صلاحيات الأدوار مقيد بحوكمة النظام الأساسية (PERM-00) | `APPROVAL_REQUIRED` | `NOT_RUN` | `AdminPermissions.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F23** | P2 | Permissions | تعديل وتدوير مصفوفة الصلاحيات الأساسية مقيد مركزياً (PERM-00) | `APPROVAL_REQUIRED` | `NOT_RUN` | `AdminPermissions.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F24** | P2 | Reports Manager | حظر توليد أرقام وأرباح مالية مصطنعة عند غياب المعاينة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F25** | P2 | Reports Manager | التحقق من خطوات معالج التقرير وحظر الانتقال للخطوة 4 دون ملف ومعاينة معتمدة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F26** | P2 | Reports Manager | حصر مؤشرات وسجلات استلام التقرير على السجلات المؤكدة من الخادم ومنع الادعاء الزائف | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F27** | P2 | Activity Log | مطابقة فلترة التواريخ بالزمن المعياري واليوم الحقيقي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminAudit.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F28** | P2 | Activity Log | مطابقة نطاق وتصفية سجل النشاطات الكامل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminAudit.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F29** | P2 | ERP Export | طلب تأكيد المستخدم قبل تصدير ملفات ERP (قاعدة INTG-01) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminERP.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F30** | P2 | ERP Export | التسمية النزيهة لتوليد ملفات التصدير دون ادعاء ربط خارجي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminERP.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F31** | P2 | System Settings | إشعار تسجيل الإعدادات كتفضيلات تخضع لتدقيق الخادم المستقل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSettings.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F32** | P3 | System Settings | الحفاظ على عزل مسارات المصادقة المعقدة (SSO/2FA) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminSettings.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F33** | P2 | Mobile / Shell | تجاوب القائمة الجانبية والشاشات مع الشاشات الضيقة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F34** | P2 | Accessibility | دعم سمات الحوارات ARIA وإغلاق Escape بنوافذ الأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx`, `AdminSubscriptions.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F35** | P3 | Localization | استخدام اتجاه النصوص الديناميكي dir={dir} بجداول الأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx`, `AdminPackages.tsx`, `AdminAudit.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F36** | P3 | Architecture | عزل بيانات النماذج المستقلة عن مسار تشغيل لوحة التحكم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminDashboard.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+| **ADM-F37** | P2 | Policy | حظر منح الأدمن صلاحيات اعتماد العمليات المالية خارج المصفوفة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |

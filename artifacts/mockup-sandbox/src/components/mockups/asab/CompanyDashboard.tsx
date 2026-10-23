@@ -7877,14 +7877,46 @@ function ProcNew() {
   };
 
   const submitOrder = () => {
-    const q = parseFloat(orderForm.qty);
-    const p = parseFloat(orderForm.unitPrice);
-    if (!orderForm.supplierId || !orderForm.itemId || isNaN(q) || !Number.isFinite(q) || q <= 0 || isNaN(p) || !Number.isFinite(p) || p <= 0) {
-      alert(t("يرجى اختيار المورد والصنف وإدخال كمية وسعر صحيحين أكبر من صفر", "Please select supplier and item and enter valid quantity and price greater than zero"));
+    const qtyStr = orderForm.qty.trim();
+    const priceStr = orderForm.unitPrice.trim();
+    const normalizedNotes = orderForm.notes.trim();
+
+    if (!orderForm.supplierId || !orderForm.itemId || !qtyStr || !priceStr) {
+      alert(t("يرجى اختيار المورد والصنف وإدخال كمية وسعر صحيحين", "Please select supplier and item and enter valid quantity and price"));
       return;
     }
-    // Prevent draft idempotency key reuse when material command payload changes (supplier, item, qty, price)
-    const currentSignature = `${orderForm.supplierId}|${orderForm.itemId}|${q}|${p}`;
+
+    const q = parseFloat(qtyStr);
+    if (isNaN(q) || !Number.isFinite(q) || q <= 0) {
+      alert(t("يرجى إدخال كمية صحيحة موجبة أكبر من صفر", "Please enter a valid positive quantity greater than zero"));
+      return;
+    }
+
+    // Two-decimal contract validation: reject values with > 2 decimal places or non-numeric formatting
+    if (!/^\d+(\.\d{1,2})?$/.test(priceStr)) {
+      alert(t("سعر الوحدة غير صحيح أو يحتوي على أكثر من خانتين عشريتين", "Unit price is invalid or exceeds 2 decimal places"));
+      return;
+    }
+
+    const parts = priceStr.split(".");
+    const major = parseInt(parts[0], 10);
+    const minorStr = parts[1] ? parts[1].padEnd(2, "0") : "00";
+    const minor = parseInt(minorStr, 10);
+    const unitPriceHalalas = major * 100 + minor;
+
+    if (!Number.isSafeInteger(unitPriceHalalas) || unitPriceHalalas < 1) {
+      alert(t("سعر الوحدة غير صحيح أو يقل عن هللة واحدة", "Unit price is invalid or less than 1 halala"));
+      return;
+    }
+
+    const totalHalalas = Math.round(unitPriceHalalas * q);
+    if (!Number.isSafeInteger(totalHalalas) || totalHalalas < 1) {
+      alert(t("إجمالي المبلغ غير صحيح", "Total amount is invalid"));
+      return;
+    }
+
+    // Complete effective command payload signature covering all inputs including normalized notes
+    const currentSignature = `${orderForm.supplierId}|${orderForm.itemId}|${q}|${unitPriceHalalas}|${totalHalalas}|${normalizedNotes}`;
     let commandIdToUse = draftCommandId;
     if (lastMaterialSignature && lastMaterialSignature !== currentSignature) {
       commandIdToUse = generateCommandId();
@@ -7892,14 +7924,12 @@ function ProcNew() {
     }
     setLastMaterialSignature(currentSignature);
 
-    const unitPriceHalalas = Math.round(p * 100);
-    const totalHalalas = Math.round(unitPriceHalalas * q);
     createOrderMut.mutate(
       {
         supplierId: orderForm.supplierId,
         items: [{ itemId: orderForm.itemId, qty: q, unitPriceHalalas, totalHalalas }],
-        notes: orderForm.notes.trim() || undefined,
-        description: orderForm.notes.trim() || undefined,
+        notes: normalizedNotes || undefined,
+        description: normalizedNotes || undefined,
         commandId: commandIdToUse,
       } as any,
       {

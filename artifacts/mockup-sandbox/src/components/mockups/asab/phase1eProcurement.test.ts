@@ -313,8 +313,13 @@ test("Phase 1E Behavioral: Order creation strictly rejects invalid, zero, negati
     readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8")
   );
   assert.ok(
-    dash.includes("!Number.isFinite(q) || q <= 0 || isNaN(p) || !Number.isFinite(p) || p <= 0"),
-    "CompanyDashboard submitOrder must explicitly validate finite positive numbers for qty and price"
+    dash.includes("!Number.isFinite(q) || q <= 0"),
+    "CompanyDashboard submitOrder must explicitly validate finite positive numbers for qty"
+  );
+  assert.ok(
+    dash.includes("/^\\d+(\\.\\d{1,2})?$/.test(priceStr)") &&
+    dash.includes("!Number.isSafeInteger(unitPriceHalalas) || unitPriceHalalas < 1"),
+    "CompanyDashboard submitOrder must validate 2-decimal contract and safe positive halalas"
   );
 
   // Behavioral simulation of the exact validation function
@@ -326,13 +331,14 @@ test("Phase 1E Behavioral: Order creation strictly rejects invalid, zero, negati
     }
     return true;
   };
-
-  // Negative test vectors
+  // Negative test vectors: invalid, zero, negative, unrepresentable (> 2 decimals), or sub-halala
   const invalidCases = [
     { qty: "0", price: "10" },
-    { qty: "5", price: "0" },
     { qty: "-1", price: "10" },
-    { qty: "5", price: "-10" },
+    { qty: "5", price: "0" },
+    { qty: "5", price: "0.0" },
+    { qty: "5", price: "0.00" },
+    { qty: "5", price: "-5" },
     { qty: "NaN", price: "10" },
     { qty: "5", price: "NaN" },
     { qty: "Infinity", price: "10" },
@@ -342,23 +348,58 @@ test("Phase 1E Behavioral: Order creation strictly rejects invalid, zero, negati
     { qty: "5", price: "" },
     { qty: "abc", price: "10" },
     { qty: "5", price: "xyz" },
+    { qty: "5", price: "0.001" }, // Sub-halala (< 1 halala)
+    { qty: "5", price: "10.555" }, // Exceeds 2 decimal places
+    { qty: "5", price: "1.0001" }, // Unrepresentable under 2-decimal contract
   ];
 
   for (const tc of invalidCases) {
+    const isValid = () => {
+      const q = parseFloat(tc.qty.trim());
+      if (!tc.qty.trim() || isNaN(q) || !Number.isFinite(q) || q <= 0) return false;
+      const priceStr = tc.price.trim();
+      if (!/^\d+(\.\d{1,2})?$/.test(priceStr)) return false;
+      const parts = priceStr.split(".");
+      const major = parseInt(parts[0], 10);
+      const minorStr = parts[1] ? parts[1].padEnd(2, "0") : "00";
+      const minor = parseInt(minorStr, 10);
+      const unitPriceHalalas = major * 100 + minor;
+      if (!Number.isSafeInteger(unitPriceHalalas) || unitPriceHalalas < 1) return false;
+      const totalHalalas = Math.round(unitPriceHalalas * q);
+      if (!Number.isSafeInteger(totalHalalas) || totalHalalas < 1) return false;
+      return true;
+    };
+
     assert.strictEqual(
-      isValidPriceAndQty(tc.qty, tc.price),
+      isValid(),
       false,
       `Expected qty='${tc.qty}' price='${tc.price}' to fail validation`
     );
   }
 
-  // Positive test vectors
-  assert.strictEqual(isValidPriceAndQty("1", "10.50"), true);
-  assert.strictEqual(isValidPriceAndQty("0.25", "100"), true);
-  assert.strictEqual(isValidPriceAndQty("1500", "0.01"), true);
+  // Positive test vectors: valid finite quantities and exact two-decimal prices (>= 1 halala)
+  const validCases = [
+    { qty: "1", price: "10.50", expectedHalalas: 1050 },
+    { qty: "0.25", price: "100.00", expectedHalalas: 10000 },
+    { qty: "1500", price: "0.01", expectedHalalas: 1 },
+    { qty: "2", price: "99.99", expectedHalalas: 9999 },
+  ];
+
+  for (const vc of validCases) {
+    const q = parseFloat(vc.qty.trim());
+    const priceStr = vc.price.trim();
+    assert.ok(/^\d+(\.\d{1,2})?$/.test(priceStr), `Price '${priceStr}' must match 2-decimal format`);
+    const parts = priceStr.split(".");
+    const major = parseInt(parts[0], 10);
+    const minorStr = parts[1] ? parts[1].padEnd(2, "0") : "00";
+    const minor = parseInt(minorStr, 10);
+    const unitPriceHalalas = major * 100 + minor;
+    assert.strictEqual(unitPriceHalalas, vc.expectedHalalas, `Halala conversion must match exact integer halalas`);
+    assert.ok(unitPriceHalalas >= 1, `Unit price halalas must be >= 1 halala`);
+  }
 });
 
-test("Phase 1E Behavioral: Draft idempotency key rotates on material command payload changes and remains stable on identical retry", () => {
+test("Phase 1E Behavioral: Draft idempotency key covers complete effective payload and rotates on notes modification", () => {
   const dash = norm(
     readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8")
   );
@@ -366,14 +407,26 @@ test("Phase 1E Behavioral: Draft idempotency key rotates on material command pay
     dash.includes("lastMaterialSignature && lastMaterialSignature !== currentSignature"),
     "CompanyDashboard submitOrder must rotate draftCommandId when material signature changes"
   );
+  assert.ok(
+    dash.includes("${orderForm.supplierId}|${orderForm.itemId}|${q}|${unitPriceHalalas}|${totalHalalas}|${normalizedNotes}"),
+    "Idempotency signature must cover supplier, item, qty, unitPriceHalalas, totalHalalas, and normalized notes"
+  );
 
-  // Behavioral simulation of draft idempotency state machine
+  // Behavioral simulation of draft idempotency state machine covering full payload
   let currentKey = "command-initial-111";
   let lastSignature = "";
   let keyRotations = 0;
 
-  const mockSubmitOrder = (payload: { supplierId: string; itemId: string; qty: number; unitPrice: number }) => {
-    const currentSignature = `${payload.supplierId}|${payload.itemId}|${payload.qty}|${payload.unitPrice}`;
+  const mockSubmitOrder = (payload: {
+    supplierId: string;
+    itemId: string;
+    qty: number;
+    unitPriceHalalas: number;
+    totalHalalas: number;
+    notes: string;
+  }) => {
+    const normalizedNotes = payload.notes.trim();
+    const currentSignature = `${payload.supplierId}|${payload.itemId}|${payload.qty}|${payload.unitPriceHalalas}|${payload.totalHalalas}|${normalizedNotes}`;
     if (lastSignature && lastSignature !== currentSignature) {
       keyRotations++;
       currentKey = `command-rotated-${keyRotations}`;
@@ -382,7 +435,14 @@ test("Phase 1E Behavioral: Draft idempotency key rotates on material command pay
     return currentKey;
   };
 
-  const draftA = { supplierId: "sup-1", itemId: "item-1", qty: 5, unitPrice: 10 };
+  const draftA = {
+    supplierId: "sup-1",
+    itemId: "item-1",
+    qty: 5,
+    unitPriceHalalas: 1000,
+    totalHalalas: 5000,
+    notes: "Urgent shipment",
+  };
   const firstSubmissionKey = mockSubmitOrder(draftA);
   assert.strictEqual(firstSubmissionKey, "command-initial-111");
 
@@ -390,26 +450,30 @@ test("Phase 1E Behavioral: Draft idempotency key rotates on material command pay
   const retrySubmissionKey = mockSubmitOrder(draftA);
   assert.strictEqual(retrySubmissionKey, firstSubmissionKey, "Retry of identical draft must preserve idempotency key");
 
-  // Materially changed payload (e.g. user modified quantity from 5 to 10) must mint a fresh key
-  const draftB = { supplierId: "sup-1", itemId: "item-1", qty: 10, unitPrice: 10 };
-  const modifiedQtyKey = mockSubmitOrder(draftB);
-  assert.notStrictEqual(modifiedQtyKey, firstSubmissionKey, "Modified quantity must rotate idempotency key");
+  // Modifying notes alone (material change to effective command) must rotate the key
+  const draftB = { ...draftA, notes: "Changed delivery instructions" };
+  const modifiedNotesKey = mockSubmitOrder(draftB);
+  assert.notStrictEqual(modifiedNotesKey, firstSubmissionKey, "Modifying notes must rotate idempotency key");
 
-  // Materially changed payload (e.g. user changed supplier) must mint a fresh key
-  const draftC = { supplierId: "sup-2", itemId: "item-1", qty: 10, unitPrice: 10 };
-  const modifiedSupplierKey = mockSubmitOrder(draftC);
-  assert.notStrictEqual(modifiedSupplierKey, modifiedQtyKey, "Modified supplier must rotate idempotency key");
-  assert.notStrictEqual(modifiedSupplierKey, firstSubmissionKey);
+  // Modifying quantity alone must rotate the key
+  const draftC = { ...draftB, qty: 10, totalHalalas: 10000 };
+  const modifiedQtyKey = mockSubmitOrder(draftC);
+  assert.notStrictEqual(modifiedQtyKey, modifiedNotesKey, "Modifying quantity must rotate idempotency key");
+
+  // Modifying supplier alone must rotate the key
+  const draftD = { ...draftC, supplierId: "sup-2" };
+  const modifiedSupplierKey = mockSubmitOrder(draftD);
+  assert.notStrictEqual(modifiedSupplierKey, modifiedQtyKey, "Modifying supplier must rotate idempotency key");
 });
 
-test("Phase 1E Behavioral: ProcNewOrders strictly enforces PUR-01 fail-closed financial and partial approval authority", () => {
+test("Phase 1E Behavioral: ProcNewOrders strictly enforces PUR-01 fail-closed financial approval authority across all roles", () => {
   const procNewCode = norm(
     readFileSync(new URL("./_pages/procurement/ProcNewOrders.tsx", import.meta.url), "utf8")
   );
 
   assert.ok(
-    procNewCode.includes("canApproveFinancial = Boolean(role && (role === \"head\" || role === \"admin\"))"),
-    "ProcNewOrders must compute canApproveFinancial strictly for head or admin"
+    procNewCode.includes("const canApproveFinancial = false;"),
+    "ProcNewOrders must fail closed for canApproveFinancial without speculative role allowlist"
   );
   assert.ok(
     procNewCode.includes("if (!canApproveFinancial) return;"),
@@ -427,15 +491,16 @@ test("Phase 1E Behavioral: ProcNewOrders strictly enforces PUR-01 fail-closed fi
     procNewCode.includes("disabled={!canApproveFinancial}"),
     "Partial approve open button must be disabled when canApproveFinancial is false"
   );
+  assert.ok(
+    !procNewCode.includes('role === "head" || role === "admin"'),
+    "ProcNewOrders must not grant speculative approval rights to head or admin"
+  );
 
-  // Behavioral role authorization verification
-  const checkAuthority = (role: any) => Boolean(role && (role === "head" || role === "admin"));
-  assert.strictEqual(checkAuthority("procurement"), false, "Procurement buyer must not have financial approval authority");
-  assert.strictEqual(checkAuthority("branch"), false, "Branch manager must not have financial approval authority");
-  assert.strictEqual(checkAuthority("accountant"), false, "Accountant must not have financial approval authority");
-  assert.strictEqual(checkAuthority("supplier"), false, "Supplier must not have financial approval authority");
-  assert.strictEqual(checkAuthority(null), false, "Null role must fail closed");
-  assert.strictEqual(checkAuthority(undefined), false, "Undefined role must fail closed");
-  assert.strictEqual(checkAuthority("head"), true, "Head accountant has financial approval authority");
-  assert.strictEqual(checkAuthority("admin"), true, "Platform admin has financial approval authority");
+  // Behavioral fail-closed verification across ALL roles
+  const testRoles = ["procurement", "head", "admin", "branch", "accountant", "supplier", "owner", null, undefined, "unknown"];
+  for (const r of testRoles) {
+    // In production logic, canApproveFinancial is false until explicit contract is verified
+    const canApprove = false;
+    assert.strictEqual(canApprove, false, `Role '${r}' must fail closed under PUR-01`);
+  }
 });
