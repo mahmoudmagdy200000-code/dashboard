@@ -21,13 +21,27 @@ if (!globalThis.CustomEvent) Object.defineProperty(globalThis, "CustomEvent", { 
   constructor(type: string, init?: CustomEventInit<T>) { super(type); this.detail = init?.detail as T; }
 } });
 
+import { fileURLToPath } from "node:url";
+
+const sandboxRoot = fileURLToPath(new URL("../..", import.meta.url));
+
 const vite = await createServer({
   configFile: false,
-  root: process.cwd(),
+  root: sandboxRoot,
   appType: "custom",
   logLevel: "silent",
   optimizeDeps: { noDiscovery: true, include: [] },
   server: { middlewareMode: true, hmr: false },
+  plugins: [
+    {
+      name: "transform-import-meta-env",
+      transform(code, id) {
+        if (id.includes("client.ts")) {
+          return code.replace("import.meta?.env?.VITE_API_BASE_URL", "import.meta.env.VITE_API_BASE_URL");
+        }
+      },
+    },
+  ],
 });
 const [{ api }, auth, tokens, { clearRetiredQueryClient }, { createQueryClient }] = await Promise.all([
   vite.ssrLoadModule("/src/api/client.ts"),

@@ -313,7 +313,7 @@ test("final approval does not mutate after a late detail response crosses access
 
 test("bulk final approval and head return stop before mutation after access invalidation", async () => {
   for (const [operation,run] of [
-    [{id:"bulk-op",moduleKey:"expenses",status:"approved"},"bulk"] as const,
+    [{id:"bulk-op",moduleKey:"purchases",status:"approved"},"bulk"] as const,
     [{id:"return-op",moduleKey:"shifts",status:"approved",reportReview:{phase:"head_review"}},"return"] as const,
   ]) {
     const {actions,client,mutations,requests}=mountHeadActions(operation,run==="return");
@@ -323,9 +323,19 @@ test("bulk final approval and head return stop before mutation after access inva
     assert.equal(requests.length,1,run);
     await purgeFinancialQueries(client);
     requests[0].resolve({data:operation});
-    await action;
+    await action.catch(() => {});
     assert.deepEqual(mutations,[],run);
     assert.equal(client.getQueryData(["operations",operation.id]),undefined,run);
+    client.clear();
+  }
+
+  // EXP-06: expenses are explicitly blocked from head bulk approval
+  {
+    const expenseOp = { id: "expense-blocked-op", moduleKey: "expenses", status: "approved" };
+    const { actions, client, mutations, requests } = mountHeadActions(expenseOp);
+    await actions.bulkFinalApprove([expenseOp.id]);
+    assert.equal(requests.length, 0, "EXP-06: bulk final approval of expenses must emit zero requests");
+    assert.deepEqual(mutations, [], "EXP-06: bulk final approval of expenses must emit zero mutations");
     client.clear();
   }
 });
@@ -493,15 +503,23 @@ test("actual head history components render with History and assigned branches, 
   const queryCalls:unknown[] = [];
   const lookupQueries:Array<{queryFn:()=>Promise<unknown>}> = [];
   const branchRequests:string[] = [];
-  for (const name of ["CompanyDashboard.tsx","ASABPrototype.tsx"]) {
+
+  const prototypeRaw = readFileSync(new URL("../components/mockups/asab/ASABPrototype.tsx", import.meta.url), "utf8");
+  assert.match(prototypeRaw, /import\s*\{[^}]*HeadShiftHistory[^}]*\}\s*from\s*["']\.\/_pages\/head\/HeadShiftHistory["']/);
+
+  for (const [name, filePath] of [
+    ["CompanyDashboard.tsx", "../components/mockups/asab/CompanyDashboard.tsx"],
+    ["HeadShiftHistory.tsx", "../components/mockups/asab/_pages/head/HeadShiftHistory.tsx"],
+  ] as const) {
     const source = ts.createSourceFile(name,
-      readFileSync(new URL("../components/mockups/asab/" + name,import.meta.url),"utf8"),
-      ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+      readFileSync(new URL(filePath, import.meta.url), "utf8"),
+      ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
     const declaration = source.statements.find(node =>
       ts.isFunctionDeclaration(node) && node.name?.text === "HeadShiftHistory");
-    assert.ok(declaration,name);
-    const compiled = ts.transpileModule(declaration.getText(source),{
-      compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None,jsx:ts.JsxEmit.React},
+    assert.ok(declaration, name);
+    const declText = declaration.getText(source).replace(/^export\s+/, "");
+    const compiled = ts.transpileModule(declText, {
+      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None, jsx: ts.JsxEmit.React },
     }).outputText;
     const HeadShiftHistory = new Function(
       "React","useState","useCLang","useLang","useShiftsHistory","historyPageTarget",
