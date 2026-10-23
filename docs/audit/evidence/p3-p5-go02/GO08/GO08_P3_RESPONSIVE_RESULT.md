@@ -58,8 +58,8 @@ Please select an option and approve the exact Arabic/English wording. Until then
 | Browser/viewport tests | `NOT_RUN` for B01–B10. |
 | Source tests / typecheck / build in GO-08 | `NOT_RUN`; no GO-08 source edit. Historical test logs remain linked from the Test Index. |
 | Backend, Flutter, API mutation, Staging, Production | `NOT_RUN`; out of scope. |
-| Pre-push content scan | No matches for known token, secret assignment, email, IBAN/card-like patterns; no sensitive path names or changed files >1 MB across 44 changed paths. Dedicated secret scanner unavailable; see `pre-push-sensitive-content-scan.log`. |
-| Normal Git push | `BLOCKED` pending authenticated Git transport / stable push channel. Direct `git ls-remote` timed out; GitHub read connector confirms the review branch is absent. No force/API update attempted. |
+| Pre-push content scan | No matches for known token, secret assignment, email, IBAN/card-like patterns; no sensitive path names or changed files >1 MB across 49 changed paths at the final pre-push rescan. Dedicated secret scanner unavailable; see `pre-push-sensitive-content-scan.log`. |
+| Normal Git push | `BLOCKED` pending authenticated Git transport. `GIT_TERMINAL_PROMPT=0 timeout 20s git push --dry-run -u origin HEAD:refs/heads/work/dashboard-p345-remediation-v2-20261023` exited 128: `fatal: could not read Username for 'https://github.com': terminal prompts disabled`. Direct `git ls-remote` timed out; GitHub read connector confirms the review branch is absent. No actual push, force push, API ref update, or alternate target attempted. |
 | Business/permission/financial code changes | None. |
 
 **Recommended verdict:** `P3_IMPLEMENTATION_COMPLETED_WITH_BLOCKERS`. Existing source work is preserved; no new source correction was justified without the required browser reproduction. B01/B02/B03/B04/B05/B06/B07/B08/B10 retain runtime evidence gaps, and B09 remains decision-blocked. This is not `CLOSED` or `ACCEPTED`.

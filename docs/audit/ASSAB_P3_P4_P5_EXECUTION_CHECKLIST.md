@@ -803,7 +803,7 @@ The GO-07 source/test correction is committed locally as `5313b6f5bde200d2ce021c
 - [ ] `GO08-07` Obtain owner decision for B09; no financial display change made. Decision request: `docs/audit/evidence/p3-p5-go02/GO08/B09_OWNER_DECISION_REQUEST.md`.
 - [x] `GO08-08` Updated tracker, Master Findings, Test Index and Final Handoff with evidence-limited statuses; no finding promoted to CLOSED/ACCEPTED/RUNTIME_VERIFIED.
 - [ ] `GO08-09` Final source build and tests after code edits. No GO-08 source edit occurred; no build/test rerun is claimed.
-- [x] `GO08-10` Scanned the complete Base-to-worktree delta (all 23 prior local commits and GO-08 docs): no known token/secret/email/IBAN/card-like match, no sensitive config/key filenames, and no changed file over 1 MB; dedicated gitleaks/trufflehog unavailable. Evidence: `docs/audit/evidence/p3-p5-go02/GO08/pre-push-sensitive-content-scan.log`.
+- [x] `GO08-10` Scanned the complete Base-to-worktree delta (all 24 local commits through `0ca0b941f82704745af73b4712d80e66fac8bef6`): no known token/secret/email/IBAN/card-like match, no sensitive config/key filenames, and no changed file over 1 MB; dedicated gitleaks/trufflehog unavailable. Evidence: `docs/audit/evidence/p3-p5-go02/GO08/pre-push-sensitive-content-scan.log`.
 
 ### Finding-level GO-08 disposition
 
@@ -821,4 +821,4 @@ The GO-07 source/test correction is committed locally as `5313b6f5bde200d2ce021c
 | B10 | `BLOCKED_EVIDENCE` | None | `NOT_RUN` | Source-only verification is not runtime acceptance |
 
 No Phase 3 finding is closed by this checkpoint. No browser test, staging test or live API request was run.
-- [ ] `GO08-11` Normal Git push remains pending: the authorized remote review branch is absent and direct `git ls-remote` timed out; publish only after a normal authenticated push can verify the exact remote state. No force push or alternate target.
+- [ ] `GO08-11` Normal push dry-run exited 128 because GitHub HTTPS credentials were unavailable (`could not read Username` with terminal prompts disabled). The authorized branch is absent; direct `git ls-remote` timed out. No actual push, force push, API ref update, or alternate target. Evidence and exact command: `docs/audit/evidence/p3-p5-go02/GO08/GO08_P3_RESPONSIVE_RESULT.md` and `pre-push-sensitive-content-scan.log`.
