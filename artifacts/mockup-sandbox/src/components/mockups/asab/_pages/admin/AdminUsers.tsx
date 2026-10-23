@@ -684,16 +684,16 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
                                 onChange={() => setH3AccSel(acc.id)}
                                 className="h-4 w-4 shrink-0 accent-purple-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600"
                               />
-                              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 transition-all ${isSelected ? "bg-purple-200 text-purple-800 ring-2 ring-purple-400" : "bg-blue-100 text-blue-700"}`}>
+                              <span className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 transition-all ${isSelected ? "bg-purple-200 text-purple-800 ring-2 ring-purple-400" : "bg-blue-100 text-blue-700"}`}>
                                 {acc.avatar}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className={`font-semibold text-sm truncate ${isSelected ? "text-purple-800" : "text-gray-800"}`}>{acc.name}</p>
+                              </span>
+                              <span className="block flex-1 min-w-0">
+                                <span className={`block font-semibold text-sm truncate ${isSelected ? "text-purple-800" : "text-gray-800"}`}>{acc.name}</span>
                                 {head
-                                  ? <p className="text-[10px] text-emerald-600 flex items-center gap-1"><Check size={9} /> {head.name}</p>
-                                  : <p className="text-[10px] text-red-400">⚠ {t("غير مُعيَّن بعد", "Not yet assigned")}</p>
+                                  ? <span className="flex text-[10px] text-emerald-600 items-center gap-1"><Check size={9} /> {head.name}</span>
+                                  : <span className="block text-[10px] text-red-400">⚠ {t("غير مُعيَّن بعد", "Not yet assigned")}</span>
                                 }
-                              </div>
+                              </span>
                             </label>
                             {acc.headId && (
                               <button type="button" onClick={e => { e.stopPropagation(); moveAccToHead(acc.id, null); setH3AccSel(null); }}

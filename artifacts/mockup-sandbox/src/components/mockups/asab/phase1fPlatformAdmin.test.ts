@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import ts from "typescript";
 
 const norm = (s: string) => s.replace(/\r\n/g, "\n");
 
@@ -38,6 +39,45 @@ test("Phase 1F ADM-F07: syncAssignments handles rollback on error", () => {
     code.includes("if (prevAccs) setDistAccs(prevAccs);"),
     "syncAssignments must support rollback on error"
   );
+});
+
+test("GO-04 A05: accountant radio label has valid content and preserves selection/unlink actions", () => {
+  const code = norm(readFileSync(new URL("./_pages/admin/AdminUsers.tsx", import.meta.url), "utf8"));
+  const source = ts.createSourceFile("AdminUsers.tsx", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const labels: ts.JsxElement[] = [];
+  const visit = (node: ts.Node) => {
+    if (
+      ts.isJsxElement(node) &&
+      node.openingElement.tagName.getText(source) === "label" &&
+      node.getText(source).includes('name="head-accountant-selection"')
+    ) labels.push(node);
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+
+  assert.equal(labels.length, 1, "one label should wrap the accountant selection radio");
+  const label = labels[0];
+  const tags: string[] = [];
+  const collect = (node: ts.Node) => {
+    if (ts.isJsxElement(node)) tags.push(node.openingElement.tagName.getText(source));
+    else if (ts.isJsxSelfClosingElement(node)) tags.push(node.tagName.getText(source));
+    if (ts.isJsxElement(node)) node.children.forEach(collect);
+    else if (ts.isJsxFragment(node)) node.children.forEach(collect);
+    else ts.forEachChild(node, collect);
+  };
+  collect(label);
+  assert.ok(!tags.some(tag => tag === "div" || tag === "p"), "label descendants must use phrasing content");
+
+  const labelText = label.getText(source);
+  assert.match(labelText, /type="radio"[\s\S]*?name="head-accountant-selection"/);
+  assert.match(labelText, /checked=\{isSelected\}/);
+  assert.match(labelText, /onChange=\{\(\) => setH3AccSel\(acc\.id\)\}/);
+  assert.ok(!labelText.includes("moveAccToHead"), "assignment/unlink actions must not be nested in the label");
+
+  const afterLabel = code.slice(label.end, label.parent.end);
+  assert.match(afterLabel, /moveAccToHead\(acc\.id, null\); setH3AccSel\(null\);/);
+  assert.match(code, /aria-label=\{t\(`تعيين المحاسب المحدد إلى \$\{head\.name\}`, `Assign selected accountant to \$\{head\.name\}`\)\}/);
+  assert.match(code, /moveAccToHead\(h3AccSel, head\.id\)/);
 });
 
 test("Phase 1F ADM-F10: BRANDS renders flat API arrays without blanking out", () => {
