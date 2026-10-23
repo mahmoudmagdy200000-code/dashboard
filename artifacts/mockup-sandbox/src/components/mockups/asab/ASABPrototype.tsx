@@ -516,7 +516,7 @@ const EN_ROLE_LABELS: Record<string, { name: string; label: string }> = {
   accountant: { name: "Ahmed Mohammed", label: "Accountant — Branches 1–50" },
   branch: { name: "Ahmed Al-Shammari", label: "Branch Manager — Riyadh Al-Olaya" },
   procurement: { name: "Saeed Ahmed", label: "Procurement Manager" },
-  supplier: { name: "Mohammed Al-Ali", label: "Al-Wataniyya Poultry Co." },
+  supplier: { name: "—", label: "Supplier" },
 };
 const EN_PAGE_LABELS: Record<string, string> = {
   "acc-sales-detail": "Sales Operation Details",
@@ -660,7 +660,7 @@ const NAV_CONFIG: Record<RoleId, NavEntry[]> = {
     { section: "الرئيسية" },
     { id: "sup-overview", label: "لوحة التحكم", icon: <LayoutDashboard size={16} /> },
     { section: "الطلبات" },
-    { id: "sup-new", label: "الطلبات الجديدة", icon: <ShoppingCart size={16} />, badge: 3 },
+    { id: "sup-new", label: "الطلبات الجديدة", icon: <ShoppingCart size={16} /> },
     { id: "sup-accepted", label: "المقبولة", icon: <CheckCircle2 size={16} /> },
     { id: "sup-rejected", label: "المرفوضة", icon: <XCircle size={16} /> },
     { section: "الكتالوج" },
@@ -675,7 +675,7 @@ const ROLE_PROFILES: Record<RoleId, { name: string; avatar: string; label: strin
   accountant: { name: "أحمد محمد", avatar: "أم", label: "محاسب — الفروع 1–50", defaultPage: "acc-dashboard" },
   branch: { name: "أحمد الشمري", avatar: "أش", label: "مدير فرع الرياض - العليا", defaultPage: "branch-overview" },
   procurement: { name: "سعيد أحمد", avatar: "سأ", label: "مدير المشتريات", defaultPage: "proc-overview" },
-  supplier: { name: "محمد العلي", avatar: "مع", label: "شركة الدواجن الوطنية", defaultPage: "sup-overview" },
+  supplier: { name: "—", avatar: "؟", label: "مورد", defaultPage: "sup-overview" },
 };
 
 const MODULE_TO_NAV: Record<ModuleKey, string> = {
@@ -1526,12 +1526,13 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
             <div className="text-xs text-gray-400 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg hidden sm:block">
               {formatTodayLong(lang)}
             </div>
-            <select value={period} onChange={e => setPeriod(e.target.value as OpPeriod)} className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 bg-gray-50">
+            {role !== "supplier" && <select aria-label={tL("فترة العمليات", "Operations period")} value={period} onChange={e => setPeriod(e.target.value as OpPeriod)} className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 bg-gray-50">
               <option value="all">{tL("الكل", "All")}</option>
               <option value="month">{tL("هذا الشهر", "This Month")}</option>
               <option value="week">{tL("هذا الأسبوع", "This Week")}</option>
               <option value="today">{tL("اليوم", "Today")}</option>
             </select>
+            }
             {/* ADM-F02: Guard shared search for platform admin */}
             {role === "admin" ? (
               <div
@@ -1550,6 +1551,8 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
                   />
                 </div>
               </div>
+            ) : role === "supplier" ? (
+              <span className="text-xs text-gray-500">{tL("بحث المورد غير متاح بعقد الخادم الحالي", "Supplier search requires an approved Backend contract")}</span>
             ) : (
               <GlobalSearch t={tL} theme="light" />
             )}
@@ -1571,6 +1574,8 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
               >
                 <Bell size={16} />
               </div>
+            ) : role === "supplier" ? (
+              <span className="text-xs text-gray-500">{tL("إشعارات المورد غير متاحة بعقد الخادم الحالي", "Supplier notifications require an approved Backend contract")}</span>
             ) : (
               <NotificationBell t={tL} theme="light" />
             )}
@@ -1868,7 +1873,7 @@ export function ASABPrototype() {
       sel?.slug === "asab/ASABPrototype" ? sel.role : null) as RoleId | null;
     return { role, page: role ? ROLE_PROFILES[role].defaultPage : "", detailId: null, modal: null };
   });
-  const allowedRoles = grantedRoleKeys(user).filter(r => prototypeRoles.includes(r)) as RoleId[];
+  const allowedRoles = grantedRoleKeys(user).filter(r => prototypeRoles.includes(r) && (r !== "supplier" || SUPPLIER_PORTAL_ENABLED)) as RoleId[];
   const currentRole = appState.role && allowedRoles.includes(appState.role) ? appState.role : allowedRoles[0] ?? null;
   const currentPage = currentRole ? pageForRole(currentRole, appState.page, ROLE_PROFILES[currentRole].defaultPage) : "";
   const safeState = { ...appState, role: currentRole, page: currentPage };
@@ -2385,7 +2390,7 @@ export function ASABPrototype() {
   return (
     <LangContext.Provider value={{ lang, setLang, t, dir }}>
       {currentRole === "accountant" ? <AssetDraftProvider>{dashboard}</AssetDraftProvider> : dashboard}
-      {currentRole !== "admin" && <LiveChatWidget t={t} />}
+      {currentRole !== "admin" && currentRole !== "supplier" && <LiveChatWidget t={t} />}
     </LangContext.Provider>
   );
 }

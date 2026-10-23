@@ -67,17 +67,17 @@
 
 | المقياس | العدد | النسبة |
 | :--- | :---: | :---: |
-| **إجمالي المشكلات المسجلة في التدقيق (Original Audit Findings)** | **198** (24 في 1A + 39 في 1B + 47 في 1C + 26 في 1D + 25 في 1E + 37 في 1F) | — |
+| **إجمالي المشكلات المسجلة في التدقيق (Original Audit Findings)** | **222** (198 في 1A–1F + 24 في 1G) | — |
 | **تصحيحات مراجعة المرحلة 1A (Review Corrections)** | **5** | — |
-| **إجمالي بنود السجل المتابعة (Total Tracked Items)** | **203** | 100% |
-| **تم الإصلاح والتحقق الآلي (Fixed & Verified)** | **188** (25 في 1A + 34 في 1B + 46 في 1C + 23 في 1D + 25 في 1E + 35 في 1F) | 92.6% |
-| **معلقة لقرار / موافقة معمارية (Approval Required / Gated)** | **10** (4 في 1A + 4 في 1B لـ PR #1 + 2 في 1F لـ PERM-00) | 4.9% |
-| **محجوبة بعيوب خادم قيد الباك إند (Backend Blocked / Proposal)** | **5** (HA-F39, ACC-F32, 1D-BRM-012, 1D-BRM-025, 1D-BRM-026) | 2.5% |
+| **إجمالي بنود السجل المتابعة (Total Tracked Items)** | **227** | 100% |
+| **تم الإصلاح والتحقق الآلي (Fixed & Verified)** | **197** (188 سابقة + 9 في 1G) | 86.8% |
+| **معلقة لقرار / موافقة معمارية (Approval Required / Gated)** | **13** (10 سابقة + 3 في 1G) | 5.7% |
+| **محجوبة بعيوب خادم قيد الباك إند (Backend Blocked / Proposal)** | **12** (5 سابقة + 7 في 1G؛ تشمل معالجة واجهة جزئية مع مانع خادمي) | 5.3% |
 | **مفتوحة بلا إصلاح (Open)** | **0** | 0.0% |
-| **منفذة دون فحص (Implemented Unverified)** | **0** | 0.0% |
+| **منفذة دون تحقق وظيفي كافٍ (Implemented Unverified)** | **5** | 2.2% |
 | **محجوبة بموانع (Blocked)** | **0** | 0.0% |
 | **فاشلة (Failed)** | **0** | 0.0% |
-| **التحقق التشغيلي الحي (Runtime Live Staging)** | **202 NOT_RUN / 1 PENDING_REVIEW** | بانتظار الاعتماد المستقل وتزويد بيانات Staging الحي |
+| **التحقق التشغيلي الحي (Runtime Live Staging)** | **226 NOT_RUN / 1 PENDING_REVIEW** | بانتظار الاعتماد المستقل وتزويد بيانات Staging الحي |
 
 ---
 ## 4. Phase 1A — Company Admin Master Summary Table
@@ -1755,7 +1755,7 @@
 | **Phase 1D** | Branch Manager | مكتمل وموثق | `26` | 23 مُصلح ومُتحقق، 3 محجوب بالباك إند (1D-BRM-012, 025, 026). |
 | **Phase 1E** | Procurement Manager | مكتمل وموثق | `25` | 25 مُصلح ومُتحقق (PROC-F14 مقيد وفق PUR-04 وإرشادات المحاسب). |
 | **Phase 1F** | Platform Admin | مكتمل وموثق | `37` | 35 مُصلح ومُتحقق، 2 معلق لموافقة إدارية تحت PERM-00 (ADM-F22, ADM-F23). |
-| **Phase 1G** | Supplier Portal | ميزة مشروطة بتفعيل الباك إند | `0` | تدقيق مستقل ومخطط له. |
+| **Phase 1G** | Supplier Portal | حزمة أصلية موثقة + Delta Audit | `24` | 9 تحقق آلي أمامي، 5 منفذة دون تحقق وظيفي كافٍ، 7 محجوبة، 3 لقرار؛ Runtime NOT_RUN والقبول المستقل PENDING. |
 | **Phase 1H** | Shared Components | مراجعة المكونات المشتركة | `0` | التوفيق بين المكونات المشتركة ومنع تكرار القيود. |
 | **Phases 2–6** | Runtime, Accessibility, API & E2E | مراجعات لاحقة مجمعة | `0` | ربط نتائج الفحص الحي والاستقرار التعاقدي. |
 
@@ -2278,3 +2278,69 @@
 | **ADM-F35** | P3 | Localization | استخدام اتجاه النصوص الديناميكي dir={dir} بجداول الأدمن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminReports.tsx`, `AdminPackages.tsx`, `AdminAudit.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
 | **ADM-F36** | P3 | Architecture | عزل بيانات النماذج المستقلة عن مسار تشغيل لوحة التحكم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AdminDashboard.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
 | **ADM-F37** | P2 | Policy | حظر منح الأدمن صلاحيات اعتماد العمليات المالية خارج المصفوفة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ASABPrototype.tsx` | 904b9acf7ea7a229051d871865ad2caca024cd93 |
+
+
+---
+
+## Phase 1G — Original Supplier Findings Delta (2026-10-23)
+
+# Phase 1G — Targeted Delta Audit and Frontend Delivery Candidate
+
+Date: 2026-10-23. Starting SHA: `9b55d67e527a71e8c6d6c6efa9fe87ab49e4cd6d`. Source tree: `901ee28623b0e89070ff74f581f559ae7e7de088`.
+
+Original ZIP SHA-256: `cda9fa32e9a0f71c867fd6e3dcb3043b41918c687c009070a0ce36583b0b49a2`; ZIP CRC and 10/10 internal SHA-256 entries PASS.
+
+This is developer-executed evidence, not independent acceptance. Supplier activation is NOT_VERIFIED; Staging ON_HOLD; all 43 original supplier runtime scenarios NOT_RUN. Frontend gating is a mitigation, not complete delivery of blocked functionality.
+
+
+| ID | الأولوية الأصلية | الحالة | Delta disposition | Evidence / limit |
+|---|---|---|---|---|
+| SUP-F01 | P2 | FIXED_AND_VERIFIED | FIXED_FRONTEND | roleAccess.ts + featureFlags.ts + active picker; flag-OFF unit and negative routing logic. Backend activation NOT_VERIFIED. Original: [artifacts/mockup-sandbox/src/auth/roleAccess.ts:145](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/auth/roleAccess.ts#L145) |
+| SUP-F02 | P3 | FIXED_AND_VERIFIED | FIXED_DOCUMENTATION | Removed incorrect Backend-default-OFF claim; executable Backend comparison remains 983db655, not deployment evidence. Original: [artifacts/mockup-sandbox/src/featureFlags.ts:16](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/featureFlags.ts#L16) |
+| SUP-F03 | P2 | IMPLEMENTED_UNVERIFIED | IMPLEMENTED_FRONTEND | SupOverview and supplier profiles use authenticated identity or neutral unavailable labels; browser identity verification pending. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16062](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16062) |
+| SUP-F04 | P2 | FIXED_AND_VERIFIED | FIXED_FRONTEND | useSupplierOrders retains meta; all three order pages expose server pagination. API-function contract tests PASS. Original: [artifacts/mockup-sandbox/src/api/queries/platform/supplier.ts:30](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/api/queries/platform/supplier.ts#L30) |
+| SUP-F05 | P2 | BLOCKED | BACKEND_BLOCKED | No authorized supplier order detail endpoint/line VAT contract. Summary retained; no invented API. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16117](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16117) |
+| SUP-F06 | P2 | BLOCKED | PARTIAL_BACKEND_BLOCKED | Synchronous frontend lock and failed-request propagation tested; server concurrency/idempotency and locking remain unproven/unmodified. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16112](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16112) |
+| SUP-F07 | P2 | IMPLEMENTED_UNVERIFIED | IMPLEMENTED_FRONTEND | Existing status=delivered API exposed as a read-only history filter in SupAccepted; browser test pending. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16609](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16609) |
+| SUP-F08 | P2 | APPROVAL_REQUIRED | PARTIAL_AWAITING_POLICY | Delivery action and success text explicitly describe supplier declaration, not branch receipt. Receiving/settlement ownership remains a policy gate. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16640](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16640) |
+| SUP-F09 | P2 | FIXED_AND_VERIFIED | FIXED_FRONTEND | Real details.supplierIds supported and de-duplicated; explicit ID selection, no invented supplier names. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16741](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16741) |
+| SUP-F10 | P2 | BLOCKED | PARTIAL_BACKEND_BLOCKED | Edit can retry with an explicitly selected owned ID; Backend presenter still omits item-to-supplier record identity. No inferred first record or claimed cross-company guarantee. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16752](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16752) |
+| SUP-F11 | P2 | FIXED_AND_VERIFIED | FIXED_FRONTEND | Multipart import accepts explicit supplierId; file retained for ambiguity retry. Actual mutation function tested in memory. Original: [artifacts/mockup-sandbox/src/api/queries/platform/supplier.ts:243](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/api/queries/platform/supplier.ts#L243) |
+| SUP-F12 | P2 | BLOCKED | BACKEND_BLOCKED | Procurement PurchaseOrderGroup and Supplier Operation pipelines remain distinct. Phase1E PUR-01 gates preserved; bridge not invented. Original: [Modules/Admin/app/Http/Controllers/Procurement/ProcurementPurchaseOrderController.php:207](https://github.com/mohameelsherbini/Assab/blob/983db6559763855d1a8c430cd92a9f7c199cc44e/Modules/Admin/app/Http/Controllers/Procurement/ProcurementPurchaseOrderController.php#L207) |
+| SUP-F13 | P2 | BLOCKED | GATED_BACKEND_CONTRACT | Supplier no longer mounts company GlobalSearch; supplier search functionality remains unavailable pending Backend contract. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:1905](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L1905) |
+| SUP-F14 | P2 | BLOCKED | GATED_BACKEND_CONTRACT | Supplier no longer mounts company NotificationBell; supplier notifications remain unavailable pending contract. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:1913](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L1913) |
+| SUP-F15 | P3 | FIXED_AND_VERIFIED | FIXED_FRONTEND | Removed fabricated new-order badge instead of inventing a count. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:723](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L723) |
+| SUP-F16 | P3 | FIXED_AND_VERIFIED | FIXED_FRONTEND | Removed the operations-period selector from supplier context; no unsupported query filters sent. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:1899](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L1899) |
+| SUP-F17 | P2 | IMPLEMENTED_UNVERIFIED | IMPLEMENTED_FRONTEND | Installed Radix Dialog primitive, named titles/fields, controlled pending close, focus return; physical keyboard/browser verification NOT_RUN. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16127](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16127) |
+| SUP-F18 | P2 | IMPLEMENTED_UNVERIFIED | IMPLEMENTED_FRONTEND | Responsive KPI grids, wrapped order rows, scrollable catalog, context direction and touch actions. Device/browser verification NOT_RUN. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16773](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16773) |
+| SUP-F19 | P2 | APPROVAL_REQUIRED | AWAITING_POLICY_AND_BACKEND | Invoices/attachments/returns require approved supplier ownership/API contract (PUR-02/03/04). No new action enabled. Original: [Modules/Admin/routes/api.php:587](https://github.com/mohameelsherbini/Assab/blob/983db6559763855d1a8c430cd92a9f7c199cc44e/Modules/Admin/routes/api.php#L587) |
+| SUP-F20 | P2 | FIXED_AND_VERIFIED | FIXED_FRONTEND | Exact safe-integer priceHalalas, nonnegative integer catalog limits/lead time and min<=max. Existing zero-price Backend contract preserved. Fractional purchase rounding untouched. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16717](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16717) |
+| SUP-F21 | P2 | IMPLEMENTED_UNVERIFIED | IMPLEMENTED_FRONTEND | All six pages distinguish loading/error from empty; retries explicit. Missing monetary fields stay unavailable. Render/runtime error-state acceptance pending. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16051](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16051) |
+| SUP-F22 | P3 | APPROVAL_REQUIRED | AWAITING_POLICY | Detailed reports remain explicitly deferred. No fabricated charts or claim of completed PORTAL-01 reporting. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16865](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16865) |
+| SUP-F23 | P3 | FIXED_AND_VERIFIED | ALREADY_EXCLUDED_MOCK | App route allowlist still only opens ASABPrototype/CompanyDashboard. Standalone SupplierDashboard is not functional acceptance evidence; no mock source rewritten. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/SupplierDashboard.tsx:6](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/SupplierDashboard.tsx#L6) |
+| SUP-F24 | P2 | BLOCKED | BACKEND_CONTRACT_BLOCKED | Catalog prices labelled excluding VAT. Order totals/VAT/invoice breakdown not supplied by existing contract; no tax inferred or new write fields sent. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16120](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16120) |
+
+
+## Counts and evidence classification
+
+Before: 203 tracked original/review items (198 original + 5 review corrections); 188 historical FIXED_AND_VERIFIED / 10 gated / 5 Backend blocked, carried forward as prior evidence, not independently re-executed historical acceptance.
+
+Added: 24 original IDs. Phase1G distribution: {'FIXED_AND_VERIFIED': 9, 'IMPLEMENTED_UNVERIFIED': 5, 'BLOCKED': 7, 'APPROVAL_REQUIRED': 3}.
+
+After Phase1G: **227 tracked items / 222 original findings + 5 review corrections**; 197 FIXED_AND_VERIFIED, 13 APPROVAL_REQUIRED, 12 BLOCKED, 5 IMPLEMENTED_UNVERIFIED. Cross-phase duplicates are retained with crosswalks, not deleted or described as independent unique root causes.
+
+Focused command: `TZ=UTC node --import ./scripts/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/components/mockups/asab/phase1gSupplier.test.ts` — 13/13 PASS, exit 0. **9 behavioral frontend tests, 4 source-wiring assertions**. The transport is in memory; no real HTTP or Backend isolation proved. Initial five tests reproduced missing pagination, record import/selection, validation and flag gating before implementation; RED exit 1.
+
+Full source test discovery: all `artifacts/mockup-sandbox/src/**/*.test.ts`, same Node/tsx runner, process isolation, `TZ=UTC` — 306/306 PASS, 0 skipped, exit 0. Baseline: 293/293 PASS under the same runner/environment. Bare Node cannot load existing extensionless TS/TSX modules; unqualified local TZ America/Toronto reproduces an existing date assertion failure. The explicitly recorded UTC run does not prove cross-timezone correctness; no assertion was changed.
+
+`pnpm run typecheck` — PASS, exit 0. `pnpm --filter @workspace/mockup-sandbox run build` — PASS, exit 0; existing >500kB bundle warning remains. Build registry ordering is generated on Linux; its two ordering-only changes were excluded and restored from this clean checkout's HEAD, without touching existing workspaces. `git diff --check` — PASS.
+
+Node 24.19.0 / pnpm 11.25.0 / TypeScript 5.9.3. Frozen lockfile SHA-256 unchanged: `61cec1148fdfb2891540832c8ab652c8b9a816f6387c2945dcdf590de0b1c241`. Dependencies installed with `--frozen-lockfile --ignore-scripts`; supply-chain release-age policy preserved.
+
+## Delivery and governance
+
+Normal Git HTTPS authentication is unavailable (dry-run: Username unavailable, exit 128). Authenticated official GitHub connector read/write permission was verified, including a guarded no-op update of the feature branch to its existing SHA. Publication uses one commit and guarded non-force update with the expected parent; tree/delta parity required. No credentials copied.
+
+Canonical register updated in this phase. Its Windows mirror is not accessible from this Cloud workspace: **mirror sync BLOCKED / NOT_RUN**, not claimed synchronized. The canonical file can be copied byte-for-byte after delivery; no closure is claimed while required governance or acceptance remains pending. The commit containing this report is the Phase1G delivery candidate; exact remote commit/parent/tree are recorded in the final handoff to avoid a self-referential commit hash inside its own content.
+
+No Backend/Flutter/Auth lifecycle changes; no new API, feature activation, financial approval, PR update, merge or deployment. Runtime, browser, Staging and production: NOT_RUN.
