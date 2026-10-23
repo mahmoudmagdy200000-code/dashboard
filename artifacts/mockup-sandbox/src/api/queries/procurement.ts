@@ -175,10 +175,16 @@ export function useCreateProcurementOrder() {
       branchId?: string;
       items: ProcurementOrderItem[];
       notes?: string;
+      description?: string;
     }) => {
+      const payload = {
+        ...body,
+        description: body.description ?? body.notes,
+        notes: body.notes ?? body.description,
+      };
       const res = await api.post<ProcurementOrder>(
         "/company/me/procurement/orders",
-        body,
+        payload,
       );
       return res.data;
     },

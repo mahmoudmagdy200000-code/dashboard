@@ -7817,30 +7817,30 @@ function ProcOverview({ navigate }:{ navigate:(p:string)=>void }) {
     id: o.publicId || o.id,
     supplier: o.supplierName || "—",
     items: o.itemsCount ?? 0,
-    total: Math.round((o.totalHalalas || 0) / 100),
-    status: o.status === "sent" ? "delivered" : o.status === "draft" ? "pending" : o.status,
+    total: o.totalHalalas != null ? o.totalHalalas / 100 : (o as any).total ?? 0,
+    status: o.status === "sent" ? "sent" : o.status === "draft" ? "pending" : (o.status || "pending"),
     date: o.createdAt,
   }));
-  const SC:Record<string,string>={pending:"bg-amber-50 text-amber-700 border-amber-200",approved:"bg-blue-50 text-blue-700 border-blue-200",delivered:"bg-emerald-50 text-emerald-700 border-emerald-200"};
-  const SL:Record<string,string>={pending:t("معلق","Pending"),approved:t("معتمد","Approved"),delivered:t("تم التسليم","Delivered")};
+  const SC:Record<string,string>={pending:"bg-amber-50 text-amber-700 border-amber-200",approved:"bg-blue-50 text-blue-700 border-blue-200",sent:"bg-sky-50 text-sky-700 border-sky-200",delivered:"bg-emerald-50 text-emerald-700 border-emerald-200",rejected:"bg-red-50 text-red-700 border-red-200"};
+  const SL:Record<string,string>={pending:t("معلق","Pending"),approved:t("معتمد","Approved"),sent:t("تم الإرسال / قيد النقل","Sent / In Transit"),delivered:t("تم التسليم","Delivered"),rejected:t("مرفوض","Rejected")};
   const totalPending=orders.filter(o=>o.status==="pending").reduce((s,o)=>s+o.total,0);
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between"><div><h2 className="text-xl font-bold text-gray-800">{t("لوحة المشتريات","Procurement Dashboard")}</h2></div><button onClick={()=>navigate("proc-new")} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-bold hover:bg-amber-600"><Plus size={14}/> {t("أمر شراء جديد","New Purchase Order")}</button></div>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard label={t("أوامر معلقة","Pending Orders")} value={String(orders.filter(o=>o.status==="pending").length)} sub={t("تنتظر الاعتماد","awaiting approval")} icon={<Clock size={18} className="text-amber-600"/>} accent="amber"/>
         <KpiCard label={t("قيمة المعلقة","Pending Value")} value={fmt(totalPending)} sub={SAR} icon={<Wallet size={18} className="text-red-500"/>} accent="red"/>
         <KpiCard label={t("موردون نشطون","Active Suppliers")} value={String(activeSuppliersCount)} sub={t("مورد معتمد","approved suppliers")} icon={<Building2 size={18} className="text-blue-600"/>} accent="blue"/>
         <KpiCard label={t("مشتريات الشهر","Monthly Purchases")} value={monthlyPurchasesK} sub={`${SAR} ${t("إجمالي","total")}`} icon={<ShoppingCart size={18} className="text-purple-600"/>} accent="purple"/>
       </div>
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
         <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60"><h3 className="font-bold text-gray-900 text-sm">{t("أحدث أوامر الشراء","Latest Purchase Orders")}</h3></div>
         {orders.map(o=>(
-          <div key={o.id} className="px-5 py-4 flex items-center gap-4 border-b border-gray-50 last:border-0">
+          <div key={o.id} className="px-5 py-4 flex items-center gap-4 border-b border-gray-50 last:border-0 min-w-[500px]">
             <div className="text-left flex-shrink-0"><p className="text-xs font-bold text-gray-400" dir="ltr">{o.id}</p></div>
             <div className="flex-1"><p className="font-semibold text-gray-800 text-sm">{o.supplier}</p><p className="text-xs text-gray-400">{o.items} {t("أصناف","items")} · {o.date}</p></div>
             <span className="font-mono font-bold text-gray-800">{fmt(o.total)} {SAR}</span>
-            <Badge className={`text-[10px] border ${SC[o.status]}`}>{SL[o.status]}</Badge>
+            <Badge className={`text-[10px] border ${SC[o.status] || "bg-gray-100 text-gray-600"}`}>{SL[o.status] || o.status}</Badge>
           </div>
         ))}
       </div>
@@ -7857,58 +7857,124 @@ function ProcNew() {
   const { data: supplierOpts = [] } = useProcurementSuppliers();
   const { data: itemOpts = [] } = useProcurementItems();
   const SAR = t("ر.س","SAR");
-  const [orderForm, setOrderForm] = useState({ supplierId:"", itemId:"", qty:"", notes:"" });
+  const [orderForm, setOrderForm] = useState({ supplierId:"", itemId:"", qty:"", unitPrice:"", notes:"" });
+  const [editingOrder, setEditingOrder] = useState<any|null>(null);
+  const [editNotes, setEditNotes] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+
+  const handleItemSelect = (itemId: string) => {
+    const selectedItem = itemOpts.find(i => i.id === itemId);
+    const defaultPrice = selectedItem
+      ? (selectedItem.lastPriceHalalas ? String(selectedItem.lastPriceHalalas / 100) : (selectedItem as any).price ? String((selectedItem as any).price) : "")
+      : "";
+    setOrderForm(f => ({ ...f, itemId, unitPrice: f.unitPrice || defaultPrice }));
+  };
+
   const submitOrder = () => {
-    if (!orderForm.supplierId || !orderForm.itemId || !orderForm.qty) return;
+    const q = parseFloat(orderForm.qty);
+    const p = parseFloat(orderForm.unitPrice);
+    if (!orderForm.supplierId || !orderForm.itemId || isNaN(q) || q <= 0) {
+      alert(t("يرجى اختيار المورد والصنف وإدخال كمية صحيحة أكبر من صفر", "Please select supplier and item and enter a quantity greater than zero"));
+      return;
+    }
+    const unitPriceHalalas = !isNaN(p) && p >= 0 ? Math.round(p * 100) : 0;
+    const totalHalalas = Math.round(unitPriceHalalas * q);
     createOrderMut.mutate(
-      { supplierId: orderForm.supplierId, items: [{ itemId: orderForm.itemId, qty: Number(orderForm.qty) }], notes: orderForm.notes || undefined } as any,
-      { onSuccess: () => { setShowAdd(false); setOrderForm({ supplierId:"", itemId:"", qty:"", notes:"" }); } },
+      {
+        supplierId: orderForm.supplierId,
+        items: [{ itemId: orderForm.itemId, qty: q, unitPriceHalalas, totalHalalas }],
+        notes: orderForm.notes.trim() || undefined,
+        description: orderForm.notes.trim() || undefined,
+      } as any,
+      {
+        onSuccess: () => {
+          setShowAdd(false);
+          setOrderForm({ supplierId:"", itemId:"", qty:"", unitPrice:"", notes:"" });
+        },
+      },
     );
   };
-  // Driven by GET /company/me/procurement/orders. No static fallback.
+
+  const submitEditOrder = () => {
+    if (!editingOrder) return;
+    updateOrderMut.mutate(
+      { id: editingOrder._apiId || editingOrder.id, notes: editNotes.trim() || undefined, description: editNotes.trim() || undefined } as any,
+      { onSuccess: () => setEditingOrder(null) },
+    );
+  };
+
   const orders = apiOrders.map(o => ({
     id: o.publicId || o.id,
     supplier: o.supplierName || "—",
     brand: o.brandName || "—",
     items: o.itemsCount ?? 0,
-    total: Math.round((o.totalHalalas || 0) / 100),
-    status: o.status === "sent" ? "delivered" : o.status === "draft" ? "pending" : o.status,
+    total: o.totalHalalas != null ? o.totalHalalas / 100 : (o as any).total ?? 0,
+    status: o.status === "sent" ? "sent" : o.status === "draft" ? "pending" : (o.status || "pending"),
     date: o.createdAt,
     _apiId: o.id,
   }));
-  void approveMut; // exposed for future bulk-approve UI
-  const [showAdd,setShowAdd]=useState(false);
-  const SC:Record<string,string>={pending:"bg-amber-50 text-amber-700 border-amber-200",approved:"bg-blue-50 text-blue-700 border-blue-200",delivered:"bg-emerald-50 text-emerald-700 border-emerald-200"};
-  const SL:Record<string,string>={pending:t("معلق","Pending"),approved:t("معتمد","Approved"),delivered:t("تم التسليم","Delivered")};
+
+  const SC:Record<string,string>={pending:"bg-amber-50 text-amber-700 border-amber-200",approved:"bg-blue-50 text-blue-700 border-blue-200",sent:"bg-sky-50 text-sky-700 border-sky-200",delivered:"bg-emerald-50 text-emerald-700 border-emerald-200",rejected:"bg-red-50 text-red-700 border-red-200"};
+  const SL:Record<string,string>={pending:t("معلق","Pending"),approved:t("معتمد","Approved"),sent:t("تم الإرسال / قيد النقل","Sent / In Transit"),delivered:t("تم التسليم","Delivered"),rejected:t("مرفوض","Rejected")};
+
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between"><div><h2 className="text-xl font-bold text-gray-800">{t("أوامر الشراء","Purchase Orders")}</h2><p className="text-gray-400 text-sm">{orders.filter(o=>o.status==="pending").length} {t("معلق","pending")}</p></div><Btn variant="primary" onClick={()=>setShowAdd(true)}><Plus size={13}/> {t("أمر جديد","New Order")}</Btn></div>
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="grid grid-cols-6 gap-3 px-5 py-3 border-b border-gray-100 bg-gray-50 text-[10px] font-semibold text-gray-500">
-          <span>{t("رقم الأمر","Order #")}</span><span className="col-span-2">{t("المورد","Supplier")}</span><span>{t("العلامة","Brand")}</span><span>{t("الإجمالي","Total")}</span><span>{t("الحالة","Status")}</span>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">{t("أوامر الشراء","Purchase Orders")}</h2>
+          <p className="text-gray-400 text-sm">{orders.filter(o=>o.status==="pending").length} {t("معلق","pending")}</p>
+        </div>
+        <Btn variant="primary" onClick={()=>setShowAdd(true)}><Plus size={13}/> {t("أمر جديد","New Order")}</Btn>
+      </div>
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
+        <div className="grid grid-cols-6 gap-3 px-5 py-3 border-b border-gray-100 bg-gray-50 text-[10px] font-semibold text-gray-500 min-w-[580px]">
+          <span>{t("رقم الأمر","Order #")}</span><span className="col-span-2">{t("المورد","Supplier")}</span><span>{t("العلامة","Brand")}</span><span>{t("الإجمالي","Total")}</span><span>{t("الإجراءات","Actions")}</span>
         </div>
         {orders.map(o=>(
-          <div key={o.id} className="grid grid-cols-6 gap-3 px-5 py-4 border-b border-gray-50 last:border-0 items-center hover:bg-gray-50/50">
+          <div key={o.id} className="grid grid-cols-6 gap-3 px-5 py-4 border-b border-gray-50 last:border-0 items-center hover:bg-gray-50/50 min-w-[580px]">
             <span className="font-mono text-xs text-gray-500" dir="ltr">{o.id}</span>
             <div className="col-span-2"><p className="font-semibold text-gray-800 text-sm">{o.supplier}</p><p className="text-[10px] text-gray-400">{o.items} {t("أصناف","items")} · {o.date}</p></div>
             <span className="text-xs text-gray-600">{o.brand}</span>
             <span className="font-mono font-bold text-gray-800 text-sm">{fmt(o.total)} {SAR}</span>
-            <div className="flex items-center gap-1.5"><Badge className={`text-[10px] border ${SC[o.status]}`}>{SL[o.status]}</Badge><button onClick={()=>updateOrderMut.mutate({id:o.id})} className="p-1 rounded text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"><Edit2 size={11}/></button></div>
+            <div className="flex items-center gap-1.5">
+              <Badge className={`text-[10px] border ${SC[o.status] || "bg-gray-100 text-gray-600"}`}>{SL[o.status] || o.status}</Badge>
+              {o.status === "pending" && (
+                <button disabled={approveMut.isPending} onClick={()=>approveMut.mutate(o._apiId || o.id)} title={t("اعتماد","Approve")} className="p-1 rounded text-emerald-600 hover:bg-emerald-50 transition-colors">
+                  <CheckCircle2 size={13}/>
+                </button>
+              )}
+              <button onClick={()=>{ setEditingOrder(o); setEditNotes(""); }} title={t("تعديل","Edit")} className="p-1 rounded text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                <Edit2 size={11}/>
+              </button>
+            </div>
           </div>
         ))}
       </div>
       {showAdd&&(
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setShowAdd(false)}>
+        <div role="dialog" aria-modal="true" aria-label={t("أمر شراء جديد","New Purchase Order")} tabIndex={-1} onKeyDown={e => { if (e.key === "Escape") setShowAdd(false); }} className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setShowAdd(false)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e=>e.stopPropagation()} dir={dir}>
-            <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">{t("أمر شراء جديد","New Purchase Order")}</h3><button onClick={()=>setShowAdd(false)} className="text-gray-400"><X size={18}/></button></div>
+            <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">{t("أمر شراء جديد","New Purchase Order")}</h3><button aria-label={t("إغلاق","Close")} onClick={()=>setShowAdd(false)} className="text-gray-400"><X size={18}/></button></div>
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 mb-3">{t("الأسعار غير شاملة ضريبة القيمة المضافة (15% منفصلة عند الفاتورة وفق PUR-05)", "Prices exclude VAT (15% separate at invoice per PUR-05)")}</p>
             <div className="space-y-3">
-              <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("المورد","Supplier")}</label><select value={orderForm.supplierId} onChange={e=>setOrderForm(f=>({...f,supplierId:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"><option value="">{t("اختر المورد","Select supplier")}</option>{supplierOpts.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2"><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الصنف","Item")}</label><select value={orderForm.itemId} onChange={e=>setOrderForm(f=>({...f,itemId:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"><option value="">{t("اختر الصنف","Select item")}</option>{itemOpts.map(i=><option key={i.id} value={i.id}>{i.name}</option>)}</select></div>
-                <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الكمية","Qty")}</label><input type="number" value={orderForm.qty} onChange={e=>setOrderForm(f=>({...f,qty:e.target.value}))} dir="ltr" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
+              <div><label htmlFor="po-supp" className="text-xs font-semibold text-gray-600 block mb-1">{t("المورد","Supplier")} *</label><select id="po-supp" value={orderForm.supplierId} onChange={e=>setOrderForm(f=>({...f,supplierId:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"><option value="">{t("اختر المورد","Select supplier")}</option>{supplierOpts.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+              <div><label htmlFor="po-item" className="text-xs font-semibold text-gray-600 block mb-1">{t("الصنف","Item")} *</label><select id="po-item" value={orderForm.itemId} onChange={e=>handleItemSelect(e.target.value)} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"><option value="">{t("اختر الصنف","Select item")}</option>{itemOpts.map(i=><option key={i.id} value={i.id}>{i.name}</option>)}</select></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label htmlFor="po-qty" className="text-xs font-semibold text-gray-600 block mb-1">{t("الكمية","Qty")} *</label><input id="po-qty" type="number" min="0.01" step="any" value={orderForm.qty} onChange={e=>setOrderForm(f=>({...f,qty:e.target.value}))} dir="ltr" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
+                <div><label htmlFor="po-price" className="text-xs font-semibold text-gray-600 block mb-1">{t("سعر الوحدة (ر.س)","Unit Price (SAR)")}</label><input id="po-price" type="number" min="0" step="0.01" value={orderForm.unitPrice} onChange={e=>setOrderForm(f=>({...f,unitPrice:e.target.value}))} dir="ltr" placeholder="0.00" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
               </div>
-              <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("ملاحظات (اختياري)","Notes (optional)")}</label><textarea rows={2} value={orderForm.notes} onChange={e=>setOrderForm(f=>({...f,notes:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none resize-none"/></div>
-              <div className="flex gap-2 justify-end"><Btn onClick={()=>setShowAdd(false)}>{t("إلغاء","Cancel")}</Btn><Btn variant="primary" onClick={submitOrder} disabled={!orderForm.supplierId||!orderForm.itemId||!orderForm.qty||createOrderMut.isPending}><Send size={13}/> {t("إنشاء","Create")}</Btn></div>
+              <div><label htmlFor="po-notes" className="text-xs font-semibold text-gray-600 block mb-1">{t("ملاحظات (اختياري)","Notes (optional)")}</label><textarea id="po-notes" rows={2} value={orderForm.notes} onChange={e=>setOrderForm(f=>({...f,notes:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none resize-none"/></div>
+              <div className="flex gap-2 justify-end pt-1"><Btn onClick={()=>setShowAdd(false)}>{t("إلغاء","Cancel")}</Btn><Btn variant="primary" onClick={submitOrder} disabled={!orderForm.supplierId||!orderForm.itemId||!orderForm.qty||createOrderMut.isPending}><Send size={13}/> {createOrderMut.isPending ? t("جارٍ الحفظ...","Saving...") : t("إنشاء","Create")}</Btn></div>
+            </div>
+          </div>
+        </div>
+      )}
+      {editingOrder&&(
+        <div role="dialog" aria-modal="true" aria-label={t("تعديل أمر الشراء","Edit Purchase Order")} tabIndex={-1} onKeyDown={e => { if (e.key === "Escape") setEditingOrder(null); }} className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setEditingOrder(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e=>e.stopPropagation()} dir={dir}>
+            <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">{t("تعديل أمر الشراء","Edit Purchase Order")} — {editingOrder.id}</h3><button aria-label={t("إغلاق","Close")} onClick={()=>setEditingOrder(null)} className="text-gray-400"><X size={18}/></button></div>
+            <div className="space-y-3">
+              <div><label htmlFor="po-edit-notes" className="text-xs font-semibold text-gray-600 block mb-1">{t("ملاحظات التعديل","Edit Notes / Description")}</label><textarea id="po-edit-notes" rows={3} value={editNotes} onChange={e=>setEditNotes(e.target.value)} placeholder={t("أدخل تفاصيل التعديل المطلوبة...","Enter update notes...")} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none resize-none"/></div>
+              <div className="flex gap-2 justify-end pt-1"><Btn onClick={()=>setEditingOrder(null)}>{t("إلغاء","Cancel")}</Btn><Btn variant="primary" onClick={submitEditOrder} disabled={updateOrderMut.isPending}><CheckCircle2 size={13}/> {updateOrderMut.isPending ? t("جارٍ الحفظ...","Saving...") : t("حفظ التعديل","Save Changes")}</Btn></div>
             </div>
           </div>
         </div>
@@ -7920,34 +7986,41 @@ function ProcNew() {
 function ProcSuppliers() {
   const { t, dir } = useCLang();
   const { data: apiSuppliers = [] } = useProcurementSuppliers();
-  const createSupplierMut = useCreateSupplier();
   const SAR = t("ر.س","SAR");
-  const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name:"", category:"", contactName:"", phone:"", email:"" });
-  const submitSupplier = () => {
-    if (!form.name.trim()) return;
-    createSupplierMut.mutate(
-      { name: form.name, category: form.category, contactName: form.contactName, phone: form.phone, email: form.email || undefined } as any,
-      { onSuccess: () => { setShowAdd(false); setForm({ name:"", category:"", contactName:"", phone:"", email:"" }); } },
-    );
-  };
   // Suppliers come from GET /company/me/procurement/suppliers. No static fallback.
-  const suppliers = apiSuppliers.map(s => ({
-    id: s.id, name: s.name, category: s.category || "—", contact: s.email || "—",
-    phone: s.phone || "", rating: s.rating ?? 0, orders: (s as any).ordersCount ?? 0,
-    totalSpent: 0, active: s.isActive,
-  }));
+  // PUR-04: Adding approved suppliers is restricted to Accountant role per Business Rules v3.5.
+  const suppliers = apiSuppliers.map(s => {
+    const rawRating = Number(s.rating ?? (s as any).ratingAvg ?? 0);
+    const rating = rawRating > 5 ? rawRating / 10 : rawRating;
+    const totalSpent = (s as any).lifetimeSpend ?? (s as any).totalPurchases ?? ((s as any).totalSpentHalalas ? (s as any).totalSpentHalalas / 100 : 0);
+    return {
+      id: s.id,
+      name: s.name,
+      category: s.category || "—",
+      contact: (s as any).contactName || s.email || "—",
+      phone: s.phone || (s as any).contactPhone || "",
+      rating: isNaN(rating) ? 0 : Number(rating.toFixed(1)),
+      orders: (s as any).ordersCount ?? 0,
+      totalSpent: isNaN(totalSpent) ? 0 : totalSpent,
+      active: s.isActive ?? ((s as any).status === "active" || (s as any).status === "نشط" || (s as any).status === undefined),
+    };
+  });
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between"><div><h2 className="text-xl font-bold text-gray-800">{t("الموردون","Suppliers")}</h2><p className="text-gray-400 text-sm">{suppliers.filter(s=>s.active).length} {t("مورد نشط","active suppliers")}</p></div><Btn variant="primary" onClick={()=>setShowAdd(true)}><Plus size={13}/> {t("إضافة مورد","Add Supplier")}</Btn></div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="flex items-center justify-between">
+        <div><h2 className="text-xl font-bold text-gray-800">{t("الموردون","Suppliers")}</h2><p className="text-gray-400 text-sm">{suppliers.filter(s=>s.active).length} {t("مورد نشط","active suppliers")}</p></div>
+        <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+          <span>📋 {t("إضافة الموردين المعتمدين من صلاحية المحاسب وفق قواعد الأعمال (PUR-04)", "Adding approved suppliers is restricted to Accountant role per Business Rules (PUR-04)")}</span>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard label={t("موردون نشطون","Active Suppliers")} value={String(suppliers.filter(s=>s.active).length)} sub={t("مورد معتمد","approved")} icon={<Building2 size={18} className="text-blue-600"/>} accent="blue"/>
-        <KpiCard label={t("إجمالي المشتريات","Total Purchases")} value={`${fmt(Math.round(suppliers.reduce((s,x)=>s+x.totalSpent,0)/1000))}K`} sub={SAR} icon={<Wallet size={18} className="text-purple-600"/>} accent="purple"/>
+        <KpiCard label={t("إجمالي المشتريات","Total Purchases")} value={fmt(suppliers.reduce((s,x)=>s+x.totalSpent,0))} sub={SAR} icon={<Wallet size={18} className="text-purple-600"/>} accent="purple"/>
         <KpiCard label={t("متوسط التقييم","Avg Rating")} value={(suppliers.length > 0 ? (suppliers.reduce((s,x)=>s+(x.rating||0),0)/suppliers.length) : 0).toFixed(1)} sub={t("من 5 نجوم","/ 5 stars")} icon={<Star size={18} className="text-amber-600"/>} accent="amber"/>
       </div>
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
         {suppliers.map(s=>(
-          <div key={s.id} className="px-5 py-4 flex items-center gap-4 border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+          <div key={s.id} className="px-5 py-4 flex items-center gap-4 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 min-w-[580px]">
             <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">{s.name[0]}</div>
             <div className="flex-1 min-w-0"><div className="flex items-center gap-2"><span className="font-bold text-gray-800 text-sm">{s.name}</span><Badge className="bg-gray-100 text-gray-600 text-[10px]">{s.category}</Badge></div><div className="flex gap-3 mt-0.5"><span className="text-xs text-gray-400">{s.contact}</span><span className="text-xs text-gray-400" dir="ltr">{s.phone}</span></div></div>
             <div className={`${dir==="rtl"?"text-left":"text-right"} flex-shrink-0`}><div className="flex items-center gap-0.5">{[1,2,3,4,5].map(i=><span key={i} className={`text-sm ${i<=Math.floor(s.rating)?"text-amber-400":"text-gray-200"}`}>★</span>)}<span className="text-xs text-gray-500 mr-1">{s.rating}</span></div><p className="text-[10px] text-gray-400">{s.orders} {t("طلب","orders")} · {fmt(s.totalSpent)} {SAR}</p></div>
@@ -7955,21 +8028,6 @@ function ProcSuppliers() {
           </div>
         ))}
       </div>
-      {showAdd && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setShowAdd(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e=>e.stopPropagation()} dir={dir}>
-            <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">{t("إضافة مورد","Add Supplier")}</h3><button onClick={()=>setShowAdd(false)} className="text-gray-400"><X size={18}/></button></div>
-            <div className="space-y-3">
-              <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("اسم المورد","Supplier Name")}</label><input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>
-              <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الفئة","Category")}</label><input value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>
-              <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("اسم جهة الاتصال","Contact Name")}</label><input value={form.contactName} onChange={e=>setForm(f=>({...f,contactName:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>
-              <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الجوال","Phone")}</label><input value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))} dir="ltr" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>
-              <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("البريد (اختياري)","Email (optional)")}</label><input value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} dir="ltr" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>
-              <div className="flex gap-2 justify-end pt-1"><Btn onClick={()=>setShowAdd(false)}>{t("إلغاء","Cancel")}</Btn><Btn variant="primary" onClick={submitSupplier} disabled={!form.name.trim()||createSupplierMut.isPending}><Plus size={13}/> {t("إضافة","Add")}</Btn></div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -7982,47 +8040,52 @@ function ProcItems() {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ name:"", unit:"", category:"", price:"" });
   const submitItem = () => {
-    if (!form.name.trim()) return;
+    const p = parseFloat(form.price);
+    if (!form.name.trim() || !form.unit.trim() || isNaN(p) || p <= 0) {
+      alert(t("يرجى إدخال اسم الصنف والوحدة وسعر صحيح أكبر من صفر", "Please enter item name, unit, and a positive price"));
+      return;
+    }
     createItemMut.mutate(
-      { name: form.name, unit: form.unit, category: form.category, lastPriceHalalas: Math.round((parseFloat(form.price) || 0) * 100) } as any,
+      { name: form.name.trim(), unit: form.unit.trim(), category: form.category.trim(), lastPriceHalalas: Math.round(p * 100) } as any,
       { onSuccess: () => { setShowAdd(false); setForm({ name:"", unit:"", category:"", price:"" }); } },
     );
   };
   const items = apiItems.map(i => ({
     name: i.name,
     unit: i.unit || "",
-    lastPrice: Math.round(((i as any).lastPriceHalalas || 0) / 100),
+    lastPrice: (i as any).lastPriceHalalas != null ? (i as any).lastPriceHalalas / 100 : ((i as any).price ?? 0),
     brand: i.category || "—",
-    suppliers: (i as any).preferredSupplierName ? 1 : 0,
+    suppliers: (i as any).supplierCount ?? ((i as any).preferredSupplierName ? 1 : 0),
   }));
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between"><div><h2 className="text-xl font-bold text-gray-800">{t("الأصناف والأسعار","Items & Prices")}</h2><p className="text-gray-400 text-sm">{items.length} {t("صنف","items")}</p></div><Btn variant="primary" onClick={()=>setShowAdd(true)}><Plus size={13}/> {t("صنف جديد","New Item")}</Btn></div>
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="grid grid-cols-5 gap-4 px-5 py-3 border-b border-gray-100 bg-gray-50 text-[10px] font-semibold text-gray-500">
-          <span className="col-span-2">{t("الصنف","Item")}</span><span>{t("الوحدة","Unit")}</span><span>{t("آخر سعر","Last Price")}</span><span>{t("الموردون","Suppliers")}</span>
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
+        <div className="grid grid-cols-5 gap-4 px-5 py-3 border-b border-gray-100 bg-gray-50 text-[10px] font-semibold text-gray-500 min-w-[500px]">
+          <span className="col-span-2">{t("الصنف","Item")}</span><span>{t("الوحدة","Unit")}</span><span>{t("السعر قبل الضريبة","Price Before VAT")}</span><span>{t("الموردون","Suppliers")}</span>
         </div>
         {items.map(i=>(
-          <div key={i.name} className="grid grid-cols-5 gap-4 px-5 py-4 border-b border-gray-50 last:border-0 items-center hover:bg-gray-50/50">
+          <div key={i.name} className="grid grid-cols-5 gap-4 px-5 py-4 border-b border-gray-50 last:border-0 items-center hover:bg-gray-50/50 min-w-[500px]">
             <div className="col-span-2"><p className="font-semibold text-gray-800 text-sm">{i.name}</p><p className="text-[10px] text-gray-400">{i.brand}</p></div>
             <span className="text-gray-500 text-sm">{i.unit}</span>
-            <span className="font-mono font-bold text-gray-800 text-sm">{i.lastPrice} {SAR}</span>
+            <span className="font-mono font-bold text-gray-800 text-sm">{fmt(i.lastPrice)} {SAR}</span>
             <div className="flex items-center gap-1"><span className="font-bold text-purple-700">{i.suppliers}</span><span className="text-xs text-gray-400">{t("مورد","suppliers")}</span></div>
           </div>
         ))}
       </div>
       {showAdd && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setShowAdd(false)}>
+        <div role="dialog" aria-modal="true" aria-label={t("صنف جديد","New Item")} tabIndex={-1} onKeyDown={e => { if (e.key === "Escape") setShowAdd(false); }} className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setShowAdd(false)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e=>e.stopPropagation()} dir={dir}>
-            <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">{t("صنف جديد","New Item")}</h3><button onClick={()=>setShowAdd(false)} className="text-gray-400"><X size={18}/></button></div>
+            <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">{t("صنف جديد","New Item")}</h3><button aria-label={t("إغلاق","Close")} onClick={()=>setShowAdd(false)} className="text-gray-400"><X size={18}/></button></div>
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 mb-3">{t("السعر قبل الضريبة وفق PUR-05 (تُحسب الضريبة 15% منفصلة)", "Price before VAT per PUR-05 (15% tax calculated separately)")}</p>
             <div className="space-y-3">
-              <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("اسم الصنف","Item Name")}</label><input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>
+              <div><label htmlFor="item-name" className="text-xs font-semibold text-gray-600 block mb-1">{t("اسم الصنف","Item Name")} *</label><input id="item-name" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الوحدة","Unit")}</label><input value={form.unit} onChange={e=>setForm(f=>({...f,unit:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>
-                <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("آخر سعر","Last Price")} ({SAR})</label><input type="number" value={form.price} onChange={e=>setForm(f=>({...f,price:e.target.value}))} dir="ltr" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>
+                <div><label htmlFor="item-unit" className="text-xs font-semibold text-gray-600 block mb-1">{t("الوحدة","Unit")} *</label><input id="item-unit" value={form.unit} onChange={e=>setForm(f=>({...f,unit:e.target.value}))} placeholder="كجم / حبة" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>
+                <div><label htmlFor="item-price" className="text-xs font-semibold text-gray-600 block mb-1">{t("السعر قبل الضريبة","Price Before VAT")} *</label><input id="item-price" type="number" min="0.01" step="0.01" value={form.price} onChange={e=>setForm(f=>({...f,price:e.target.value}))} dir="ltr" placeholder="0.00" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>
               </div>
-              <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الفئة","Category")}</label><input value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>
-              <div className="flex gap-2 justify-end pt-1"><Btn onClick={()=>setShowAdd(false)}>{t("إلغاء","Cancel")}</Btn><Btn variant="primary" onClick={submitItem} disabled={!form.name.trim()||createItemMut.isPending}><Plus size={13}/> {t("إضافة","Add")}</Btn></div>
+              <div><label htmlFor="item-cat" className="text-xs font-semibold text-gray-600 block mb-1">{t("الفئة","Category")}</label><input id="item-cat" value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>
+              <div className="flex gap-2 justify-end pt-1"><Btn onClick={()=>setShowAdd(false)}>{t("إلغاء","Cancel")}</Btn><Btn variant="primary" onClick={submitItem} disabled={!form.name.trim()||!form.unit.trim()||!form.price||createItemMut.isPending}><Plus size={13}/> {createItemMut.isPending ? t("جارٍ الإضافة...","Adding...") : t("إضافة","Add")}</Btn></div>
             </div>
           </div>
         </div>
@@ -8038,15 +8101,18 @@ function ProcReports() {
   const reports: [string,string,string][] = apiReports.map(r => [r.title, r.description || "", r.key] as [string,string,string]);
   return (
     <div className="space-y-5" dir={dir}>
-      <div><h2 className="text-xl font-bold text-gray-800">{t("تقارير المشتريات","Procurement Reports")}</h2></div>
-      <div className="grid grid-cols-2 gap-4">
+      <div><h2 className="text-xl font-bold text-gray-800">{t("تقارير المشتريات","Procurement Reports")}</h2><p className="text-gray-400 text-sm">{t("تصدير التقارير بصيغ PDF وExcel وفق INTG-01","Export reports in PDF and Excel formats per INTG-01")}</p></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {reports.map(([title,desc,file])=>(
           <div key={title} className={`bg-white rounded-xl border border-gray-100 shadow-sm p-5 ${dir==="rtl"?"text-right":"text-left"} hover:border-amber-200 hover:shadow-md transition-all`}>
             <p className="font-bold text-gray-800">{title}</p>
             <p className="text-xs text-gray-400 mt-1">{desc}</p>
-            <div className="mt-3">
-              <button onClick={()=>downloadMut.mutate({ key: file, format: "pdf" })} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-semibold hover:bg-amber-100 hover:text-amber-700 transition-colors">
-                <Download size={11}/> {t("تحميل","Download")}
+            <div className="mt-3 flex gap-2">
+              <button disabled={downloadMut.isPending} onClick={()=>downloadMut.mutate({ key: file, format: "pdf" })} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs font-semibold hover:bg-amber-100 hover:text-amber-700 transition-colors">
+                <Download size={11}/> PDF
+              </button>
+              <button disabled={downloadMut.isPending} onClick={()=>downloadMut.mutate({ key: file, format: "xlsx" })} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 transition-colors">
+                <Download size={11}/> Excel (XLSX)
               </button>
             </div>
           </div>
@@ -8061,16 +8127,15 @@ function ProcGrouped() {
   const { data: apiGroups = [] } = useGroupedOrders();
   const sendGroupedMut = useSendGroupedOrder();
   const SAR = t("ر.س","SAR");
-  const groups: Array<{ supplier:string; supplierId?:string; orders:number; total:number; branches:string[]; pending:boolean; groupId?: string }> =
-    apiGroups.map(g => ({
-      supplier: g.supplierName,
-      supplierId: g.supplierId,
-      orders: g.ordersCount,
-      total: Math.round((g.totalHalalas ?? 0) / 100),
-      branches: (g.orders ?? []).map(o => o.branchName || "—"),
-      pending: true,
-      groupId: g.groupId,
-    }));
+  const groups = apiGroups.map(g => ({
+    supplier: g.supplierName || "—",
+    supplierId: g.supplierId,
+    orders: g.ordersCount ?? (g as any).orderCount ?? (g.orders?.length ?? 0),
+    total: g.totalHalalas != null ? g.totalHalalas / 100 : ((g as any).total ?? 0),
+    branches: ((g as any).branches as string[] | undefined) ?? (g.orders ?? []).map(o => o.branchName || "—"),
+    pending: (g as any).pending ?? (g as any).status !== "sent",
+    groupId: g.groupId,
+  }));
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
@@ -8083,15 +8148,15 @@ function ProcGrouped() {
               <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-lg">🏭</div>
               <div className="flex-1"><p className="font-bold text-gray-800">{g.supplier}</p><p className="text-xs text-gray-400">{g.orders} {t("أوامر","orders")} · {g.branches.length} {t("فروع","branches")}</p></div>
               <span className="font-mono font-bold text-gray-800">{fmt(g.total)} {SAR}</span>
-              <Badge className={`text-[10px] ${g.pending?"bg-amber-50 text-amber-700 border border-amber-200":"bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>{g.pending?t("معلق","Pending"):t("معتمد","Approved")}</Badge>
+              <Badge className={`text-[10px] ${g.pending?"bg-amber-50 text-amber-700 border border-amber-200":"bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>{g.pending?t("معلق","Pending"):t("تم الإرسال","Sent")}</Badge>
             </div>
             <div className="flex flex-wrap gap-1.5 items-center">
-              {g.branches.map(b=><span key={b} className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[10px] font-medium">{b}</span>)}
+              {g.branches.map((b: string)=><span key={b} className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[10px] font-medium">{b}</span>)}
             </div>
             <div className="flex justify-end mt-3">
               <Btn variant="primary" size="sm" disabled={!g.supplierId || sendGroupedMut.isPending}
                 onClick={()=>{ if(g.supplierId) sendGroupedMut.mutate({ supplierId: g.supplierId, groupId: g.groupId }); }}>
-                <Send size={12}/> {t("إرسال عبر واتساب","Send via WhatsApp")}
+                <Send size={12}/> {sendGroupedMut.isPending ? t("جارٍ الإرسال...","Sending...") : t("إعداد رابط واتساب للمورد","Prepare WhatsApp PO")}
               </Btn>
             </div>
           </div>
@@ -8109,23 +8174,26 @@ function ProcSent() {
     id: o.publicId || o.id,
     supplier: o.supplierName || "—",
     sentDate: (o as any).sentAt || o.createdAt,
-    total: Math.round((o.totalHalalas || 0) / 100),
-    inTransit: o.status === "sent",
-    eta: o.status === "sent" ? t("قيد التسليم","In Transit") : t("تم","Done"),
+    total: o.totalHalalas != null ? o.totalHalalas / 100 : ((o as any).total ?? 0),
+    inTransit: (o as any).inTransit ?? (o.status === "sent"),
+    eta: (o as any).eta || (o.status === "sent" ? t("قيد النقل","In Transit") : t("تم","Done")),
+    status: o.status,
   }));
   return (
     <div className="space-y-5" dir={dir}>
       <div><h2 className="text-xl font-bold text-gray-800">{t("الأوامر المُرسَلة","Sent Orders")}</h2><p className="text-gray-400 text-sm">{sent.length} {t("أوامر مُرسَلة","sent orders")}</p></div>
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
         {sent.map(s=>(
-          <div key={s.id} className="px-5 py-4 flex items-center gap-4 border-b border-gray-50 last:border-0">
+          <div key={s.id} className="px-5 py-4 flex items-center gap-4 border-b border-gray-50 last:border-0 min-w-[500px]">
             <div className="flex-1">
               <p className="font-semibold text-gray-800 text-sm">{s.supplier}</p>
               <p className="text-xs text-gray-400">{s.id} · {s.sentDate}</p>
             </div>
             <span className="font-mono font-bold text-gray-800">{fmt(s.total)} {SAR}</span>
             <span className="text-xs text-gray-400">ETA: {s.eta}</span>
-            <Badge className={`text-[10px] ${s.inTransit?"bg-sky-50 text-sky-700 border border-sky-200":"bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>{s.inTransit?t("قيد التسليم","In Transit"):t("تم التسليم","Delivered")}</Badge>
+            <Badge className={`text-[10px] ${s.status === "delivered" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : s.inTransit ? "bg-sky-50 text-sky-700 border border-sky-200" : "bg-gray-100 text-gray-600"}`}>
+              {s.status === "delivered" ? t("تم التسليم","Delivered") : s.inTransit ? t("قيد النقل","In Transit") : t("تم الإرسال","Sent")}
+            </Badge>
           </div>
         ))}
       </div>

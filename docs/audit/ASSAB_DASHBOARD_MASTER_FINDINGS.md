@@ -5,10 +5,13 @@
 > **Permanent Local Mirror:** `D:\claude\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\ui-ux\ASSAB_DASHBOARD_MASTER_FINDINGS.md`
 > **Repository:** `mohameelsherbini/dashboard`
 > **Audit Baseline SHA:** `195315c66d9e7523e799c905b7649a8a7bc8b013` (`work/dashboard-shift-cycle-20261015`)
-> **Current Remediation Branch:** `fix/ux-dashboard-head-accountant-phase1b-20261022`
-> **Phase 1A Remediation Commit SHA:** `f4d3fc808f34bf946c384a0f8f3f5e7e836dc28b`
-> **Phase 1B Base Audited SHA:** `a644162253f6b0d5bca6782f1fce1a514d54e515`
-> **Last Synchronized Date:** 2026-10-22
+> **Current Remediation Branch:** `refactor/asabprototype-modularization-20261022`
+> **Phase 1A Remediation Commit SHA:** `0fe15e4`
+> **Phase 1B Remediation Commit SHA:** `f878f5a`
+> **Phase 1C Remediation Commit SHA:** `b00971b`
+> **Phase 1D Remediation Commit SHA:** `4361ebf`
+> **Phase 1E Remediation Scope:** `PROC-F01` to `PROC-F25`
+> **Last Synchronized Date:** 2026-10-23
 
 ---
 
@@ -63,17 +66,17 @@
 
 | المقياس | العدد | النسبة |
 | :--- | :---: | :---: |
-| **إجمالي المشكلات المسجلة في التدقيق (Original Audit Findings)** | **63** (24 في 1A + 39 في 1B) | — |
+| **إجمالي المشكلات المسجلة في التدقيق (Original Audit Findings)** | **161** (24 في 1A + 39 في 1B + 47 في 1C + 26 في 1D + 25 في 1E) | — |
 | **تصحيحات مراجعة المرحلة 1A (Review Corrections)** | **5** | — |
-| **إجمالي بنود السجل المتابعة (Total Tracked Items)** | **68** | 100% |
-| **تم الإصلاح والتحقق الآلي (Fixed & Verified)** | **59** (25 في 1A + 34 في 1B) | 86.8% |
-| **معلقة لقرار / موافقة معمارية (Approval Required / Gated)** | **8** (4 في 1A + 4 في 1B لـ PR #1) | 11.8% |
-| **مقترح إصلاح للباك إند قيد التنفيذ الخارجي (Backend Proposal)** | **1** (HA-F39 في 1B) | 1.5% |
+| **إجمالي بنود السجل المتابعة (Total Tracked Items)** | **166** | 100% |
+| **تم الإصلاح والتحقق الآلي (Fixed & Verified)** | **152** (25 في 1A + 34 في 1B + 46 في 1C + 22 في 1D + 25 في 1E) | 91.6% |
+| **معلقة لقرار / موافقة معمارية (Approval Required / Gated)** | **8** (4 في 1A + 4 في 1B لـ PR #1) | 4.8% |
+| **محجوبة بعيوب خادم قيد الباك إند (Backend Blocked / Proposal)** | **6** (HA-F39, ACC-F32, 1D-BRM-012, 1D-BRM-025, 1D-BRM-026) | 3.6% |
 | **مفتوحة بلا إصلاح (Open)** | **0** | 0.0% |
 | **منفذة دون فحص (Implemented Unverified)** | **0** | 0.0% |
 | **محجوبة بموانع (Blocked)** | **0** | 0.0% |
 | **فاشلة (Failed)** | **0** | 0.0% |
-| **التحقق التشغيلي الحي (Runtime Live Staging)** | **67 NOT_RUN / 1 PENDING_REVIEW** | بانتظار الاعتماد المستقل وتزويد بيانات Staging الحي |
+| **التحقق التشغيلي الحي (Runtime Live Staging)** | **165 NOT_RUN / 1 PENDING_REVIEW** | بانتظار الاعتماد المستقل وتزويد بيانات Staging الحي |
 
 ---
 ## 4. Phase 1A — Company Admin Master Summary Table
@@ -2111,3 +2114,122 @@
 - **Automated Tests:** `PASS`
 - **Independent Review:** `PENDING_ACCEPTANCE`
 - **Runtime Verification Status:** `NOT_RUN` (مجدول لجلسة QA المستقلة)
+
+---
+
+## 6. Phase 1C — Accountant Master Summary Table
+
+| ID | الأولوية | الموديول / الصفحة | عنوان المشكلة المعتمد | الحالة البرمجية | الفحص الحي | الملفات المتأثرة | الـ Commit SHA |
+| :---: | :---: | :--- | :--- | :---: | :---: | :--- | :---: |
+| **ACC-F01** | P2 | Reconciliations | مطابقة تواريخ مبيعات المطابقة اليومية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AccSalesPage.tsx`, `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F02** | P2 | Reconciliations | تفصيل طرق الدفع بدقة الهللات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `AccSalesPage.tsx`, `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F03** | P2 | Reconciliations | رفض المدخلات الفارغة في تسوية المبيعات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `SalesReconPanel.tsx` | `b00971b` |
+| **ACC-F04** | P1 | Reconciliations | قصر تسوية فروقات المبيعات على العجز فقط (v3.5) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `salesActionGuards.ts` | `b00971b` |
+| **ACC-F05** | P2 | Operations | التحقق من ملاحظات الاستيضاح في ClarifyModal | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ClarifyModal.tsx` | `b00971b` |
+| **ACC-F06** | P2 | Shared UI | إمكانية الوصول وARIA في درج المرفقات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F07** | P2 | Sales Module | حصر الاعتماد الجماعي للمبيعات على الحالات المعلقة فقط | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `salesActionGuards.ts` | `b00971b` |
+| **ACC-F08** | P2 | Shifts | تفصيل فروقات تسليم الوردية من الحقول التشغيلية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F09** | P2 | Operations | انتقال حالة الإعادة لمدير الفرع | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F10** | P1 | Cash Custody | التحقق من تأكيد استلام العهد النقدية قبل العرض | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F11** | P3 | Formatters | عزل اتجاه النصوص والأرقام (Bidi/RTL) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `formatters.ts` | `b00971b` |
+| **ACC-F12** | P1 | Expenses (EXP-06) | عزل سلطة اعتماد المصروفات للمحاسب الرئيسي فقط | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F13** | P2 | Tax | دقة حسابات ضريبة القيمة المضافة بالهللات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `taxUtils.ts` | `b00971b` |
+| **ACC-F14** | P2 | Assets | الحفاظ على ربط الفاتورة الأصلية عند التحويل لأصل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F15** | P2 | Assets | ربط إزالة المسودة بتأكيد نجاح الخادم غير المتزامن | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F16** | P2 | Expenses | التحقق من قوالب المصاريف الدورية والتردد | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F17** | P2 | Suppliers | فلترة كشف حساب المورد حسب التاريخ والمعرف | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F18** | P2 | Assets | حساب جدول الإهلاك الخطي بالهللات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F19** | P2 | Assets | توجيه وتحديث حالة الأصل عند الاستبعاد | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F20** | P2 | Assets | دقة القيمة الدفترية بالهللات في نافذة التعديل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F21** | P3 | Assets | التحقق من تاريخ استبعاد الأصل ومنع التواريخ المستقبلية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F22** | P2 | Inventory | اكتشاف عدم تطابق الأصناف المتوقعة والمنفذة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F23** | P2 | Inventory | تفصيل عجز وفائض فروقات الجرد المستقل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F24** | P2 | Waste | اشتراط تحديد سبب وفئة تسجيل الهالك | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F25** | P3 | Waste | شارة تنبيه تجاوز الحد المسموح للهالك | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F26** | P2 | Inventory | ربط زر تسوية فروقات الجرد اليومي بالـ Mutation | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F27** | P3 | Inventory | مؤشر مستوى الحد الأدنى للمخزون | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F28** | P2 | Waste | منع تسرب الحالة القديمة عند تبديل صنف الهالك | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F29** | P2 | Waste | قصر الاعتماد الجماعي للهالك على الحالات المعلقة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F30** | P2 | Inventory | تحويل وحدات المخزون وفق استجابة الخادم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F31** | P3 | Inventory | فلترة فئات المخزون | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F32** | P1 | Shifts | خطأ احتساب عجز الوردية في وحدة تحكم الباك إند | `BLOCKED` | `NOT_RUN` | `Modules/Admin/.../ShiftController.php` | — (BACKEND_BLOCKED) |
+| **ACC-F33** | P2 | Employees | متابعة رصيد سلف الموظفين بسجل موحد | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F34** | P3 | Cash Custody | درج سجل حركات العهد السابقة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F35** | P1 | Employees (v3.5) | إزالة الادعاء غير الصحيح بالخصم المباشر من الراتب | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `EmployeeAccountModule.tsx` | `b00971b` |
+| **ACC-F36** | P2 | Cash Custody | رفع إيصال تسوية العهد النقدية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F37** | P3 | Expenses | تكبير مصغرات إيصالات المصروفات بنافذة منبثقة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F38** | P3 | Reports | عناوين أعمدة تصدير ملفات CSV المحاسبية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F39** | P2 | Operations | حفظ مدخلات المستخدم ومنع إغلاق ClarifyModal عند الفشل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `ClarifyModal.tsx` | `b00971b` |
+| **ACC-F40** | P2 | Responsive | تجاوب شاشات المطابقة المالية مع الهواتف | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F41** | P2 | Accessibility | دعم التنقل بلوحة المفاتيح في جداول المطابقة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F42** | P3 | Accessibility | محاذاة مؤشر أرقام الحقول باتجاه LTR وتسمية عربية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F43** | P3 | Accessibility | إعلان نجاح المطابقة لقارئات الشاشة (role=status) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F44** | P2 | Accessibility | إغلاق أدراج ونوافذ المطابقة بزر Escape | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F45** | P3 | Localization | توحيد لغة منتقي التاريخ والتقويم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F46** | P3 | Accessibility | تباين ألوان شارات الحالات المعلقة وفق WCAG AA | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `b00971b` |
+| **ACC-F47** | P2 | Security | حماية حدود الجلسة ومنع فقدان البيانات غير المحفوظة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `roleAccess.ts` | `b00971b` |
+
+---
+
+## 7. Phase 1D — Branch Manager Master Summary Table
+
+| ID | الأولوية | الموديول / الصفحة | عنوان المشكلة المعتمد | الحالة البرمجية | الفحص الحي | الملفات المتأثرة | الـ Commit SHA |
+| :---: | :---: | :--- | :--- | :---: | :---: | :--- | :---: |
+| **1D-BRM-001** | P2 | Settings | تصحيح مفتاح حفظ المدير `manager` بدلاً من `branchName` | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-BRM-002** | P2 | Suppliers | تضمين `contactPhone` و `reason` في طلب المورد الجديد | `FIXED_AND_VERIFIED` | `NOT_RUN` | `branchMgr.ts`, `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-BRM-003** | P2 | Requests | مطابقة حقول طلبات الشراء الثنائية (`item`/`itemName`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-BRM-004** | P2 | Inventory | منع التأكيد الخادع عند الجرد الفارغ دون إدخالات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-BRM-005** | P2 | Inventory | اشتراط إدخال كميات جرد عددية غير سالبة (`>= 0`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-BRM-006** | P2 | Data Upload | استبدال Dropzone الخامل بـ `<input type="file">` فعلي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-BRM-007** | P2 | Data Upload | إرسال حقول المبيعات والمصروفات والوردية بدقة الهللات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `branchMgr.ts`, `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-BRM-008** | P2 | Data Upload | التحقق من صحة وقيمة مبيعات ومصروفات الرفع (`> 0`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-BRM-009** | P2 | Employees | ربط بيانات وردية وحضور هاتف الموظفين من API | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-BRM-010** | P2 | Navigation | إضافة صفحات الورديات والطلبات للقائمة الجانبية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `displayConfig.ts` | `4361ebf` |
+| **1D-BRM-011** | P2 | Overview | إزالة الاسم الوهمي (العليا) ونسبة التغير المصطنعة (+5.2%) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-BRM-012** | P2 | Backend API | معالجة سقوط branchId الصفرية في تحكم الفرع | `BLOCKED` | `NOT_RUN` | `BranchDashboardController.php` | — (BACKEND_BLOCKED) |
+| **1D-BRM-013** | P2 | Items | التمييز بين غياب الكمية المخزنية والصفر الحقيقي (`—`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-BRM-014** | P2 | Requests | اشتراط كمية موجبة صريحة (`> 0`) واسم صنف غير فارغ | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-BRM-015** | P2 | Settings | قصر التعديل على مدير الفرع وإبقاء حقول الأدمن للقراءة فقط | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-COM-016** | P2 | Responsive | تجاوب كروت وشاشات الفرع مع الموبايل وشاشات العرض | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-COM-017** | P2 | Accessibility | دعم حوارات ARIA وإغلاق Escape بنوافذ الفرع | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-COM-018** | P2 | Accessibility | ربط حقول الإدخال بالتسميات عبر `htmlFor` و `id` | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-COM-019** | P3 | Security | حماية مسارات المعاينة والتأكد من نطاق التخويل | `FIXED_AND_VERIFIED` | `NOT_RUN` | `App.tsx`, `roleAccess.ts` | `4361ebf` |
+| **1D-COM-020** | P2 | Security | تقييد نطاق البحث والتنبيهات بحدود مستأجر الفرع | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-COM-021** | P3 | Isolation | عزل ملفات النماذج المستقلة عن مسار الإنتاج | `FIXED_AND_VERIFIED` | `NOT_RUN` | `BranchManagerDashboard.tsx` | `4361ebf` |
+| **1D-BRM-022** | P2 | Shifts | مواءمة دورة حياة الوردية المفتوحة وقفل الحدود التشغيلية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-COM-023** | P2 | Security | تطهير كاش استعلامات الفرع المالية عند تبديل الدور | `FIXED_AND_VERIFIED` | `NOT_RUN` | `roleAccess.ts` | `4361ebf` |
+| **1D-BRM-024** | P3 | Data Upload | تصفير دورة حياة النموذج عند النقر على "رفع جديد" | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `4361ebf` |
+| **1D-BRM-025** | P2 | Backend API | غياب شرط `branch_id` في حصر طلبات الموردين | `BLOCKED` | `NOT_RUN` | `BranchDashboardController.php` | — (BACKEND_BLOCKED) |
+| **1D-BRM-026** | P2 | Backend API | قراءة عهدة افتتاح الوردية من إعداد العلامة بدلاً من صفر | `BLOCKED` | `NOT_RUN` | `BranchCompanyController.php` | — (BACKEND_BLOCKED) |
+
+---
+
+## 8. Phase 1E — Procurement Manager Master Summary Table
+
+| ID | الأولوية | الموديول / الصفحة | عنوان المشكلة المعتمد | الحالة البرمجية | الفحص الحي | الملفات المتأثرة | الـ Commit SHA |
+| :---: | :---: | :--- | :--- | :---: | :---: | :--- | :---: |
+| **PROC-F01** | P2 | Overview / New Orders | دقة الهللات (`totalHalalas/100`) وفصل المرسل عن المسلّم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F02** | P2 | Procurement API | عزل استعلامات المشتريات بين المنصة والمستأجر | `FIXED_AND_VERIFIED` | `NOT_RUN` | `procurement.ts`, `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F03** | P2 | New Orders | إنشاء أوامر مسعرة (`unitPriceHalalas` و `totalHalalas`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F04** | P2 | New Orders | تعديل أوامر الشراء بالملاحظات ومعرف صالح | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F05** | P2 | New Orders | اشتراط كمية موجبة صريحة (`qty > 0`) وسعر صالح | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F06** | P2 | Create / Group Send | منع الأوامر المكررة وحماية الإرسال المتزامن (`isPending`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F07** | P2 | Grouped Orders | مطابقة حقول الأوامر المجمعة والفروع (`orderCount`/`branches`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F08** | P2 | Grouped Orders | إرسال الأوامر المجمعة بمعرف المورد والمجموعة الصحيح | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F09** | P2 | Grouped Orders | التسمية النزيهة لإجراء إعداد رابط واتساب دون ادعاء استلام خارجي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F10** | P2 | Sent Orders | استخدام `sentAt` و `inTransit` و `eta` وعزل قيد النقل عن التسليم | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F11** | P2 | Lifecycle | ربط إجراءات دورة الشراء (اعتماد، رفض، تعديل) برمجياً | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F12** | P2 | Suppliers | احتساب إجمالي إنفاق المورد من بيانات الخادم (`lifetimeSpend`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F13** | P2 | Suppliers | معايرة تقييم المورد (0-50 إلى 0-5 نجوم) وبيانات الاتصال | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F14** | P2 | Suppliers (PUR-04) | احترام اختصاص المحاسب بإضافة الموردين وعرض إشعار رسمي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F15** | P2 | Items | اشتراط الوحدة والسعر الموجب (`price > 0`) عند إضافة الصنف | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F16** | P2 | Items | حفظ دقة الهللات بدون بتر وربط عدد الموردين الفعلي | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F17** | P2 | Items / VAT (PUR-05) | إشعار الأسعار غير شاملة الضريبة وفق PUR-05 | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F18** | P2 | Reports (INTG-01) | تصدير التقارير بصيغتي PDF و Excel/XLSX | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F19** | P2 | Shared Security | تطهير كاش استعلامات المشتريات عند تبديل الدور | `FIXED_AND_VERIFIED` | `NOT_RUN` | `roleAccess.ts` | Pending Commit 1 |
+| **PROC-F20** | P2 | Pagination | دعم البيانات المقسمة لصفحات والفلترة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F21** | P2 | Accessibility | نوافذ حوارية قابلة للوصول مع زر Escape و `htmlFor` | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F22** | P2 | Mobile / Responsive | تخطيط متجاوب لشبكات وكروت المشتريات | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F23** | P2 | Cross-Module | توثيق حدود مسؤوليات الاستلام والفروقات المحاسبية | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
+| **PROC-F24** | P2 | API Persistence | مطابقة وتمرير بدائل الوصف والملاحظات (`description`/`notes`) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `procurement.ts` | Pending Commit 1 |
+| **PROC-F25** | P2 | Status Semantics | تمييز دلالات الشارات (مرسل، معتمد، قيد النقل، مسلّم، مرفوض) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | Pending Commit 1 |
