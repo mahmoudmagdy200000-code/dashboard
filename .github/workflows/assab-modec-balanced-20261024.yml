@@ -1,0 +1,94 @@
+name: ASSAB Mode C balanced fixture 2026-10-24
+
+# One-day, manual-only dispatcher. The implementation is pinned to the reviewed
+# dashboard task commit; this workflow never checks out the default branch.
+on:
+  workflow_dispatch:
+    inputs:
+      attested_deployed_backend_sha:
+        description: Full SHA shown on the successful Coolify deployment
+        required: true
+        type: string
+      financial_ack:
+        description: Exact dated synthetic fixture acknowledgement
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assab-modec-balanced-20261024
+  cancel-in-progress: false
+
+jobs:
+  balanced-fixture:
+    if: github.event_name == 'workflow_dispatch' && vars.ASSAB_E2E_STAGING_FINANCIAL_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: assab-staging-financial
+    defaults:
+      run:
+        shell: bash
+        working-directory: e2e
+    env:
+      ASSAB_E2E_API_ORIGIN: https://szkrjqiuo9s6d6nsy5fldc0j.62.72.19.141.sslip.io
+      ASSAB_E2E_FRONTEND_URL: https://assab-dashboard-staging.vercel.app
+      ASSAB_E2E_NAMESPACE: assab-ui-qa-20261018
+      ASSAB_E2E_BUSINESS_DATE: '2026-10-24'
+      ASSAB_E2E_EXPECTED_BACKEND_SHA: 26f86c683a17a8c5ebe19771186d6b35230d62cf
+      ASSAB_E2E_ATTESTED_DEPLOYED_BACKEND_SHA: ${{ inputs.attested_deployed_backend_sha }}
+      ASSAB_E2E_FINANCIAL_ACK: ${{ inputs.financial_ack }}
+      ASSAB_E2E_ALLOWED_API_HOSTS: szkrjqiuo9s6d6nsy5fldc0j.62.72.19.141.sslip.io
+      ASSAB_E2E_UI: 'false'
+
+    steps:
+      - name: Checkout exact reviewed Mode C source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: mahmoudmagdy200000-code/dashboard
+          ref: a5cd3b2991713daba738fe1eb67205ece39962c2
+          persist-credentials: false
+
+      - name: Fail closed before contacting staging
+        env:
+          ASSAB_E2E_FIXTURE_PASSWORD: ${{ secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test "$(git -C .. rev-parse HEAD)" = a5cd3b2991713daba738fe1eb67205ece39962c2 || { echo '::error::Unexpected E2E source'; exit 1; }
+          test "$(TZ=Asia/Riyadh date +%F)" = "$ASSAB_E2E_BUSINESS_DATE" || { echo '::error::Business date expired'; exit 1; }
+          test "$ASSAB_E2E_ATTESTED_DEPLOYED_BACKEND_SHA" = "$ASSAB_E2E_EXPECTED_BACKEND_SHA" || { echo '::error::Coolify SHA mismatch'; exit 1; }
+          test "$ASSAB_E2E_FINANCIAL_ACK" = 'MUTATE_ASSAB_STAGING_FINANCIAL_FIXTURE:assab-ui-qa-20261018:2026-10-24' || { echo '::error::Fixture acknowledgement mismatch'; exit 1; }
+          test -n "$ASSAB_E2E_FIXTURE_PASSWORD" || { echo '::error::Fixture password secret missing'; exit 1; }
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npx playwright test --project=unit
+        env:
+          ASSAB_E2E_MODE: unit
+      - run: npx playwright install --with-deps chromium
+
+      - name: A01 and A08 staging readiness
+        env:
+          ASSAB_E2E_MODE: preflight
+          ASSAB_E2E_FIXTURE_PASSWORD: ${{ secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
+          ASSAB_E2E_REPORT_DIR: reports/preflight
+        run: npx playwright test --project=preflight --grep '^A0(1|8) '
+
+      - name: Approved balanced shift only
+        env:
+          ASSAB_E2E_MODE: staging-financial
+          ASSAB_E2E_FIXTURE_PASSWORD: ${{ secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
+          ASSAB_E2E_REPORT_DIR: reports/lifecycle
+        run: npx playwright test --project=lifecycle --grep '^P0[1-4](b| )'
+
+      - name: Publish machine-readable evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: assab-modec-balanced-${{ github.run_id }}
+          path: e2e/reports/
+          retention-days: 7
