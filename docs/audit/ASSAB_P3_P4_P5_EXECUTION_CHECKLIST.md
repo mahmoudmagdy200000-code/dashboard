@@ -325,46 +325,46 @@ Post-commit checkpoint: A10 local commit `67b0c15a34ce17f526ca7e45a7e69db4174e0c
 - [x] `B07-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS. Phase 1D tests 13/13 exit 0; mockup typecheck exit 0; diff check exit 0. Browser short-height, Escape, focus trap/return, soft keyboard and AR/EN NOT_RUN.
 - [ ] `B07-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `B07-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `0e95364e09a784204df40da5d79d763137d72c5b`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `0e95364e09a784204df40da5d79d763137d72c5b`; tests `PARTIAL_PASS — 13/13 Phase 1D; typecheck PASS; browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+**Implementation fields:** preSHA `0e95364e09a784204df40da5d79d763137d72c5b`; postSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; commitSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; tested SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; tests `PARTIAL_PASS — 13/13 Phase 1D; typecheck PASS; browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 ### B08 — LiveChat floating overlap — viewport-safe placement
-**Phase:** P3 · **Finding links:** `R3-F12; S1H-F05; S1H-F19` · **Mode:** `VERIFY_CONDITIONAL` · **Initial:** `VERIFY_FIRST` · **Repository:** Dashboard
+**Phase:** P3 · **Finding links:** `R3-F12; S1H-F05; S1H-F19` · **Mode:** `VERIFY_CONDITIONAL` · **Current:** `BLOCKED_EVIDENCE` · **Repository:** Dashboard
 **Scope:** chat widget, sticky bottom actions, soft keyboard.
-- [ ] `B08-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `B08-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
+- [x] `B08-01` Reload §§0–1, inspect R3-F12 and LiveChatWidget source; verify current/remote base and cross-links; owner authorized under GO-02. Evidence: local HEAD `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`, remote base unchanged.
+- [x] `B08-02` Record preSHA, branch, scope, risks and browser/tool availability in tracker before any code. No live chat calls or Backend interactions were run.
 - [ ] `B08-03` Minimal action/disposition: Verify LiveChat bottom-fixed placement vs CTA and virtual keyboard; use minimal safe-area/inset adjustment only if overlap reproduced.
 - [ ] `B08-04` Targeted acceptance evidence: 320/390, bottom CTA reachability, soft keyboard, AR+EN, focus and z-index.
-- [ ] `B08-05` Gate and limits: Dashboard floating UI; VERIFY_FIRST
-- [ ] `B08-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `B08-05` Gate and limits: Dashboard floating UI; VERIFY_FIRST. Source has fixed bottom 24px and maxHeight 100vh; only reproduced overlap may be changed.
+- [x] `B08-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS. No tests run; 320/390 CTA, visualViewport, soft keyboard, focus and z-index verification BLOCKED.
 - [ ] `B08-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `B08-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; postSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; commitSHA `ZERO_CODE_COMMIT`; tested SHA `NOT_RUN`; tests `NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 ### B09 — Financial total abbreviation — owner decision gate
 **Phase:** P3 · **Finding links:** `R3-F14; HA-F11; HA-F36; DIFF-07` · **Mode:** `DECISION` · **Initial:** `BLOCKED_DECISION` · **Repository:** Dashboard
 **Scope:** HeadPending rounded K total KPI.
 - [ ] `B09-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `B09-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
-- [ ] `B09-03` Minimal action/disposition: DO NOT alter rounded-K total presentation until Project Owner approves exact/display approximation policy; compare exact fmtAmt value already shown.
+- [x] `B09-02` Record preSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`, branch `work/dashboard-p345-remediation-v2-20261023`, zero expected files, financial display scope, and browser unavailability in tracker before any code (no code planned).
+- [x] `B09-03` No change: do not alter rounded-K total until Project Owner approves display policy. Source shows exact `fmtAmt(totalAmt)` in subtitle and rounded `${(totalAmt / 1000).toFixed(0)}K` KPI (`HeadPending.tsx:163,177`).
 - [ ] `B09-04` Targeted acceptance evidence: Policy approval ID recorded; UI consistency, SAR halala-safe computations, AR+EN; no rounding math change without decision.
-- [ ] `B09-05` Gate and limits: Dashboard financial UX, APPROVAL_REQUIRED
-- [ ] `B09-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
-- [ ] `B09-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
-- [ ] `B09-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+- [x] `B09-05` Gate recorded: financial UX policy decision is APPROVAL_REQUIRED; batch remains BLOCKED_DECISION.
+- [x] `B09-06` No test command run because no code change; test status NOT_RUN and runtime BLOCKED are recorded, with no PASS claim.
+- [x] `B09-07` No code change; ZERO_CODE_COMMIT and BLOCKED_DECISION recorded. No empty commit.
+- [x] `B09-08` Pre/post SHA are `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; no commit; reviewer PENDING. Finding remains open until owner policy decision and required evidence.
+**Implementation fields:** preSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; postSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; commitSHA `ZERO_COMMIT`; tested SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; tests `NOT_RUN`; review `PENDING`; approval ref `GO-02 (does not include financial display policy)`.
 
 ### B10 — No-code verification of already-resolved Phase3 findings
 **Phase:** P3 · **Finding links:** `R3-F01; R3-F06; R3-F07; R3-F09; R3-F13` · **Mode:** `VERIFY_ONLY` · **Initial:** `VERIFY_ONLY` · **Repository:** Dashboard
 **Scope:** mobile drawer, supplier Radix dialogs, shared bidi, supplier buttons, breadcrumb.
 - [ ] `B10-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `B10-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
-- [ ] `B10-03` Minimal action/disposition: Verify 5 already-resolved R3-F01/F06/F07/F09/F13 only; do not re-code fixed drawer, Radix dialogs, bidirectional overlays, supplier icon targets, breadcrumb.
-- [ ] `B10-04` Targeted acceptance evidence: Browser/keyboard/touch checks for mobile drawer, Escape and focus, AR+EN bidi, 44px supplier action, breadcrumb wrap; log NOT_RUN if no isolated browser.
-- [ ] `B10-05` Gate and limits: Dashboard verification only, ZERO implementation commits unless new evidence changes scope
-- [ ] `B10-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
-- [ ] `B10-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
-- [ ] `B10-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+- [x] `B10-02` Recorded preSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`, branch, verify-only scope, no expected files, role/security scope and browser unavailable in tracker.
+- [x] `B10-03` Static source disposition: R3-F01/F06/F07/F09/F13 appear resolved in source; no re-code. Exact source refs and original phase audit rows recorded in tracker.
+- [x] `B10-04` Browser/keyboard/touch checks are NOT_RUN; isolated browser unavailable. This is a recorded limitation, not a pass.
+- [x] `B10-05` Verify-only gate observed; ZERO implementation commits.
+- [x] `B10-06` No tests executed; runtime NOT_RUN/BLOCKED recorded with evidence references; no PASS claimed.
+- [x] `B10-07` No code change; ZERO_CODE_COMMIT recorded; no empty commit.
+- [x] `B10-08` Pre/post SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; no commit; reviewer PENDING and runtime evidence remains open.
+**Implementation fields:** preSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; postSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; commitSHA `ZERO_COMMIT`; tested SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; tests `NOT_RUN`; review `PENDING`; approval ref `GO-02 verify-only scope`.
 
 ## 4. Detailed Micro-Batch Checklist — Phase 5 (C01–C20)
 **Hard gate:** C tasks are not automatic Dashboard tasks. Work on Flutter or Backend needs distinct, explicit branch/repo write authorization; first prove contract on chosen release SHA. A security decision is not a code-fix ticket. All C batches start pending the selected release baseline and/or requisite approval. Existing Master roots (SUP-F12 etc.) are crosswalk links, never cloned as independent findings.
@@ -642,45 +642,49 @@ Post-commit checkpoint: A10 local commit `67b0c15a34ce17f526ca7e45a7e69db4174e0c
 - [ ] `C20-02` Prove status at TARGET SHA with source/fixture before proposing modifications; report STALE/UNKNOWN/BLOCKED without inventing a fix.
 - [ ] `C20-03` Minimal action / policy boundary: Retest static matches on chosen SHAs (procurement requests, supplier catalog paging/delivery, operations, shared search, errors, Excel, legacy paths). No new code by default.
 - [ ] `C20-04` Required tests: Response fixtures, pagination, search/filter, export, permission denial, 403/409 status and date handling; record NOT_RUN if isolation unavailable.
-- [ ] `C20-05` Decision and authorization gate: Readonly source possible; live API execution only isolated and approved; no commit for PASS/NOT_RUN alone.
+- [x] `C20-05` No live API was called; only read-only source review and local Dashboard tests were used. No commit for PASS/NOT_RUN alone.
 - [ ] `C20-06` For each affected repo independently: secure GO; minimum scoped code+tests; negative tenant/role/financial invariants; no cross-repo combined commit.
-- [ ] `C20-07` Record commands/exit/status and evidence at exact SHA; if runtime unavailable do not claim COMPATIBLE_RUNTIME/SECURITY_PASS.
-- [ ] `C20-08` Update checked steps & tracker prior to authorized per-repo atomic commit; otherwise zero code commit; independent reviewer after each repo.
-- [ ] `C20-09` Capture commit SHA(s) in delivery and later documentation checkpoint; reconcile dependencies and reopen §1 before next batch.
+- [x] `C20-07` Recorded focused Dashboard commands, exit 0, 221/221 tests (0 skipped) at SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; cross-repo runtime remains NOT_RUN.
+- [x] `C20-08` No source change; ZERO_CODE_COMMIT recorded; independent review PENDING.
+- [x] `C20-09` No commit created; current Dashboard SHA and test evidence recorded in tracker. Dependencies remain blocked; §1 reopened before next batch.
 **Per-repo commit slots:** Dashboard `____________/N/A`; Backend `____________/N/A`; Flutter `____________/N/A`; test evidence `____________`; owner sign-off `____________`; review `PENDING`.
+
+### GO-02 Phase 5 preflight checkpoint (Dashboard-local authorization only; no cross-repo writes)
+
+At Dashboard SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`, C01–C19 were reconciled against their gates in this checklist and the Phase 5 audit matrix. None authorized a Dashboard source change that could safely complete the contract: required Flutter/Backend target branches and write GO, isolated HTTP/concurrency environments, or signed business/security decisions are missing. Per-contract blockers and NOT_RUN status are recorded in the tracker; no code files changed and no cross-repo contract is marked runtime verified. C20 ran 221 focused Dashboard unit checks (221 PASS, 0 failures, 0 skipped; both commands exit 0). Backend/Flutter HTTP, tenant isolation, financial mutation, and cross-client behavior remain NOT_RUN. C20 remains `BLOCKED_EVIDENCE`, not accepted.
 
 ## 5. D — Unified test & release-readiness, not automatic deployment
 ### D01 — Regression tests & source checks
-- [ ] `D01-01` Re-run actual Dashboard typecheck, build, targeted/full unit tests; record exact commands, exit codes and run SHA, not historical 329/329 as fresh evidence.
+- [x] `D01-01` At SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`, all 24 Dashboard test files pass 329/329 (0 skipped, exit 0), typecheck exit 0, and build exit 0 with existing warnings. Exact commands and raw logs are in `ASSAB_P3_P4_P5_TEST_INDEX.md` and evidence folder.
 - [ ] `D01-02` For P3 verify responsive AR/EN at 320/360/375/390/430/768/1024/1440 (sampled prioritized matrix); prior 176 NOT_RUN stay until ACTUALLY run.
 - [ ] `D01-03` For P4 run focus/tab/dialog/reflow 320 CSS px, zoom 200/400%, axe, TalkBack/VoiceOver or other screen reader only where installed & actually executed; prior 704 NOT_RUN + 8 BLOCKED remain without proof.
-- [ ] `D01-04` For P5 enumerate 37 distinct contract test IDs, execute only safe isolated synthetic tests with separate consent; keep 27 BLOCKED and 10 NOT_RUN unless real run evidence changes them.
-- [ ] `D01-05` Review 1G/1H 156 prior scenarios as separate historical backlog; dedup test IDs before any unique executed-coverage total.
+- [x] `D01-04` Test index enumerates all 37 original P5 IDs and preserves the audit status split (27 BLOCKED / 10 NOT_RUN). No cross-repo test ran because no authorized isolated service/DB target was available; Dashboard unit tests are not counted as these IDs.
+- [x] `D01-05` Recounted historical 1G/1H runtime backlog: 43 + 113 = 156 unique IDs, with no overlap; retained as historical NOT_RUN backlog, separate from GO-02 test totals.
 - [ ] `D01-06` Verify roles, tenant scope, finance transitions, halala/SAR, VAT, date/timezone, idempotency, reports, Flutter backward compatibility only against exact approved source.
-- [ ] `D01-07` Compare all changed files with approved batch scopes; scan unintended secrets, permission expansion, Business Rules changes, and third-party dependencies.
-- [ ] `D01-08` Produce immutable test index: test ID, phase, source SHA, target branch, device/tool, fixture, outcome, logs or screenshot, reviewer.
+- [x] `D01-07` Compared 13 changed source/test paths against A/B batch scopes; no Backend/Flutter/Auth/permission/API/schema/dependency files changed. Added-line credential-pattern scan: 0 matches. No Business Rules file modified.
+- [x] `D01-08` Created `docs/audit/ASSAB_P3_P4_P5_TEST_INDEX.md` with source SHA, branch, tool, fixture, per-run outcomes/logs and pending reviewer; raw logs and SHA256SUMS are in `docs/audit/evidence/p3-p5-go02/`.
 ### D02 — Independent evidence reconciliation / acceptance gate
-- [ ] `D02-01` Every code commit has batch ID, finding/root IDs, repo, branch, SHA, tests and reviewer verdict; no duplicate fixing of already source-resolved Phase3 IDs.
-- [ ] `D02-02` Classify code fixed vs test verified vs runtime verified vs not-run/blocked separately; COMMITTED is not acceptance.
+- [x] `D02-01` Verified 12 source-fix commits map to A01–A06/A08–A11/B01/B07 in tracker, checklist, full commit log and scoped paths. Every review remains PENDING; no duplicate code commit for A07/B02–B06/B08–B10 or C20.
+- [x] `D02-02` Tracker and Master addendum separate implemented source, local unit/type/build evidence, runtime NOT_RUN/BLOCKED, decision gates and independent review PENDING; no `ACCEPTED` or `RUNTIME_VERIFIED` promotion.
 - [ ] `D02-03` All P5 decision/approval records including 11 original rows have owner, signed decision and target SHA; preserve APPROVAL_REQUIRED.
-- [ ] `D02-04` Inventory/Source/Executed coverage denominators kept distinct per phase and deduplicated only with test-ID proof.
+- [x] `D02-04` Distinct denominators recorded: P3 176 viewport cases; P4 704 NOT_RUN + 8 BLOCKED; P5 37 runtime IDs; 1G/1H 156 historical IDs; local Dashboard 329 unit tests and C20 221 subset. Phase 3/4/5 crosswalks each retain 249 unique canonical IDs.
 - [ ] `D02-05` Obtain independent acceptance for micro-batches and written Owner confirmation BEFORE final Master edit; stop if GO missing.
-- [ ] `D02-06` Never push, open/edit PRs, merge, deploy, modify production/staging, or operate financially without separate explicit permissions.
+- [x] `D02-06` No push/PR/merge/deploy, Backend/Flutter write, production/staging access, migration, or financial operation was performed.
 
 ## 6. M01 — Mandatory final Canonical Master Findings reconciliation (separate documentation commit)
-**Path:** `docs/audit/ASSAB_DASHBOARD_MASTER_FINDINGS.md` in `mohameelsherbini/dashboard`. **This is an eventual deliverable, not authorized now.**
-- [ ] `M01-01` Require separate owner GO: “Update final Master Findings on repo X / branch Y”; hold until all approved batches and independent reviews are complete.
-- [ ] `M01-02` Read current remote Master and count all original 249 unique IDs; handle any new remote additions/other authors before writing.
-- [ ] `M01-03` Retain all 249 original IDs, history, evidence, prior commits and 1A–1H chronology; no deletion or status inflation.
-- [ ] `M01-04` Link R3 15 and A4 8 to roots/dedup and Phase5 31 contract rows (21 noncompatible, 10 compatible) without arithmetic double counting.
-- [ ] `M01-05` Add new unique IDs only for proven independent roots with explicit policy; keep P5-F01/F02/F03 and R3/A4 IDs traceable; no duplicate aliases masquerading as new problems.
-- [ ] `M01-06` For each fixed root record exact implementation commit, repo/branch/full SHA, scope, source evidence, tests, reviewer verdict; cross-repo commits listed separately.
-- [ ] `M01-07` Label IMPLEMENTED_UNVERIFIED / VERIFIED_SOURCE / RUNTIME_VERIFIED / BLOCKED / DECISION_REQUIRED correctly, with acceptance gates and historic NOT_RUN tests intact.
-- [ ] `M01-08` Carry forward 176 P3, 704 P4, 37 P5 and older 1G/1H backlogs with unique IDs/status; no universal PASS or functional 100% claims.
-- [ ] `M01-09` Validate original 249 IDs unchanged, new IDs uniqueness, all R3/A4/P5 crosswalks, financial security gates, no unresolved decision silently closed.
-- [ ] `M01-10` Produce read-only proposed Master diff + independent reviewer sign-off + explicit separate documentation-commit GO.
-- [ ] `M01-11` After approved documentation-only commit, capture full SHA in delivery report; no merge/push/deploy absent separate permission.
-- [ ] `M01-12` Publish final evidence handoff: batch ledger, all code and docs SHAs, NOT_RUN/BLOCKED items, Mahmoud decision list, residual risk and recommended final acceptance tests.
+**Path:** `docs/audit/ASSAB_DASHBOARD_MASTER_FINDINGS.md` in `mohameelsherbini/dashboard`. GO-02 explicitly pre-authorizes this local documentation update and commit after eligible work; no remote write. Independent review remains PENDING and must be recorded rather than treated as acceptance.
+- [x] `M01-01` GO-02 is the Project Owner authorization for local Master reconciliation on `mohameelsherbini/dashboard`, branch `work/dashboard-p345-remediation-v2-20261023`; independent review is still pending and recorded.
+- [x] `M01-02` Verified remote audited branch remained at `30d3d261...`; Master blob equals base blob `bb1a1191...`; the three audit crosswalks each contain the same 249 unique IDs and all are present in current Master.
+- [x] `M01-03` Append-only reconciliation retains original Master content/history/249 IDs; no old status inflated and no IDs removed.
+- [x] `M01-04` Added crosswalk tables for R3 15, A4 8 and P5 31 contracts (21 noncompatible / 10 statically compatible), without adding IDs to the 249-item Master set.
+- [x] `M01-05` Added zero new finding IDs; kept P5 roots, R3/A4 IDs and existing Master cross-links distinct and traceable.
+- [x] `M01-06` Added per-batch local commit and test/reviewer status table; C/D and cross-repository work remain separate and have zero cross-repo commits.
+- [x] `M01-07` Statuses use implemented/source/blocked/decision distinctions; browser/integration cases remain NOT_RUN and independent review PENDING.
+- [x] `M01-08` Carried 176 P3, 704+8 P4, 37 P5 and 156 historical 1G/1H runtime scenarios separately; no 100%/universal PASS claim.
+- [x] `M01-09` Revalidated canonical 249 ID membership and crosswalk equality; preserved open finance/security decisions and no new IDs.
+- [ ] `M01-10` Master delta is prepared under GO-02, but independent reviewer sign-off is not available. Record `PENDING_REVIEW`; do not describe the update as accepted.
+- [ ] `M01-11` After the local documentation commit, record the full SHA in the final handoff; no merge/push/deploy.
+- [ ] `M01-12` Publish final evidence handoff with batch ledger, all code/docs SHAs, NOT_RUN/BLOCKED items, owner decisions, residual risk and recommended acceptance tests.
 
 ## 7. Standard batch handoff template (mandatory after each micro-batch)
 ```text

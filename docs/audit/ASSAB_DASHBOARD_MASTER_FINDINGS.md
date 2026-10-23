@@ -2505,3 +2505,152 @@ Status counts unchanged: evidence gaps corrected but no finding promoted to `FIX
 PUR-01 financial approval fail-closed, PERM-00 cloning/cycling, PUR-05 tax-exclusive prices, supplier activation/order/VAT/invoice/return integration, S1-12 credential-at-rest/expiry, search scope and assigned-branch authorization, dual-surface architecture: all unchanged.
 
 **156 original runtime scenarios NOT_RUN. Windows mirror: PENDING — synchronize byte-for-byte from this commit and verify SHA-256 before claiming parity. No merge, PR, or deployment.**
+
+
+## 8. GO-02 Unified Phase 3–5 Local Remediation Reconciliation (2026-10-23)
+
+> **Evidence state:** local, developer-executed only. This appendix does not supersede the independent audit verdicts and does not declare any item accepted, runtime verified, or production ready. The GO-02 worktree is local and unpublished; no push, PR, merge, deployment, Backend/Flutter write, or live financial operation occurred.
+
+### 8.1 Baseline, scope, and identity preservation
+
+- Repository: `mohameelsherbini/dashboard`; isolated branch `work/dashboard-p345-remediation-v2-20261023`.
+- Approved base / remote reference at last check: `30d3d261b83ed4b0d9fa1dc1f875ae8592484261` (remote remained at this SHA).
+- Local code HEAD after eligible Dashboard source batches: `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; local only, not pushed.
+- Original Master content at base was unchanged before this append (git blob `bb1a1191e4565aed2ee6bfb700696cec6c087547`). The appendix is additive; the earlier 1A–1H history and tables are retained byte-for-byte.
+- The three Phase 3/4/5 all-249 crosswalks each contain 249 unique canonical IDs, have identical ID sets, and all 249 IDs are present in this Master. No Master finding IDs were added or deleted. R3 (15), A4 (8), and P5 contracts (31) are crosswalk references, not 54 additional Master IDs.
+- Source audit archive SHA-256: Phase 3 `c675569ef6166c646699cd42006a58926c702eeeab2d8d4b6d47f54d5d2d6c96`; Phase 4 `9ef8e1c941000eb843170dae27a21c37b6eb47e898e213cab7390451f35631f3`; Phase 5 `9ad57d7a3aac73f77fdc650f9f1b9c53b4d228f96fb279871c11c4c3e3593bf4`.
+- No Backend, Flutter, role permission, business rule, API contract, schema, dependency, or authentication implementation file was changed.
+
+### 8.2 Phase 3 responsive findings — source status, not runtime status
+
+| Finding | Severity | Current disposition | GO-02 evidence / remaining gate |
+|---|---|---|---|
+| `R3-F01` | P2 | VERIFIED_SOURCE — already resolved in source; browser focus/resize NOT_RUN. | No code change; B10 verify-only. PENDING_REVIEW. |
+| `R3-F02` | P2 | PARTIALLY_RESOLVED_IN_SOURCE — no new correction; mobile header proof NOT_RUN. | B04 BLOCKED_EVIDENCE; no change. |
+| `R3-F03` | P2 | PARTIALLY_RESOLVED_IN_SOURCE — BranchOverview reflow changed; Head/Accountant fixed grids remain; viewport NOT_RUN. | B01 commit 0e95364e09a784204df40da5d79d763137d72c5b; PENDING_REVIEW. |
+| `R3-F04` | P2 | OPEN / VERIFY_FIRST — responsive rendering not proven. | B02 BLOCKED_EVIDENCE; no change. |
+| `R3-F05` | P2 | PARTIAL_SOURCE — Supplier items scroll exists; procurement grouped/detail tables need runtime evidence. | B03 BLOCKED_EVIDENCE; no change. |
+| `R3-F06` | P2 | VERIFIED_SOURCE — Radix dialogs and dynamic viewport cap in source; Escape/focus runtime NOT_RUN. | B10 verify-only; PENDING_REVIEW. |
+| `R3-F07` | P2 | PARTIAL_SOURCE — shared direction already resolved; role-specific ProcNewOrders/AccAssets direction changed. Browser AR/EN NOT_RUN. | A11 commit aeeb06705836f11e7affbb10e1f6fd9ee86b9ded; PENDING_REVIEW. |
+| `R3-F08` | P2 | IMPLEMENTED_UNVERIFIED — interactive KpiCard semantics corrected; SSR/unit checks pass; browser keyboard/reflow NOT_RUN. | A03 commit 7b8eccb5971e9e2b7548c657a07b3607523284ca; PENDING_REVIEW. |
+| `R3-F09` | P3 | VERIFIED_SOURCE — supplier action names/minimum target in source; touch runtime NOT_RUN. | B10 verify-only; PENDING_REVIEW. |
+| `R3-F10` | P3 | OPEN — no safe source correction proven; dialog runtime evidence unavailable. | B07 only corrected editAsset modal; other dialog concerns remain. |
+| `R3-F11` | P3 | OPEN — source risk remains; no specific runtime proof. | B05 BLOCKED_EVIDENCE; no change. |
+| `R3-F12` | P3 | OPEN — chat overlap awaits visualViewport/keyboard reproduction. | B08 BLOCKED_EVIDENCE; no change. |
+| `R3-F13` | P3 | VERIFIED_SOURCE — breadcrumb direction/wrapping source present; long breadcrumb visual proof NOT_RUN. | B10 verify-only; PENDING_REVIEW. |
+| `R3-F14` | P2 | DECISION_REQUIRED — rounded K KPI vs exact fmtAmt summary; no business decision. | B09 BLOCKED_DECISION; no change. |
+| `R3-F15` | P2 | PARTIALLY_IMPLEMENTED_UNVERIFIED — CompanyDashboard editAsset modal gets max-height/scroll; browser/focus/keyboard tests NOT_RUN. | B07 commit 79dc938d7d9bbdcc1f5441245e9b9f5ec4757702; PENDING_REVIEW. |
+
+### 8.3 Phase 4 accessibility findings
+
+| Finding | Severity | Local disposition | Batch / verification |
+|---|---|---|---|
+| `A4-F01` | P1 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A01/A10; label associations changed; unit/static checks pass, browser/axe/screen reader NOT_RUN. |
+| `A4-F02` | P2 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A02; keyboard exclusion removed; real keyboard interaction NOT_RUN. |
+| `A4-F03` | P1 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A05/A06; selection/expand controls use keyboard-capable controls; runtime keyboard NOT_RUN. |
+| `A4-F04` | P2 | BLOCKED_EVIDENCE; independent review PENDING | A07; no source edit/commit; pending prerequisite review/evidence. |
+| `A4-F05` | P2 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A08; checkbox labels added; screen-reader/accessibility-tree runtime NOT_RUN. |
+| `A4-F06` | P2 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A04; document lang synchronization changed; typecheck/build pass; browser locale transitions NOT_RUN. |
+| `A4-F07` | P2 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A11; role-local direction now follows locale; browser AR/EN reading order NOT_RUN. |
+| `A4-F08` | P2 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A09; mode state semantics exposed; browser/state announcement NOT_RUN. |
+
+All Phase 4 root IDs and severities remain as audited. No browser, axe, screen-reader, actual touch, zoom, or keyboard acceptance is claimed.
+
+### 8.4 Phase 3/4 Dashboard batch reconciliation
+
+| Batch | Findings | Local outcome | Commit / tests | Review/runtime |
+|---|---|---|---|---|
+| `A01` | A4-F01 | PENDING_REVIEW | `Dashboard: ad7ef3fb5d897a74bf150e8ab309d582e5aa0365`; PARTIAL_PASS — auth regressions, typecheck and static associations passed; browser/keyboard/screen-reader/axe NOT_RUN | PENDING; NOT_RUN |
+| `A02` | A4-F02 | PENDING_REVIEW | `Dashboard: b44afbdf4d741404a165330966809785148f1b0b`; PARTIAL_PASS — auth regression, typecheck and static keyboard reachability assertions passed; real keyboard/browser interaction NOT_RUN | PENDING; NOT_RUN |
+| `A03` | R3-F08; HA-F33; S1H-F13 | PENDING_REVIEW | `Dashboard: 7b8eccb5971e9e2b7548c657a07b3607523284ca`; PARTIAL_PASS — both SSR semantic variants and typecheck pass; keyboard/browser/reflow NOT_RUN | PENDING; NOT_RUN |
+| `A04` | A4-F06; CA-F19; HA-F36; S1H-F12 | PENDING_REVIEW | `Dashboard: d565129d304be4f9bb984412f3240b7d67f87a14`; PARTIAL_PASS — regression/typecheck/build/static checks pass; real browser language transitions NOT_RUN | PENDING; BLOCKED — Playwright browser missing; Vite dev blocked by runtime network-interface enumeration error |
+| `A05` | A4-F03; HA-F33; HA-F34 | PENDING_REVIEW | `Dashboard: 66fe26a9253e8f12e52c6f14b23e61445a991482`; PARTIAL_PASS — typecheck, 42/42 platform-admin/shared tests, 66/66 auth tests and static AST 8/8 pass; no AdminUsers browser behavior test exists/run. | PENDING; BLOCKED — actual keyboard, AR/EN, role-gate and no-mutation browser checks NOT_RUN; Chromium absent and Vite dev blocked by uv_interface_addresses. |
+| `A06` | A4-F03; R3-F05 | PENDING_REVIEW | `Dashboard: 9db95d7445586b0adf8c2da4620a5a415107accb`; PARTIAL_PASS — procurement regressions 21/21, typecheck and AST 6/6 pass; keyboard/browser/viewport NOT_RUN. | PENDING; BLOCKED — actual keyboard and viewport checks NOT_RUN because Chromium absent and Vite dev interface enumeration fails. |
+| `A07` | A4-F04 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT`; NOT_RUN | PENDING; NOT_RUN |
+| `A08` | A4-F05 | PENDING_REVIEW | `Dashboard: 4c0ff2e106d94cf81485a950aa34370c15ca1cfb`; PARTIAL_PASS — 11/11 Accountant regressions, typecheck and static AST 4/4 pass; actual row announcement/keyboard/browser NOT_RUN. | PENDING; BLOCKED — keyboard, AR/EN and accessibility tree/browser checks NOT_RUN; Chromium absent and Vite dev interface enumeration failure. |
+| `A09` | A4-F08 | PENDING_REVIEW | `Dashboard: dd084c12dc380ae737039e4565b118731c83cb0e`; PARTIAL_PASS — 25/25 platform-admin tests, typecheck and AST 3/3 pass; actual browser/keyboard state announcement NOT_RUN. | PENDING; BLOCKED — AR/EN keyboard and accessibility-state browser checks NOT_RUN; Chromium absent, Vite dev interface enumeration failure. |
+| `A10` | A4-F01 | PENDING_REVIEW | `Dashboard: 67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; PARTIAL_PASS | PENDING; NOT_RUN — browser keyboard/AR-EN |
+| `A11` | A4-F07; HA-F36; S1H-F12; R3-F07 | PENDING_REVIEW | `Dashboard: aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`; PARTIAL_PASS — focused tests/typecheck/static pass | PENDING; NOT_RUN — browser/viewport/keyboard/screen-reader unavailable |
+| `B01` | R3-F03; HA-F30; 1D-COM-016 | PENDING_REVIEW | `Dashboard: 0e95364e09a784204df40da5d79d763137d72c5b`; PARTIAL_PASS — targeted regression and typecheck pass | PENDING; NOT_RUN — viewport 320/360/375/390/430/768 AR+EN, page overflow and wrapping |
+| `B02` | R3-F04; HA-F30; S1H-F18 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — VERIFY_FIRST gate not met`; NOT_RUN | PENDING; BLOCKED — browser viewport and keyboard evidence unavailable (Playwright Chromium absent). |
+| `B03` | R3-F05 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — verify-first viewport gate not met`; NOT_RUN | PENDING; BLOCKED — touch/keyboard viewport verification unavailable; Playwright Chromium absent. |
+| `B04` | R3-F02; S1H-F14; S1H-F18 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — verify-first gate not met`; NOT_RUN | PENDING; BLOCKED — actual 320/360/430 header, Sheet focus-return and AR/EN browser checks unavailable. |
+| `B05` | R3-F11; CA-F05; S1H-F18 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — no reproducible issue`; NOT_RUN | PENDING; BLOCKED — toolbar, notification anchoring, keyboard and AR/EN browser review unavailable. |
+| `B06` | R3-F10 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — verify-first tap/zoom proof not met`; NOT_RUN | PENDING; BLOCKED — 320px and 200% zoom visual/touch/focus checks unavailable. |
+| `B07` | R3-F15; CA-F15; HA-F31; S1H-F13 | PENDING_REVIEW | `Dashboard: 79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; PARTIAL_PASS — focused static regression and typecheck pass | PENDING; NOT_RUN — short-height, keyboard/focus trap/return, soft keyboard and AR/EN browser checks |
+| `B08` | R3-F12; S1H-F05; S1H-F19 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — overlap reproduction gate not met`; NOT_RUN | PENDING; BLOCKED — visualViewport/soft keyboard, CTA reachability, focus and z-index browser checks unavailable. |
+| `B09` | R3-F14; HA-F11; HA-F36; DIFF-07 | BLOCKED_DECISION | `ZERO_CODE_COMMIT`; NOT_RUN | PENDING; BLOCKED — no financial display policy decision; browser unavailable |
+| `B10` | R3-F01; R3-F06; R3-F07; R3-F09; R3-F13 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT`; NOT_RUN | PENDING; BLOCKED — browser interactions NOT_RUN |
+
+The commit-to-batch map is also preserved in the execution tracker. Every listed implementation commit is local and `PENDING_REVIEW`; no COMMITTED item is ACCEPTED. B02–B06/B08/B09/B10 have no code commit. A07 remains `BLOCKED_EVIDENCE` with zero code commit.
+
+### 8.5 Phase 5 cross-repository contract register — no cross-repo code authorization
+
+| Contract | Linked root | Audit disposition | GO-02 disposition |
+|---|---|---|---|
+| `P5-C01` | P5-F01 | CONFIRMED_MISMATCH (P1) | BLOCKED_OWNER_GO — Flutter source correction requires separate Flutter repo write GO, chosen release branch and Mahmoud confirmation of Backend contract. |
+| `P5-C02` | P5-F02 | CONFIRMED_MISMATCH (P1) | BLOCKED_DECISION — PUR-04/PERM-00 role ownership conflict requires written role matrix decision; Backend policy/write changes are not authorized. |
+| `P5-C03` | SUP-F12 | IMPLEMENTATION_GAP (P1) | BLOCKED_OWNER_GO — Backend release target and repo-specific Backend GO absent; proving grouped-send persistence/portal bridge requires isolated synthetic Backend tests. |
+| `P5-C04` | SUP-F24 | IMPLEMENTATION_GAP (P2) | BLOCKED_DECISION — PUR-05 line-level pre-tax/VAT schema and integer-halalah boundary are unapproved; Backend and Dashboard mapping cannot be invented. |
+| `P5-C05` | SUP-F19 | IMPLEMENTATION_GAP (P2) | BLOCKED_DECISION — PUR-01..05 receiving/returns lifecycle and per-repo GO are absent; no financial workflow/API invention. |
+| `P5-C06` | 1D-BRM-003 | COMPATIBLE_STATICALLY (P3) | Dashboard-only source/unit verification: 221 tests PASS (no HTTP); cross-repo contract remains NOT_RUN. |
+| `P5-C07` | SUP-F20 | COMPATIBLE_STATICALLY (P3) | Dashboard-only source/unit verification: 221 tests PASS (no HTTP); cross-repo contract remains NOT_RUN. |
+| `P5-C08` | SUP-F04 | COMPATIBLE_STATICALLY (P3) | Dashboard-only source/unit verification: 221 tests PASS (no HTTP); cross-repo contract remains NOT_RUN. |
+| `P5-C09` | contract only | COMPATIBLE_STATICALLY (P3) | Dashboard-only source/unit verification: 221 tests PASS (no HTTP); cross-repo contract remains NOT_RUN. |
+| `P5-C10` | SUP-F07 | COMPATIBLE_STATICALLY (P3) | Dashboard-only source/unit verification: 221 tests PASS (no HTTP); cross-repo contract remains NOT_RUN. |
+| `P5-C11` | contract only | COMPATIBLE_STATICALLY (P2) | Dashboard-only source/unit verification: 221 tests PASS (no HTTP); cross-repo contract remains NOT_RUN. |
+| `P5-C12` | S1H-F10 | CONTRACT_UNKNOWN (P1) | BLOCKED_OWNER_GO — F2 candidate/release selection, isolated security fixture, Mahmoud security sign-off and Backend GO are absent. |
+| `P5-C13` | F2-A-SR-03 | CONTRACT_UNKNOWN (P1) | BLOCKED_OWNER_GO — F2 candidate/release selection, isolated security fixture, Mahmoud security sign-off and Backend GO are absent. |
+| `P5-C14` | F2-ADMIN-SCOPE-BYPASS | CONTRACT_UNKNOWN (P1) | BLOCKED_OWNER_GO — F2 candidate/release selection, isolated security fixture, Mahmoud security sign-off and Backend GO are absent. |
+| `P5-C15` | S1H-F03 | COMPATIBLE_STATICALLY (P3) | Dashboard-only source/unit verification: 221 tests PASS (no HTTP); cross-repo contract remains NOT_RUN. |
+| `P5-C16` | S1H-F11 | COMPATIBLE_STATICALLY (P3) | Dashboard-only source/unit verification: 221 tests PASS (no HTTP); cross-repo contract remains NOT_RUN. |
+| `P5-C17` | SUP-F11 | COMPATIBLE_STATICALLY (P3) | Dashboard-only source/unit verification: 221 tests PASS (no HTTP); cross-repo contract remains NOT_RUN. |
+| `P5-C18` | S1H-F08 | CONTRACT_UNKNOWN (P1) | BLOCKED_EVIDENCE — Auth compatibility requires exact Backend SHA and isolated refresh/replay/logout tests; no Auth architecture change authorized. |
+| `P5-C19` | SUP-F13 | CONTRACT_UNKNOWN (P2) | BLOCKED_DECISION — PORTAL-01 supplier support/search scope decision absent; no endpoint or portal feature activation. |
+| `P5-C20` | P5-F03 | IMPLEMENTATION_GAP (P2) | BLOCKED_OWNER_GO — Flutter release endpoint mapping approval and Flutter repo branch/write GO absent. |
+| `P5-C21` | contract only | COMPATIBLE_STATICALLY (P3) | Dashboard-only source/unit verification: 221 tests PASS (no HTTP); cross-repo contract remains NOT_RUN. |
+| `P5-C22` | SUP-F01 | CONTRACT_UNKNOWN (P2) | BLOCKED_OWNER_GO — Supplier feature activation depends on release approval and isolated environment; staging/config changes are not authorized. |
+| `P5-C23` | P5-D01 | DECISION_REQUIRED (P1) | BLOCKED_DECISION — PUR-01/PERM-00 financial approval role matrix not signed; preserve fail-closed purchase approval. |
+| `P5-C24` | P5-D02 | CONTRACT_UNKNOWN (P2) | BLOCKED_EVIDENCE — INV-02 acceptance and isolated cost dataset/runtime test absent; no inventory accounting changes authorized. |
+| `P5-C25` | P5-D03 | DECISION_REQUIRED (P2) | BLOCKED_DECISION — REP-00 per-module report acceptance absent; do not invent report scope/content. |
+| `P5-C26` | CA-F04 | DECISION_REQUIRED (P2) | BLOCKED_DECISION — SUB-01 scope for billing actions not approved; no billing behavior change. |
+| `P5-C27` | P5-D04 | CONTRACT_UNKNOWN (P2) | BLOCKED_OWNER_GO — Exact cross-repo monetary-unit contract, money policy approval, target release SHAs and per-repo GO absent. |
+| `P5-C28` | SUP-F06 | CONTRACT_UNKNOWN (P2) | BLOCKED_EVIDENCE — Synthetic concurrency/replay environment and explicit Backend mutation test GO absent; frontend click lock is not backend idempotency proof. |
+| `P5-C29` | P5-D05 | DECISION_REQUIRED (P2) | BLOCKED_DECISION — EXP-06/PERM-00 expense approval authority is not signed; no permission widening. |
+| `P5-C30` | contract only | CONTRACT_UNKNOWN (P2) | BLOCKED_OWNER_GO — Exact current expected_revision path, isolated 409 test and per-repository approvals are absent. |
+| `P5-C31` | P5-D06 | CONTRACT_UNKNOWN (P2) | BLOCKED_OWNER_GO — Approved returns/invoice review workflow, tenant tests and per-repo GO absent. |
+
+Phase 5 totals remain the audit’s: 2 confirmed mismatches, 4 implementation gaps, 11 contract unknowns, 4 decisions, and 10 statically compatible contracts. The 10 static contracts are not runtime-compatible findings. GO-02 did not authorize Backend/Flutter writes, selected release branch changes, or live API/database tests.
+
+### 8.6 P5 decision gates retained
+
+| Contract | Owner | Required decision/proof | Status |
+|---|---|---|---|
+| `P5-C12` | Mahmoud security review | Security owner prove authoritative role & company binding; reconcile F2 branches and conduct isolated tests. | `PENDING / BLOCKED` |
+| `P5-C13` | Mahmoud | Independent negative tests on chosen Backend SHA with roleless/contradictory cross-company assignments. | `PENDING / BLOCKED` |
+| `P5-C14` | Mahmoud | Reconcile negative tests and admin permissions on exact selected code SHA. | `PENDING / BLOCKED` |
+| `P5-C18` | Mahmoud security owner | Preserve Option B; run exact-SHA contract tests for expiry/family rotation D08 and Flutter backward compatibility. | `PENDING / BLOCKED` |
+| `P5-C19` | Mahmoud | Decide if supplier support/search required in current portal and use approved owner-scoped endpoints only. | `PENDING / BLOCKED` |
+| `P5-C22` | Mahmoud release owner | Owner validates deployment flag/route cache separately when staging isolation is proven. | `PENDING / BLOCKED` |
+| `P5-C23` | Mahmoud | Mahmoud approve business role matrix and per-state authority; retain fail-closed until then. | `PENDING / BLOCKED` |
+| `P5-C24` | Mahmoud for policy clarification only if ambiguity | Pin inventory source controller/service, create isolated synthetic monthly and no-purchases carry-forward contract test. | `PENDING / BLOCKED` |
+| `P5-C25` | Mahmoud | Approve each module report shape before claiming functional acceptance; no new reporting engine. | `PENDING / BLOCKED` |
+| `P5-C26` | Mahmoud | Verify non-billing behavior and freeze unauthorized pay actions; use existing admin management only. | `PENDING / BLOCKED` |
+| `P5-C29` | Mahmoud | Approve stage-by-stage ownership and test forbidden approvals; no blanket permission grant. | `PENDING / BLOCKED` |
+
+### 8.7 Verification evidence and coverage limits
+
+- C20 focused Dashboard regressions: 221/221 PASS, 0 skipped, both commands exit 0. D01 full Dashboard unit suite: 329/329 PASS, 0 skipped, exit 0 across 24 `*.test.ts` files. Typecheck exit 0. Production build exit 0 with pre-existing warnings. Raw outputs and SHA256 manifest: `docs/audit/evidence/p3-p5-go02/`; test index: `docs/audit/ASSAB_P3_P4_P5_TEST_INDEX.md`.
+- Build-only generated import reordering in `src/.generated/mockup-components.ts` was reverted to its captured pre-build hash; the source working tree has no unintended generated diff.
+- Secret screening: no common token/private-key patterns matched added lines. This is a limited pattern scan, not a credential scanner certification.
+- P3 viewport tests: 176 original checks remain NOT_RUN; P4 runtime/accessibility: 704 remain NOT_RUN and 8 remain BLOCKED; P5 cross-repo runtime IDs: 37 total (27 BLOCKED / 10 NOT_RUN in original audit). The local 329 unit tests are not substitutes for these denominators.
+- 1G/1H historical runtime backlog remains 156 scenarios (43 Phase 1G + 113 Phase 1H), still NOT_RUN; not added to GO-02 executed test totals.
+- D01 is `BLOCKED_EVIDENCE` despite local test/type/build PASS. D02 independent acceptance is PENDING/BLOCKED. Independent reviewers have not accepted any GO-02 batch. Browser, device, axe, screen reader, Vercel/Staging, Backend/Flutter integration, security, financial HTTP and ledger tests were not executed.
+- No Phase 3–5 overall acceptance, merge readiness, production readiness, or 100% coverage claim is made. Windows Master mirror remains NOT_RUN/unverified.
+
+### 8.8 Counts and chronology
+
+- Original tracked Master IDs before and after this appendix: **249**; new IDs: **0**; deleted IDs: **0**.
+- Phase 3/4/5 audit IDs and contract IDs are crosswalked to existing Master roots or remain contract-only; no duplicates were minted.
+- Phase 3/4/5 remediation implementation commits are listed in the execution tracker and final handoff. All are local; their independent review state is PENDING.
+- The historical Master statistics above were not rewritten. This addendum provides an isolated local checkpoint for the new audit phases; the Master Windows mirror remains unverified.
