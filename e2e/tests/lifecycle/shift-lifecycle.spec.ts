@@ -56,7 +56,11 @@ type S = {
 
 const state = new PhaseState<S>('lifecycle');
 const guard = evaluateMutationGuard(env);
-const figures = SCENARIOS.zeroOpening;
+// Mode C is restricted to the separately approved balanced 115/50/25/0/40
+// scenario. The original shortage lifecycle remains available in Mode B.
+const figures = env.mode === 'staging-financial'
+  ? { ...SCENARIOS.zeroOpening, countedSar: '40.00' }
+  : SCENARIOS.zeroOpening;
 const R = expectedResults(figures);
 const ui = env.ui && Boolean(env.frontendUrl);
 const reviewLayer: Layer = ui ? 'ui-e2e' : 'api-only';
@@ -146,21 +150,40 @@ test('P03 opening balance is zero without a proven confirmed transfer', async ()
 });
 
 // ── Phase 4 ───────────────────────────────────────────────────────────────
-test('P04 sales and reconciliation: server computes expected 40 / variance −20 / shortage 20', async () => {
+test('P04 sales and reconciliation: server computes the approved fixture values', async () => {
   traces('api-assisted', 'AC-01', 'AC-02', 'SAL-01', 'SAL-02', 'SAL-03', 'SAL-04', 'CASH-08', 'DIFF-01');
   const s = state.need('cashierShiftId', 'aggregatorId');
   const c = (await cashierActor()).api;
   const pv = ok(await cashier.preview(c, s.cashierShiftId, endPayload(sales(s.aggregatorId), halalasToSar(R.cashSalesH), [])), 'preview');
   const data = pv.body?.data ?? pv.body;
   const rec = data.cash_reconciliation;
-  expect(num(rec.counted_cash) * 100, 'counted cash is the independent input').toBe(20_00);
+  expect(num(rec.counted_cash) * 100, 'counted cash is the independent input').toBe(sarToHalalas(figures.countedSar));
   expect(num(rec.expected_cash) * 100).toBe(R.expectedCashH);
   expect(num(rec.cash_variance) * 100).toBe(R.varianceH);
-  expect(rec.cash_variance_type).toBe('shortage');
-  expect(num(data.shortage_to_allocate) * 100).toBe(R.shortageH);
-  expect(data.allocation_required).toBe(true);
+  if (R.shortageH > 0) expect(rec.cash_variance_type).toBe('shortage');
+  expect(num(data.shortage_to_allocate ?? 0) * 100).toBe(R.shortageH);
+  expect(Boolean(data.allocation_required)).toBe(R.shortageH > 0);
   expect(R.netH).toBe(100_00);
   expect(R.vatH).toBe(15_00);
+});
+
+// Mode C stops after this one balanced report. It never enters the shortage,
+// handover or approval phases of the broader isolated lifecycle.
+test('P04b staging balanced shift report: submit once, no handover', async () => {
+  traces('api-assisted', 'SAL-01', 'SAL-02', 'SAL-04', 'CASH-01');
+  if (env.mode !== 'staging-financial') test.skip(true, 'balanced report is Mode C only');
+  const s = state.need('cashierShiftId', 'aggregatorId');
+  const c = (await cashierActor()).api;
+  expect(R.varianceH).toBe(0);
+  expect(R.shortageH).toBe(0);
+  const payload = endPayload(sales(s.aggregatorId), halalasToSar(R.cashSalesH), []);
+  const r = ok(await cashier.endOnly(c, s.cashierShiftId, payload), 'balanced end-only');
+  const summary = r.body?.data?.summary ?? r.body?.data;
+  expect(num(summary.total_sales) * 100).toBe(R.grossH);
+  expect(num(summary.net_sales) * 100).toBe(R.netH);
+  expect(num(summary.vat_amount) * 100).toBe(R.vatH);
+  expect(summary.handover_status).toBe('pending');
+  state.set({ submitted: true });
 });
 
 // ── Phase 5 ───────────────────────────────────────────────────────────────
@@ -426,3 +449,4 @@ test('P11 post-final immutability is enforced by the backend', async () => {
   expect(after.payload).toEqual(snapshot.payload);
   expect(after.reportRevision).toBe(snapshot.reportRevision);
 });
+

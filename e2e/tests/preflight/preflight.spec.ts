@@ -160,9 +160,9 @@ test('A08 lifecycle readiness of the fixture for the business date (read-only)',
     test.info().annotations.push({ type: 'cashier-shifts-on-date', description: JSON.stringify(today.map((x) => x.status)) });
     expect(today.every((x) => x.status === 'not_started'), `fixture cashier already used on ${env.businessDate}; lifecycle cannot run today`).toBe(true);
 
-    const day = ok(await manager.current(bm.api), 'manager workday/current');
-    test.info().annotations.push({ type: 'manager-day', description: String(day.body?.data?.shift?.status) });
-    expect(['not_started', 'in_progress'], 'manager day not yet closed for the date').toContain(day.body?.data?.shift?.status);
+    // GET workday/current calls firstOrCreate and can write on an empty date.
+    // The separate read-only database A08 gate checks the manager-day state.
+    test.info().annotations.push({ type: 'manager-day', description: 'NOT_VERIFIED_BY_HTTP; see read-only A08 database gate' });
     test.info().annotations.push({
       type: 'not-verifiable-read-only',
       description: 'cashier Employee mirror (Employee.legacy_cashier_id) required by the SHF bridge cannot be checked through the API; run `php artisan asab:mirror-mobile-cashiers` on staging if the lifecycle reports no SHF operation',
@@ -172,3 +172,4 @@ test('A08 lifecycle readiness of the fixture for the business date (read-only)',
     await logoutMobile(c, 'cashier');
   }
 });
+

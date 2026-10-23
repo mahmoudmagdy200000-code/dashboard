@@ -162,7 +162,7 @@ jobs:
           ASSAB_E2E_FIXTURE_PASSWORD: ${{ secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
           ASSAB_E2E_REPORT_DIR: reports/preflight
         run: npx playwright test --project=preflight --grep "A01|A03|A08"
-      - name: Mode C — staging financial lifecycle (guarded in code as well)
+      - name: Mode C — approved balanced fixture through one shift report
         env:
           ASSAB_E2E_MODE: staging-financial
           ASSAB_E2E_API_ORIGIN: ${{ inputs.api_origin }}
@@ -173,7 +173,7 @@ jobs:
           ASSAB_E2E_FINANCIAL_ACK: ${{ inputs.financial_ack }}
           ASSAB_E2E_FIXTURE_PASSWORD: ${{ secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
           ASSAB_E2E_REPORT_DIR: reports/lifecycle
-        run: npx playwright test --project=lifecycle
+        run: npx playwright test --project=lifecycle --grep '^P0[1-4](b| )'
       - run: node scripts/build-traceability.mjs
         if: always()
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -184,3 +184,4 @@ jobs:
             e2e/reports/
             e2e/traceability/TRACEABILITY.md
           retention-days: 7
+
