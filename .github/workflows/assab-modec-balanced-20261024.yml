@@ -76,14 +76,14 @@ jobs:
           ASSAB_E2E_MODE: preflight
           ASSAB_E2E_FIXTURE_PASSWORD: ${{ secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
           ASSAB_E2E_REPORT_DIR: reports/preflight
-        run: npx playwright test --project=preflight --grep '^A0(1|8) '
+        run: npx playwright test --project=preflight --grep 'A0(1|8) '
 
       - name: Approved balanced shift only
         env:
           ASSAB_E2E_MODE: staging-financial
           ASSAB_E2E_FIXTURE_PASSWORD: ${{ secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
           ASSAB_E2E_REPORT_DIR: reports/lifecycle
-        run: npx playwright test --project=lifecycle --grep '^P0[1-4](b| )'
+        run: npx playwright test --project=lifecycle --grep 'P0[1-4](b| )'
 
       - name: Publish machine-readable evidence
         if: always()
