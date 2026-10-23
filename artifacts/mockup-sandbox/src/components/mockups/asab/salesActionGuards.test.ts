@@ -234,7 +234,7 @@ test("actual bulk handlers exclude PKG-6 before requests and optimistic state ch
     bulk(["day"]);
     assert.deepEqual(sent, []);
     bulk(["day", "legacy", "expense"]);
-    assert.deepEqual(sent, [["legacy", "expense"]]);
+    assert.deepEqual(sent, [["legacy"]]);
     assert.equal(state.find(op => op.id === "day")?.status, "pending");
   }
 });
@@ -246,7 +246,7 @@ test("accountant bulk selection excludes SHF across mixed selections and detail 
     [["shf"], []],
     [["shf", "legacy"], ["legacy"]],
     [["shf", "day", "legacy"], ["legacy"]],
-    [["shf", "expense"], ["expense"]],
+    [["shf", "expense"], []],
     [["day"], []],
     [["legacy"], ["legacy"]],
   ] as const) {
@@ -267,7 +267,7 @@ test("Dashboard and ASABPrototype shared bulk handlers never emit SHF or PKG-6 I
     { requested:["shf"], expected:[] },
     { requested:["shf","legacy"], expected:["legacy"] },
     { requested:["shf","day","legacy"], expected:["legacy"] },
-    { requested:["shf","expense"], expected:["expense"] },
+    { requested:["shf","expense"], expected:[] },
     { requested:["day"], expected:[] },
     { requested:["legacy"], expected:["legacy"] },
   ];
@@ -344,15 +344,15 @@ test("a modal opened as legacy rechecks current API evidence before sending", ()
   assert.deepEqual(requests, []);
 });
 
-test("sales bulk approval sends only loaded eligible legacy IDs; unrelated modules are preserved", () => {
+test("sales bulk approval sends only loaded eligible legacy IDs; expense and PKG-6 are excluded", () => {
   const expense = { id: "expense", moduleKey: "expenses", status: "pending", reportReview: {} };
   const operations = [legacy, day, expense, { ...legacy, id: "approved", status: "approved" }];
   const requested = ["day", "legacy", "expense", "missing", "approved", "legacy"];
   const before = structuredClone(operations);
   const sent: string[][] = [];
   const ids = runSalesBulkApproval(operations, requested, "accountant", payload => sent.push(payload));
-  assert.deepEqual(ids, ["legacy", "expense"]);
-  assert.deepEqual(sent, [["legacy", "expense"]]);
+  assert.deepEqual(ids, ["legacy"]);
+  assert.deepEqual(sent, [["legacy"]]);
   assert.deepEqual(operations, before);
   assert.deepEqual(salesBulkApprovalIds(operations, ["day", "legacy"], "head"), []);
 });

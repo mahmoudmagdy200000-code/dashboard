@@ -444,7 +444,11 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
           <h2 className="text-xl font-bold text-gray-800">{t("موديول المصروفات", "Expenses Module")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{pending.length} {t("بيان معلق — قد يحتوي كل بيان على فواتير متعددة", "pending entries — each may contain multiple invoices")}</p>
         </div>
-        {pending.length > 0 && <Btn variant="success" size="sm" onClick={() => bulkApprove(pending.map(o => o.id))}>✓ {t("موافقة على الكل", "Approve All")} ({pending.length})</Btn>}
+        {pending.length > 0 && (
+          <span className="text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
+            {t("اعتماد المصروفات من صلاحية مالك العلامة أو المدير المفوّض (EXP-06)", "Expense approval is reserved for Brand Owner or Manager (EXP-06)")}
+          </span>
+        )}
       </div>
 
       <div className="grid grid-cols-4 gap-4">
@@ -565,10 +569,11 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
                     <Btn size="sm" onClick={() => setExpandedId(isExpanded ? null : op.id)}>
                       {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />} {t("الفواتير", "Invoices")}
                     </Btn>
-                    {op.status === "pending" && <>
-                      <Btn size="sm" variant="success" onClick={() => approveOp(op.id)}><ThumbsUp size={12} /></Btn>
-                      <Btn size="sm" variant="danger" onClick={() => { setDetailId(op.id); setModal("reject"); }}><ThumbsDown size={12} /></Btn>
-                    </>}
+                    {op.status === "pending" && (
+                      <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">
+                        {t("بانتظار اعتماد المالك (EXP-06)", "Awaiting Owner approval (EXP-06)")}
+                      </span>
+                    )}
                   </div>
                 </div>
 

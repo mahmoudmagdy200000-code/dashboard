@@ -138,7 +138,7 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
     ? apiAudit
     : (op ? buildAuditTrail(op) : []);
 
-  const totalSales = detail?.amountHalalas == null ? null : Math.round(detail.amountHalalas / 100);
+  const totalSales = detail?.amountHalalas == null ? null : detail.amountHalalas / 100;
   const fmtSales = (value: number | null | undefined) => value == null ? "—" : fmtAmt(value);
   const channels = recon?.channels ?? [];
   const coreCh = channels.filter(c => c.group === "core");
@@ -153,7 +153,7 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
     if (!op || !recon) return;
     runSalesAction(salesContext, "edit", () => {
       const seed: Record<string, string> = {};
-      channels.forEach(c => { seed[c.key] = String(Math.round(c.actualAmountHalalas) / 100); });
+      channels.forEach(c => { seed[c.key] = String(c.actualAmountHalalas / 100); });
       setDraft(seed);
       setReconVarReason(recon?.varianceReason ?? "");
       setReconEditMode(true);
@@ -179,12 +179,14 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
   const setVarEmpField = (i: number, field: keyof VEmp, val: string) =>
     setVarEmps(p => p.map((e, j) => j === i ? { ...e, [field]: val } : e));
 
-  const totalCollection = recon?.totals?.totalCollectionHalalas == null ? null : Math.round(recon.totals.totalCollectionHalalas / 100);
+  const totalCollection = recon?.totals?.totalCollectionHalalas == null ? null : recon.totals.totalCollectionHalalas / 100;
   // Prefer the server-computed variance when reconciliation is present.
-  const variance = recon?.totals?.varianceHalalas == null ? null : Math.round(recon.totals.varianceHalalas / 100);
-  const hasVariance = variance != null && variance !== 0;
+  const variance = recon?.totals?.varianceHalalas == null ? null : recon.totals.varianceHalalas / 100;
+  const hasVariance = recon?.totals?.varianceHalalas != null && recon.totals.varianceHalalas !== 0;
+  const isShortage = recon?.totals?.varianceHalalas != null && recon.totals.varianceHalalas < 0;
+  const isSurplus = recon?.totals?.varianceHalalas != null && recon.totals.varianceHalalas > 0;
   const assignedTotal = varEmps.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-  const remaining = variance == null ? null : Math.abs(variance) - assignedTotal;
+  const remaining = variance == null ? null : Math.round((Math.abs(variance) - assignedTotal) * 100) / 100;
 
   const isLocked = (recon?.isLocked ?? false) || op?.status === "final-approved";
 
@@ -289,7 +291,7 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
                     <span className="text-sm font-bold text-indigo-900">{t("إجمالي المبيعات", "Total Sales")}</span>
                     <span className="text-[10px] bg-indigo-100 text-indigo-500 px-1.5 py-0.5 rounded-md">{t("(من رفع مدير الفرع — مقفل)", "(Branch Manager entry — locked)")}</span>
                   </div>
-                  <span className="font-mono font-black text-indigo-800 text-base">{recon.totals?.expectedTotalHalalas == null ? "—" : fmtAmt(Math.round(recon.totals.expectedTotalHalalas / 100))} {t("ر.س", "SAR")}</span>
+                  <span className="font-mono font-black text-indigo-800 text-base">{recon.totals?.expectedTotalHalalas == null ? "—" : fmtAmt(recon.totals.expectedTotalHalalas / 100)} {t("ر.س", "SAR")}</span>
                 </div>
 
                 {/* ── Core channels ── */}
@@ -298,14 +300,14 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
                     <div className="flex items-center gap-2">
                       <span className="text-base">{c.icon}</span>
                       <span className="text-sm text-gray-700 font-medium">{c.labelAr}</span>
-                      {c.diffHalalas != null && c.diffHalalas !== 0 && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold">{c.statusLabelAr} {c.diffHalalas > 0 ? "+" : ""}{fmtAmt(Math.round(c.diffHalalas / 100))}</span>}
+                      {c.diffHalalas != null && c.diffHalalas !== 0 && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold">{c.statusLabelAr} {c.diffHalalas > 0 ? "+" : ""}{fmtAmt(c.diffHalalas / 100)}</span>}
                     </div>
                     {reconEditMode && salesPolicy.edit ? (
-                      <input type="number" value={draft[c.key] ?? String(c.actualAmountHalalas / 100)}
+                      <input type="number" step="0.01" value={draft[c.key] ?? (c.actualAmountHalalas / 100).toFixed(2)}
                         onChange={e => setDraft(d => ({ ...d, [c.key]: e.target.value }))}
                         className="w-36 text-center font-mono font-semibold border-2 border-purple-300 rounded-xl px-3 py-1.5 text-sm bg-purple-50 focus:outline-none focus:border-purple-500" />
                     ) : (
-                      <span className="font-mono font-semibold text-gray-800 text-sm">{c.actualAmountHalalas == null ? "—" : fmtAmt(Math.round(c.actualAmountHalalas / 100))} {t("ر.س", "SAR")}</span>
+                      <span className="font-mono font-semibold text-gray-800 text-sm">{c.actualAmountHalalas == null ? "—" : fmtAmt(c.actualAmountHalalas / 100)} {t("ر.س", "SAR")}</span>
                     )}
                   </div>
                 ))}
@@ -323,25 +325,31 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
                     <div className="flex items-center gap-2">
                       <span className="text-base">{c.icon}</span>
                       <span className="text-sm text-gray-700 font-medium">{c.labelAr}</span>
-                      {c.diffHalalas != null && c.diffHalalas !== 0 && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold">{c.statusLabelAr} {c.diffHalalas > 0 ? "+" : ""}{fmtAmt(Math.round(c.diffHalalas / 100))}</span>}
+                      {c.diffHalalas != null && c.diffHalalas !== 0 && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold">{c.statusLabelAr} {c.diffHalalas > 0 ? "+" : ""}{fmtAmt(c.diffHalalas / 100)}</span>}
                     </div>
                     {reconEditMode && salesPolicy.edit ? (
-                      <input type="number" value={draft[c.key] ?? String(c.actualAmountHalalas / 100)}
+                      <input type="number" step="0.01" value={draft[c.key] ?? (c.actualAmountHalalas / 100).toFixed(2)}
                         onChange={e => setDraft(d => ({ ...d, [c.key]: e.target.value }))}
                         className="w-36 text-center font-mono font-semibold border-2 border-purple-300 rounded-xl px-3 py-1.5 text-sm bg-purple-50 focus:outline-none focus:border-purple-500" />
                     ) : (
-                      <span className={`font-mono font-semibold text-sm ${c.status === "diff" ? "text-amber-700" : "text-gray-800"}`}>{c.actualAmountHalalas == null ? "—" : fmtAmt(Math.round(c.actualAmountHalalas / 100))} {t("ر.س", "SAR")}</span>
+                      <span className={`font-mono font-semibold text-sm ${c.status === "diff" ? "text-amber-700" : "text-gray-800"}`}>{c.actualAmountHalalas == null ? "—" : fmtAmt(c.actualAmountHalalas / 100)} {t("ر.س", "SAR")}</span>
                     )}
                   </div>
                 ))}
 
-                {/* ── قسم توزيع الفرق على الموظفين (يظهر فقط عند وجود فرق) ── */}
-                {hasVariance && salesPolicy.assign && (
+                {/* ── قسم توزيع الفرق على الموظفين (يظهر فقط عند وجود عجز وفق ACC-F04) ── */}
+                {isSurplus && (
+                  <div className="mx-4 my-3 bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between text-blue-900" dir={dir}>
+                    <span className="text-xs font-bold">{t("فائض في المبيعات — يُقيد لصالح الفرع ولا يُحمَّل على موظفين", "Sales surplus — credited to branch, not assigned to employees")}</span>
+                    <span className="font-mono font-bold text-sm">+{fmtSales(variance)} {t("ر.س", "SAR")}</span>
+                  </div>
+                )}
+                {isShortage && salesPolicy.assign && (
                   <div className="mx-4 my-3 bg-red-50 border border-red-200 rounded-xl overflow-hidden">
                     <div className="flex items-center gap-2 px-4 py-3 bg-red-100/60 border-b border-red-200">
                       <AlertTriangle size={14} className="text-red-600 flex-shrink-0" />
                       <p className="text-sm font-bold text-red-800">
-                        {t("تحميل الفرق على موظفين — الفرق:", "Assign variance to employees — Variance:")} <span className="font-mono">{fmtSales(variance)} {t("ر.س", "SAR")}</span>
+                        {t("تحميل العجز على موظفين — العجز:", "Assign shortage to employees — Shortage:")} <span className="font-mono">{fmtSales(variance)} {t("ر.س", "SAR")}</span>
                       </p>
                       <span className={`mr-auto text-xs font-bold px-2 py-1 rounded-lg ${remaining != null && remaining <= 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
                         {remaining != null && remaining <= 0 ? t("✓ محمَّل بالكامل", "✓ Fully assigned") : `${t("متبقي", "Remaining")} ${fmtSales(remaining)} ${t("ر.س", "SAR")}`}
@@ -384,18 +392,26 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
                 )}
 
                 {/* ── إجمالي التحصيل ── */}
-                <div className={`flex items-center justify-between px-4 py-3.5 font-bold border-t-2 ${variance === 0 ? "bg-emerald-50/70 border-emerald-200" : hasVariance ? "bg-red-50/70 border-red-200" : "bg-gray-50 border-gray-200"}`}>
-                  <span className={`text-sm ${variance === 0 ? "text-emerald-800" : hasVariance ? "text-red-800" : "text-gray-500"}`}>{t("إجمالي التحصيل", "Total Collected")}</span>
-                  <span className={`font-mono text-base ${variance === 0 ? "text-emerald-700" : hasVariance ? "text-red-700" : "text-gray-500"}`}>{fmtSales(totalCollection)} {t("ر.س", "SAR")}</span>
+                <div className={`flex items-center justify-between px-4 py-3.5 font-bold border-t-2 ${variance === 0 ? "bg-emerald-50/70 border-emerald-200" : hasVariance ? (isShortage ? "bg-red-50/70 border-red-200" : "bg-blue-50/70 border-blue-200") : "bg-gray-50 border-gray-200"}`}>
+                  <span className={`text-sm ${variance === 0 ? "text-emerald-800" : isShortage ? "text-red-800" : isSurplus ? "text-blue-800" : "text-gray-500"}`}>{t("إجمالي التحصيل", "Total Collected")}</span>
+                  <span className={`font-mono text-base ${variance === 0 ? "text-emerald-700" : isShortage ? "text-red-700" : isSurplus ? "text-blue-700" : "text-gray-500"}`}>{fmtSales(totalCollection)} {t("ر.س", "SAR")}</span>
                 </div>
 
-                {variance == null ? <p className="text-xs text-gray-400 px-4 py-3">{t("الفرق غير متاح —", "Variance unavailable —")}</p> : variance !== 0 ? (
+                {variance == null ? <p className="text-xs text-gray-400 px-4 py-3">{t("الفرق غير متاح —", "Variance unavailable —")}</p> : isShortage ? (
                   <div className="flex items-center justify-between px-4 py-3 bg-red-100 border-t border-red-200">
                     <div className="flex items-center gap-2">
                       <AlertTriangle size={13} className="text-red-600" />
-                      <span className="text-sm font-bold text-red-800">{t("الفرق المطلوب تحميله على الموظفين", "Variance to assign to employees")}</span>
+                      <span className="text-sm font-bold text-red-800">{t("العجز المطلوب تحميله على الموظفين", "Shortage to assign to employees")}</span>
                     </div>
                     <span className="font-mono font-black text-red-800 text-base">{fmtSales(variance)} {t("ر.س", "SAR")}</span>
+                  </div>
+                ) : isSurplus ? (
+                  <div className="flex items-center justify-between px-4 py-3 bg-blue-100 border-t border-blue-200">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 size={13} className="text-blue-600" />
+                      <span className="text-sm font-bold text-blue-800">{t("فائض تحصيل (لصالح الفرع)", "Surplus collected (for branch)")}</span>
+                    </div>
+                    <span className="font-mono font-black text-blue-800 text-base">+{fmtSales(variance)} {t("ر.س", "SAR")}</span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center px-4 py-3 bg-emerald-50">

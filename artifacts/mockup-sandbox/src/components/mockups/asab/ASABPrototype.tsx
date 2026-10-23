@@ -1985,6 +1985,13 @@ export function ASABPrototype() {
   const erpBatchMut = useCreateERPBatch();
 
   const approveOp = async (id: string) => {
+    const targetOp = typeof currentSalesOps !== "undefined" && currentSalesOps?.current
+      ? currentSalesOps.current.find(o => o.id === id)
+      : undefined;
+    if (targetOp && (targetOp.moduleKey === "expenses" || (targetOp as any).module === "expenses")) {
+      if (typeof toast !== "undefined") toast.error("اعتماد المصروفات من صلاحية مالك العلامة أو المدير المفوّض فقط (EXP-06)");
+      return;
+    }
     return runFinancialMutation(
       id,
       inFlightOps.current,
@@ -2015,12 +2022,19 @@ export function ASABPrototype() {
       }
     ).catch(err => {
       const msg = (err as any)?.response?.data?.message || (err as any)?.message || "فشل اعتماد العملية";
-      toast.error(msg);
+      if (typeof toast !== "undefined") toast.error(msg);
       throw err;
     });
   };
 
   const rejectOp = (id: string, reason: string) => {
+    const targetOp = typeof currentSalesOps !== "undefined" && currentSalesOps?.current
+      ? currentSalesOps.current.find(o => o.id === id)
+      : undefined;
+    if (targetOp && (targetOp.moduleKey === "expenses" || (targetOp as any).module === "expenses")) {
+      if (typeof toast !== "undefined") toast.error("رفض المصروفات من صلاحية مالك العلامة أو المدير المفوّض فقط (EXP-06)");
+      return;
+    }
     return runSalesAction(() => salesContextFor(id), "return", async () => {
       const inFlight = typeof inFlightOps !== "undefined" ? inFlightOps.current : null;
       if (inFlight) {
@@ -2058,6 +2072,13 @@ export function ASABPrototype() {
   };
 
   const finalApproveOp = async (id: string, conditional?: { note: string }) => {
+    const targetOp = typeof currentSalesOps !== "undefined" && currentSalesOps?.current
+      ? currentSalesOps.current.find(o => o.id === id)
+      : undefined;
+    if (targetOp && (targetOp.moduleKey === "expenses" || (targetOp as any).module === "expenses")) {
+      if (typeof toast !== "undefined") toast.error("اعتماد المصروفات من صلاحية مالك العلامة أو المدير المفوّض فقط (EXP-06)");
+      return;
+    }
     if (conditional) {
       const validation = validateConditionalApproval(conditional.note);
       if (!validation.ok) {

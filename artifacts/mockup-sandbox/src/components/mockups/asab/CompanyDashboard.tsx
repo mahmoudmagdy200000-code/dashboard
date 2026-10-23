@@ -6,7 +6,7 @@ import { chooseGrantedRole, companyRoles, financialAccessFingerprint, financialA
 import { historyBranchOptions, historyPageTarget } from "../../../api/queries/shifts";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRows, shfReviewPageTarget, type ShfReviewAction, type ShfReviewGroup } from "./shiftReviewQueue";
-import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT } from "./headReviewGuards";
+import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT, HEAD_EXPENSE_EVIDENCE_HINT } from "./headReviewGuards";
 import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocationHalalas, runShfAllocationCorrection, type ShfAllocationRow } from "./shiftAllocationCorrection";
 import { api, generateCommandId } from "../../../api/client";
 import { toast } from "sonner";
@@ -1966,14 +1966,26 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
           {op.amount != null && op.amount>0 && <p className="font-mono font-bold text-gray-800 text-sm">{fmt(op.amount)} {t("ر.س","SAR")}</p>}
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0" onClick={e=>e.stopPropagation()}>
-          {!forHead && isPending && <>
-            {(op.module !== "shifts" || shiftPolicy.approve) && <button onClick={onApprove} title={t("موافقة","Approve")} className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center transition-all"><ThumbsUp size={13}/></button>}
-            {(op.module === "shifts" ? shiftPolicy.returnToManager : salesPolicy.return) && <button onClick={op.module === "shifts" ? onReject : ()=>runSalesAction(salesContext, "return", onReject)} title={op.module === "shifts" ? t("إرجاع لمدير الفرع","Return to branch manager") : t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all"><ThumbsDown size={13}/></button>}
-          </>}
-          {forHead && isApproved && <>
-            {headPolicy.finalApprove && <button disabled={actionsPending} onClick={onApprove} title={t("اعتماد نهائي","Final Approve")} className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center transition-all disabled:opacity-50"><ThumbsUp size={13}/></button>}
-            {headPolicy.returnForReview && salesPolicy.return && <button disabled={actionsPending} onClick={()=>runSalesAction(salesContext, "return", onReject)} title={op.module === "shifts" ? t("إعادة للمحاسب للتعديل","Return to accountant for changes") : t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all disabled:opacity-50"><ThumbsDown size={13}/></button>}
-          </>}
+          {!forHead && isPending && (
+            op.module === "expenses" ? (
+              <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">
+                {t("اعتماد المالك (EXP-06)","Owner approval (EXP-06)")}
+              </span>
+            ) : <>
+              {(op.module !== "shifts" || shiftPolicy.approve) && <button onClick={onApprove} title={t("موافقة","Approve")} className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center transition-all"><ThumbsUp size={13}/></button>}
+              {(op.module === "shifts" ? shiftPolicy.returnToManager : salesPolicy.return) && <button onClick={op.module === "shifts" ? onReject : ()=>runSalesAction(salesContext, "return", onReject)} title={op.module === "shifts" ? t("إرجاع لمدير الفرع","Return to branch manager") : t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all"><ThumbsDown size={13}/></button>}
+            </>
+          )}
+          {forHead && isApproved && (
+            op.module === "expenses" ? (
+              <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">
+                {t("اعتماد المالك (EXP-06)","Owner approval (EXP-06)")}
+              </span>
+            ) : <>
+              {headPolicy.finalApprove && <button disabled={actionsPending} onClick={onApprove} title={t("اعتماد نهائي","Final Approve")} className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center transition-all disabled:opacity-50"><ThumbsUp size={13}/></button>}
+              {headPolicy.returnForReview && salesPolicy.return && <button disabled={actionsPending} onClick={()=>runSalesAction(salesContext, "return", onReject)} title={op.module === "shifts" ? t("إعادة للمحاسب للتعديل","Return to accountant for changes") : t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all disabled:opacity-50"><ThumbsDown size={13}/></button>}
+            </>
+          )}
           {isLocked && <span className="flex items-center gap-1 text-xs text-slate-400 bg-slate-100 border border-slate-200 px-2 py-1.5 rounded-lg"><Lock size={11}/> {t("مُغلق","Locked")}</span>}
           <button
             type="button"
@@ -3466,7 +3478,7 @@ function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove, 
             </Badge>
             <div className="flex gap-1.5 flex-shrink-0">
               {getHeadReviewPolicy(op,"head").finalApprove && <button disabled={actionsPending} onClick={()=>finalApprove(op.id)} title={t("اعتماد نهائي","Final Approve")} className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center text-xs disabled:opacity-50"><CheckCircle2 size={12}/></button>}
-              {getHeadReviewPolicy(op,"head").blockedReason ? <span className="text-xs text-amber-700">{t(HEAD_DAY_EVIDENCE_HINT.ar, HEAD_DAY_EVIDENCE_HINT.en)}</span> : getHeadReviewPolicy(op,"head").returnForReview && !isPkg6SalesReport(op) && <button disabled={actionsPending} onClick={()=>reject(op.id)} title={op.module==="shifts"?t("إعادة للمحاسب للتعديل","Return to accountant for changes"):t("رفض","Reject")} className="w-7 h-7 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center text-xs disabled:opacity-50"><XCircle size={12}/></button>}
+              {getHeadReviewPolicy(op,"head").blockedReason === "expense_owner_decision_required" ? <span className="text-xs text-amber-700">{t(HEAD_EXPENSE_EVIDENCE_HINT.ar, HEAD_EXPENSE_EVIDENCE_HINT.en)}</span> : getHeadReviewPolicy(op,"head").blockedReason ? <span className="text-xs text-amber-700">{t(HEAD_DAY_EVIDENCE_HINT.ar, HEAD_DAY_EVIDENCE_HINT.en)}</span> : getHeadReviewPolicy(op,"head").returnForReview && !isPkg6SalesReport(op) && <button disabled={actionsPending} onClick={()=>reject(op.id)} title={op.module==="shifts"?t("إعادة للمحاسب للتعديل","Return to accountant for changes"):t("رفض","Reject")} className="w-7 h-7 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center text-xs disabled:opacity-50"><XCircle size={12}/></button>}
             </div>
           </div>
         ))}
@@ -3567,7 +3579,11 @@ function HeadPending({ ops, finalApprove, reject, bulkFinalApprove, actionsPendi
                   {getHeadReviewPolicy(op,"head").returnForReview && !isPkg6SalesReport(op) && <Btn variant="danger" size="sm" disabled={actionsPending} onClick={()=>{ reject(op.id); setSelected(null); }}>
                     <ThumbsDown size={12}/> {op.module==="shifts"?t("إعادة للمحاسب للتعديل","Return to accountant for changes"):t("رفض","Reject")}
                   </Btn>}
-                  {getHeadReviewPolicy(op,"head").blockedReason && <p className="text-xs text-amber-700">{t(HEAD_DAY_EVIDENCE_HINT.ar, HEAD_DAY_EVIDENCE_HINT.en)}</p>}
+                  {getHeadReviewPolicy(op,"head").blockedReason === "expense_owner_decision_required" ? (
+                    <p className="text-xs text-amber-700">{t(HEAD_EXPENSE_EVIDENCE_HINT.ar, HEAD_EXPENSE_EVIDENCE_HINT.en)}</p>
+                  ) : getHeadReviewPolicy(op,"head").blockedReason ? (
+                    <p className="text-xs text-amber-700">{t(HEAD_DAY_EVIDENCE_HINT.ar, HEAD_DAY_EVIDENCE_HINT.en)}</p>
+                  ) : null}
                 </div>
               </div>
             )}
@@ -3840,8 +3856,16 @@ function HeadModulePage({ moduleKey, title, ops, finalApprove, reject, bulkFinal
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
         <div><h2 className="text-xl font-bold text-gray-800">{title}</h2><p className="text-gray-400 text-sm">{awaitingHead.length} {t("عملية بانتظار اعتمادك النهائي","operations awaiting your final approval")}</p></div>
-        {awaitingHead.length>0 && <div className="text-left"><Btn variant="success" size="sm" disabled={!moduleBulkAllowed || actionsPending} onClick={()=>bulkFinalApprove(moduleBulkIds)}>🔒 {t("اعتماد الكل","Approve All")} ({awaitingHead.length})</Btn>
-          {!moduleBulkAllowed && <p className="text-xs text-amber-700 mt-1">{t("اعتماد SHF وتقرير اليوم فرديًا بعد تحقق الدليل","Review SHF and day reports individually after evidence checks")}</p>}</div>}
+        {awaitingHead.length>0 && (
+          moduleKey === "expenses" ? (
+            <div className="text-left text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
+              {t("اعتماد المصروفات من صلاحية مالك العلامة أو المدير المفوّض (EXP-06)","Expense approval is reserved for Brand Owner or Manager (EXP-06)")}
+            </div>
+          ) : (
+            <div className="text-left"><Btn variant="success" size="sm" disabled={!moduleBulkAllowed || actionsPending} onClick={()=>bulkFinalApprove(moduleBulkIds)}>🔒 {t("اعتماد الكل","Approve All")} ({awaitingHead.length})</Btn>
+              {!moduleBulkAllowed && <p className="text-xs text-amber-700 mt-1">{t("اعتماد SHF وتقرير اليوم فرديًا بعد تحقق الدليل","Review SHF and day reports individually after evidence checks")}</p>}</div>
+          )
+        )}
       </div>
       <div className="grid grid-cols-3 gap-4">
         <KpiCard label={t("بانتظار اعتمادي","Awaiting My Approval")} value={String(awaitingHead.length)} sub={t("موافق عليها من المحاسب","Accountant-approved")} icon={<Clock size={18} className="text-amber-600"/>} accent="amber"/>
@@ -4125,9 +4149,14 @@ function useSharedOps(role: CRole | null, fingerprint: string) {
   const rejectingModule = rejectingOp && ("module" in rejectingOp ? rejectingOp.module : rejectingOp.moduleKey);
   const { data: rejectReasons } = useRejectionReasons(rejectingModule);
 
-  const approve            = (id:string)    => { runOperationAction(id, "approve", () => approveMut.mutate({ id })); };
+  const approve            = (id:string)    => {
+    const op = operationFor(id);
+    if (op && ("module" in op ? op.module : op.moduleKey) === "expenses") return;
+    runOperationAction(id, "approve", () => approveMut.mutate({ id }));
+  };
   const reject             = (id:string)    => {
     const operation = operationFor(id);
+    if (operation && ("module" in operation ? operation.module : operation.moduleKey) === "expenses") return;
     if (currentRole.current === "head" && operation && ("module" in operation ? operation.module : operation.moduleKey) === "shifts") {
       if (!actionLock.current && getHeadReviewPolicy(operation, currentRole.current, detailFor(operation)).returnForReview) setRejectingId(id);
       return;
