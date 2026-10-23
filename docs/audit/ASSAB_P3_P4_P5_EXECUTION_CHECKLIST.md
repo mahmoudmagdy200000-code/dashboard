@@ -349,18 +349,18 @@ GO-04 identified that `editAsset` lacked dialog semantics/title, Escape handling
 - [ ] `B08-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
 **Implementation fields:** preSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; postSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; commitSHA `ZERO_CODE_COMMIT`; tested SHA `NOT_RUN`; tests `NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
-### B09 — Financial total abbreviation — owner decision gate
-**Phase:** P3 · **Finding links:** `R3-F14; HA-F11; HA-F36; DIFF-07` · **Mode:** `DECISION` · **Initial:** `BLOCKED_DECISION` · **Repository:** Dashboard
-**Scope:** HeadPending rounded K total KPI.
-- [ ] `B09-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [x] `B09-02` Record preSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`, branch `work/dashboard-p345-remediation-v2-20261023`, zero expected files, financial display scope, and browser unavailability in tracker before any code (no code planned).
-- [x] `B09-03` No change: do not alter rounded-K total until Project Owner approves display policy. Source shows exact `fmtAmt(totalAmt)` in subtitle and rounded `${(totalAmt / 1000).toFixed(0)}K` KPI (`HeadPending.tsx:163,177`).
-- [ ] `B09-04` Targeted acceptance evidence: Policy approval ID recorded; UI consistency, SAR halala-safe computations, AR+EN; no rounding math change without decision.
-- [x] `B09-05` Gate recorded: financial UX policy decision is APPROVAL_REQUIRED; batch remains BLOCKED_DECISION.
-- [x] `B09-06` No test command run because no code change; test status NOT_RUN and runtime BLOCKED are recorded, with no PASS claim.
-- [x] `B09-07` No code change; ZERO_CODE_COMMIT and BLOCKED_DECISION recorded. No empty commit.
-- [x] `B09-08` Pre/post SHA are `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; no commit; reviewer PENDING. Finding remains open until owner policy decision and required evidence.
-**Implementation fields:** preSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; postSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; commitSHA `ZERO_COMMIT`; tested SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; tests `NOT_RUN`; review `PENDING`; approval ref `GO-02 (does not include financial display policy)`.
+### B09 — Financial total abbreviation — approved approximation label
+**Phase:** P3 · **Finding links:** `R3-F14; HA-F11; HA-F36; DIFF-07` · **Mode:** `IMPLEMENT` · **Initial:** `BLOCKED_DECISION` · **Repository:** Dashboard
+**Scope:** HeadPending rounded K total KPI; GO-09-P3 authorizes a visible localized approximation label only.
+- [x] `B09-01` Reopened §§0–1 and B09; verified source formulas in `HeadPending.tsx`, current branch/HEAD and clean working tree. GO-09-P3 authorizes Dashboard Phase 3 only.
+- [x] `B09-02` PreSHA recorded as `2c0f7ecc3b695a41f646e0af1184a7f71e2dfacd`; branch `work/dashboard-p345-remediation-v2-20261023`; expected scope is HeadPending/KpiCard and focused test only.
+- [x] `B09-03` Preserve exact subtitle `fmtAmt(totalAmt)`, KPI calculation `(totalAmt / 1000).toFixed(0) + "K"`, and existing SAR unit; add visible label beside the number using project translations. No financial rule, API or payload change.
+- [x] `B09-04` Test frozen numeric fixtures (0, 499, 500, 999, 1000, 1499, 1500 and large values) against the unchanged pre-change K expression; exact summary formatting unchanged; verify AR/EN label and no duplicate assistive announcement. Browser viewport check is separate.
+- [x] `B09-05` Owner decision approved in GO-09-P3: Arabic `تقريبي`; English `Approximate`.
+- [x] `B09-06` Record focused test commands/exit codes and browser runtime status; do not claim `RUNTIME_VERIFIED` without Browser QA.
+- [ ] `B09-07` If source/tests change and pass focused checks, commit cohesive Dashboard source/test changes once; no empty commit.
+- [ ] `B09-08` Record commit/tree and tested SHA; independent review remains pending.
+**Approval:** GO-09-P3. **Status before implementation:** `IN_PROGRESS`; Browser QA `NOT_RUN` pending Chromium recovery.
 
 ### B10 — No-code verification of already-resolved Phase3 findings
 **Phase:** P3 · **Finding links:** `R3-F01; R3-F06; R3-F07; R3-F09; R3-F13` · **Mode:** `VERIFY_ONLY` · **Initial:** `VERIFY_ONLY` · **Repository:** Dashboard
@@ -822,3 +822,14 @@ The GO-07 source/test correction is committed locally as `5313b6f5bde200d2ce021c
 
 No Phase 3 finding is closed by this checkpoint. No browser test, staging test or live API request was run.
 - [ ] `GO08-11` Normal push dry-run exited 128 because GitHub HTTPS credentials were unavailable (`could not read Username` with terminal prompts disabled). The authorized branch is absent; direct `git ls-remote` timed out. No actual push, force push, API ref update, or alternate target. Evidence and exact command: `docs/audit/evidence/p3-p5-go02/GO08/GO08_P3_RESPONSIVE_RESULT.md` and `pre-push-sensitive-content-scan.log`.
+
+
+## GO-09-P3 current execution checkpoint — 2026-10-23
+
+Section 1 and the B01–B10 records were reopened before work. Starting branch/HEAD/clean state matched GO-09 exactly. B09 owner option 1 was approved; the original financial calculation, amount formatting, unit, API and payload are unchanged.
+
+- B09 code/test changes are limited to HeadPending, optional KpiCard valueLabel and a focused regression test. RED found the missing approximation label (1 pass / 1 fail, exit 1); GREEN focused test is 5/5, zero skipped, exit 0. Typecheck and final mockup build exit 0; CRLF-aware diff check exit 0. See `docs/audit/evidence/p3-p5-go02/GO09/`.
+- Chromium setup was attempted once in a fresh isolated path after confirming no installer process. CDN returned a truncated/invalid 0 MiB archive and Playwright exited 1. Browser QA B01–B10 remains NOT_RUN/BLOCKED_ENVIRONMENT; no viewport finding is closed.
+- B01–B08/B10 were not altered without reproduced browser defects. R3-F10 → B06 and R3-F15 → B07 remain unchanged.
+- A combined related diagnostic had one unrelated stale test assertion in `phase1dBranchManager.test.ts:263`; raw TAP and explanation are in GO09 evidence. The test was not weakened.
+- B09 current source state: `SOURCE_FIXED — TARGETED_TEST_PASS`; browser/mobile fit and independent review remain pending. Phase 3 final state: `P3_IMPLEMENTATION_COMPLETED_WITH_BLOCKERS`.

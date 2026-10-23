@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 export interface KpiCardProps {
   label: string;
   value: string;
+  valueLabel?: string;
   sub?: string;
   icon: ReactNode;
   accent?: string;
@@ -12,6 +13,7 @@ export interface KpiCardProps {
 export function KpiCard({
   label,
   value,
+  valueLabel,
   sub,
   icon,
   accent = "purple",
@@ -34,7 +36,14 @@ export function KpiCard({
       </span>
       <span className="block min-w-0">
         <span className="block text-gray-500 text-xs font-medium uppercase tracking-wider leading-tight">{label}</span>
-        <span className="block text-gray-900 font-extrabold text-3xl mt-1 leading-none font-mono">{value}</span>
+        {valueLabel ? (
+          <span className="flex flex-wrap items-baseline gap-x-2 mt-1 text-gray-900 font-extrabold text-3xl leading-none font-mono">
+            <span>{value}</span>
+            <span className="min-w-0 max-w-full break-words text-xs font-medium leading-tight text-gray-500">{valueLabel}</span>
+          </span>
+        ) : (
+          <span className="block text-gray-900 font-extrabold text-3xl mt-1 leading-none font-mono">{value}</span>
+        )}
         {sub && <span className="block text-gray-400 text-xs mt-1.5">{sub}</span>}
         {onClick && <span className="block text-[10px] text-purple-500 mt-1">← اضغط للتفاصيل</span>}
       </span>

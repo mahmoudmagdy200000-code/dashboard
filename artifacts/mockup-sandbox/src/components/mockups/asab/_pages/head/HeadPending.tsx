@@ -174,7 +174,7 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
 
       <div className="grid grid-cols-3 gap-4">
         <KpiCard label={t("بانتظار الاعتماد", "Awaiting Approval")} value={String(filtered.length)} sub={t("جميع الموديولات", "All modules")} icon={<Clock size={18} className="text-amber-600" />} accent="amber" />
-        <KpiCard label={t("الإجمالي", "Total")} value={totalAmt != null ? `${(totalAmt / 1000).toFixed(0)}K` : "—"} sub={t("ر.س", "SAR")} icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
+        <KpiCard label={t("الإجمالي", "Total")} value={totalAmt != null ? `${(totalAmt / 1000).toFixed(0)}K` : "—"} valueLabel={t("تقريبي", "Approximate")} sub={t("ر.س", "SAR")} icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
         <KpiCard label={t("يوجد فروقات", "Has Differences")} value={String(filtered.filter(o => o.match === "diff").length)} sub={t("تحتاج مراجعة إضافية", "Needs further review")} icon={<AlertTriangle size={18} className="text-red-600" />} accent="red" />
       </div>
 
