@@ -2549,7 +2549,7 @@ PUR-01 financial approval fail-closed, PERM-00 cloning/cycling, PUR-05 tax-exclu
 | `A4-F01` | P1 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A01/A10; label associations changed; unit/static checks pass, browser/axe/screen reader NOT_RUN. |
 | `A4-F02` | P2 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A02; keyboard exclusion removed; real keyboard interaction NOT_RUN. |
 | `A4-F03` | P1 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A05 original `66fe26a9253e8f12e52c6f14b23e61445a991482`; GO-04 correction `97e0c6b800b7b560f11ca601e502c19d67c616a6` fixes invalid label descendants while retaining native radio selection and separate actions; keyboard runtime NOT_RUN. A06 `9db95d7445586b0adf8c2da4620a5a415107accb`. |
-| `A4-F04` | P2 | BLOCKED_EVIDENCE; independent review PENDING | A07; no source edit/commit; pending prerequisite review/evidence. |
+| `A4-F04` | P2 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A07; GO-06 commit `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3` adds contextual names to actual AdminUsers icon actions; source regression/typecheck pass; runtime accessibility NOT_RUN. |
 | `A4-F05` | P2 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A08; checkbox labels added; screen-reader/accessibility-tree runtime NOT_RUN. |
 | `A4-F06` | P2 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A04; document lang synchronization changed; typecheck/build pass; browser locale transitions NOT_RUN. |
 | `A4-F07` | P2 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A11; role-local direction now follows locale; browser AR/EN reading order NOT_RUN. |
@@ -2567,7 +2567,7 @@ All Phase 4 root IDs and severities remain as audited. No browser, axe, screen-r
 | `A04` | A4-F06; CA-F19; HA-F36; S1H-F12 | PENDING_REVIEW | `Dashboard: d565129d304be4f9bb984412f3240b7d67f87a14`; PARTIAL_PASS — regression/typecheck/build/static checks pass; real browser language transitions NOT_RUN | PENDING; BLOCKED — Playwright browser missing; Vite dev blocked by runtime network-interface enumeration error |
 | `A05` | A4-F03; HA-F33; HA-F34 | PENDING_REVIEW | Original `66fe26a9253e8f12e52c6f14b23e61445a991482`; GO-04 correction `97e0c6b800b7b560f11ca601e502c19d67c616a6`; PARTIAL_PASS — targeted semantic/radio-binding test 1/1; platform-admin/shared 43/43; auth/session 66/66; typecheck PASS. | PENDING; actual keyboard, AR/EN, role-gate and no-mutation browser checks NOT_RUN. |
 | `A06` | A4-F03; R3-F05 | PENDING_REVIEW | `Dashboard: 9db95d7445586b0adf8c2da4620a5a415107accb`; PARTIAL_PASS — procurement regressions 21/21, typecheck and AST 6/6 pass; keyboard/browser/viewport NOT_RUN. | PENDING; BLOCKED — actual keyboard and viewport checks NOT_RUN because Chromium absent and Vite dev interface enumeration fails. |
-| `A07` | A4-F04 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT`; NOT_RUN | PENDING; NOT_RUN |
+| `A07` | A4-F04 | PENDING_REVIEW | `Dashboard: e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3`; PARTIAL_PASS — AST source regression, focused 60/60, typecheck pass | PENDING; browser accessibility tree, keyboard, role-gate and AR/EN NOT_RUN |
 | `A08` | A4-F05 | PENDING_REVIEW | `Dashboard: 4c0ff2e106d94cf81485a950aa34370c15ca1cfb`; PARTIAL_PASS — 11/11 Accountant regressions, typecheck and static AST 4/4 pass; actual row announcement/keyboard/browser NOT_RUN. | PENDING; BLOCKED — keyboard, AR/EN and accessibility tree/browser checks NOT_RUN; Chromium absent and Vite dev interface enumeration failure. |
 | `A09` | A4-F08 | PENDING_REVIEW | `Dashboard: dd084c12dc380ae737039e4565b118731c83cb0e`; PARTIAL_PASS — 25/25 platform-admin tests, typecheck and AST 3/3 pass; actual browser/keyboard state announcement NOT_RUN. | PENDING; BLOCKED — AR/EN keyboard and accessibility-state browser checks NOT_RUN; Chromium absent, Vite dev interface enumeration failure. |
 | `A10` | A4-F01 | PENDING_REVIEW | `Dashboard: 67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; PARTIAL_PASS | PENDING; NOT_RUN — browser keyboard/AR-EN |
@@ -2578,12 +2578,12 @@ All Phase 4 root IDs and severities remain as audited. No browser, axe, screen-r
 | `B04` | R3-F02; S1H-F14; S1H-F18 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — verify-first gate not met`; NOT_RUN | PENDING; BLOCKED — actual 320/360/430 header, Sheet focus-return and AR/EN browser checks unavailable. |
 | `B05` | R3-F11; CA-F05; S1H-F18 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — no reproducible issue`; NOT_RUN | PENDING; BLOCKED — toolbar, notification anchoring, keyboard and AR/EN browser review unavailable. |
 | `B06` | R3-F10 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — verify-first tap/zoom proof not met`; NOT_RUN | PENDING; BLOCKED — 320px and 200% zoom visual/touch/focus checks unavailable. |
-| `B07` | R3-F15; CA-F15; HA-F31; S1H-F13 | PENDING_REVIEW | `Dashboard: 79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; scroll cap only. GO-04 confirms missing dialog role/title, Escape, focus containment and focus return; minimal editAsset-only Radix Dialog follow-up proposed, not implemented. | PENDING; NOT_RUN — short-height, keyboard/focus trap/return, soft keyboard and AR/EN browser checks |
+| `B07` | R3-F15; CA-F15; HA-F31; S1H-F13 | PENDING_REVIEW | Prior scroll cap `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; GO-06 `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3` adds editAsset Radix dialog semantics/title/close name/focus return; static regression/typecheck/build pass | PENDING; Escape/focus/short viewport/soft keyboard/AR-EN browser checks NOT_RUN |
 | `B08` | R3-F12; S1H-F05; S1H-F19 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — overlap reproduction gate not met`; NOT_RUN | PENDING; BLOCKED — visualViewport/soft keyboard, CTA reachability, focus and z-index browser checks unavailable. |
 | `B09` | R3-F14; HA-F11; HA-F36; DIFF-07 | BLOCKED_DECISION | `ZERO_CODE_COMMIT`; NOT_RUN | PENDING; BLOCKED — no financial display policy decision; browser unavailable |
 | `B10` | R3-F01; R3-F06; R3-F07; R3-F09; R3-F13 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT`; NOT_RUN | PENDING; BLOCKED — browser interactions NOT_RUN |
 
-The commit-to-batch map is also preserved in the execution tracker. Every listed implementation commit is local and `PENDING_REVIEW`; no COMMITTED item is ACCEPTED. B02–B06/B08/B09/B10 have no code commit. A07 remains `BLOCKED_EVIDENCE` with zero code commit.
+The commit-to-batch map is also preserved in the execution tracker. Every listed implementation commit is local and `PENDING_REVIEW`; no COMMITTED item is ACCEPTED. B02–B06/B08/B09/B10 have no code commit. A07 has a GO-06 source commit and is `PENDING_REVIEW`; its browser accessibility checks remain NOT_RUN.
 
 ### 8.5 Phase 5 cross-repository contract register — no cross-repo code authorization
 
@@ -2654,7 +2654,7 @@ Phase 5 totals remain the audit’s: 2 confirmed mismatches, 4 implementation ga
 - A03 source semantics correction: commit `fc20ec75af1ab2fe370c695a7b17dfe4e301e7ad`; native button semantics and keyboard focus styling remain, nested flow-content elements were replaced with phrasing spans. Static semantic tests 2/2 and typecheck pass; browser keyboard/reflow/locale acceptance NOT_RUN.
 - A05 label semantics correction: commit `97e0c6b800b7b560f11ca601e502c19d67c616a6`; phrasing spans replace div/p within the radio label. Radio selection, assignment and separate unlink behavior remain; focused test 1/1, platform-admin/shared 43/43, auth/session 66/66, and typecheck pass. Browser interaction NOT_RUN.
 - B07 remains partial: only the editAsset scroll/height correction exists. GO-04 source review found missing dialog semantics/title, Escape handling, focus containment and focus return. Minimal editAsset-only Radix Dialog follow-up is proposed but not implemented; R3-F15/CA-F15 remain open for independent review and runtime proof. R3-F10 remains assigned to B06, not B07.
-- A07 remains distinct from A09: mode state (`aria-pressed`) does not label contextual unlink/add/clear actions. A07 remains blocked pending the A05 dependency/review gate; no A07 code change.
+- Historical M01 checkpoint (before GO-06): A07 was blocked pending evidence and no A07 source change existed. GO-06 later authorized A07 despite A05 review pending; the contextual action labels are now implemented at `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3`. A07 remains distinct from A09 (`aria-pressed` only represents mode state). Runtime accessibility checks are still NOT_RUN.
 - A10/A11/B01/B07, D01 and M01 documentation references were reconciled in GO-04. D01 remains `BLOCKED_EVIDENCE`; no browser, accessibility runtime, cross-repository integration, Backend or Flutter tests are claimed. Master has 249 original IDs; zero new IDs were added. Independent review remains `PENDING_REVIEW`.
 
 ### 8.8 Counts and chronology
@@ -2663,3 +2663,37 @@ Phase 5 totals remain the audit’s: 2 confirmed mismatches, 4 implementation ga
 - Phase 3/4/5 audit IDs and contract IDs are crosswalked to existing Master roots or remain contract-only; no duplicates were minted.
 - Phase 3/4/5 remediation implementation commits are listed in the execution tracker and final handoff. All are local; their independent review state is PENDING.
 - The historical Master statistics above were not rewritten. This addendum provides an isolated local checkpoint for the new audit phases; the Master Windows mirror remains unverified.
+## GO-06 checkpoint — Dashboard P3/P4/P5 (2026-10-23)
+
+This append-only checkpoint records the GO-06 work at the existing local remediation branch. It adds **zero** root finding IDs; the canonical Master remains at 249 IDs. No prior historical status is promoted to `ACCEPTED` or `RUNTIME_VERIFIED`.
+
+### Phase 3
+
+- No new responsive code change was justified without the required browser/viewport proof. Prior B01 source remains as previously recorded. B02–B06, B08 and B10 remain `NOT_RUN/BLOCKED_EVIDENCE`; B09 remains `BLOCKED_DECISION` pending the financial display decision. R3-F10 remains linked to B06 and R3-F15 to B07.
+
+### Phase 4
+
+- GO-06 P4 source commit: `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3`; parent `77cb19291f0f2a6543f184f1eca5c143016138f4`; tree `702be589b72a22032e8fb3359d088f976c1e7b93`.
+- A03 (`R3-F08` and existing cross-links): the change is test-helper-only; paired and self-closing JSX nodes are covered. The prior production KPI button correction was not repeated.
+- A07 (`A4-F04`): contextual bilingual names were added to AdminUsers distribution icon actions. Existing assignment callbacks and authorization behavior are unchanged. Static/source tests pass; browser accessibility-tree, keyboard and AR/EN checks are `NOT_RUN`.
+- B07 (`R3-F15` and existing cross-links): only `editAsset` now uses the installed Radix Dialog primitive with a localized title/close name, retained scroll/viewport constraints and explicit opener focus restoration. API and form mutation behavior are unchanged. Browser Escape/focus/viewport/AR-EN checks are `NOT_RUN`.
+- Focused source/unit tests: 60/60, zero skipped, exit 0; TypeScript typecheck and build exit 0. These results are `DEVELOPER_REPORTED_EXECUTION`, not runtime accessibility or independent acceptance. The full suite was not rerun; 332/332 remains historical at SHA `97e0c6b800b7b560f11ca601e502c19d67c616a6`.
+
+### Phase 5 and release gates
+
+- No Dashboard, Backend or Flutter contract change met the mandatory exact-target, signed-policy, repository-authorization and isolated-runtime gates. Phase 5 has zero code commits. All 31 contract cases remain in their audited groups: 2 confirmed mismatches, 4 implementation gaps, 11 contract unknowns, 4 decision-required and 10 compatible statically only. The GO-06 blocker register is `ASSAB_P3_P4_P5_GO06_BLOCKER_REGISTER.md`.
+- Browser/mobile, accessibility-tree, axe, screen-reader, Backend/Flutter HTTP, tenant-security and financial mutation tests remain `NOT_RUN/BLOCKED`. D01 remains `BLOCKED_EVIDENCE`; D02 and all source-batch reviews remain `PENDING_REVIEW`.
+- No Backend, Flutter, Auth, permissions, API contract, schema, migration, Business Rules, Staging/Production, or GitHub remote write was performed. Windows mirror synchronization remains `NOT_RUN`.
+
+
+### GO-06 current-status reconciliation
+
+This section supersedes only the **current status** of the earlier Phase 3/4 snapshot above; historical audit text and finding IDs are retained. The canonical total remains 249 IDs, with zero added or deleted.
+
+| Finding/batch | Current source status | Evidence | Remaining gate |
+|---|---|---|---|
+| A03 / R3-F08 | Test-helper follow-up committed; production KpiCard unchanged | `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3`; focused 60/60, typecheck/build pass | Browser keyboard/reflow/AR-EN and independent review PENDING |
+| A07 / A4-F04 | Contextual AdminUsers icon names committed; callbacks/role gates unchanged | `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3`; source AST regression included in 60/60; typecheck pass | Accessibility tree/keyboard/role-gate/AR-EN NOT_RUN; independent review PENDING |
+| B07 / R3-F15 and linked roots | `editAsset` dialog semantics/title/close name/focus return committed; existing cap/scroll retained | `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3`; static source regression included in 60/60; typecheck/build pass | Browser Escape/focus containment/return/viewport/AR-EN NOT_RUN; finding remains open and review PENDING |
+
+D01 remains `BLOCKED_EVIDENCE`; D02 remains `BLOCKED_APPROVAL`; M01 remains `PENDING_REVIEW`. GO-06 ran 60 focused tests (zero skipped), typecheck and build successfully, but did not rerun the full unit suite or any browser, accessibility-runtime, Backend, Flutter, tenant-security or financial HTTP tests. All source commits remain local and pending independent review. Windows Master mirror synchronization remains NOT_RUN.

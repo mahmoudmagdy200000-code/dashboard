@@ -178,9 +178,9 @@ A06 evidence: A4-F03 source-confirmed at baseline `ProcNewOrders.tsx` line 193; 
 - [ ] `A07-04` Targeted acceptance evidence: Accessibility tree/role/button/name for each control; screen-reader tool only if actually run; no permission regression.
 - [x] `A07-05` Gate and limits: Dashboard AdminUsers only; no roles, permissions, API or assignment behavior changed.
 - [x] `A07-06` Targeted source/unit regressions PASS 60/60 and TypeScript typecheck PASS. Accessibility-tree, keyboard and AR/EN runtime checks remain NOT_RUN.
-- [ ] `A07-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
-- [ ] `A07-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** GO-06 preSHA `77cb19291f0f2a6543f184f1eca5c143016138f4`; source implemented locally, awaiting P4 commit; tested tree passes the targeted 60/60 GO-06 P4 suite and TypeScript typecheck; runtime accessibility checks `NOT_RUN`; independent review `PENDING`; approval ref `GO-06`.
+- [x] `A07-07` Staged only the approved AdminUsers/test/checklist/tracker/evidence scope and included it in the single P4 atomic commit.
+- [x] `A07-08` Captured P4 commit `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3`; accessibility-tree and keyboard runtime checks remain NOT_RUN; independent review PENDING.
+**Implementation fields:** preSHA `77cb19291f0f2a6543f184f1eca5c143016138f4`; postSHA/commitSHA `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3`; focused P4 tests 60/60 and typecheck pass; runtime accessibility checks `NOT_RUN`; independent review `PENDING`; approval reference `GO-06`.
 
 A07 dependency note: A07 contextual names are distinct from A09 mode-selection state (`aria-pressed`); A09 does not resolve A07. GO-06 explicitly authorized A07 despite A05's pending independent review. Source and AST regression are implemented; accessibility-tree, keyboard, AR/EN and role-gate runtime checks remain NOT_RUN, with independent review PENDING.
 
@@ -332,7 +332,7 @@ Post-commit checkpoint: A10 local commit `67b0c15a34ce17f526ca7e45a7e69db4174e0c
 - [x] `B07-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS. Phase 1D tests 13/13 exit 0; mockup typecheck exit 0; diff check exit 0. Browser short-height, Escape, focus trap/return, soft keyboard and AR/EN NOT_RUN.
 - [x] `B07-07` Scroll-cap code and checklist/tracker changes were staged and committed atomically as `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; dialog accessibility gaps remain open.
 - [x] `B07-08` Captured commit SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; R3-F15/CA-F15 remain partial and runtime NOT_RUN.
-**Implementation fields:** Original scroll-cap commit `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`. GO-06 preSHA `77cb19291f0f2a6543f184f1eca5c143016138f4`; dialog semantics/title/close name/focus-return source and static test implemented locally; focused suite 60/60, typecheck/build pass; browser behavior `NOT_RUN`; independent review `PENDING`; approval ref `GO-06`.
+**Implementation fields:** Original scroll-cap commit `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`. GO-06 source commit `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3` (parent `77cb19291f0f2a6543f184f1eca5c143016138f4`, tree `702be589b72a22032e8fb3359d088f976c1e7b93`); dialog semantics/title/close name/focus return and short-viewport source constraints are implemented, with a static source test. Focused suite 60/60, typecheck/build pass; browser behavior `NOT_RUN`; independent review `PENDING`; approval ref `GO-06`.
 
 GO-04 identified that `editAsset` lacked dialog semantics/title, Escape handling, focus containment and focus return; the prior height cap/scroll fix remains. GO-06 P4 replaces only this overlay with the installed Radix Dialog primitive, adds a localized title and close name, retains the viewport cap/internal scrolling, and explicitly restores focus to the opener on close. Save/cancel state and API callbacks are unchanged. The static source regression passes in the 60/60 targeted suite. Escape, focus entry/containment/return, short-height and AR/EN behavior remain NOT_RUN in a real browser; R3-F15/CA-F15 stay open pending runtime and independent review.
 
@@ -672,7 +672,7 @@ At Dashboard SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`, C01–C19 were reco
 - [x] `D01-05` Recounted historical 1G/1H runtime backlog: 43 + 113 = 156 unique IDs, with no overlap; retained as historical NOT_RUN backlog, separate from GO-02 test totals.
 - [ ] `D01-06` Verify roles, tenant scope, finance transitions, halala/SAR, VAT, date/timezone, idempotency, reports, Flutter backward compatibility only against exact approved source.
 - [x] `D01-07` Compared 15 changed source/test paths against A/B batch scopes after GO-04 A03/A05 corrections; no Backend/Flutter/Auth/permission/API/schema/dependency files changed. Added-line credential-pattern scan: 0 matches. No Business Rules file modified.
-- [x] `D01-08` Updated `docs/audit/ASSAB_P3_P4_P5_TEST_INDEX.md` with historical and GO-04 source SHAs, commands, fixture, per-run outcomes and pending reviewer; historical logs and SHA256SUMS plus the GO-04 full TAP log are in `docs/audit/evidence/p3-p5-go02/`. GO-04 typecheck/build exits are recorded from execution output; separate raw logs were not retained.
+- [x] `D01-08` Updated `docs/audit/ASSAB_P3_P4_P5_TEST_INDEX.md` with historical, GO-04 and GO-06 source SHAs, commands, outcomes and pending reviewer; historical logs and SHA256SUMS, GO-04 TAP, and GO-06 focused/typecheck/build logs plus SHA256SUMS are indexed under `docs/audit/evidence/p3-p5-go02/`. GO-06 full suite was not rerun.
 ### D02 — Independent evidence reconciliation / acceptance gate
 - [x] `D02-01` Verified the 12 original source-fix commits plus GO-04 A03/A05 correction commits map to A01–A06/A08–A11/B01/B07 and the two scoped corrections in tracker, checklist, local commit history and changed paths. All review remains PENDING; no duplicate implementation was made for other batches.
 - [x] `D02-02` Tracker and Master addendum separate implemented source, local unit/type/build evidence, runtime NOT_RUN/BLOCKED, decision gates and independent review PENDING; no `ACCEPTED` or `RUNTIME_VERIFIED` promotion.
@@ -695,7 +695,7 @@ At Dashboard SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`, C01–C19 were reco
 - [ ] `M01-10` Master delta is prepared under GO-02, but independent reviewer sign-off is not available. Record `PENDING_REVIEW`; do not describe the update as accepted.
 - [x] `M01-11` Local documentation commit `b348bda3b0b010b8d27196e34b4a0c41c3607598` recorded in the final handoff; no merge/push/deploy.
 - [x] `M01-12` Final handoff includes batch ledger, local code/docs SHAs, NOT_RUN/BLOCKED items, unresolved owner decisions, residual risk and recommended acceptance tests.
-- M01 current status: `PENDING_REVIEW`, not accepted. Original reconciliation commit `b348bda3b0b010b8d27196e34b4a0c41c3607598`; metadata checkpoint `94d02dd2824cb8faea7fd346bf66160c9acb9189`; GO-04 documentation corrections are a separate local commit recorded in the final report. All remain local and unpushed.
+- M01 current status: `PENDING_REVIEW`, not accepted. Original reconciliation commit `b348bda3b0b010b8d27196e34b4a0c41c3607598`; metadata checkpoint `94d02dd2824cb8faea7fd346bf66160c9acb9189`; GO-04 documentation corrections and GO-06 current-status reconciliation are separate local documentation checkpoints. The final GO-06 documentation commit SHA is reported in the delivery report/evidence package. All remain local and unpushed.
 
 ## 7. Standard batch handoff template (mandatory after each micro-batch)
 ```text
@@ -737,22 +737,33 @@ Next eligible batch and its gate:
 - Tests/runtime: `NOT_RUN` — this was documentation/worktree setup only. No code, Backend, Flutter, financial, browser, or staging actions were performed.
 - The bootstrap commit SHA is reported in the delivery handoff; it is not self-recorded in the files contained by that same commit.
 
-## GO-06 Phase checkpoint — pre-commit evidence
+## GO-06 Phase checkpoint — source and documentation evidence
 
 - Recovered from the original worktree at branch `work/dashboard-p345-remediation-v2-20261023`, HEAD `77cb19291f0f2a6543f184f1eca5c143016138f4`, clean before GO-06 edits. Earlier local commits were preserved; no history rewrite or remote write.
 - **Phase 3:** B01 and prior responsive source fixes were not repeated. B02–B06/B08 verify-first viewport checks and B10 browser verification remain `NOT_RUN/BLOCKED`; B09 remains `BLOCKED_DECISION`; R3-F10 remains B06 and R3-F15 remains B07. No P3 commit was justified.
-- **Phase 4:** GO-06 completed the A03 test-helper follow-up, A07 contextual labels, and B07 `editAsset` dialog source correction. Focused P4 regressions: 60/60, zero skipped; mockup TypeScript typecheck and build pass. Evidence is in `docs/audit/evidence/p3-p5-go02/GO06/PHASE4_RESULT.md`. This source/test evidence is not browser or accessibility-runtime acceptance. P4 atomic local commit is pending.
+- **Phase 4:** GO-06 completed the A03 test-helper follow-up, A07 contextual labels, and B07 `editAsset` dialog source correction. Focused P4 regressions: 60/60, zero skipped; mockup TypeScript typecheck and build pass. Evidence is in `docs/audit/evidence/p3-p5-go02/GO06/PHASE4_RESULT.md`. This source/test evidence is not browser or accessibility-runtime acceptance. P4 atomic local commit: `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3`.
 - **Phase 5:** No Dashboard fix met all target-SHA, business-policy, repository authorization and isolated-test gates. No Backend/Flutter source or test was modified or run. All 31 contract cases retain their audit disposition; see `ASSAB_P3_P4_P5_GO06_BLOCKER_REGISTER.md`. No P5 code commit.
 - **Runtime boundary:** no Playwright/browser package or browser executable is available; do not install one under this GO-06 run. Dialog keyboard/focus/viewport, AdminUsers accessibility tree/keyboard/AR-EN, responsive viewport, Backend/Flutter HTTP and financial tests remain `NOT_RUN/BLOCKED`.
 - **Generated file:** Vite build changed only `artifacts/mockup-sandbox/src/.generated/mockup-components.ts`; it was restored from the verified HEAD blob (SHA-256 `28f22d4ae3e1196e2c7cfe055466685ff5c2fc88384ea8f3985d9605527065a1`).
 - Independent review is `PENDING_REVIEW`; no finding is marked accepted or runtime verified.
 
-### GO-06 P4 pre-commit checkpoint
+### GO-06 P4 source checkpoint
 
 - PreSHA: `77cb19291f0f2a6543f184f1eca5c143016138f4`; branch: `work/dashboard-p345-remediation-v2-20261023`.
 - Exact P4 source/test paths: `artifacts/mockup-sandbox/src/components/mockups/asab/CompanyDashboard.tsx`; `artifacts/mockup-sandbox/src/components/mockups/asab/_pages/admin/AdminUsers.tsx`; `artifacts/mockup-sandbox/src/components/mockups/asab/companyAdminGuards.test.ts`; `artifacts/mockup-sandbox/src/components/mockups/asab/components/KpiCard.test.ts`; `artifacts/mockup-sandbox/src/components/mockups/asab/phase1fPlatformAdmin.test.ts`.
 - Evidence paths: `docs/audit/evidence/p3-p5-go02/GO06/PHASE4_RESULT.md` and the focused TAP, typecheck, and build logs. Focused tests: 60/60 pass, 0 skipped, exit 0; typecheck exit 0; production build exit 0 with existing >500 kB chunk warning; `git diff --check` exit 0.
 - Browser/keyboard/accessibility-tree, viewport/soft-keyboard, axe and screen-reader checks: `NOT_RUN`; no Playwright/browser executable was found, and none was installed.
-- Source commit is authorized as one local P4 commit after this checkpoint. Independent review remains `PENDING`; the code commit SHA will be recorded in the subsequent GO-06 documentation checkpoint (no amend or self-reference).
+- P4 source commit: `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3`; parent `77cb19291f0f2a6543f184f1eca5c143016138f4`; tree `702be589b72a22032e8fb3359d088f976c1e7b93`. Independent review remains `PENDING`; no amend or remote update.
 
 The original V2 plan's final line “EXECUTION NOT AUTHORIZED BY FILE CREATION” describes the plan file alone. GO-02 explicitly authorized the local eligible Dashboard execution; remote delivery remains prohibited.
+
+### GO-06 documentation closeout checkpoint
+
+- Local source HEAD before documentation closeout: `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3`; P4 source parent/tree remain as recorded above.
+- P3: no additional source commit; verify-first browser work remains NOT_RUN/BLOCKED and B09 remains BLOCKED_DECISION.
+- P4: one GO-06 atomic source commit; A03/A07/B07 current source status is recorded in the append-only Master reconciliation. No findings are ACCEPTED or RUNTIME_VERIFIED.
+- P5: zero source commits; 31 contracts retain the five audited disposition groups and blockers in the GO-06 register.
+- D01: focused 60/60 (zero skipped), typecheck and build PASS at P4 source SHA. Full suite, Playwright, accessibility runtime and cross-repository tests remain NOT_RUN/BLOCKED; D01 remains BLOCKED_EVIDENCE.
+- D02: independent review is required and remains BLOCKED_APPROVAL/PENDING.
+- M01: local append-only Master reconciliation is prepared; its independent acceptance and Windows mirror synchronization remain PENDING/NOT_RUN. Final documentation commit SHA is captured in the separate GO-06 delivery report because a commit cannot contain its own SHA.
+- Local only: no push, PR, merge, deploy, Backend/Flutter write, staging/production access, migration, or financial operation.

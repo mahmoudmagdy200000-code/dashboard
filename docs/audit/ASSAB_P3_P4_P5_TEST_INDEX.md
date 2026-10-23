@@ -5,6 +5,7 @@
 - Branch: `work/dashboard-p345-remediation-v2-20261023`
 - Historical tested source HEAD: `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`
 - Latest GO-04 source HEAD tested: `97e0c6b800b7b560f11ca601e502c19d67c616a6`
+- GO-06 P4 targeted source commit tested: `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3` (Parent `77cb19291f0f2a6543f184f1eca5c143016138f4`; Tree `702be589b72a22032e8fb3359d088f976c1e7b93`). This is a focused run, not the full suite.
 - Device: none (Node/unit/typecheck/build only). Browser, viewport and screen-reader checks were not run.
 
 ## Executed checks
@@ -19,6 +20,9 @@
 | D01-GO04-ALL-UNIT | D01 / GO-04 | `find artifacts/mockup-sandbox/src -name '*.test.ts' -print0 | sort -z | xargs -0 env TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap` | Existing local unit fixtures; no HTTP/server/database | PASS 332/332, 0 skipped, exit 0 at `97e0c6b800b7b560f11ca601e502c19d67c616a6` (25 test files) | [GO-04 full TAP log](evidence/p3-p5-go02/D01_go04_full_dashboard_unit_332.tap) | Pending |
 | D01-GO04-TYPECHECK | D01 / GO-04 | `pnpm --filter @workspace/mockup-sandbox run typecheck` | N/A | PASS, exit 0 at `97e0c6b800b7b560f11ca601e502c19d67c616a6`; separate raw log not retained | Execution result record | Pending |
 | D01-GO04-BUILD | D01 / GO-04 | `pnpm --filter @workspace/mockup-sandbox run build` | N/A | PASS, exit 0; existing sourcemap/large-chunk warnings; generated file restored to pre-build SHA `28f22d4ae3e1196e2c7cfe055466685ff5c2fc88384ea8f3985d9605527065a1` | Execution result record | Pending |
+| GO06-P4-FOCUSED | P4 A03 helper / A07 names / B07 editAsset dialog + adjacent regressions | `TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/components/mockups/asab/components/KpiCard.test.ts artifacts/mockup-sandbox/src/components/mockups/asab/phase1fPlatformAdmin.test.ts artifacts/mockup-sandbox/src/components/mockups/asab/companyAdminGuards.test.ts artifacts/mockup-sandbox/src/components/mockups/asab/phase1hShared.test.ts` | Existing local source/unit fixtures; no HTTP, browser or database | PASS 60/60, 0 skipped, exit 0 on source commit `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3` | [GO-06 TAP](evidence/p3-p5-go02/GO06/focused-p4-tests.log) | Pending |
+| GO06-P4-TYPECHECK | P4 | `pnpm --filter @workspace/mockup-sandbox run typecheck` | N/A | PASS, exit 0 on source commit `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3` | [GO-06 typecheck](evidence/p3-p5-go02/GO06/typecheck.log) | Pending |
+| GO06-P4-BUILD | P4 / final Dashboard source | `pnpm --filter @workspace/mockup-sandbox run build` | N/A | PASS, exit 0; existing >500 kB chunk warning; generated file restored to the exact pre-build SHA | [GO-06 build](evidence/p3-p5-go02/GO06/build.log) | Pending |
 
 ### Historical full-suite test files at `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702` (24 files)
 
@@ -57,6 +61,15 @@
 - A05 commit `97e0c6b800b7b560f11ca601e502c19d67c616a6`: TDD RED exit 1 specifically detected div/p within the radio label; GREEN targeted regression 1/1, Platform Admin/shared regression 43/43, Auth/session 66/66, typecheck and `git diff --check` exit 0.
 - Combined D01 GO-04 rerun: 332/332 across 25 `*.test.ts` files, 0 skipped, exit 0; typecheck and build exit 0. Only the full TAP log is retained as a raw log; focused, typecheck and build outcomes are execution records.
 - All outcomes are `DEVELOPER_REPORTED_EXECUTION`; no browser, axe, keyboard, screen-reader, Backend, Flutter or financial runtime check was run.
+
+## GO-06 targeted correction record
+
+- P4 source/test commit: `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3`; parent `77cb19291f0f2a6543f184f1eca5c143016138f4`; tree `702be589b72a22032e8fb3359d088f976c1e7b93`.
+- Changed source/test paths: `CompanyDashboard.tsx`, `AdminUsers.tsx`, `companyAdminGuards.test.ts`, `components/KpiCard.test.ts`, and `phase1fPlatformAdmin.test.ts` under `artifacts/mockup-sandbox/src/components/mockups/asab/`. The exact complete commit manifest is retained in Git and the GO-06 evidence package.
+- Focused suite: 60/60 PASS, 0 skipped, exit 0. Tests are source/unit checks; not accessibility-tree or browser interaction proof.
+- Typecheck and production build: exit 0. Build warning: existing large chunk above 500 kB. Vite generated `.generated/mockup-components.ts` was restored to SHA-256 `28f22d4ae3e1196e2c7cfe055466685ff5c2fc88384ea8f3985d9605527065a1`.
+- No full unit suite rerun; 332/332 remains historical at `97e0c6b800b7b560f11ca601e502c19d67c616a6` only. Browser, viewport, Escape/focus, accessibility tree, axe, screen reader, Backend/Flutter integration, and financial HTTP checks are `NOT_RUN/BLOCKED`.
+- Evidence class remains `DEVELOPER_REPORTED_EXECUTION`; review and acceptance remain pending.
 
 ## Not executed / blocked
 
@@ -110,4 +123,12 @@
 
 ## Integrity
 
-Raw logs are stored alongside this index. SHA-256 values are recorded in `evidence/p3-p5-go02/SHA256SUMS.txt`. The recorded test source SHA is the repository HEAD above; checklist/tracker documentation was uncommitted and does not alter tested source code.
+Raw logs are stored alongside this index. Historical GO-02/GO-04 hashes are in `evidence/p3-p5-go02/SHA256SUMS.txt`; GO-06 raw evidence hashes are in `evidence/p3-p5-go02/GO06/SHA256SUMS.txt`. The GO-06 code source SHA is the P4 commit above; later documentation commits do not alter tested source code.
+
+
+## GO-06 documentation closeout
+
+- Evidence source remains P4 source commit `e4e921309ff28abc8ca5fd2d5b5c4d58c34541c3`; documentation closeout does not change source tested.
+- P4 result, raw focused TAP, typecheck and build logs are in `evidence/p3-p5-go02/GO06/`; `SHA256SUMS.txt` covers all four files.
+- No additional tests were run during documentation closeout. Full 332 suite remains historical; browser/accessibility-runtime and Backend/Flutter integration remain NOT_RUN/BLOCKED.
+- Overall evidence classification: `DEVELOPER_REPORTED_EXECUTION`; independent review PENDING.
