@@ -7301,6 +7301,10 @@ function BranchUpload() {
   const invFileRef = useRef<HTMLInputElement|null>(null);
 
   const submit=()=>{
+    if (salesFile && invFile) {
+      alert(t("يرجى اختيار مرفق واحد فقط (تقرير المبيعات أو فاتورة المصروفات) لكل عملية رفع لمنع فقدان المرفق الآخر", "Please select only one attachment (sales report or expense invoice) per upload to prevent losing the other file"));
+      return;
+    }
     const s = parseFloat(salesAmt);
     if (!salesAmt.trim() || isNaN(s) || s <= 0) {
       alert(t("أدخل قيمة مبيعات صحيحة أكبر من صفر","Enter a valid sales amount greater than zero"));
@@ -7353,9 +7357,16 @@ function BranchUpload() {
           <div>
             <label className="text-xs font-semibold text-gray-600 block mb-1">{t("مرفق (صورة / PDF)","Attachment (image / PDF)")}</label>
             <input type="file" ref={salesFileRef} className="hidden" accept="image/*,.pdf" onChange={e=>setSalesFile(e.target.files?.[0]||null)}/>
-            <div onClick={()=>salesFileRef.current?.click()} className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-purple-300">
-              <Upload size={20} className="text-gray-400 mx-auto mb-1"/>
-              <p className="text-xs text-gray-600 font-medium">{salesFile ? salesFile.name : t("اضغط لاختيار مرفق المبيعات","Click to select sales attachment")}</p>
+            <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-purple-300">
+              <div onClick={()=>salesFileRef.current?.click()}>
+                <Upload size={20} className="text-gray-400 mx-auto mb-1"/>
+                <p className="text-xs text-gray-600 font-medium">{salesFile ? salesFile.name : t("اضغط لاختيار مرفق المبيعات","Click to select sales attachment")}</p>
+              </div>
+              {salesFile && (
+                <button type="button" onClick={()=>setSalesFile(null)} className="mt-2 text-[11px] text-red-600 underline font-medium">
+                  {t("إزالة مرفق المبيعات","Remove sales attachment")}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -7366,14 +7377,30 @@ function BranchUpload() {
           <div>
             <label className="text-xs font-semibold text-gray-600 block mb-1">{t("الفاتورة","Invoice")}</label>
             <input type="file" ref={invFileRef} className="hidden" accept="image/*,.pdf" onChange={e=>setInvFile(e.target.files?.[0]||null)}/>
-            <div onClick={()=>invFileRef.current?.click()} className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-red-300">
-              <Paperclip size={20} className="text-gray-400 mx-auto mb-1"/>
-              <p className="text-xs text-gray-600 font-medium">{invFile ? invFile.name : t("اضغط لاختيار فاتورة المصروفات","Click to select expense invoice")}</p>
+            <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center cursor-pointer hover:border-red-300">
+              <div onClick={()=>invFileRef.current?.click()}>
+                <Paperclip size={20} className="text-gray-400 mx-auto mb-1"/>
+                <p className="text-xs text-gray-600 font-medium">{invFile ? invFile.name : t("اضغط لاختيار فاتورة المصروفات","Click to select expense invoice")}</p>
+              </div>
+              {invFile && (
+                <button type="button" onClick={()=>setInvFile(null)} className="mt-2 text-[11px] text-red-600 underline font-medium">
+                  {t("إزالة فاتورة المصروفات","Remove invoice attachment")}
+                </button>
+              )}
             </div>
           </div>
         </div>
       </div>
-      <button onClick={submit} disabled={uploadMut.isPending} className="w-full py-3 rounded-xl bg-purple-600 text-white font-bold text-base hover:bg-purple-700 shadow-sm flex items-center justify-center gap-2"><Send size={16}/>{uploadMut.isPending ? t("جارٍ الإرسال...","Submitting...") : t("رفع البيانات للمحاسب","Submit Data to Accountant")}</button>
+      {salesFile && invFile && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 flex items-center justify-between">
+          <span>{t("تنبيه: تم اختيار مرفقين معاً. يرجى إزالة أحدهما حيث يقبل النظام مرفقاً واحداً فقط لكل عملية رفع لمنع فقدان الآخر.", "Warning: Both attachments selected. Please remove one as the system only accepts one attachment per upload to prevent losing the other.")}</span>
+          <div className="flex gap-2 flex-shrink-0">
+            <button type="button" onClick={()=>setSalesFile(null)} className="underline text-red-800 font-semibold">{t("إلغاء المبيعات","Clear Sales")}</button>
+            <button type="button" onClick={()=>setInvFile(null)} className="underline text-red-800 font-semibold">{t("إلغاء الفاتورة","Clear Invoice")}</button>
+          </div>
+        </div>
+      )}
+      <button onClick={submit} disabled={uploadMut.isPending || !!(salesFile && invFile)} className="w-full py-3 rounded-xl bg-purple-600 text-white font-bold text-base hover:bg-purple-700 shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"><Send size={16}/>{uploadMut.isPending ? t("جارٍ الإرسال...","Submitting...") : t("رفع البيانات للمحاسب","Submit Data to Accountant")}</button>
     </div>
   );
 }
@@ -7578,13 +7605,21 @@ function BranchEmployees() {
   const { t, dir } = useCLang();
   const { data: apiStaff = [] } = useBranchEmployees();
   // Staff comes from the platform API; empty until the backend returns it (no static seed).
-  const staff = apiStaff.map(s => ({
-    name: s.name || "—",
-    role: s.role || "—",
-    shift: (s as any).shiftType || (s as any).shift || "",
-    status: (s as any).status || (s.active ? "present" : "absent"),
-    phone: (s as any).phone || (s as any).contactPhone || "",
-  }));
+  // Attendance semantics: Do not infer physical attendance from active account membership.
+  // Physical attendance must be an explicit status; otherwise mark as "unknown" ("Not Reported").
+  const staff = apiStaff.map(s => {
+    const explicitAttendance = (s as any).attendanceStatus || (s as any).attendance || (s as any).attendanceState || (s as any).status;
+    const status = (explicitAttendance === "present" || explicitAttendance === "absent" || explicitAttendance === "upcoming")
+      ? explicitAttendance
+      : "unknown";
+    return {
+      name: s.name || "—",
+      role: s.role || "—",
+      shift: (s as any).shiftType || (s as any).shift || "",
+      status,
+      phone: (s as any).phone || (s as any).contactPhone || "",
+    };
+  });
   return (
     <div className="space-y-5" dir={dir}>
       <div><h2 className="text-xl font-bold text-gray-800">{t("طاقم الموظفين", "Staff")}</h2><p className="text-gray-400 text-sm">{staff.filter(s => s.status === "present").length} {t("حاضر اليوم", "present today")}</p></div>
@@ -7597,7 +7632,23 @@ function BranchEmployees() {
               <p className="text-xs text-gray-400">{s.role}{s.shift ? ` · ${t("شفت", "shift")} ${s.shift}` : ""}</p>
             </div>
             <span className="text-xs text-gray-400" dir="ltr">{s.phone}</span>
-            <Badge className={`text-[10px] ${s.status === "present" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : s.status === "upcoming" ? "bg-blue-50 text-blue-700 border border-blue-100" : "bg-red-50 text-red-700 border border-red-200"}`}>{s.status === "present" ? `● ${t("حاضر", "Present")}` : s.status === "upcoming" ? t("قادم", "Incoming") : t("غائب", "Absent")}</Badge>
+            <Badge className={`text-[10px] ${
+              s.status === "present"
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                : s.status === "upcoming"
+                ? "bg-blue-50 text-blue-700 border border-blue-100"
+                : s.status === "absent"
+                ? "bg-red-50 text-red-700 border border-red-200"
+                : "bg-gray-100 text-gray-600 border border-gray-200"
+            }`}>
+              {s.status === "present"
+                ? `● ${t("حاضر", "Present")}`
+                : s.status === "upcoming"
+                ? t("قادم", "Incoming")
+                : s.status === "absent"
+                ? t("غائب", "Absent")
+                : t("غير مسجل", "Not Reported")}
+            </Badge>
           </div>
         ))}
       </div>

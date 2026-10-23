@@ -107,7 +107,7 @@ test("Phase 1D 1D-BRM-006, 1D-BRM-008 & 1D-BRM-024: Branch upload attachment inp
   );
 });
 
-test("Phase 1D 1D-BRM-009: Branch staff maps shift, status, and phone correctly", () => {
+test("Phase 1D 1D-BRM-009: Branch staff maps shift, status, and phone correctly without inferring presence from active membership", () => {
   const dash = norm(
     readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8")
   );
@@ -116,13 +116,67 @@ test("Phase 1D 1D-BRM-009: Branch staff maps shift, status, and phone correctly"
     "BranchEmployees must map shift from shiftType or shift"
   );
   assert.ok(
-    dash.includes('(s as any).status || (s.active ? "present" : "absent")') || dash.includes('s.status || (s.active ? "present" : "absent")'),
-    "BranchEmployees must map status distinguishing attendance from active membership"
+    !dash.includes('(s.active ? "present" : "absent")'),
+    "BranchEmployees must NOT infer physical attendance from active account membership"
+  );
+  assert.ok(
+    dash.includes('explicitAttendance') && dash.includes('"unknown"') && dash.includes('غير مسجل'),
+    "BranchEmployees must map status to explicit attendance or fallback to unknown / 'غير مسجل'"
   );
   assert.ok(
     dash.includes('(s as any).phone || (s as any).contactPhone') || dash.includes('s.phone || s.contactPhone'),
     "BranchEmployees must map phone from phone or contactPhone"
   );
+});
+
+test("Phase 1D Follow-up: BranchUpload blocks dual attachments with clear validation and UI warning", () => {
+  const dash = norm(
+    readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8")
+  );
+  assert.ok(
+    dash.includes('if (salesFile && invFile)') && dash.includes('يرجى اختيار مرفق واحد فقط'),
+    "BranchUpload submit must explicitly check for dual attachment and alert user without dropping a file"
+  );
+  assert.ok(
+    dash.includes('disabled={uploadMut.isPending || !!(salesFile && invFile)}'),
+    "BranchUpload submit button must be disabled when both sales and invoice attachments are selected"
+  );
+  assert.ok(
+    dash.includes('تنبيه: تم اختيار مرفقين معاً'),
+    "BranchUpload must render visual warning banner when both attachments are selected"
+  );
+});
+
+test("Phase 1D Follow-up: Attendance semantics unit mapping prevents false physical attendance", () => {
+  function mapStaffMember(s: { name?: string; role?: string; active?: boolean; status?: string; attendanceStatus?: string }) {
+    const explicitAttendance = (s as any).attendanceStatus || (s as any).attendance || (s as any).attendanceState || (s as any).status;
+    const status = (explicitAttendance === "present" || explicitAttendance === "absent" || explicitAttendance === "upcoming")
+      ? explicitAttendance
+      : "unknown";
+    return {
+      name: s.name || "—",
+      role: s.role || "—",
+      status,
+    };
+  }
+
+  // 1. Active employee with no explicit attendance report must NOT be marked present
+  const activeNoAttendance = mapStaffMember({ name: "Omar", role: "Barista", active: true });
+  assert.equal(activeNoAttendance.status, "unknown", "Active membership alone must not imply physical presence");
+
+  // 2. Inactive employee with no explicit attendance must NOT be assumed absent, but unknown
+  const inactiveNoAttendance = mapStaffMember({ name: "Sara", role: "Cashier", active: false });
+  assert.equal(inactiveNoAttendance.status, "unknown", "Inactive membership alone must not override explicit reporting");
+
+  // 3. Explicit attendance from API is preserved faithfully
+  const explicitPresent = mapStaffMember({ name: "Zaid", role: "Cook", active: true, attendanceStatus: "present" });
+  assert.equal(explicitPresent.status, "present");
+
+  const explicitAbsent = mapStaffMember({ name: "Huda", role: "Barista", active: true, attendanceStatus: "absent" });
+  assert.equal(explicitAbsent.status, "absent");
+
+  const explicitUpcoming = mapStaffMember({ name: "Tariq", role: "Cashier", active: true, status: "upcoming" });
+  assert.equal(explicitUpcoming.status, "upcoming");
 });
 
 test("Phase 1D 1D-BRM-010: Sidebar navigation includes branch shifts and purchase requests", () => {
