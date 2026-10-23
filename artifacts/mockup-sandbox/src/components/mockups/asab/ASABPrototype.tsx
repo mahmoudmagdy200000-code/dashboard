@@ -389,7 +389,7 @@ import { LiveChatWidget } from "../../shared/LiveChatWidget";
 import { useLanguagePref } from "../../../auth/useLanguagePref";
 import { useAuth } from "../../../auth/AuthContext";
 import { readEntrySelection, clearEntrySelection } from "../../../auth/entrySelection";
-import { getSiteLang, setSiteLang } from "../../../auth/siteLang";
+import { getSiteLang, setSiteLang, useDocumentLang } from "../../../auth/siteLang";
 import { V, G, CYAN, LOGO, ensureAuthStyles } from "../../../auth/authTheme";
 import { LangToggle } from "../../../auth/LangToggle";
 import { SUPPLIER_PORTAL_ENABLED } from "../../../featureFlags";
@@ -1898,6 +1898,7 @@ function brandOptionsFromOps(ops: Op[]): { id: string; name: string }[] {
 export function ASABPrototype() {
   // Seed from the site-wide language chosen on the entry screen, and keep them in sync.
   const [lang, setLangState] = useState<Lang>(() => getSiteLang());
+  useDocumentLang(lang);
   const setLang = (l: Lang) => { setSiteLang(l); setLangState(l); };
   const t = <T,>(ar: T, en: T): T => lang === "ar" ? ar : en;
   const dir = lang === "ar" ? "rtl" : "ltr";

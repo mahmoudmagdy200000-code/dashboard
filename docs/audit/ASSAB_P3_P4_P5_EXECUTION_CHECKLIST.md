@@ -111,24 +111,26 @@ A02 committed as `b44afbdf4d741404a165330966809785148f1b0b`; status remains `PEN
 - [ ] `A03-04` Targeted acceptance evidence: Keyboard focus/Enter/Space; role navigation; static cards not focused; reflow 320px; AR+EN.
 - [x] `A03-05` Gate and limits: Dashboard Shared Component; cross-role regression
 - [x] `A03-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
-- [ ] `A03-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
-- [ ] `A03-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `b44afbdf4d741404a165330966809785148f1b0b`; postSHA `PENDING_COMMIT`; commitSHA `PENDING_COMMIT`; tested SHA `working tree based on b44afbdf4d741404a165330966809785148f1b0b`; tests `interactive/informational KPI SSR assertions PASS; mockup typecheck PASS; keyboard/browser/320px NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+- [x] `A03-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
+- [x] `A03-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
+**Implementation fields:** preSHA `b44afbdf4d741404a165330966809785148f1b0b`; postSHA `7b8eccb5971e9e2b7548c657a07b3607523284ca`; commitSHA `7b8eccb5971e9e2b7548c657a07b3607523284ca`; tested SHA `7b8eccb5971e9e2b7548c657a07b3607523284ca`; tests `Vite SSR assertions PASS; mockup typecheck PASS; keyboard/browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 A03 evidence: R3-F08 source confirms `components/KpiCard.tsx` is a clickable `div`; the audit links `HA-F33` and `S1H-F13` are retained without adding IDs. AST scan found five actual interactive call sites, all in HeadDashboard; other KpiCard uses are informational. Interactive variant is a native `type="button"` with visible focus ring; informational variant remains a `div` with no pointer/focus affordance. SSR variant assertions PASS. `pnpm --filter @workspace/mockup-sandbox run typecheck` exit 0. Keyboard activation, role navigation and 320px reflow remain NOT_RUN.
 
 ### A04 — Document language metadata
 **Phase:** P4 · **Finding links:** `A4-F06; CA-F19; HA-F36; S1H-F12` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
 **Scope:** root document and language selection.
-- [ ] `A04-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `A04-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
-- [ ] `A04-03` Minimal action/disposition: Synchronize root <html lang> with existing locale contexts for active ASABPrototype and CompanyDashboard; preserve dir and auth semantics.
+- [x] `A04-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
+- [x] `A04-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
+- [x] `A04-03` Minimal action/disposition: Synchronize root <html lang> with existing locale contexts for active ASABPrototype and CompanyDashboard; preserve dir and auth semantics.
 - [ ] `A04-04` Targeted acceptance evidence: AR→EN→AR, reload, route switch, inspect html.lang, no duplicate/competing locale effects.
-- [ ] `A04-05` Gate and limits: Dashboard shared locale; not authentication lifecycle
-- [ ] `A04-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `A04-05` Gate and limits: Dashboard shared locale; not authentication lifecycle
+- [x] `A04-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
 - [ ] `A04-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `A04-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `7b8eccb5971e9e2b7548c657a07b3607523284ca`; postSHA `PENDING_COMMIT`; commitSHA `PENDING_COMMIT`; tested SHA `working tree based on 7b8eccb5971e9e2b7548c657a07b3607523284ca`; tests `66/66 auth regression PASS; mockup typecheck PASS; package build PASS; static locale sync assertions PASS; browser switch/reload BLOCKED`; review `PENDING`; approval ref `GO-02`.
+
+A04 evidence: A4-F06 source-confirmed at the pinned baseline; `CA-F19`, `HA-F36`, `S1H-F12` are related but distinct crosswalk entries; `R3-F07` concerns RTL and is not duplicated. Default HTML language now matches Arabic default. Shared `useDocumentLang` synchronizes initial and updated locale in `useSiteLang`, ASABPrototype and CompanyDashboard without changing `dir` or auth/session behavior. `TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/auth/roleAccess.test.ts artifacts/mockup-sandbox/src/api/authSession.test.ts` exit 0 (66/66). `pnpm --filter @workspace/mockup-sandbox run typecheck` exit 0. `pnpm --filter @workspace/mockup-sandbox run build` exit 0; existing sourcemap and large-chunk warnings only. Static locale wiring check exit 0. Runtime test attempt BLOCKED: Vite dev could not enumerate network interfaces (`uv_interface_addresses`); Playwright Chromium executable absent. AR→EN→AR, reload and route-switch browser checks NOT_RUN. A04-04 remains unchecked.
 
 ### A05 — AdminUsers — keyboard-operable selection
 **Phase:** P4 · **Finding links:** `A4-F03; HA-F33; HA-F34` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard

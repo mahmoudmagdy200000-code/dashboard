@@ -95,7 +95,7 @@ import { ChangePasswordModal } from "../../../auth/ChangePasswordModal";
 import { useLanguagePref } from "../../../auth/useLanguagePref";
 import { readEntrySelection, clearEntrySelection } from "../../../auth/entrySelection";
 import { useAuth } from "../../../auth/AuthContext";
-import { getSiteLang, setSiteLang } from "../../../auth/siteLang";
+import { getSiteLang, setSiteLang, useDocumentLang } from "../../../auth/siteLang";
 import { V, G, CYAN, LOGO, ensureAuthStyles } from "../../../auth/authTheme";
 import { LangToggle } from "../../../auth/LangToggle";
 import { NotificationPreferencesPage } from "../../shared/NotificationPreferencesPage";
@@ -307,6 +307,7 @@ function CAssetDraftProvider({ children }:{ children:ReactNode }) {
 function CLangProvider({ children }:{ children:ReactNode }) {
   // Seed from the site-wide language chosen on the entry screen, and keep the two in sync.
   const [lang, setLangState] = useState<CLang>(() => getSiteLang());
+  useDocumentLang(lang);
   const setLang = (l:CLang) => { setSiteLang(l); setLangState(l); };
   const t   = (ar:string, en:string) => lang==="ar" ? ar : en;
   const dir = lang==="ar" ? "rtl" : "ltr";
