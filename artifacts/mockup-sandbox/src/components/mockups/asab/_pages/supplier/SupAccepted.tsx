@@ -60,7 +60,7 @@ export function SupAccepted({ }: PageProps) {
               </div>
               <Badge className={`${statusChip(o.statusKey)} flex-shrink-0`}>{o.statusLabel ?? o.statusKey ?? o.status}</Badge>
               <span className="font-mono font-bold text-gray-800 flex-shrink-0">{fmtAmt(Number.isSafeInteger(o.total) ? o.total / 100 : null)} {t("ر.س", "SAR")}</span>
-              {o.statusKey !== "delivered" && (
+              {canDeclareSupplierDelivery(status, o.statusKey) && (
                 <Btn size="sm" variant="success" disabled={deliverMut.isPending} onClick={() => { void runSupplierMutation(mutationLock, () => deliverMut.mutateAsync({ id: o.id })).catch(() => {}); }}><Truck size={12} /> {t("إقرار المورد بالتسليم", "Declare delivery")}</Btn>
               )}
             </div>

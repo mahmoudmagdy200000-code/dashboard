@@ -955,3 +955,51 @@ test("S1H-F06: role change cache isolation covers reports, audit-logs, attachmen
 
   client.clear();
 });
+
+test("S1H-F06-EXT-A: delayed in-flight audit-logs response cannot restore purged cache; auth/me preserved", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { gcTime: 0, retry: false } } });
+  client.setQueryData(["audit-logs", { filter: "recent" }], { log: "pre-purge-sensitive" });
+  client.setQueryData(["audit-logs", "summary"], { total: 42 });
+  client.setQueryData(["auth", "me"], { id: "user-ext-a", email: "a@example.com" });
+
+  let resolveAudit!: (value: unknown) => void;
+  const auditPromise = new Promise(resolve => { resolveAudit = resolve; });
+  const inFlight = client.fetchQuery({ queryKey: ["audit-logs", "live"], queryFn: () => auditPromise });
+  const inFlightHandled = inFlight.catch(() => "cancelled");
+
+  await purgeFinancialQueries(client);
+
+  resolveAudit({ log: "late-audit-response" });
+  await inFlightHandled;
+
+  assert.equal(client.getQueryData(["audit-logs", { filter: "recent" }]), undefined, "audit-logs pre-purge cache must be cleared");
+  assert.equal(client.getQueryData(["audit-logs", "summary"]), undefined, "audit-logs summary must be cleared");
+  assert.equal(client.getQueryData(["audit-logs", "live"]), undefined, "audit-logs in-flight late response must not restore cache");
+  assert.deepEqual(client.getQueryData(["auth", "me"]), { id: "user-ext-a", email: "a@example.com" });
+
+  client.clear();
+});
+
+test("S1H-F06-EXT-B: delayed in-flight attachments response cannot restore purged cache; auth/me preserved", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { gcTime: 0, retry: false } } });
+  client.setQueryData(["attachments", "att-01"], { file: "sensitive.pdf" });
+  client.setQueryData(["attachments", "list", { page: 1 }], { items: ["att-01"] });
+  client.setQueryData(["auth", "me"], { id: "user-ext-b", email: "b@example.com" });
+
+  let resolveAttach!: (value: unknown) => void;
+  const attachPromise = new Promise(resolve => { resolveAttach = resolve; });
+  const inFlight = client.fetchQuery({ queryKey: ["attachments", "pending-upload"], queryFn: () => attachPromise });
+  const inFlightHandled = inFlight.catch(() => "cancelled");
+
+  await purgeFinancialQueries(client);
+
+  resolveAttach({ file: "late-upload-response.pdf" });
+  await inFlightHandled;
+
+  assert.equal(client.getQueryData(["attachments", "att-01"]), undefined, "attachments pre-purge cache must be cleared");
+  assert.equal(client.getQueryData(["attachments", "list", { page: 1 }]), undefined, "attachments list must be cleared");
+  assert.equal(client.getQueryData(["attachments", "pending-upload"]), undefined, "attachments in-flight late response must not restore cache");
+  assert.deepEqual(client.getQueryData(["auth", "me"]), { id: "user-ext-b", email: "b@example.com" });
+
+  client.clear();
+});

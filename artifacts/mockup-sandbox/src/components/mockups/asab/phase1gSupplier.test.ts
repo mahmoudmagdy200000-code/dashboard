@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { chooseGrantedRole } from "../../../auth/roleAccess.ts";
+import { canDeclareSupplierDelivery } from "./_pages/supplier/SupAccepted.tsx";
 
 // Execute the real hook query/mutation functions against an in-memory transport.
 // This proves frontend contracts, not Backend authorization or HTTP integration.
@@ -135,4 +136,38 @@ test("SUP-F04/F21 source wiring: all supplier order pages retain paging, loading
     assert.ok(source.includes("query.isPending || query.isError"));
     assert.ok(source.includes("?.data ?? []"));
   }
+});
+
+test("SUP-F07/F08: canDeclareSupplierDelivery permits declaration only when filter and order are both accepted", () => {
+  // Only accepted filter + accepted order permits the action (SUP-F07 history page + SUP-F08 guard)
+  assert.equal(canDeclareSupplierDelivery("accepted", "accepted"), true,  "accepted filter + accepted order must permit declaration");
+  assert.equal(canDeclareSupplierDelivery("accepted", "delivered"), false, "accepted filter + delivered order must deny (already declared)");
+  assert.equal(canDeclareSupplierDelivery("accepted", "rejected"),  false, "accepted filter + rejected order must deny");
+  assert.equal(canDeclareSupplierDelivery("accepted", "unknown"),   false, "accepted filter + unknown statusKey must deny");
+  assert.equal(canDeclareSupplierDelivery("accepted", undefined),   false, "accepted filter + missing statusKey must deny");
+  assert.equal(canDeclareSupplierDelivery("accepted", null),        false, "accepted filter + null statusKey must deny");
+});
+
+test("SUP-F07: delivered-history mode (status=delivered filter) must suppress the declare button for all order statuses", () => {
+  // When browsing the history tab (filterStatus === "delivered"), no order must show the declare button
+  for (const orderStatus of ["accepted", "delivered", "rejected", "unknown", undefined, null] as Array<string | null | undefined>) {
+    assert.equal(
+      canDeclareSupplierDelivery("delivered", orderStatus),
+      false,
+      `delivered-history filter with orderStatusKey=${JSON.stringify(orderStatus)} must always deny`
+    );
+  }
+});
+
+test("SUP-F07/F08 source wiring: SupAccepted render uses canDeclareSupplierDelivery predicate, not raw statusKey comparison", () => {
+  const source = readFileSync(new URL("./_pages/supplier/SupAccepted.tsx", import.meta.url), "utf8");
+  assert.ok(
+    source.includes("canDeclareSupplierDelivery(status, o.statusKey)"),
+    "render must call canDeclareSupplierDelivery(status, o.statusKey)"
+  );
+  assert.doesNotMatch(
+    source,
+    /o\.statusKey\s*!==\s*["']delivered["']/,
+    "raw o.statusKey !== \"delivered\" guard must not appear in the render"
+  );
 });

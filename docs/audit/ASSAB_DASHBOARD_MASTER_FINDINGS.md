@@ -13,8 +13,11 @@
 > **Phase 1E Remediation Commit SHA:** `24b8f7f05c7d33a5ff684348dab84df0d319d075`
 > **Phase 1F Remediation Commit SHA:** `7bc73a0ac409b9c1c20bafc943882bd413d4cde0`
 > **Phase 1G Commit SHA:** `c73c66265731d75169b3461a1c70a950e34b7e3d`
-> **Latest repository update:** Phase 1H candidate — 2026-10-23; see commit containing this entry.
-> **Windows mirror:** synchronization BLOCKED / NOT_RUN in Cloud; no new mirror parity claimed.
+> **Phase 1H Commit SHA:** `82d79fa1861a4b9ee09f55e48551ca6f09e9fc67`
+> **Phase 1G/1H initial correction Commit SHA:** `82d2eb378e4fdd7e207c43628eb0c1a109c52c34`
+> **Phase 1G/1H acceptance corrections Commit SHA:** see current delivery commit (SUP-F07/F08 predicate wiring, S1H-F06 EXT-A/B)
+> **Latest repository update:** Phase 1G/1H acceptance corrections — 2026-10-23.
+> **Windows mirror:** synchronization PENDING — copy byte-for-byte from current commit, verify SHA-256 before claiming sync.
 > **Last Synchronized Date (inherited historical metadata):** 2026-10-23
 
 ---
@@ -2304,8 +2307,8 @@ This is developer-executed evidence, not independent acceptance. Supplier activa
 | SUP-F04 | P2 | Pending orders silently truncate at first page | FIXED_AND_VERIFIED | FIXED_FRONTEND | useSupplierOrders retains meta; all three order pages expose server pagination. API-function contract tests PASS. Original: [artifacts/mockup-sandbox/src/api/queries/platform/supplier.ts:30](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/api/queries/platform/supplier.ts#L30) |
 | SUP-F05 | P2 | Orders cannot be reviewed line-by-line before acceptance | BLOCKED | BACKEND_BLOCKED | No authorized supplier order detail endpoint/line VAT contract. Summary retained; no invented API. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16117](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16117) |
 | SUP-F06 | P2 | No explicit duplicate-click/retry idempotency contract for supplier order decisions | BLOCKED | PARTIAL_BACKEND_BLOCKED | Synchronous frontend lock and failed-request propagation tested; server concurrency/idempotency and locking remain unproven/unmodified. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16112](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16112) |
-| SUP-F07 | P2 | Delivered orders have no history page | IMPLEMENTED_UNVERIFIED | IMPLEMENTED_FRONTEND | Existing status=delivered API exposed as a read-only history filter in SupAccepted; browser test pending. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16609](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16609) |
-| SUP-F08 | P2 | Supplier mark-delivered is not receiving-branch confirmation | APPROVAL_REQUIRED | PARTIAL_AWAITING_POLICY | Delivery action and success text explicitly describe supplier declaration, not branch receipt. Receiving/settlement ownership remains a policy gate. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16640](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16640) |
+| SUP-F07 | P2 | Delivered orders have no history page | IMPLEMENTED_UNVERIFIED | IMPLEMENTED_FRONTEND | Existing status=delivered API exposed as a read-only history filter in SupAccepted; browser test pending. **Acceptance correction (82d2eb3 + current):** `canDeclareSupplierDelivery(filterStatus, orderStatusKey)` predicate now governs the declare button in the actual render (replaced raw `o.statusKey !== "delivered"`). 16/16 node:test behavioral tests PASS including delivered-history suppression and source-wiring assertion; browser verification still NOT_RUN. Status remains IMPLEMENTED_UNVERIFIED until browser QA. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16609](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16609) |
+| SUP-F08 | P2 | Supplier mark-delivered is not receiving-branch confirmation | APPROVAL_REQUIRED | PARTIAL_AWAITING_POLICY | Delivery action and success text explicitly describe supplier declaration, not branch receipt. Receiving/settlement ownership remains a policy gate. **Acceptance correction note:** `canDeclareSupplierDelivery` predicate enforces that the button only appears when `filterStatus === "accepted"` AND `orderStatusKey === "accepted"` — not in history mode, not for non-accepted orders. Branch receipt and financial settlement policy remain unresolved; status stays APPROVAL_REQUIRED. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16640](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16640) |
 | SUP-F09 | P2 | Ambiguous supplier record selector cannot populate from Backend response | FIXED_AND_VERIFIED | FIXED_FRONTEND | Real details.supplierIds supported and de-duplicated; explicit ID selection, no invented supplier names. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16741](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16741) |
 | SUP-F10 | P2 | Edit catalog item cannot resolve multiple owned supplier records | BLOCKED | PARTIAL_BACKEND_BLOCKED | Edit can retry with an explicitly selected owned ID; Backend presenter still omits item-to-supplier record identity. No inferred first record or claimed cross-company guarantee. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:16752](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L16752) |
 | SUP-F11 | P2 | Import catalog has no supplier selection for multi-record user | FIXED_AND_VERIFIED | FIXED_FRONTEND | Multipart import accepts explicit supplierId; file retained for ambiguity retry. Actual mutation function tested in memory. Original: [artifacts/mockup-sandbox/src/api/queries/platform/supplier.ts:243](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/api/queries/platform/supplier.ts#L243) |
@@ -2368,7 +2371,7 @@ Original Phase1H ZIP SHA-256: `6225b00572a1ab1123b9bcf3809f0b99073dd187c66db1235
 | S1H-F03 | P2 | GlobalSearch mounted on role-denied company endpoint | BLOCKED | GATED_BACKEND_CONTRACT | ADM-F02 already gated admin; SUP-F13 gates supplier in 1G. Company-role display capability and query enabled checks added; unsupported role functionality is not delivered. Original: [artifacts/mockup-sandbox/src/components/shared/GlobalSearch.tsx:53](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/shared/GlobalSearch.tsx#L53) |
 | S1H-F04 | P2 | NotificationBell mounted on role-denied company endpoint | BLOCKED | GATED_BACKEND_CONTRACT | ADM-F03 already gated admin; SUP-F14 gates supplier in 1G. No alternate notification endpoint/verb invented. Supplier/platform notification functionality remains blocked. Original: [artifacts/mockup-sandbox/src/components/shared/NotificationBell.tsx:34](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/shared/NotificationBell.tsx#L34) |
 | S1H-F05 | P2 | Supplier live-chat widget uses company-only support API | BLOCKED | GATED_BACKEND_CONTRACT | Supplier company-only chat suppressed in 1G; no authorized supplier support contract. Company chat remounts by role in both actual shells. Original: [artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx:17155](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/mockups/asab/ASABPrototype.tsx#L17155) |
-| S1H-F06 | P2 | Role change purges financial queries but not shared query keys | FIXED_AND_VERIFIED | FIXED_FRONTEND | roleAccess cancels/removes shared, supplier, lookup and company-private keys; real QueryClient late-response tests PASS; auth identity retained. Old notification-safe test strengthened to require its removal, not an Auth lifecycle change. Original: [artifacts/mockup-sandbox/src/auth/roleAccess.ts:95](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/auth/roleAccess.ts#L95) |
+| S1H-F06 | P2 | Role change purges financial queries but not shared query keys | FIXED_AND_VERIFIED | FIXED_FRONTEND | roleAccess cancels/removes shared, supplier, lookup and company-private keys; real QueryClient late-response tests PASS; auth identity retained. Old notification-safe test strengthened to require its removal, not an Auth lifecycle change. **Acceptance correction (82d2eb3 + current):** `sensitivePrefixes` expanded with `reports`, `audit-logs`, `attachments`, `reminders`, `platform/reminders`, `company`, `modules`, `exceptions`, `exports`. Extended test evidence: S1H-F06 broad namespace test (29→31 passing) + S1H-F06-EXT-A (audit-logs delayed-response) + S1H-F06-EXT-B (attachments delayed-response) — all via `TZ=UTC node --import tsx --test` runner, 31/31 PASS exit 0. Auth/me identity preserved in all three tests. No S1-12 authentication lifecycle change. Original: [artifacts/mockup-sandbox/src/auth/roleAccess.ts:95](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/auth/roleAccess.ts#L95) |
 | S1H-F07 | P2 | Search-result links are not mapped to internal role pages | BLOCKED | PARTIAL_BACKEND_CONTRACT | No server URL assigned to window.location.hash. Only existing visible role-menu lists may be opened; not a claim of individual-record deep linking. Raw frozen Backend search groups fail explicitly pending response and assigned-branch scope verification; no new raw-data exposure or invented endpoint. Original: [artifacts/mockup-sandbox/src/components/shared/GlobalSearch.tsx:94](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/components/shared/GlobalSearch.tsx#L94) |
 | S1H-F08 | P2 | Generic refresh failure UI lacks reason-specific session-expired experience | APPROVAL_REQUIRED | AUTH_SCOPE_SEPARATE | Session-expiry reason UX remains separate from accepted S1-12 architecture; AuthContext/client/token lifecycle unchanged. Original: [artifacts/mockup-sandbox/src/api/client.ts:172](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/api/client.ts#L172) |
 | S1H-F09 | P2 | Token secrets remain written to localStorage despite no auto restore | APPROVAL_REQUIRED | AUTH_SECURITY_SEPARATE | Credential-at-rest concern remains a separate security decision. No token storage/refresh/SSO changes. Original: [artifacts/mockup-sandbox/src/api/tokens.ts:81](https://github.com/mohameelsherbini/dashboard/blob/195315c66d9e7523e799c905b7649a8a7bc8b013/artifacts/mockup-sandbox/src/api/tokens.ts#L81) |
@@ -2457,3 +2460,48 @@ PUR-01 financial approval fail-closed and PERM-00 cloning/cycling remain unchang
 Original Phase1G source commit retained; this phase additionally imports original G finding titles losslessly into its documentation and the canonical ledger. No G implementation was regenerated. One guarded non-force commit on the same authorized feature branch; no PR/main/other repository changes. Exact final SHA/parent/tree belong in the final handoff, avoiding a self-referential commit hash in its own content.
 
 Windows canonical mirror remains inaccessible: **sync BLOCKED / NOT_RUN**. Download canonical register from the final commit, verify SHA-256, then mirror byte-for-byte on Windows; do not claim sync until independently checked. Independent technical review and Project Owner acceptance remain PENDING. No Phase 2–6/Phase3, merge or deployment.
+
+---
+
+## Phase 1G/1H Acceptance Corrections (2026-10-23)
+
+Date: 2026-10-23. Base: verified remote HEAD `82d2eb378e4fdd7e207c43628eb0c1a109c52c34` (initial 1G/1H correction commit). Branch: `refactor/asabprototype-modularization-20261022`.
+
+No finding IDs added. No status promotions without independent verification. Evidence updated for three existing findings; all 249 tracked IDs, historical severities and status assignments preserved.
+
+### Corrections applied
+
+| Finding | Previous evidence gap | Correction | Status |
+|---|---|---|---|
+| SUP-F07 | `canDeclareSupplierDelivery` exported but render still used raw `o.statusKey !== "delivered"` | Render condition replaced with `canDeclareSupplierDelivery(status, o.statusKey)`; 3 new behavioral tests (accepted/delivered/missing/unknown/rejected + history mode + source-wiring assertion); 16/16 PASS node:test exit 0 | `IMPLEMENTED_UNVERIFIED` — browser verification still NOT_RUN |
+| SUP-F08 | Predicate did not enforce history-mode suppression | Predicate dual-condition (`filterStatus === "accepted" && orderStatusKey === "accepted"`) now covers history mode; policy gate (branch receipt / financial settlement) unchanged | `APPROVAL_REQUIRED` — unchanged |
+| S1H-F06 | Delayed-response test only covered `reports` namespace | S1H-F06-EXT-A: `audit-logs` in-flight delayed response cannot restore purged cache; S1H-F06-EXT-B: `attachments` in-flight delayed response cannot restore purged cache; `auth/me` preserved in both; 31/31 roleAccess PASS node:test exit 0 | `FIXED_AND_VERIFIED` — unchanged |
+
+### Verification evidence (Windows environment, node:test runner)
+
+```
+Runner: TZ=UTC node --import ./scripts/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap
+
+Focused supplier (phase1gSupplier.test.ts): 16/16 PASS, 0 fail, exit 0
+Focused roleAccess (roleAccess.test.ts):    31/31 PASS, 0 fail, exit 0
+Focused phase1hShared (phase1hShared.test.ts): 17/17 PASS, 0 fail, exit 0
+npm run typecheck (tsc --noEmit):           exit 0 PASS
+git diff --check:                            exit 0 PASS
+Full workspace build:                        BLOCKED — pnpm not available in this environment; NOT_RUN
+Runtime / Browser / Staging:                NOT_RUN
+```
+
+### Counts snapshot (recalculated from canonical records — no change from 1H baseline)
+
+| Snapshot | Original findings | Review corrections | Tracked IDs | Fixed/automated | Implemented unverified | Blocked | Approval required | Open |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| After 1H `82d79fa` | 244 | 5 | 249 | 205 | 11 | 17 | 15 | 1 |
+| After acceptance corrections (this commit) | 244 | 5 | **249** | **205** | **11** | **17** | **15** | **1** |
+
+Status counts unchanged: evidence gaps corrected but no finding promoted to `FIXED_AND_VERIFIED` or downgraded without independent acceptance. SUP-F07 remains `IMPLEMENTED_UNVERIFIED`; SUP-F08 remains `APPROVAL_REQUIRED`.
+
+### Remaining gates (unchanged)
+
+PUR-01 financial approval fail-closed, PERM-00 cloning/cycling, PUR-05 tax-exclusive prices, supplier activation/order/VAT/invoice/return integration, S1-12 credential-at-rest/expiry, search scope and assigned-branch authorization, dual-surface architecture: all unchanged.
+
+**156 original runtime scenarios NOT_RUN. Windows mirror: PENDING — synchronize byte-for-byte from this commit and verify SHA-256 before claiming parity. No merge, PR, or deployment.**
