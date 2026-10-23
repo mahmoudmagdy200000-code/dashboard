@@ -97,8 +97,9 @@ export function LoginPage() {
       <p style={{ fontSize: 13.5, color: G[500], margin: "0 0 26px" }}>{t("أدخل بياناتك للوصول إلى لوحة التحكم", "Enter your credentials to access the dashboard")}</p>
 
       {/* Email */}
-      <label style={labelStyle}>{t("البريد الإلكتروني", "Email")}</label>
+      <label htmlFor="login-email" style={labelStyle}>{t("البريد الإلكتروني", "Email")}</label>
       <input
+        id="login-email"
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
@@ -113,9 +114,10 @@ export function LoginPage() {
       />
 
       {/* Password */}
-      <label style={labelStyle}>{t("كلمة المرور", "Password")}</label>
+      <label htmlFor="login-password" style={labelStyle}>{t("كلمة المرور", "Password")}</label>
       <div style={{ position: "relative", marginBottom: 24 }}>
         <input
+          id="login-password"
           type={showPassword ? "text" : "password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -152,8 +154,9 @@ export function LoginPage() {
       {/* 2FA OTP — shown only after a step-up challenge */}
       {twoFactorToken && (
         <>
-          <label style={labelStyle}>{t("رمز التحقق الثنائي", "Two-factor code")}</label>
+          <label htmlFor="login-two-factor-code" style={labelStyle}>{t("رمز التحقق الثنائي", "Two-factor code")}</label>
           <input
+            id="login-two-factor-code"
             value={otpCode}
             onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
             onFocus={focusOn}

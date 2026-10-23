@@ -106,8 +106,8 @@ export function ForgotPasswordPage({ onDone }: Props) {
 
         {step === "request" && (
           <form onSubmit={handleRequest}>
-            <label style={labelStyle}>{t("البريد الإلكتروني", "Email")}</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus disabled={requestMut.isPending} style={inputStyle} />
+            <label htmlFor="forgot-password-email" style={labelStyle}>{t("البريد الإلكتروني", "Email")}</label>
+            <input id="forgot-password-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus disabled={requestMut.isPending} style={inputStyle} />
             <button type="submit" disabled={requestMut.isPending} style={primaryBtn(requestMut.isPending)}>
               {requestMut.isPending ? t("جاري الإرسال...", "Sending...") : t("إرسال كود التحقق", "Send verification code")}
             </button>
@@ -116,10 +116,10 @@ export function ForgotPasswordPage({ onDone }: Props) {
 
         {step === "reset" && (
           <form onSubmit={handleReset}>
-            <label style={labelStyle}>{t("كود التحقق", "Verification code")}</label>
-            <input type="text" value={token} onChange={(e) => setToken(e.target.value)} required autoFocus disabled={resetMut.isPending} style={{ ...inputStyle, fontFamily: "monospace" }} />
-            <label style={labelStyle}>{t("كلمة المرور الجديدة", "New password")}</label>
-            <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={8} disabled={resetMut.isPending} style={inputStyle} />
+            <label htmlFor="forgot-password-token" style={labelStyle}>{t("كود التحقق", "Verification code")}</label>
+            <input id="forgot-password-token" type="text" value={token} onChange={(e) => setToken(e.target.value)} required autoFocus disabled={resetMut.isPending} style={{ ...inputStyle, fontFamily: "monospace" }} />
+            <label htmlFor="forgot-password-new-password" style={labelStyle}>{t("كلمة المرور الجديدة", "New password")}</label>
+            <input id="forgot-password-new-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={8} disabled={resetMut.isPending} style={inputStyle} />
             <button type="submit" disabled={resetMut.isPending} style={primaryBtn(resetMut.isPending)}>
               {resetMut.isPending ? t("جاري الحفظ...", "Saving...") : t("تغيير كلمة المرور", "Change password")}
             </button>

@@ -75,15 +75,17 @@
 ### A01 — Login & Password Reset — programmatic field labels
 **Phase:** P4 · **Finding links:** `A4-F01` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
 **Scope:** LoginPage; ForgotPasswordPage.
-- [ ] `A01-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `A01-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
-- [ ] `A01-03` Minimal action/disposition: Associate all affected login/reset labels to controls using stable id/htmlFor; keep 2FA and auth requests unchanged; relevant filter labels are handled in A10.
+- [x] `A01-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
+- [x] `A01-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
+- [x] `A01-03` Minimal action/disposition: Associate all affected login/reset labels to controls using stable id/htmlFor; keep 2FA and auth requests unchanged; relevant filter labels are handled in A10.
 - [ ] `A01-04` Targeted acceptance evidence: Inspect labels/accessible names for email/password/OTP/reset in AR+EN; form errors; tab; existing auth unit tests.
-- [ ] `A01-05` Gate and limits: Dashboard UI ONLY; no API / session changes
-- [ ] `A01-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `A01-05` Gate and limits: Dashboard UI ONLY; no API / session changes
+- [x] `A01-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
 - [ ] `A01-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `A01-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `ae2b998a6ff115e94c8732f3a0e55aede23c5d80`; postSHA `PENDING_COMMIT`; commitSHA `PENDING_COMMIT`; tested SHA `working tree based on ae2b998a6ff115e94c8732f3a0e55aede23c5d80`; tests `66/66 auth regression PASS; mockup typecheck PASS; six label/control AST assertions PASS; browser/keyboard NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+
+**A01 execution evidence (2026-10-23):** A4-F01 was source-confirmed in the Phase 4 audit ZIP; `1D-COM-018` is a related but non-duplicate crosswalk item. Added stable `htmlFor`/`id` pairs to LoginPage email/password/2FA and ForgotPasswordPage email/token/new-password controls. No API, 2FA/session, or authentication behavior changed. Static markup association check PASS (6/6). `TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/auth/roleAccess.test.ts artifacts/mockup-sandbox/src/api/authSession.test.ts` — exit 0, 66/66 PASS. `pnpm --filter @workspace/mockup-sandbox run typecheck` — exit 0. An initial attempt without the TSX loader failed to resolve the existing extensionless `featureFlags` import; rerun with the repo's TSX loader passed. Browser, keyboard interaction, screen reader and axe checks remain NOT_RUN. A01-04 and A01-07/A01-08 remain unchecked pending the missing interaction checks and commit/checkpoint evidence.
 
 ### A02 — Login password reveal control — keyboard
 **Phase:** P4 · **Finding links:** `A4-F02` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
