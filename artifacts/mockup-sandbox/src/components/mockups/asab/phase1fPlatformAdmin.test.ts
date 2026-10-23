@@ -80,6 +80,40 @@ test("GO-04 A05: accountant radio label has valid content and preserves selectio
   assert.match(code, /moveAccToHead\(h3AccSel, head\.id\)/);
 });
 
+test("GO-06 A07: production distribution icon actions have localized contextual names", () => {
+  const code = norm(readFileSync(new URL("./_pages/admin/AdminUsers.tsx", import.meta.url), "utf8"));
+  const source = ts.createSourceFile("AdminUsers.tsx", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const buttons: ts.JsxElement[] = [];
+  const visit = (node: ts.Node) => {
+    if (ts.isJsxElement(node) && node.openingElement.tagName.getText(source) === "button") buttons.push(node);
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+
+  const attribute = (button: ts.JsxElement, name: string) => button.openingElement.attributes.properties.find(
+    (property): property is ts.JsxAttribute => ts.isJsxAttribute(property) && property.name.getText(source) === name,
+  );
+  const assertNamedAction = (handler: string, nameParts: string[]) => {
+    const button = buttons.find(candidate => attribute(candidate, "onClick")?.getText(source).includes(handler));
+    assert.ok(button, `production button handler ${handler} should remain present`);
+    const label = attribute(button, "aria-label")?.initializer;
+    assert.ok(label && ts.isJsxExpression(label) && label.expression, `${handler} should have a localized accessible name`);
+    const labelSource = label.expression.getText(source);
+    assert.match(labelSource, /\bt\(/, `${handler} should use the existing locale translator`);
+    for (const part of nameParts) assert.ok(labelSource.includes(part), `${handler} accessible name should include ${part}`);
+  };
+
+  assertNamedAction("removeRestFromAcc(accSel!, rest)", ["إزالة", "Remove", "restName(rest)", "selAccData?.name"]);
+  assertNamedAction("addRestToAcc(accSel!, rest)", ["إضافة", "Add", "restName(rest)", "selAccData?.name"]);
+  assertNamedAction("toggleModuleForRest(modAccSel, row.id, m.value)", ["تمكين", "تعطيل", "Enable", "Disable", "row.name", "acc.name"]);
+  assertNamedAction("clearRestModules(modAccSel, row.id)", ["تمكين", "إلغاء", "Enable all", "Clear", "row.name", "acc.name"]);
+  assert.match(code, /const headName = head\?\.name \?\? t\("رئيس الحسابات", "Head accountant"\)/);
+  assertNamedAction("moveAccToHead(acc.id, null); setH3AccSel(null)", ["إلغاء تعيين", "Unassign", "acc.name", "headName"]);
+  assertNamedAction('setModAccFilter("")', ["مسح البحث عن المحاسب", "Clear accountant search"]);
+  assertNamedAction('setModRestFilter("")', ["مسح تصفية المطعم", "Clear restaurant filter"]);
+  assertNamedAction('setH3HeadFilter("")', ["مسح البحث عن المحاسب", "Clear accountant search"]);
+});
+
 test("Phase 1F ADM-F10: BRANDS renders flat API arrays without blanking out", () => {
   const code = norm(readFileSync(new URL("./_pages/admin/AdminRestaurants.tsx", import.meta.url), "utf8"));
   assert.ok(

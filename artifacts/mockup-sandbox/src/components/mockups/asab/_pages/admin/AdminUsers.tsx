@@ -429,7 +429,7 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
                         <div key={rest} className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-gray-50">
                           <div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
                           <span className="text-sm text-gray-700 flex-1">{restName(rest)}</span>
-                          <button onClick={() => removeRestFromAcc(accSel!, rest)} className="text-red-400 hover:text-red-600 flex-shrink-0 text-xs px-1.5 py-0.5 rounded hover:bg-red-50">✕</button>
+                          <button onClick={() => removeRestFromAcc(accSel!, rest)} aria-label={t(`إزالة ${restName(rest)} من ${selAccData?.name ?? t("المحاسب المحدد", "selected accountant")}`, `Remove ${restName(rest)} from ${selAccData?.name ?? t("المحاسب المحدد", "selected accountant")}`)} className="text-red-400 hover:text-red-600 flex-shrink-0 text-xs px-1.5 py-0.5 rounded hover:bg-red-50">✕</button>
                         </div>
                       ))
                     }
@@ -440,7 +440,7 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
                           <div key={rest} className="flex items-center gap-2.5 py-1.5 hover:bg-white rounded px-1">
                             <div className="w-2 h-2 rounded-full bg-gray-300 flex-shrink-0" />
                             <span className="text-xs text-gray-500 flex-1">{restName(rest)}</span>
-                            <button onClick={() => addRestToAcc(accSel!, rest)} className="text-emerald-500 hover:text-emerald-700 flex-shrink-0 text-xs px-1.5 py-0.5 rounded hover:bg-emerald-50 font-bold">+</button>
+                            <button onClick={() => addRestToAcc(accSel!, rest)} aria-label={t(`إضافة ${restName(rest)} إلى ${selAccData?.name ?? t("المحاسب المحدد", "selected accountant")}`, `Add ${restName(rest)} to ${selAccData?.name ?? t("المحاسب المحدد", "selected accountant")}`)} className="text-emerald-500 hover:text-emerald-700 flex-shrink-0 text-xs px-1.5 py-0.5 rounded hover:bg-emerald-50 font-bold">+</button>
                           </div>
                         ))}
                       </div>
@@ -498,7 +498,7 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
                       <Search size={10} className="text-gray-400 flex-shrink-0" />
                       <input value={modAccFilter} onChange={e => setModAccFilter(e.target.value)}
                         className="text-[11px] bg-transparent outline-none flex-1 text-gray-600" placeholder={t("بحث باسم المحاسب...", "Search accountant...")} />
-                      {modAccFilter && <button onClick={() => setModAccFilter("")}><X size={10} className="text-gray-400" /></button>}
+                      {modAccFilter && <button onClick={() => setModAccFilter("")} aria-label={t("مسح البحث عن المحاسب", "Clear accountant search")}><X size={10} className="text-gray-400" /></button>}
                     </div>
                   </div>
                   <div className="divide-y divide-gray-100 overflow-y-auto flex-1" style={{ maxHeight: 340 }}>
@@ -577,7 +577,7 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
                             <Search size={10} className="text-gray-400 flex-shrink-0" />
                             <input value={modRestFilter} onChange={e => setModRestFilter(e.target.value)}
                               className="text-[11px] bg-transparent outline-none flex-1 text-gray-600" placeholder={t("فلترة بالمطعم...", "Filter by restaurant...")} />
-                            {modRestFilter && <button onClick={() => setModRestFilter("")}><X size={10} className="text-gray-400" /></button>}
+                            {modRestFilter && <button onClick={() => setModRestFilter("")} aria-label={t("مسح تصفية المطعم", "Clear restaurant filter")}><X size={10} className="text-gray-400" /></button>}
                           </div>
                         </div>
                         <div className="overflow-auto">
@@ -607,7 +607,7 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
                                       const checked = mods.includes(m.value);
                                       return (
                                         <td key={m.value} className="px-2 py-2.5 text-center">
-                                          <button onClick={() => toggleModuleForRest(modAccSel, row.id, m.value)}
+                                          <button onClick={() => toggleModuleForRest(modAccSel, row.id, m.value)} aria-label={t(`${checked ? "تعطيل" : "تمكين"} ${m.label} للمطعم ${row.name} للمحاسب ${acc.name}`, `${checked ? "Disable" : "Enable"} ${String((m as any).labelEn ?? m.value)} for ${row.name} — ${acc.name}`)}
                                             className={`w-6 h-6 rounded-md flex items-center justify-center mx-auto transition-all ${checked ? "bg-purple-600 text-white shadow-sm" : "bg-gray-100 text-gray-400 hover:bg-purple-100 hover:text-purple-600"}`}>
                                             {checked ? <Check size={11} /> : <span className="text-[10px]">—</span>}
                                           </button>
@@ -615,7 +615,7 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
                                       );
                                     })}
                                     <td className="px-3 py-2.5 text-center">
-                                      <button onClick={() => allChecked ? clearRestModules(modAccSel, row.id) : assignAllModules(modAccSel, row.id, COLS.map(m => m.value))}
+                                      <button onClick={() => allChecked ? clearRestModules(modAccSel, row.id) : assignAllModules(modAccSel, row.id, COLS.map(m => m.value))} aria-label={t(`${allChecked ? "إلغاء" : "تمكين"} جميع الموديولات للمطعم ${row.name} للمحاسب ${acc.name}`, `${allChecked ? "Clear" : "Enable all"} modules for ${row.name} — ${acc.name}`)}
                                         className={`w-6 h-6 rounded-md flex items-center justify-center mx-auto transition-all ${allChecked ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-500 hover:bg-emerald-100"}`}>
                                         {allChecked ? <Check size={11} /> : <Plus size={9} />}
                                       </button>
@@ -663,12 +663,13 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
                         <Search size={10} className="text-gray-400 flex-shrink-0" />
                         <input value={h3HeadFilter} onChange={e => setH3HeadFilter(e.target.value)}
                           className="text-[11px] bg-transparent outline-none flex-1 text-gray-600" placeholder={t("بحث بالاسم...", "Search by name...")} />
-                        {h3HeadFilter && <button onClick={() => setH3HeadFilter("")}><X size={10} className="text-gray-400" /></button>}
+                        {h3HeadFilter && <button onClick={() => setH3HeadFilter("")} aria-label={t("مسح البحث عن المحاسب", "Clear accountant search")}><X size={10} className="text-gray-400" /></button>}
                       </div>
                     </div>
                     <div className="divide-y divide-gray-50 overflow-y-auto flex-1" style={{ maxHeight: 400 }}>
                       {distAccs.filter(a => !h3HeadFilter || a.name.includes(h3HeadFilter)).map(acc => {
                         const head = distHeads.find(h => h.id === acc.headId);
+                        const headName = head?.name ?? t("رئيس الحسابات", "Head accountant");
                         const isSelected = h3AccSel === acc.id;
                         const selectionId = `head-accountant-${encodeURIComponent(acc.id)}`;
                         return (
@@ -696,7 +697,7 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
                               </span>
                             </label>
                             {acc.headId && (
-                              <button type="button" onClick={e => { e.stopPropagation(); moveAccToHead(acc.id, null); setH3AccSel(null); }}
+                              <button type="button" onClick={e => { e.stopPropagation(); moveAccToHead(acc.id, null); setH3AccSel(null); }} aria-label={t(`إلغاء تعيين ${acc.name} من ${headName}`, `Unassign ${acc.name} from ${headName}`)}
                                 className="w-6 h-6 rounded-full bg-red-100 text-red-500 hover:bg-red-200 flex items-center justify-center flex-shrink-0">
                                 <X size={10} />
                               </button>

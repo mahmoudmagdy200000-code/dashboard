@@ -117,8 +117,8 @@ A02 committed as `b44afbdf4d741404a165330966809785148f1b0b`; status remains `PEN
 
 A03 evidence: R3-F08 source confirms `components/KpiCard.tsx` is a clickable `div`; the audit links `HA-F33` and `S1H-F13` are retained without adding IDs. AST scan found five actual interactive call sites, all in HeadDashboard; other KpiCard uses are informational. Interactive variant is a native `type="button"` with visible focus ring; informational variant remains a `div` with no pointer/focus affordance. SSR variant assertions PASS. `pnpm --filter @workspace/mockup-sandbox run typecheck` exit 0. Keyboard activation, role navigation and 320px reflow remain NOT_RUN.
 
-GO-04 A03 correction checkpoint: preSHA `94d02dd2824cb8faea7fd346bf66160c9acb9189`; scope is limited to `KpiCard.tsx`, its focused semantic test, and checklist/tracker evidence. RED test added; production component not yet changed. Browser keyboard and reflow remain NOT_RUN.
-GO-04 A03 result: RED reproduced invalid flow descendants (focused TAP exit 1: `button descendants must not contain flow-content elements`); after replacing the inner wrappers/text with block spans, GREEN is 2/2 (exit 0) and mockup typecheck is PASS (exit 0). `git diff --check` PASS. This is static JSX-structure evidence; keyboard activation, 320px reflow, AR/EN visual behavior, and browser checks remain NOT_RUN. Local correction commit `fc20ec75af1ab2fe370c695a7b17dfe4e301e7ad` was created after these checks.
+GO-04 A03 correction checkpoint: preSHA `94d02dd2824cb8faea7fd346bf66160c9acb9189`; scope was limited to `KpiCard.tsx`, its focused semantic test, and checklist/tracker evidence. RED reproduced invalid flow descendants; the component correction is already committed in `fc20ec75af1ab2fe370c695a7b17dfe4e301e7ad`.
+GO-06 A03 follow-up is test-helper-only: `jsxTag` now handles paired and self-closing JSX nodes; its regression covers both. GREEN is included in the 60/60 targeted GO-06 P4 suite. Keyboard activation, 320px reflow, AR/EN visual behavior, and browser checks remain NOT_RUN.
 
 ### A04 — Document language metadata
 **Phase:** P4 · **Finding links:** `A4-F06; CA-F19; HA-F36; S1H-F12` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
@@ -172,17 +172,17 @@ A06 evidence: A4-F03 source-confirmed at baseline `ProcNewOrders.tsx` line 193; 
 ### A07 — AdminUsers — contextual icon button names
 **Phase:** P4 · **Finding links:** `A4-F04` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
 **Scope:** unlink/add/clear icons in distribution.
-- [ ] `A07-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `A07-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
-- [ ] `A07-03` Minimal action/disposition: Give admin unlink/add/clear icon controls localized contextual accessible names including target identity.
+- [x] `A07-01` Reload §§0–1, inspect the A4 source evidence and current AdminUsers controls; verify GO-06 scope. PreSHA `77cb19291f0f2a6543f184f1eca5c143016138f4`.
+- [x] `A07-02` Recorded preSHA, branch, files, role/tenant risk and browser availability in the tracker before implementation.
+- [x] `A07-03` Added localized contextual accessible names to distribution add/remove/clear/module/unassign icon controls; existing callbacks and role gates are unchanged.
 - [ ] `A07-04` Targeted acceptance evidence: Accessibility tree/role/button/name for each control; screen-reader tool only if actually run; no permission regression.
-- [ ] `A07-05` Gate and limits: Dashboard AdminUsers
-- [ ] `A07-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `A07-05` Gate and limits: Dashboard AdminUsers only; no roles, permissions, API or assignment behavior changed.
+- [x] `A07-06` Targeted source/unit regressions PASS 60/60 and TypeScript typecheck PASS. Accessibility-tree, keyboard and AR/EN runtime checks remain NOT_RUN.
 - [ ] `A07-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `A07-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `9db95d7445586b0adf8c2da4620a5a415107accb`; postSHA `BLOCKED`; commitSHA `ZERO_COMMIT`; tested SHA `NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+**Implementation fields:** GO-06 preSHA `77cb19291f0f2a6543f184f1eca5c143016138f4`; source implemented locally, awaiting P4 commit; tested tree passes the targeted 60/60 GO-06 P4 suite and TypeScript typecheck; runtime accessibility checks `NOT_RUN`; independent review `PENDING`; approval ref `GO-06`.
 
-A07 dependency note: A07 contextual names for add/unlink/clear icons remain distinct from A09 mode-selection state (`aria-pressed`); A09 does not resolve A07. A07 is still a dependent AdminUsers follow-up and remains BLOCKED_EVIDENCE until the A05 changes receive independent review under §1. No A07 code change was made.
+A07 dependency note: A07 contextual names are distinct from A09 mode-selection state (`aria-pressed`); A09 does not resolve A07. GO-06 explicitly authorized A07 despite A05's pending independent review. Source and AST regression are implemented; accessibility-tree, keyboard, AR/EN and role-gate runtime checks remain NOT_RUN, with independent review PENDING.
 
 ### A08 — AccAssets import selection — labelled checkboxes
 **Phase:** P4 · **Finding links:** `A4-F05` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
@@ -332,9 +332,9 @@ Post-commit checkpoint: A10 local commit `67b0c15a34ce17f526ca7e45a7e69db4174e0c
 - [x] `B07-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS. Phase 1D tests 13/13 exit 0; mockup typecheck exit 0; diff check exit 0. Browser short-height, Escape, focus trap/return, soft keyboard and AR/EN NOT_RUN.
 - [x] `B07-07` Scroll-cap code and checklist/tracker changes were staged and committed atomically as `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; dialog accessibility gaps remain open.
 - [x] `B07-08` Captured commit SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; R3-F15/CA-F15 remain partial and runtime NOT_RUN.
-**Implementation fields:** preSHA `0e95364e09a784204df40da5d79d763137d72c5b`; postSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; commitSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; tested SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; tests `PARTIAL_PASS — 13/13 Phase 1D; typecheck PASS; browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+**Implementation fields:** Original scroll-cap commit `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`. GO-06 preSHA `77cb19291f0f2a6543f184f1eca5c143016138f4`; dialog semantics/title/close name/focus-return source and static test implemented locally; focused suite 60/60, typecheck/build pass; browser behavior `NOT_RUN`; independent review `PENDING`; approval ref `GO-06`.
 
-GO-04 B07 source review: `editAsset` still uses an outer clickable `div`, has no `role="dialog"`/`aria-modal` or title association, has no Escape handler for this modal, and no focus containment or trigger-focus return. The existing Escape handler near line 982 is scoped to `mobileOpen` only. The existing `max-h-[90dvh] overflow-y-auto` remains the only proven B07 correction. Minimal proposed follow-up: use the existing `components/ui/dialog.tsx` Radix `Dialog`/`DialogContent`/`DialogTitle` for this `editAsset` modal only, retain the viewport cap, then verify Escape, focus entry/trap/return and short-height scrolling in a real browser. No B07 source change in GO-04; R3-F15/CA-F15 remain PARTIAL_SOURCE_FIX_WITH_OPEN_DIALOG_A11Y and runtime NOT_RUN.
+GO-04 identified that `editAsset` lacked dialog semantics/title, Escape handling, focus containment and focus return; the prior height cap/scroll fix remains. GO-06 P4 replaces only this overlay with the installed Radix Dialog primitive, adds a localized title and close name, retains the viewport cap/internal scrolling, and explicitly restores focus to the opener on close. Save/cancel state and API callbacks are unchanged. The static source regression passes in the 60/60 targeted suite. Escape, focus entry/containment/return, short-height and AR/EN behavior remain NOT_RUN in a real browser; R3-F15/CA-F15 stay open pending runtime and independent review.
 
 ### B08 — LiveChat floating overlap — viewport-safe placement
 **Phase:** P3 · **Finding links:** `R3-F12; S1H-F05; S1H-F19` · **Mode:** `VERIFY_CONDITIONAL` · **Current:** `BLOCKED_EVIDENCE` · **Repository:** Dashboard
@@ -736,3 +736,23 @@ Next eligible batch and its gate:
 - Completed checklist evidence: GLOBAL-02 (source/archive hashes and remote baseline), GLOBAL-03 (available local worktree/PR state inspected; no existing work altered), G00-02 (Dashboard/Backend/Flutter reference heads and relevant branch/PR state checked), G00-07 (authorized isolated branch and documentation bootstrap), BOOT-01 (explicit docs-only GO), BOOT-02 (exact V2 plan/tracker copied and included in one documentation-only commit).
 - Tests/runtime: `NOT_RUN` — this was documentation/worktree setup only. No code, Backend, Flutter, financial, browser, or staging actions were performed.
 - The bootstrap commit SHA is reported in the delivery handoff; it is not self-recorded in the files contained by that same commit.
+
+## GO-06 Phase checkpoint — pre-commit evidence
+
+- Recovered from the original worktree at branch `work/dashboard-p345-remediation-v2-20261023`, HEAD `77cb19291f0f2a6543f184f1eca5c143016138f4`, clean before GO-06 edits. Earlier local commits were preserved; no history rewrite or remote write.
+- **Phase 3:** B01 and prior responsive source fixes were not repeated. B02–B06/B08 verify-first viewport checks and B10 browser verification remain `NOT_RUN/BLOCKED`; B09 remains `BLOCKED_DECISION`; R3-F10 remains B06 and R3-F15 remains B07. No P3 commit was justified.
+- **Phase 4:** GO-06 completed the A03 test-helper follow-up, A07 contextual labels, and B07 `editAsset` dialog source correction. Focused P4 regressions: 60/60, zero skipped; mockup TypeScript typecheck and build pass. Evidence is in `docs/audit/evidence/p3-p5-go02/GO06/PHASE4_RESULT.md`. This source/test evidence is not browser or accessibility-runtime acceptance. P4 atomic local commit is pending.
+- **Phase 5:** No Dashboard fix met all target-SHA, business-policy, repository authorization and isolated-test gates. No Backend/Flutter source or test was modified or run. All 31 contract cases retain their audit disposition; see `ASSAB_P3_P4_P5_GO06_BLOCKER_REGISTER.md`. No P5 code commit.
+- **Runtime boundary:** no Playwright/browser package or browser executable is available; do not install one under this GO-06 run. Dialog keyboard/focus/viewport, AdminUsers accessibility tree/keyboard/AR-EN, responsive viewport, Backend/Flutter HTTP and financial tests remain `NOT_RUN/BLOCKED`.
+- **Generated file:** Vite build changed only `artifacts/mockup-sandbox/src/.generated/mockup-components.ts`; it was restored from the verified HEAD blob (SHA-256 `28f22d4ae3e1196e2c7cfe055466685ff5c2fc88384ea8f3985d9605527065a1`).
+- Independent review is `PENDING_REVIEW`; no finding is marked accepted or runtime verified.
+
+### GO-06 P4 pre-commit checkpoint
+
+- PreSHA: `77cb19291f0f2a6543f184f1eca5c143016138f4`; branch: `work/dashboard-p345-remediation-v2-20261023`.
+- Exact P4 source/test paths: `artifacts/mockup-sandbox/src/components/mockups/asab/CompanyDashboard.tsx`; `artifacts/mockup-sandbox/src/components/mockups/asab/_pages/admin/AdminUsers.tsx`; `artifacts/mockup-sandbox/src/components/mockups/asab/companyAdminGuards.test.ts`; `artifacts/mockup-sandbox/src/components/mockups/asab/components/KpiCard.test.ts`; `artifacts/mockup-sandbox/src/components/mockups/asab/phase1fPlatformAdmin.test.ts`.
+- Evidence paths: `docs/audit/evidence/p3-p5-go02/GO06/PHASE4_RESULT.md` and the focused TAP, typecheck, and build logs. Focused tests: 60/60 pass, 0 skipped, exit 0; typecheck exit 0; production build exit 0 with existing >500 kB chunk warning; `git diff --check` exit 0.
+- Browser/keyboard/accessibility-tree, viewport/soft-keyboard, axe and screen-reader checks: `NOT_RUN`; no Playwright/browser executable was found, and none was installed.
+- Source commit is authorized as one local P4 commit after this checkpoint. Independent review remains `PENDING`; the code commit SHA will be recorded in the subsequent GO-06 documentation checkpoint (no amend or self-reference).
+
+The original V2 plan's final line “EXECUTION NOT AUTHORIZED BY FILE CREATION” describes the plan file alone. GO-02 explicitly authorized the local eligible Dashboard execution; remote delivery remains prohibited.

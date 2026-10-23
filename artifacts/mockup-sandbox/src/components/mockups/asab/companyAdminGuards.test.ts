@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   validateBranchCreate,
   validateUserEdit,
@@ -302,4 +303,19 @@ test("CA-REV-05: trapDrawerFocus and breakpoint constants ensure accessible focu
 
   // Empty focusable list -> returns null safely without throwing
   assert.equal(trapDrawerFocus([], el1, false), null);
+});
+
+test("GO-06 B07: editAsset uses the existing modal dialog primitive and preserves form actions", () => {
+  const source = readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8");
+  assert.match(source, /import \* as DialogPrimitive from "@radix-ui\/react-dialog"/);
+  assert.match(source, /<DialogPrimitive\.Root open=\{Boolean\(editAsset\)\}/);
+  assert.match(source, /onOpenChange=\{open => \{ if \(!open\) setEditAsset\(null\); \}\}/);
+  assert.match(source, /editAssetTriggerRef\.current = trigger/);
+  assert.match(source, /onCloseAutoFocus=\{event => \{ event\.preventDefault\(\); editAssetTriggerRef\.current\?\.focus\(\);/);
+  assert.match(source, /className="[^"]*w-\[calc\(100vw-2rem\)\][^"]*max-w-md/);
+  assert.match(source, /<DialogPrimitive\.Content\b[\s\S]*?className="[^"]*max-h-\[90dvh\][^"]*overflow-y-auto/);
+  assert.match(source, /<DialogPrimitive\.Title[^>]*>\{t\("تعديل الأصل",\s*"Edit Asset"\)\}<\/DialogPrimitive\.Title>/);
+  assert.match(source, /<DialogPrimitive\.Close asChild>[\s\S]*?aria-label=\{t\("إغلاق تعديل الأصل",\s*"Close asset edit"\)\}/);
+  assert.match(source, /onClick=\{submitEdit\}/);
+  assert.match(source, /onSuccess: \(\) => setEditAsset\(null\)/);
 });

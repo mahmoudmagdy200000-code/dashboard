@@ -12,7 +12,8 @@ function findNode<T extends ts.Node>(node: ts.Node, predicate: (candidate: ts.No
 }
 
 function jsxTag(node: ts.JsxElement | ts.JsxSelfClosingElement): string {
-  return node.openingElement.tagName.getText(sourceFile);
+  const tagName = ts.isJsxElement(node) ? node.openingElement.tagName : node.tagName;
+  return tagName.getText();
 }
 
 function collectJsxTags(node: ts.Node, tags: string[] = []): string[] {
@@ -62,4 +63,16 @@ test("informational KpiCard remains a noninteractive div", () => {
   assert.ok(noninteractiveReturn, "informational card should retain a noninteractive return");
   assert.match(noninteractiveReturn.expression?.getText(sourceFile) ?? "", /<div/);
   assert.doesNotMatch(noninteractiveReturn.expression?.getText(sourceFile) ?? "", /tabIndex|onClick/);
+});
+
+test("jsxTag reads opening tags for paired and self-closing JSX elements", () => {
+  const fixture = ts.createSourceFile(
+    "jsx-tag-fixture.tsx",
+    "<section><Icon /></section>",
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+
+  assert.deepEqual(collectJsxTags(fixture), ["section", "Icon"]);
 });

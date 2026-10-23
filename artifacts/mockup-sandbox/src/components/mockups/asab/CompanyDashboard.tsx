@@ -1,5 +1,6 @@
 import "./_group.css";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
 import { chooseGrantedRole, companyRoles, financialAccessFingerprint, financialAccessGeneration, grantedRoleKeys, hasRoleGrant, pageForRole, purgeFinancialQueries, registerFinancialRequest } from "../../../auth/roleAccess";
@@ -5802,8 +5803,9 @@ function AccCompanyAssets() {
     );
   };
   const [editAsset, setEditAsset] = useState<Asset|null>(null);
+  const editAssetTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [eForm, setEForm] = useState({ name:"", category:"", custodian:"", serial:"", bookValue:"", status:"active", branchId:"" });
-  const openEdit = (a:Asset) => { setEditAsset(a); setEForm({ name:a.name, category:a.category, custodian:a.custodian??"", serial:a.serial??"", bookValue:((a.bookValueHalalas??0)/100).toFixed(2), status:a.status, branchId:a.branchId??"" }); };
+  const openEdit = (a:Asset, trigger:HTMLButtonElement) => { editAssetTriggerRef.current = trigger; setEditAsset(a); setEForm({ name:a.name, category:a.category, custodian:a.custodian??"", serial:a.serial??"", bookValue:((a.bookValueHalalas??0)/100).toFixed(2), status:a.status, branchId:a.branchId??"" }); };
   const submitEdit = () => {
     if (!editAsset) return;
     patchAssetMut.mutate(
@@ -5952,7 +5954,7 @@ function AccCompanyAssets() {
             <span className="font-mono text-xs text-amber-700">{fmt(Math.round((a.annualDepreciationHalalas??0)/100))}</span>
             <div className="flex items-center gap-1.5">
               <Badge className={`text-[10px] border ${SC[a.status]??SC.active}`}>{a.statusLabelAr ?? SL[a.status] ?? a.status}</Badge>
-              <button onClick={()=>openEdit(a)} className="p-1 rounded text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"><Edit2 size={11}/></button>
+              <button onClick={e=>openEdit(a, e.currentTarget)} className="p-1 rounded text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"><Edit2 size={11}/></button>
             </div>
           </div>
         ))}
@@ -5979,10 +5981,11 @@ function AccCompanyAssets() {
         </div>
       )}
 
-      {editAsset && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setEditAsset(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5 max-h-[90dvh] overflow-y-auto" onClick={e=>e.stopPropagation()} dir={dir}>
-            <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">{t("تعديل الأصل","Edit Asset")}</h3><button onClick={()=>setEditAsset(null)} className="text-gray-400"><X size={18}/></button></div>
+      <DialogPrimitive.Root open={Boolean(editAsset)} onOpenChange={open => { if (!open) setEditAsset(null); }}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50" />
+          <DialogPrimitive.Content dir={dir} onCloseAutoFocus={event => { event.preventDefault(); editAssetTriggerRef.current?.focus(); editAssetTriggerRef.current = null; }} className="fixed left-1/2 top-1/2 z-50 flex max-h-[90dvh] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl focus:outline-none">
+            <div className="flex items-center justify-between mb-4"><DialogPrimitive.Title className="font-bold text-gray-800">{t("تعديل الأصل","Edit Asset")}</DialogPrimitive.Title><DialogPrimitive.Close asChild><button type="button" aria-label={t("إغلاق تعديل الأصل", "Close asset edit")} className="text-gray-400"><X size={18}/></button></DialogPrimitive.Close></div>
             <div className="space-y-3">
               <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("اسم الأصل","Asset Name")}</label><input value={eForm.name} onChange={e=>setEForm(f=>({...f,name:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-purple-400"/></div>
               <div className="grid grid-cols-2 gap-3">
@@ -5995,9 +5998,9 @@ function AccCompanyAssets() {
               </div>
               <div className="flex gap-2 justify-end pt-1"><Btn onClick={()=>setEditAsset(null)}>{t("إلغاء","Cancel")}</Btn><Btn variant="primary" onClick={submitEdit} disabled={patchAssetMut.isPending}><Check size={13}/> {t("حفظ","Save")}</Btn></div>
             </div>
-          </div>
-        </div>
-      )}
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
     </div>
   );
 }
