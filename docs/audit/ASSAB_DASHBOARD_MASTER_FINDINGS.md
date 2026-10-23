@@ -104,7 +104,7 @@
 | **CA-F12** | P2 | Billing (`ca-billing`) | غياب حالات التحميل والخطأ في سجل الفواتير | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `0fe15e4` |
 | **CA-F13** | P2 | Users (`ca-users`) | نطاق الدعوات ونقل المدير يتطلب اعتماد الصلاحيات | `APPROVAL_REQUIRED` | `NOT_RUN` | حماية النطاق البرمجي | — |
 | **CA-F14** | P2 | Shared (`ExpiredBanner`) | رابط تجديد الاشتراك لا يتوافق مع الـ Router | `FIXED_AND_VERIFIED` | `NOT_RUN` | `App.tsx`, `SubscriptionExpiredBanner.tsx` | `0fe15e4` |
-| **CA-F15** | P2 | Modals & Dialogs | نوافذ مخصصة بلا إدارة حوار ولوحة مفاتيح (ARIA) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx` | `0fe15e4` |
+| **CA-F15** | P2 | Modals & Dialogs | نوافذ مخصصة بلا إدارة حوار ولوحة مفاتيح (ARIA) | `PARTIAL_SOURCE_FIX_WITH_OPEN_DIALOG_A11Y` (GO-04 linked scope) | `NOT_RUN` | `CompanyDashboard.tsx` | Historical 1A `0fe15e4`; GO-04 §8.9 |
 | **CA-F16** | P2 | Modules (`ca-modules`) | تسميات وحالات عناصر تبديل الوحدات غير متاحة | `FIXED_AND_VERIFIED` | `NOT_RUN` | `CompanyDashboard.tsx`, `companyAdminGuards.ts` | `0fe15e4` |
 | **CA-F17** | P2 | Shared (`NotificationBell`) | إشعارات قابلة للنقر بالماوس فقط وعرض غير متجاوب | `FIXED_AND_VERIFIED` | `NOT_RUN` | `NotificationBell.tsx` | `0fe15e4` |
 | **CA-F18** | P2 | Shell HTML (`index.html`) | تقييد تكبير الشاشة (WCAG 1.4.4 Resize Text) | `FIXED_AND_VERIFIED` | `NOT_RUN` | `artifacts/mockup-sandbox/index.html` | `0fe15e4` |
@@ -452,10 +452,11 @@
 - **Implementation Commit SHA:** `0fe15e46b6320bee68f25422eb0dad6a05739fbd`
 - **Automated Test Results:** فحص الـ ARIA وبناء التطبيق يمر بنجاح.
 - **Runtime Verification Status:** `NOT_RUN`
-- **Current Finding Status:** `FIXED_AND_VERIFIED`
+- **Historical Phase 1A Finding Status:** `FIXED_AND_VERIFIED` (retained for the original modal scope).
+- **Current GO-04 linked-scope status:** `PARTIAL_SOURCE_FIX_WITH_OPEN_DIALOG_A11Y`; the `editAsset` modal reviewed under B07 still lacks verified dialog semantics and keyboard/focus behavior. Do not treat CA-F15 as fully accepted for this linked scope without evidence.
 - **Approval / Decision Required:** لا يوجد.
-- **Remaining Risks:** لا يوجد.
-- **Last Updated Date:** 2026-10-22
+- **Historical Phase 1A remaining-risks note:** لا توجد مخاطر أخرى مسجلة في ذلك الوقت. GO-04 linked-scope risks for `editAsset` are recorded above and in §8.9; they prevent full acceptance for the linked scope.
+- **Original Phase 1A last updated:** 2026-10-22; **GO-04 linked-scope review:** 2026-10-23.
 
 ---
 
@@ -2532,14 +2533,14 @@ PUR-01 financial approval fail-closed, PERM-00 cloning/cycling, PUR-05 tax-exclu
 | `R3-F05` | P2 | PARTIAL_SOURCE — Supplier items scroll exists; procurement grouped/detail tables need runtime evidence. | B03 BLOCKED_EVIDENCE; no change. |
 | `R3-F06` | P2 | VERIFIED_SOURCE — Radix dialogs and dynamic viewport cap in source; Escape/focus runtime NOT_RUN. | B10 verify-only; PENDING_REVIEW. |
 | `R3-F07` | P2 | PARTIAL_SOURCE — shared direction already resolved; role-specific ProcNewOrders/AccAssets direction changed. Browser AR/EN NOT_RUN. | A11 commit aeeb06705836f11e7affbb10e1f6fd9ee86b9ded; PENDING_REVIEW. |
-| `R3-F08` | P2 | IMPLEMENTED_UNVERIFIED — interactive KpiCard semantics corrected; SSR/unit checks pass; browser keyboard/reflow NOT_RUN. | A03 commit 7b8eccb5971e9e2b7548c657a07b3607523284ca; PENDING_REVIEW. |
+| `R3-F08` | P2 | IMPLEMENTED_UNVERIFIED — native interactive KpiCard button retained; invalid div/p descendants corrected to phrasing spans; static semantic tests/typecheck pass, browser keyboard/reflow NOT_RUN. | A03 original commit 7b8eccb5971e9e2b7548c657a07b3607523284ca; GO-04 correction fc20ec75af1ab2fe370c695a7b17dfe4e301e7ad; PENDING_REVIEW. |
 | `R3-F09` | P3 | VERIFIED_SOURCE — supplier action names/minimum target in source; touch runtime NOT_RUN. | B10 verify-only; PENDING_REVIEW. |
-| `R3-F10` | P3 | OPEN — no safe source correction proven; dialog runtime evidence unavailable. | B07 only corrected editAsset modal; other dialog concerns remain. |
+| `R3-F10` | P3 | OPEN — EntryFlow chooser concern remains VERIFY_FIRST; no safe correction proven. | B06 owns R3-F10; tap/zoom runtime proof was not available. B07 is limited to the R3-F15 editAsset dialog. |
 | `R3-F11` | P3 | OPEN — source risk remains; no specific runtime proof. | B05 BLOCKED_EVIDENCE; no change. |
 | `R3-F12` | P3 | OPEN — chat overlap awaits visualViewport/keyboard reproduction. | B08 BLOCKED_EVIDENCE; no change. |
 | `R3-F13` | P3 | VERIFIED_SOURCE — breadcrumb direction/wrapping source present; long breadcrumb visual proof NOT_RUN. | B10 verify-only; PENDING_REVIEW. |
 | `R3-F14` | P2 | DECISION_REQUIRED — rounded K KPI vs exact fmtAmt summary; no business decision. | B09 BLOCKED_DECISION; no change. |
-| `R3-F15` | P2 | PARTIALLY_IMPLEMENTED_UNVERIFIED — CompanyDashboard editAsset modal gets max-height/scroll; browser/focus/keyboard tests NOT_RUN. | B07 commit 79dc938d7d9bbdcc1f5441245e9b9f5ec4757702; PENDING_REVIEW. |
+| `R3-F15` | P2 | PARTIAL_SOURCE_FIX_WITH_OPEN_DIALOG_A11Y — editAsset has a viewport height cap and scrolling, but remains a custom overlay without proven dialog semantics, Escape, focus containment or focus return. | B07 commit 79dc938d7d9bbdcc1f5441245e9b9f5ec4757702; GO-04 source review; minimal follow-up proposed, not implemented; browser tests NOT_RUN; PENDING_REVIEW. |
 
 ### 8.3 Phase 4 accessibility findings
 
@@ -2547,7 +2548,7 @@ PUR-01 financial approval fail-closed, PERM-00 cloning/cycling, PUR-05 tax-exclu
 |---|---|---|---|
 | `A4-F01` | P1 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A01/A10; label associations changed; unit/static checks pass, browser/axe/screen reader NOT_RUN. |
 | `A4-F02` | P2 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A02; keyboard exclusion removed; real keyboard interaction NOT_RUN. |
-| `A4-F03` | P1 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A05/A06; selection/expand controls use keyboard-capable controls; runtime keyboard NOT_RUN. |
+| `A4-F03` | P1 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A05 original `66fe26a9253e8f12e52c6f14b23e61445a991482`; GO-04 correction `97e0c6b800b7b560f11ca601e502c19d67c616a6` fixes invalid label descendants while retaining native radio selection and separate actions; keyboard runtime NOT_RUN. A06 `9db95d7445586b0adf8c2da4620a5a415107accb`. |
 | `A4-F04` | P2 | BLOCKED_EVIDENCE; independent review PENDING | A07; no source edit/commit; pending prerequisite review/evidence. |
 | `A4-F05` | P2 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A08; checkbox labels added; screen-reader/accessibility-tree runtime NOT_RUN. |
 | `A4-F06` | P2 | IMPLEMENTED_UNVERIFIED; independent review PENDING | A04; document lang synchronization changed; typecheck/build pass; browser locale transitions NOT_RUN. |
@@ -2562,9 +2563,9 @@ All Phase 4 root IDs and severities remain as audited. No browser, axe, screen-r
 |---|---|---|---|---|
 | `A01` | A4-F01 | PENDING_REVIEW | `Dashboard: ad7ef3fb5d897a74bf150e8ab309d582e5aa0365`; PARTIAL_PASS — auth regressions, typecheck and static associations passed; browser/keyboard/screen-reader/axe NOT_RUN | PENDING; NOT_RUN |
 | `A02` | A4-F02 | PENDING_REVIEW | `Dashboard: b44afbdf4d741404a165330966809785148f1b0b`; PARTIAL_PASS — auth regression, typecheck and static keyboard reachability assertions passed; real keyboard/browser interaction NOT_RUN | PENDING; NOT_RUN |
-| `A03` | R3-F08; HA-F33; S1H-F13 | PENDING_REVIEW | `Dashboard: 7b8eccb5971e9e2b7548c657a07b3607523284ca`; PARTIAL_PASS — both SSR semantic variants and typecheck pass; keyboard/browser/reflow NOT_RUN | PENDING; NOT_RUN |
+| `A03` | R3-F08; HA-F33; S1H-F13 | PENDING_REVIEW | Original `7b8eccb5971e9e2b7548c657a07b3607523284ca`; GO-04 correction `fc20ec75af1ab2fe370c695a7b17dfe4e301e7ad`; PARTIAL_PASS — RED reproduced invalid flow descendants; GREEN 2/2 static semantic tests and typecheck PASS. | PENDING; keyboard/browser/reflow NOT_RUN |
 | `A04` | A4-F06; CA-F19; HA-F36; S1H-F12 | PENDING_REVIEW | `Dashboard: d565129d304be4f9bb984412f3240b7d67f87a14`; PARTIAL_PASS — regression/typecheck/build/static checks pass; real browser language transitions NOT_RUN | PENDING; BLOCKED — Playwright browser missing; Vite dev blocked by runtime network-interface enumeration error |
-| `A05` | A4-F03; HA-F33; HA-F34 | PENDING_REVIEW | `Dashboard: 66fe26a9253e8f12e52c6f14b23e61445a991482`; PARTIAL_PASS — typecheck, 42/42 platform-admin/shared tests, 66/66 auth tests and static AST 8/8 pass; no AdminUsers browser behavior test exists/run. | PENDING; BLOCKED — actual keyboard, AR/EN, role-gate and no-mutation browser checks NOT_RUN; Chromium absent and Vite dev blocked by uv_interface_addresses. |
+| `A05` | A4-F03; HA-F33; HA-F34 | PENDING_REVIEW | Original `66fe26a9253e8f12e52c6f14b23e61445a991482`; GO-04 correction `97e0c6b800b7b560f11ca601e502c19d67c616a6`; PARTIAL_PASS — targeted semantic/radio-binding test 1/1; platform-admin/shared 43/43; auth/session 66/66; typecheck PASS. | PENDING; actual keyboard, AR/EN, role-gate and no-mutation browser checks NOT_RUN. |
 | `A06` | A4-F03; R3-F05 | PENDING_REVIEW | `Dashboard: 9db95d7445586b0adf8c2da4620a5a415107accb`; PARTIAL_PASS — procurement regressions 21/21, typecheck and AST 6/6 pass; keyboard/browser/viewport NOT_RUN. | PENDING; BLOCKED — actual keyboard and viewport checks NOT_RUN because Chromium absent and Vite dev interface enumeration fails. |
 | `A07` | A4-F04 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT`; NOT_RUN | PENDING; NOT_RUN |
 | `A08` | A4-F05 | PENDING_REVIEW | `Dashboard: 4c0ff2e106d94cf81485a950aa34370c15ca1cfb`; PARTIAL_PASS — 11/11 Accountant regressions, typecheck and static AST 4/4 pass; actual row announcement/keyboard/browser NOT_RUN. | PENDING; BLOCKED — keyboard, AR/EN and accessibility tree/browser checks NOT_RUN; Chromium absent and Vite dev interface enumeration failure. |
@@ -2577,7 +2578,7 @@ All Phase 4 root IDs and severities remain as audited. No browser, axe, screen-r
 | `B04` | R3-F02; S1H-F14; S1H-F18 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — verify-first gate not met`; NOT_RUN | PENDING; BLOCKED — actual 320/360/430 header, Sheet focus-return and AR/EN browser checks unavailable. |
 | `B05` | R3-F11; CA-F05; S1H-F18 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — no reproducible issue`; NOT_RUN | PENDING; BLOCKED — toolbar, notification anchoring, keyboard and AR/EN browser review unavailable. |
 | `B06` | R3-F10 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — verify-first tap/zoom proof not met`; NOT_RUN | PENDING; BLOCKED — 320px and 200% zoom visual/touch/focus checks unavailable. |
-| `B07` | R3-F15; CA-F15; HA-F31; S1H-F13 | PENDING_REVIEW | `Dashboard: 79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; PARTIAL_PASS — focused static regression and typecheck pass | PENDING; NOT_RUN — short-height, keyboard/focus trap/return, soft keyboard and AR/EN browser checks |
+| `B07` | R3-F15; CA-F15; HA-F31; S1H-F13 | PENDING_REVIEW | `Dashboard: 79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; scroll cap only. GO-04 confirms missing dialog role/title, Escape, focus containment and focus return; minimal editAsset-only Radix Dialog follow-up proposed, not implemented. | PENDING; NOT_RUN — short-height, keyboard/focus trap/return, soft keyboard and AR/EN browser checks |
 | `B08` | R3-F12; S1H-F05; S1H-F19 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — overlap reproduction gate not met`; NOT_RUN | PENDING; BLOCKED — visualViewport/soft keyboard, CTA reachability, focus and z-index browser checks unavailable. |
 | `B09` | R3-F14; HA-F11; HA-F36; DIFF-07 | BLOCKED_DECISION | `ZERO_CODE_COMMIT`; NOT_RUN | PENDING; BLOCKED — no financial display policy decision; browser unavailable |
 | `B10` | R3-F01; R3-F06; R3-F07; R3-F09; R3-F13 | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT`; NOT_RUN | PENDING; BLOCKED — browser interactions NOT_RUN |
@@ -2640,13 +2641,21 @@ Phase 5 totals remain the audit’s: 2 confirmed mismatches, 4 implementation ga
 
 ### 8.7 Verification evidence and coverage limits
 
-- C20 focused Dashboard regressions: 221/221 PASS, 0 skipped, both commands exit 0. D01 full Dashboard unit suite: 329/329 PASS, 0 skipped, exit 0 across 24 `*.test.ts` files. Typecheck exit 0. Production build exit 0 with pre-existing warnings. Raw outputs and SHA256 manifest: `docs/audit/evidence/p3-p5-go02/`; test index: `docs/audit/ASSAB_P3_P4_P5_TEST_INDEX.md`.
+- C20 focused Dashboard regressions: 221/221 PASS, 0 skipped, both commands exit 0. Historical D01: 329/329 across 24 `*.test.ts` files. GO-04 D01 rerun: 332/332 across 25 `*.test.ts` files, 0 skipped, exit 0 at source SHA `97e0c6b800b7b560f11ca601e502c19d67c616a6`; typecheck/build exit 0. The GO-04 TAP log is `docs/audit/evidence/p3-p5-go02/D01_go04_full_dashboard_unit_332.tap`; historical logs and SHA256 manifest remain in that directory. Developer-executed only, not independent acceptance.
 - Build-only generated import reordering in `src/.generated/mockup-components.ts` was reverted to its captured pre-build hash; the source working tree has no unintended generated diff.
 - Secret screening: no common token/private-key patterns matched added lines. This is a limited pattern scan, not a credential scanner certification.
 - P3 viewport tests: 176 original checks remain NOT_RUN; P4 runtime/accessibility: 704 remain NOT_RUN and 8 remain BLOCKED; P5 cross-repo runtime IDs: 37 total (27 BLOCKED / 10 NOT_RUN in original audit). The local 329 unit tests are not substitutes for these denominators.
 - 1G/1H historical runtime backlog remains 156 scenarios (43 Phase 1G + 113 Phase 1H), still NOT_RUN; not added to GO-02 executed test totals.
 - D01 is `BLOCKED_EVIDENCE` despite local test/type/build PASS. D02 independent acceptance is PENDING/BLOCKED. Independent reviewers have not accepted any GO-02 batch. Browser, device, axe, screen reader, Vercel/Staging, Backend/Flutter integration, security, financial HTTP and ledger tests were not executed.
 - No Phase 3–5 overall acceptance, merge readiness, production readiness, or 100% coverage claim is made. Windows Master mirror remains NOT_RUN/unverified.
+
+### 8.9 GO-04 targeted source and documentation corrections
+
+- A03 source semantics correction: commit `fc20ec75af1ab2fe370c695a7b17dfe4e301e7ad`; native button semantics and keyboard focus styling remain, nested flow-content elements were replaced with phrasing spans. Static semantic tests 2/2 and typecheck pass; browser keyboard/reflow/locale acceptance NOT_RUN.
+- A05 label semantics correction: commit `97e0c6b800b7b560f11ca601e502c19d67c616a6`; phrasing spans replace div/p within the radio label. Radio selection, assignment and separate unlink behavior remain; focused test 1/1, platform-admin/shared 43/43, auth/session 66/66, and typecheck pass. Browser interaction NOT_RUN.
+- B07 remains partial: only the editAsset scroll/height correction exists. GO-04 source review found missing dialog semantics/title, Escape handling, focus containment and focus return. Minimal editAsset-only Radix Dialog follow-up is proposed but not implemented; R3-F15/CA-F15 remain open for independent review and runtime proof. R3-F10 remains assigned to B06, not B07.
+- A07 remains distinct from A09: mode state (`aria-pressed`) does not label contextual unlink/add/clear actions. A07 remains blocked pending the A05 dependency/review gate; no A07 code change.
+- A10/A11/B01/B07, D01 and M01 documentation references were reconciled in GO-04. D01 remains `BLOCKED_EVIDENCE`; no browser, accessibility runtime, cross-repository integration, Backend or Flutter tests are claimed. Master has 249 original IDs; zero new IDs were added. Independent review remains `PENDING_REVIEW`.
 
 ### 8.8 Counts and chronology
 

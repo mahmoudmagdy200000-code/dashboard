@@ -3,7 +3,8 @@
 - Evidence class: `DEVELOPER_REPORTED_EXECUTION` (local only; not independent acceptance).
 - Repository: `mohameelsherbini/dashboard`
 - Branch: `work/dashboard-p345-remediation-v2-20261023`
-- Tested source HEAD: `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`
+- Historical tested source HEAD: `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`
+- Latest GO-04 source HEAD tested: `97e0c6b800b7b560f11ca601e502c19d67c616a6`
 - Device: none (Node/unit/typecheck/build only). Browser, viewport and screen-reader checks were not run.
 
 ## Executed checks
@@ -15,8 +16,11 @@
 | D01-ALL-UNIT | D01 | runner discovers all `*.test.ts` under `artifacts/mockup-sandbox/src` (24 files), same runner/flags | Existing local unit fixtures; no external service/database | PASS 329/329, 0 skipped, exit 0 | [Full test log](evidence/p3-p5-go02/D01_full_dashboard_unit_329.tap) | Pending |
 | D01-TYPECHECK | D01 | `pnpm --filter @workspace/mockup-sandbox run typecheck` | N/A | PASS, exit 0 | [Typecheck log](evidence/p3-p5-go02/D01_typecheck.log) | Pending |
 | D01-BUILD | D01 | `pnpm --filter @workspace/mockup-sandbox run build` | N/A | PASS, exit 0; existing chunk-size/sourcemap warnings | [Build log](evidence/p3-p5-go02/D01_build.log) | Pending |
+| D01-GO04-ALL-UNIT | D01 / GO-04 | `find artifacts/mockup-sandbox/src -name '*.test.ts' -print0 | sort -z | xargs -0 env TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap` | Existing local unit fixtures; no HTTP/server/database | PASS 332/332, 0 skipped, exit 0 at `97e0c6b800b7b560f11ca601e502c19d67c616a6` (25 test files) | [GO-04 full TAP log](evidence/p3-p5-go02/D01_go04_full_dashboard_unit_332.tap) | Pending |
+| D01-GO04-TYPECHECK | D01 / GO-04 | `pnpm --filter @workspace/mockup-sandbox run typecheck` | N/A | PASS, exit 0 at `97e0c6b800b7b560f11ca601e502c19d67c616a6`; separate raw log not retained | Execution result record | Pending |
+| D01-GO04-BUILD | D01 / GO-04 | `pnpm --filter @workspace/mockup-sandbox run build` | N/A | PASS, exit 0; existing sourcemap/large-chunk warnings; generated file restored to pre-build SHA `28f22d4ae3e1196e2c7cfe055466685ff5c2fc88384ea8f3985d9605527065a1` | Execution result record | Pending |
 
-### Exact full-suite test files
+### Historical full-suite test files at `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702` (24 files)
 
 - `artifacts/mockup-sandbox/src/api/authSession.test.ts`
 - `artifacts/mockup-sandbox/src/api/errors.test.ts`
@@ -42,6 +46,17 @@
 - `artifacts/mockup-sandbox/src/components/mockups/asab/shiftReportCorrection.test.ts`
 - `artifacts/mockup-sandbox/src/components/mockups/asab/shiftReviewQueue.test.ts`
 - `artifacts/mockup-sandbox/src/components/mockups/asab/supportTicketGuards.test.ts`
+
+### GO-04 full-suite addition
+
+- `artifacts/mockup-sandbox/src/components/mockups/asab/components/KpiCard.test.ts` was added in GO-04 and is the 25th discovered test file for the 332/332 rerun.
+
+## GO-04 targeted correction test record
+
+- A03 commit `fc20ec75af1ab2fe370c695a7b17dfe4e301e7ad`: TDD RED exit 1 specifically detected flow-content descendants under the native button; GREEN focused semantic tests 2/2, typecheck and `git diff --check` exit 0.
+- A05 commit `97e0c6b800b7b560f11ca601e502c19d67c616a6`: TDD RED exit 1 specifically detected div/p within the radio label; GREEN targeted regression 1/1, Platform Admin/shared regression 43/43, Auth/session 66/66, typecheck and `git diff --check` exit 0.
+- Combined D01 GO-04 rerun: 332/332 across 25 `*.test.ts` files, 0 skipped, exit 0; typecheck and build exit 0. Only the full TAP log is retained as a raw log; focused, typecheck and build outcomes are execution records.
+- All outcomes are `DEVELOPER_REPORTED_EXECUTION`; no browser, axe, keyboard, screen-reader, Backend, Flutter or financial runtime check was run.
 
 ## Not executed / blocked
 

@@ -151,7 +151,7 @@ A04 evidence: A4-F06 source-confirmed at the pinned baseline; `CA-F19`, `HA-F36`
 
 A05 evidence: A4-F03 source-confirmed in Phase 4 register at pinned AdminUsers role-distribution source (baseline lines 674/715); HA-F33/HA-F34 are related historical IDs, not duplicates. Replaced clickable accountant row with a controlled native radio group and associated label; unassignment buttons remain siblings outside the label. Removed parent-card click-to-assign and added an explicitly named native assignment button, keeping `moveAccToHead` and its API mutation unchanged. Static TypeScript-AST checks PASS 8/8 (radio semantics, label association, state setter, assignment button name/type/callback, no clickable div, unlink callbacks retained). `pnpm --filter @workspace/mockup-sandbox run typecheck` exit 0. `TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/components/mockups/asab/phase1fPlatformAdmin.test.ts artifacts/mockup-sandbox/src/components/mockups/asab/phase1hShared.test.ts` exit 0 (42/42); Auth/session regression same loader command with `roleAccess.test.ts` and `authSession.test.ts` exit 0 (66/66). Real keyboard activation, AR+EN interaction, role-gate interaction, no-mutation interaction, and browser accessibility remain NOT_RUN/BLOCKED because Chromium is absent and Vite dev is blocked by `uv_interface_addresses`; A05-04 remains unchecked. No permission/API contract changes.
 
-GO-04 A05 result: RED exposed invalid `div`/`p` descendants in the accountant radio label (focused TAP exit 1); after replacing those descendants with phrasing spans, the focused AST regression passes 1/1, Admin/platform/shared regressions pass 43/43, Auth/session regressions pass 66/66, typecheck passes, and `git diff --check` passes. Radio `checked` and `onChange`, separate unlink button, and assignment callback remain covered by static assertions. Real keyboard, role-gate, AR/EN and no-mutation browser checks remain NOT_RUN. Correction commit SHA will be recorded after commit.
+GO-04 A05 result: RED exposed invalid `div`/`p` descendants in the accountant radio label (focused TAP exit 1); after replacing those descendants with phrasing spans, the focused AST regression passes 1/1, Admin/platform/shared regressions pass 43/43, Auth/session regressions pass 66/66, typecheck passes, and `git diff --check` passes. Radio `checked` and `onChange`, separate unlink button, and assignment callback remain covered by static assertions. Real keyboard, role-gate, AR/EN and no-mutation browser checks remain NOT_RUN. GO-04 A05 correction commit: `97e0c6b800b7b560f11ca601e502c19d67c616a6`; independent review remains PENDING.
 
 GO-04 A05 correction checkpoint: reopened Section 1 and A05 on clean preSHA `fc20ec75af1ab2fe370c695a7b17dfe4e301e7ad`. Only the AdminUsers label markup and its existing Platform Admin regression file are in scope. Radio `checked`/`onChange` selection, assignment callback, and separate unlink button must remain unchanged.
 ### A06 — ProcNewOrders — accessible expansion control
@@ -182,7 +182,7 @@ A06 evidence: A4-F03 source-confirmed at baseline `ProcNewOrders.tsx` line 193; 
 - [ ] `A07-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
 **Implementation fields:** preSHA `9db95d7445586b0adf8c2da4620a5a415107accb`; postSHA `BLOCKED`; commitSHA `ZERO_COMMIT`; tested SHA `NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
-A07 dependency note: This finding touches the same AdminUsers distribution controls restructured in A05. Per §1, defer this dependent file-level follow-up until A05 has independent acceptance; no code change made in this checkpoint. Continue with independent Accountant-page batch A08.
+A07 dependency note: A07 contextual names for add/unlink/clear icons remain distinct from A09 mode-selection state (`aria-pressed`); A09 does not resolve A07. A07 is still a dependent AdminUsers follow-up and remains BLOCKED_EVIDENCE until the A05 changes receive independent review under §1. No A07 code change was made.
 
 ### A08 — AccAssets import selection — labelled checkboxes
 **Phase:** P4 · **Finding links:** `A4-F05` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
@@ -239,7 +239,7 @@ Post-commit checkpoint: A10 local commit `67b0c15a34ce17f526ca7e45a7e69db4174e0c
 - [ ] `A11-04` Targeted acceptance evidence: AR/EN tables, filters, dialog, focus order, logical icon positioning; verify without assuming 3.1.2 is proof of dir fault.
 - [x] `A11-05` Gate and limits: Dashboard role-local; DO NOT reopen shared bidi already fixed R3-F07. No API/permission/business logic change; PUR-01 fail-closed code remains unchanged.
 - [x] `A11-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS. Focused 1E/1C tests 32/32, exit 0; typecheck exit 0; static source assertions 6/6; browser/viewport/keyboard/screen-reader NOT_RUN.
-- [ ] `A11-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
+- [x] `A11-07` Code and checklist/tracker changes were staged and committed atomically as `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`; browser evidence remains NOT_RUN.
 - [x] `A11-08` Captured local commit SHA and test/review state: `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`. A11-04 remains NOT_RUN and A11 remains PENDING_REVIEW, not accepted; independent B01 may proceed.
 **Implementation fields:** preSHA `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; postSHA `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`; commitSHA `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`; tested SHA `67b0c15a34ce17f526ca7e45a7e69db4174e0cdd`; tests `PARTIAL_PASS — 32/32 focused 1E/1C tests; typecheck PASS; static 6/6; browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
@@ -252,9 +252,9 @@ Post-commit checkpoint: A10 local commit `67b0c15a34ce17f526ca7e45a7e69db4174e0c
 - [ ] `B01-04` Targeted acceptance evidence: 320/360/375/390/430/768 AR+EN, KPI label/money wrap, no horizontal page overflow.
 - [x] `B01-05` Gate and limits: Dashboard role layouts; VERIFY_FIRST. No financial calculation, API, permission or tenant change.
 - [x] `B01-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS. Phase 1D Branch Manager regression 13/13, exit 0; typecheck exit 0; viewport test NOT_RUN.
-- [ ] `B01-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
-- [ ] `B01-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`; tests `PARTIAL_PASS — 13/13 Phase 1D tests; typecheck PASS; browser viewports NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+- [x] `B01-07` Code and checklist/tracker changes were staged and committed atomically as `0e95364e09a784204df40da5d79d763137d72c5b`; viewport evidence remains NOT_RUN.
+- [x] `B01-08` Captured commit SHA `0e95364e09a784204df40da5d79d763137d72c5b`; review remains PENDING and viewport acceptance NOT_RUN.
+**Implementation fields:** preSHA `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`; postSHA `0e95364e09a784204df40da5d79d763137d72c5b`; commitSHA `0e95364e09a784204df40da5d79d763137d72c5b`; tested SHA `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded`; tests `PARTIAL_PASS — 13/13 Phase 1D tests; typecheck PASS; browser viewports NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 ### B02 — HeadPending / AccSales KPI and filters — reflow
 **Phase:** P3 · **Finding links:** `R3-F04; HA-F30; S1H-F18` · **Mode:** `VERIFY_CONDITIONAL` · **Current:** `BLOCKED_EVIDENCE` · **Repository:** Dashboard
@@ -330,9 +330,11 @@ Post-commit checkpoint: A10 local commit `67b0c15a34ce17f526ca7e45a7e69db4174e0c
 - [ ] `B07-04` Targeted acceptance evidence: Keyboard Escape / focus trap / return; 320px short viewport; soft keyboard; AR+EN.
 - [x] `B07-05` Gate and limits: Dashboard Company dialogs; VERIFY_FIRST. Add only a dynamic viewport height cap and internal vertical scrolling to the confirmed long edit form; supplier Radix dialogs untouched.
 - [x] `B07-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS. Phase 1D tests 13/13 exit 0; mockup typecheck exit 0; diff check exit 0. Browser short-height, Escape, focus trap/return, soft keyboard and AR/EN NOT_RUN.
-- [ ] `B07-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
-- [ ] `B07-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
+- [x] `B07-07` Scroll-cap code and checklist/tracker changes were staged and committed atomically as `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; dialog accessibility gaps remain open.
+- [x] `B07-08` Captured commit SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; R3-F15/CA-F15 remain partial and runtime NOT_RUN.
 **Implementation fields:** preSHA `0e95364e09a784204df40da5d79d763137d72c5b`; postSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; commitSHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; tested SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; tests `PARTIAL_PASS — 13/13 Phase 1D; typecheck PASS; browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+
+GO-04 B07 source review: `editAsset` still uses an outer clickable `div`, has no `role="dialog"`/`aria-modal` or title association, has no Escape handler for this modal, and no focus containment or trigger-focus return. The existing Escape handler near line 982 is scoped to `mobileOpen` only. The existing `max-h-[90dvh] overflow-y-auto` remains the only proven B07 correction. Minimal proposed follow-up: use the existing `components/ui/dialog.tsx` Radix `Dialog`/`DialogContent`/`DialogTitle` for this `editAsset` modal only, retain the viewport cap, then verify Escape, focus entry/trap/return and short-height scrolling in a real browser. No B07 source change in GO-04; R3-F15/CA-F15 remain PARTIAL_SOURCE_FIX_WITH_OPEN_DIALOG_A11Y and runtime NOT_RUN.
 
 ### B08 — LiveChat floating overlap — viewport-safe placement
 **Phase:** P3 · **Finding links:** `R3-F12; S1H-F05; S1H-F19` · **Mode:** `VERIFY_CONDITIONAL` · **Current:** `BLOCKED_EVIDENCE` · **Repository:** Dashboard
@@ -662,19 +664,20 @@ At Dashboard SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`, C01–C19 were reco
 
 ## 5. D — Unified test & release-readiness, not automatic deployment
 ### D01 — Regression tests & source checks
-- [x] `D01-01` At SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`, all 24 Dashboard test files pass 329/329 (0 skipped, exit 0), typecheck exit 0, and build exit 0 with existing warnings. Exact commands and raw logs are in `ASSAB_P3_P4_P5_TEST_INDEX.md` and evidence folder.
+- [x] `D01-01` Historical run at SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`: 24 Dashboard test files, 329/329 (0 skipped, exit 0), typecheck and build exit 0 with existing warnings. GO-04 rerun at source SHA `97e0c6b800b7b560f11ca601e502c19d67c616a6`: 25 test files, 332/332 (0 skipped, exit 0); typecheck/build exit 0. Evidence is indexed as developer-executed only.
 - [ ] `D01-02` For P3 verify responsive AR/EN at 320/360/375/390/430/768/1024/1440 (sampled prioritized matrix); prior 176 NOT_RUN stay until ACTUALLY run.
+- `D01 status remains BLOCKED_EVIDENCE`: GO-04 local checks do not satisfy browser/viewport/accessibility or cross-repository runtime acceptance; keep those cases NOT_RUN/BLOCKED.
 - [ ] `D01-03` For P4 run focus/tab/dialog/reflow 320 CSS px, zoom 200/400%, axe, TalkBack/VoiceOver or other screen reader only where installed & actually executed; prior 704 NOT_RUN + 8 BLOCKED remain without proof.
 - [x] `D01-04` Test index enumerates all 37 original P5 IDs and preserves the audit status split (27 BLOCKED / 10 NOT_RUN). No cross-repo test ran because no authorized isolated service/DB target was available; Dashboard unit tests are not counted as these IDs.
 - [x] `D01-05` Recounted historical 1G/1H runtime backlog: 43 + 113 = 156 unique IDs, with no overlap; retained as historical NOT_RUN backlog, separate from GO-02 test totals.
 - [ ] `D01-06` Verify roles, tenant scope, finance transitions, halala/SAR, VAT, date/timezone, idempotency, reports, Flutter backward compatibility only against exact approved source.
-- [x] `D01-07` Compared 13 changed source/test paths against A/B batch scopes; no Backend/Flutter/Auth/permission/API/schema/dependency files changed. Added-line credential-pattern scan: 0 matches. No Business Rules file modified.
-- [x] `D01-08` Created `docs/audit/ASSAB_P3_P4_P5_TEST_INDEX.md` with source SHA, branch, tool, fixture, per-run outcomes/logs and pending reviewer; raw logs and SHA256SUMS are in `docs/audit/evidence/p3-p5-go02/`.
+- [x] `D01-07` Compared 15 changed source/test paths against A/B batch scopes after GO-04 A03/A05 corrections; no Backend/Flutter/Auth/permission/API/schema/dependency files changed. Added-line credential-pattern scan: 0 matches. No Business Rules file modified.
+- [x] `D01-08` Updated `docs/audit/ASSAB_P3_P4_P5_TEST_INDEX.md` with historical and GO-04 source SHAs, commands, fixture, per-run outcomes and pending reviewer; historical logs and SHA256SUMS plus the GO-04 full TAP log are in `docs/audit/evidence/p3-p5-go02/`. GO-04 typecheck/build exits are recorded from execution output; separate raw logs were not retained.
 ### D02 — Independent evidence reconciliation / acceptance gate
-- [x] `D02-01` Verified 12 source-fix commits map to A01–A06/A08–A11/B01/B07 in tracker, checklist, full commit log and scoped paths. Every review remains PENDING; no duplicate code commit for A07/B02–B06/B08–B10 or C20.
+- [x] `D02-01` Verified the 12 original source-fix commits plus GO-04 A03/A05 correction commits map to A01–A06/A08–A11/B01/B07 and the two scoped corrections in tracker, checklist, local commit history and changed paths. All review remains PENDING; no duplicate implementation was made for other batches.
 - [x] `D02-02` Tracker and Master addendum separate implemented source, local unit/type/build evidence, runtime NOT_RUN/BLOCKED, decision gates and independent review PENDING; no `ACCEPTED` or `RUNTIME_VERIFIED` promotion.
 - [ ] `D02-03` All P5 decision/approval records including 11 original rows have owner, signed decision and target SHA; preserve APPROVAL_REQUIRED.
-- [x] `D02-04` Distinct denominators recorded: P3 176 viewport cases; P4 704 NOT_RUN + 8 BLOCKED; P5 37 runtime IDs; 1G/1H 156 historical IDs; local Dashboard 329 unit tests and C20 221 subset. Phase 3/4/5 crosswalks each retain 249 unique canonical IDs.
+- [x] `D02-04` Distinct denominators recorded: P3 176 viewport cases; P4 704 NOT_RUN + 8 BLOCKED; P5 37 runtime IDs; 1G/1H 156 historical IDs; local Dashboard 329 historical unit tests and GO-04 332/332 across 25 test files; C20 221 subset. Phase 3/4/5 crosswalks each retain 249 unique canonical IDs.
 - [ ] `D02-05` Obtain independent acceptance for micro-batches and written Owner confirmation BEFORE final Master edit; stop if GO missing.
 - [x] `D02-06` No push/PR/merge/deploy, Backend/Flutter write, production/staging access, migration, or financial operation was performed.
 
@@ -692,6 +695,7 @@ At Dashboard SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`, C01–C19 were reco
 - [ ] `M01-10` Master delta is prepared under GO-02, but independent reviewer sign-off is not available. Record `PENDING_REVIEW`; do not describe the update as accepted.
 - [x] `M01-11` Local documentation commit `b348bda3b0b010b8d27196e34b4a0c41c3607598` recorded in the final handoff; no merge/push/deploy.
 - [x] `M01-12` Final handoff includes batch ledger, local code/docs SHAs, NOT_RUN/BLOCKED items, unresolved owner decisions, residual risk and recommended acceptance tests.
+- M01 current status: `PENDING_REVIEW`, not accepted. Original reconciliation commit `b348bda3b0b010b8d27196e34b4a0c41c3607598`; metadata checkpoint `94d02dd2824cb8faea7fd346bf66160c9acb9189`; GO-04 documentation corrections are a separate local commit recorded in the final report. All remain local and unpushed.
 
 ## 7. Standard batch handoff template (mandatory after each micro-batch)
 ```text

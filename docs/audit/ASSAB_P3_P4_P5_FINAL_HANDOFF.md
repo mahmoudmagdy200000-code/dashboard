@@ -4,7 +4,7 @@
 - Repository: `mohameelsherbini/dashboard`
 - Branch: `work/dashboard-p345-remediation-v2-20261023`
 - Approved base / remote ref: `30d3d261b83ed4b0d9fa1dc1f875ae8592484261`
-- Last code source SHA tested: `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`
+- Historical source SHA: `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`; latest GO-04 source SHA tested: `97e0c6b800b7b560f11ca601e502c19d67c616a6`
 - Delivery mode: isolated local worktree and local commits only. No GitHub writes.
 
 ## Batch ledger
@@ -13,9 +13,9 @@
 |---|---|---|---|---|
 | `A01` | PENDING_REVIEW | `Dashboard: ad7ef3fb5d897a74bf150e8ab309d582e5aa0365` | PARTIAL_PASS — auth regressions, typecheck and static associations passed; browser/keyboard/screen-reader/axe NOT_RUN | NOT_RUN; review PENDING |
 | `A02` | PENDING_REVIEW | `Dashboard: b44afbdf4d741404a165330966809785148f1b0b` | PARTIAL_PASS — auth regression, typecheck and static keyboard reachability assertions passed; real keyboard/browser interaction NOT_RUN | NOT_RUN; review PENDING |
-| `A03` | PENDING_REVIEW | `Dashboard: 7b8eccb5971e9e2b7548c657a07b3607523284ca` | PARTIAL_PASS — both SSR semantic variants and typecheck pass; keyboard/browser/reflow NOT_RUN | NOT_RUN; review PENDING |
+| `A03` | PENDING_REVIEW | Original `Dashboard: 7b8eccb5971e9e2b7548c657a07b3607523284ca`; GO-04 correction `fc20ec75af1ab2fe370c695a7b17dfe4e301e7ad` | PARTIAL_PASS — RED reproduced invalid flow descendants; GREEN 2/2 semantic tests and typecheck PASS | Browser keyboard/reflow NOT_RUN; review PENDING |
 | `A04` | PENDING_REVIEW | `Dashboard: d565129d304be4f9bb984412f3240b7d67f87a14` | PARTIAL_PASS — regression/typecheck/build/static checks pass; real browser language transitions NOT_RUN | BLOCKED — Playwright browser missing; Vite dev blocked by runtime network-interface enumeration error; review PENDING |
-| `A05` | PENDING_REVIEW | `Dashboard: 66fe26a9253e8f12e52c6f14b23e61445a991482` | PARTIAL_PASS — typecheck, 42/42 platform-admin/shared tests, 66/66 auth tests and static AST 8/8 pass; no AdminUsers browser behavior test exists/run. | BLOCKED — actual keyboard, AR/EN, role-gate and no-mutation browser checks NOT_RUN; Chromium absent and Vite dev blocked by uv_interface_addresses.; review PENDING |
+| `A05` | PENDING_REVIEW | Original `Dashboard: 66fe26a9253e8f12e52c6f14b23e61445a991482`; GO-04 correction `97e0c6b800b7b560f11ca601e502c19d67c616a6` | PARTIAL_PASS — targeted semantic/radio test 1/1; platform-admin/shared 43/43; auth/session 66/66; typecheck PASS | Browser keyboard, AR/EN, role-gate and no-mutation NOT_RUN; review PENDING |
 | `A06` | PENDING_REVIEW | `Dashboard: 9db95d7445586b0adf8c2da4620a5a415107accb` | PARTIAL_PASS — procurement regressions 21/21, typecheck and AST 6/6 pass; keyboard/browser/viewport NOT_RUN. | BLOCKED — actual keyboard and viewport checks NOT_RUN because Chromium absent and Vite dev interface enumeration fails.; review PENDING |
 | `A07` | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT` | NOT_RUN | NOT_RUN; review PENDING |
 | `A08` | PENDING_REVIEW | `Dashboard: 4c0ff2e106d94cf81485a950aa34370c15ca1cfb` | PARTIAL_PASS — 11/11 Accountant regressions, typecheck and static AST 4/4 pass; actual row announcement/keyboard/browser NOT_RUN. | BLOCKED — keyboard, AR/EN and accessibility tree/browser checks NOT_RUN; Chromium absent and Vite dev interface enumeration failure.; review PENDING |
@@ -28,7 +28,7 @@
 | `B04` | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — verify-first gate not met` | NOT_RUN | BLOCKED — actual 320/360/430 header, Sheet focus-return and AR/EN browser checks unavailable.; review PENDING |
 | `B05` | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — no reproducible issue` | NOT_RUN | BLOCKED — toolbar, notification anchoring, keyboard and AR/EN browser review unavailable.; review PENDING |
 | `B06` | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — verify-first tap/zoom proof not met` | NOT_RUN | BLOCKED — 320px and 200% zoom visual/touch/focus checks unavailable.; review PENDING |
-| `B07` | PENDING_REVIEW | `Dashboard: 79dc938d7d9bbdcc1f5441245e9b9f5ec4757702` | PARTIAL_PASS — focused static regression and typecheck pass | NOT_RUN — short-height, keyboard/focus trap/return, soft keyboard and AR/EN browser checks; review PENDING |
+| `B07` | PENDING_REVIEW | `Dashboard: 79dc938d7d9bbdcc1f5441245e9b9f5ec4757702` | PARTIAL_SOURCE_FIX — viewport cap/scroll only; dialog title/semantics/Escape/focus containment/return remain unproven; no new source change | NOT_RUN — short-height and dialog keyboard/focus behavior; follow-up scoped to editAsset only |
 | `B08` | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT — overlap reproduction gate not met` | NOT_RUN | BLOCKED — visualViewport/soft keyboard, CTA reachability, focus and z-index browser checks unavailable.; review PENDING |
 | `B09` | BLOCKED_DECISION | `ZERO_CODE_COMMIT` | NOT_RUN | BLOCKED — no financial display policy decision; browser unavailable; review PENDING |
 | `B10` | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT` | NOT_RUN | BLOCKED — browser interactions NOT_RUN; review PENDING |
@@ -54,7 +54,7 @@
 | `C20` | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT` | PARTIAL_PASS — 221/221 focused Dashboard unit tests | NOT_RUN — Backend HTTP/tenant tests, cross-repo API behavior, and Flutter compatibility; not authorized/available; review PENDING |
 | `D01` | BLOCKED_EVIDENCE | `ZERO_CODE_COMMIT` | PARTIAL_PASS — local Dashboard unit/typecheck/build; all required UI/API/Flutter runtime not executed | BLOCKED/NOT_RUN — browser/viewport/accessibility and cross-repo isolated HTTP tests unavailable or not authorized; review PENDING |
 | `D02` | BLOCKED_APPROVAL | `ZERO_CODE_COMMIT` | PARTIAL_PASS — evidence categories and denominators reconciled | BLOCKED — independent acceptance pending; review PENDING |
-| `M01` | READY_TO_COMMIT | `ZERO_CODE_COMMIT; 12 source commits mapped in Master appendix/tracker` | PASS — documentation/crosswalk integrity checks; source tests remain as indexed | NOT_RUN/BLOCKED — visual/integration runtime remains outstanding; review PENDING |
+| `M01` | PENDING_REVIEW | Original M01 local docs commit `b348bda3b0b010b8d27196e34b4a0c41c3607598` plus GO-04 docs reconciliation commit (this report) | Documentation reconciliation; no status promoted to accepted/runtime-verified | BLOCKED/NOT_RUN — independent review and visual/integration runtime remain outstanding |
 
 ## Local commits
 
@@ -73,8 +73,17 @@
 | `aeeb06705836f11e7affbb10e1f6fd9ee86b9ded` | fix(a11): follow locale direction in role pages |
 | `0e95364e09a784204df40da5d79d763137d72c5b` | fix(b01): reflow branch overview grids |
 | `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702` | fix(b07): constrain asset edit modal height |
+| `fc20ec75af1ab2fe370c695a7b17dfe4e301e7ad` | fix(a03): use valid phrasing content in KPI buttons |
+| `97e0c6b800b7b560f11ca601e502c19d67c616a6` | fix(a05): use valid phrasing content in accountant label |
 
-The source-fix commits map to A01–A06, A08–A11, B01 and B07 (12 source-fix commits). A07 and B02–B06/B08–B10 have no source commits. `ae2b998a6ff115e94c8732f3a0e55aede23c5d80` is the prior GO-01 checklist bootstrap commit.
+The original 12 source-fix commits map to A01–A06, A08–A11, B01 and B07. GO-04 adds two targeted source correction commits for A03 and A05, for 14 source commits in total. A07 and B02–B06/B08–B10 have no source commits. `ae2b998a6ff115e94c8732f3a0e55aede23c5d80` is the prior GO-01 checklist bootstrap commit.
+
+## GO-04 targeted correction status
+
+- A03: native interactive button retained; nested div/p replaced with phrasing spans. Commit `fc20ec75af1ab2fe370c695a7b17dfe4e301e7ad`; focused semantic tests 2/2 and typecheck pass; browser checks NOT_RUN.
+- A05: invalid div/p descendants removed from the radio label using phrasing spans; radio selection, assignment callback and separate unlink controls preserved. Commit `97e0c6b800b7b560f11ca601e502c19d67c616a6`; focused test 1/1, platform-admin/shared 43/43, auth/session 66/66, typecheck pass; browser checks NOT_RUN.
+- B07: no source change in GO-04. The current editAsset modal still lacks dialog role/title, Escape, focus containment and focus return. Minimal proposal: migrate only this modal to existing Radix Dialog primitives while retaining its scroll cap; independent authorization/review and browser acceptance remain outstanding.
+- A07 remains distinct from A09 and blocked by the A05 review dependency; A09 mode-state semantics do not label A07 contextual icon actions.
 
 ## Source files changed since approved base
 
@@ -90,16 +99,18 @@ The source-fix commits map to A01–A06, A08–A11, B01 and B07 (12 source-fix c
 - `artifacts/mockup-sandbox/src/components/mockups/asab/_pages/head/HeadPending.tsx`
 - `artifacts/mockup-sandbox/src/components/mockups/asab/_pages/procurement/ProcNewOrders.tsx`
 - `artifacts/mockup-sandbox/src/components/mockups/asab/components/KpiCard.tsx`
+- `artifacts/mockup-sandbox/src/components/mockups/asab/components/KpiCard.test.ts`
 - `artifacts/mockup-sandbox/src/components/mockups/asab/phase1dBranchManager.test.ts`
-- `docs/audit/ASSAB_P3_P4_P5_BATCH_TRACKER.csv`
-- `docs/audit/ASSAB_P3_P4_P5_EXECUTION_CHECKLIST.md`
+- `artifacts/mockup-sandbox/src/components/mockups/asab/phase1fPlatformAdmin.test.ts`
 
-Backend, Flutter, auth lifecycle, permissions, routes, API contracts, schema, migrations, dependencies, and Business Rules files were not changed. No code was changed after source SHA 79dc938d7d9bbdcc1f5441245e9b9f5ec4757702.
+Audit documentation/evidence paths changed since the M01 checkpoint: `docs/audit/ASSAB_DASHBOARD_MASTER_FINDINGS.md`, `ASSAB_P3_P4_P5_BATCH_TRACKER.csv`, `ASSAB_P3_P4_P5_EXECUTION_CHECKLIST.md`, `ASSAB_P3_P4_P5_FINAL_HANDOFF.md`, `ASSAB_P3_P4_P5_TEST_INDEX.md`, `docs/audit/evidence/p3-p5-go02/SHA256SUMS.txt`, and `D01_go04_full_dashboard_unit_332.tap`.
+
+Backend, Flutter, auth lifecycle, permissions, routes, API contracts, schema, migrations, dependencies, and Business Rules files were not changed. GO-04 source changes are limited to the A03 correction commit `fc20ec75af1ab2fe370c695a7b17dfe4e301e7ad` and A05 correction commit `97e0c6b800b7b560f11ca601e502c19d67c616a6`; no other source changes followed B07 SHA `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`.
 
 ## Test and build evidence
 
 - C20 focused Dashboard tests: 208/208 + 13/13 = 221/221 PASS; zero skipped; both exit 0.
-- D01 full Dashboard unit suite: 329/329 PASS across 24 test files; zero skipped; exit 0.
+- Historical D01: 329/329 PASS across 24 test files; zero skipped; exit 0. GO-04 rerun: 332/332 PASS across 25 test files; zero skipped; exit 0 on source SHA `97e0c6b800b7b560f11ca601e502c19d67c616a6`.
 - Typecheck: `pnpm --filter @workspace/mockup-sandbox run typecheck` — exit 0.
 - Build: `pnpm --filter @workspace/mockup-sandbox run build` — exit 0; existing chunk-size/sourcemap warnings. Build-generated ordering-only file change was restored to its captured pre-build hash.
 - Raw logs, SHA-256 sums and per-run test index: `docs/audit/evidence/p3-p5-go02/` and `docs/audit/ASSAB_P3_P4_P5_TEST_INDEX.md`.
@@ -114,7 +125,7 @@ Backend, Flutter, auth lifecycle, permissions, routes, API contracts, schema, mi
 - Historical Phase 1G/1H runtime backlog: 43 + 113 = 156 unique scenarios; remains NOT_RUN.
 - 11 Phase 5 business/security decisions remain pending. PUR-01, PUR-04/PERM-00, PUR-05, PORTAL-01, REP-00, SUB-01, EXP-06, and inventory/security/auth gates were not changed.
 - B09 awaits Project Owner decision on abbreviated financial total presentation. A07 and B02–B06/B08 remain blocked by specified evidence gates.
-- D01 is partial and blocked for browser/cross-repo runtime. D02 is blocked awaiting independent acceptance. All source commits remain PENDING_REVIEW.
+- D01 remains `BLOCKED_EVIDENCE` and partial despite local unit/typecheck/build checks; browser/accessibility and cross-repository runtime remain NOT_RUN/BLOCKED. D02 remains blocked awaiting independent acceptance. All 14 source commits remain PENDING_REVIEW.
 - Master was updated append-only in the local worktree, with no status promotion to accepted/runtime-verified. Windows mirror remains NOT_RUN.
 - No merge, deploy, push, PR, staging/production access, migrations or live financial operations.
 
@@ -123,6 +134,6 @@ Backend, Flutter, auth lifecycle, permissions, routes, API contracts, schema, mi
 - `docs/audit/ASSAB_DASHBOARD_MASTER_FINDINGS.md` — appended GO-02 reconciliation; local, PENDING_REVIEW.
 - `docs/audit/ASSAB_P3_P4_P5_EXECUTION_CHECKLIST.md` and `...BATCH_TRACKER.csv` — batch state/evidence.
 - `docs/audit/ASSAB_P3_P4_P5_TEST_INDEX.md` and `docs/audit/evidence/p3-p5-go02/` — logs and hashes.
-- M01 documentation commit: `b348bda3b0b010b8d27196e34b4a0c41c3607598` (parent `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`, tree `7cfab5c11c003a3c66f6366bcbaac161504b6edd`). A follow-up metadata checkpoint records this SHA; neither commit is pushed.
+- Original M01 documentation commit: `b348bda3b0b010b8d27196e34b4a0c41c3607598` (parent `79dc938d7d9bbdcc1f5441245e9b9f5ec4757702`, tree `7cfab5c11c003a3c66f6366bcbaac161504b6edd`); metadata checkpoint `94d02dd2824cb8faea7fd346bf66160c9acb9189`. GO-04 documentation reconciliation is a separate local commit and remains `PENDING_REVIEW`; no commit is pushed.
 
 No item is labeled ACCEPTED or RUNTIME_VERIFIED. No production-ready or full-coverage claim is made.
