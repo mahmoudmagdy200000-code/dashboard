@@ -156,9 +156,9 @@ A05 evidence: A4-F03 source-confirmed in Phase 4 register at pinned AdminUsers r
 - [ ] `A06-04` Targeted acceptance evidence: Tab/Enter/Space expand-collapse; click-equivalence; filters; purchase permission & status unchanged.
 - [x] `A06-05` Gate and limits: Dashboard Procurement; keep API/status flow intact
 - [x] `A06-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
-- [ ] `A06-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
-- [ ] `A06-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `66fe26a9253e8f12e52c6f14b23e61445a991482`; postSHA `PENDING`; commitSHA `PENDING / ZERO_COMMIT`; tested SHA `pending`; tests `PARTIAL_PASS — 21/21 Phase 1E Procurement tests, typecheck, static AST 6/6; keyboard/browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+- [x] `A06-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
+- [x] `A06-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
+**Implementation fields:** preSHA `66fe26a9253e8f12e52c6f14b23e61445a991482`; postSHA `9db95d7445586b0adf8c2da4620a5a415107accb`; commitSHA `9db95d7445586b0adf8c2da4620a5a415107accb`; tested SHA `pre-commit source content equals committed ProcNewOrders.tsx`; tests `PARTIAL_PASS — 21/21 Phase 1E Procurement tests, typecheck, static AST 6/6; keyboard/browser NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
 
 A06 evidence: A4-F03 source-confirmed at baseline `ProcNewOrders.tsx` line 193; R3-F05 is a separate responsive-table concern and is not closed by this change. Replaced the order-row clickable div with a native `type="button"` that exposes localized order-specific naming and `aria-expanded`; kept expansion and edit reset callbacks, and kept the approval button as a sibling. Approval authority and mutation code remain unchanged. `TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/components/mockups/asab/phase1eProcurement.test.ts` exit 0 (21/21). `pnpm --filter @workspace/mockup-sandbox run typecheck` exit 0. Static TypeScript-AST assertions PASS 6/6 for button semantics, expanded state, localized name, preserved callback, no wrapper mutation, and existing PUR-01 gate. Actual keyboard activation, click-equivalence, and narrow viewport tests NOT_RUN because browser runtime is unavailable; A06-04 remains unchecked.
@@ -173,21 +173,25 @@ A06 evidence: A4-F03 source-confirmed at baseline `ProcNewOrders.tsx` line 193; 
 - [ ] `A07-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
 - [ ] `A07-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `A07-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `9db95d7445586b0adf8c2da4620a5a415107accb`; postSHA `BLOCKED`; commitSHA `ZERO_COMMIT`; tested SHA `NOT_RUN`; review `PENDING`; approval ref `GO-02`.
+
+A07 dependency note: This finding touches the same AdminUsers distribution controls restructured in A05. Per §1, defer this dependent file-level follow-up until A05 has independent acceptance; no code change made in this checkpoint. Continue with independent Accountant-page batch A08.
 
 ### A08 — AccAssets import selection — labelled checkboxes
 **Phase:** P4 · **Finding links:** `A4-F05` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
 **Scope:** Excel asset import table.
-- [ ] `A08-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
-- [ ] `A08-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
-- [ ] `A08-03` Minimal action/disposition: Add stable asset-specific label or aria-labelledby to each import-row checkbox; no selection/import logic changes.
+- [x] `A08-01` Reload §§0–1, find exact R3/A4 audit rows/lines and current source; recheck 249 Master cross-links and current SHA; owner approves batch.
+- [x] `A08-02` Record preSHA, branch, expected files, scope, role/tenant risks and screenshots/tools availability in tracker BEFORE any code.
+- [x] `A08-03` Minimal action/disposition: Add stable asset-specific label or aria-labelledby to each import-row checkbox; no selection/import logic changes.
 - [ ] `A08-04` Targeted acceptance evidence: Multiple rows with distinct names; select all; AR+EN labels; keyboard; asset import mapping unchanged.
-- [ ] `A08-05` Gate and limits: Dashboard Accountant
-- [ ] `A08-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
+- [x] `A08-05` Gate and limits: Dashboard Accountant
+- [x] `A08-06` Record actual test commands, exit codes, evidence URLs, NOT_RUN/BLOCKED and rerun after change; no unearned PASS.
 - [ ] `A08-07` If code changed & authorized: check staged diff, stage checklist+tracker and cohesive code/tests, make ONE local atomic commit; otherwise record ZERO_COMMIT/blocked.
 - [ ] `A08-08` Capture full SHA in delivery log, reviewer decision and latest checklist checkpoint; CLOSE only at evidenced acceptance; reopen §1 before next batch.
-**Implementation fields:** preSHA `____________`; postSHA `____________`; commitSHA `____________ / ZERO_COMMIT`; tested SHA `____________`; tests `PASS / FAIL / NOT_RUN / BLOCKED`; review `PENDING`; approval ref `____________`.
+**Implementation fields:** preSHA `9db95d7445586b0adf8c2da4620a5a415107accb`; postSHA `PENDING`; commitSHA `PENDING / ZERO_COMMIT`; tested SHA `pending`; tests `PARTIAL_PASS — 11/11 Accountant regressions, typecheck, static AST 4/4; screen-reader and browser checks NOT_RUN`; review `PENDING`; approval ref `GO-02`.
 
+
+A08 evidence: A4-F05 source-confirmed at pinned `AccAssets.tsx` lines 451/476; `R3-F15` concerns dialog context and is distinct. Added a localized row-specific `aria-label` using the asset name and row ID on the mapped import checkbox; checked state, rowId-only update logic and the select-all label remain unchanged. `TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/components/mockups/asab/phase1cAccountant.test.ts` exit 0 (11/11). `pnpm --filter @workspace/mockup-sandbox run typecheck` exit 0. Static TypeScript-AST checks PASS 4/4 for localized unique label inputs, selected binding, rowId update and select-all label. Multiple-row AR/EN accessibility tree, keyboard and screen-reader/browser verification remain NOT_RUN; A08-04 stays unchecked. No import or financial behavior changed.
 ### A09 — AdminUsers distribution mode — state semantics
 **Phase:** P4 · **Finding links:** `A4-F08` · **Mode:** `IMPLEMENT` · **Initial:** `NOT_STARTED` · **Repository:** Dashboard
 **Scope:** restaurant/module/heads mode buttons.

@@ -470,6 +470,7 @@ function ExcelImportModal({
                       <td className="px-3 py-2.5 text-center">
                         <input
                           type="checkbox"
+                          aria-label={t(`تحديد الأصل ${r.name || "بلا اسم"} (صف ${r.rowId}) للاستيراد`, `Select asset ${r.name || "unnamed"} (row ${r.rowId}) for import`)}
                           checked={r.selected}
                           onChange={(e) =>
                             setRows((p) =>
