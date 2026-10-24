@@ -1,14 +1,15 @@
 /**
  * ASSAB ERP - Dashboard Staging Read-Only Smoke & Compatibility Runner
- * 
+ *
  * Target: Attested Coolify Backend Staging & Vercel Dashboard Staging
+ * Staging URL: https://szkrjqiuo9s6d6nsy5fldc0j.62.72.19.141.sslip.io/
  * Mode: Strictly Read-Only (GET requests + session login POST)
  * Zero mutating operations executed.
- * 
+ *
  * SECURITY RULES (CREDENTIALS HYGIENE):
  * - ZERO hardcoded passwords or secrets in code or git.
  * - Credentials MUST be supplied via environment variables:
- *   - ASSAB_STAGING_API_ORIGIN (e.g. https://staging-api.assab.sa)
+ *   - ASSAB_STAGING_API_ORIGIN (defaults to Coolify Staging URL)
  *   - ASSAB_STAGING_PASSWORD (single test fixture password)
  *   - ASSAB_ROLELESS_EMAIL (email of an authenticated account with no assigned roles)
  *   - ASSAB_VERCEL_FRONTEND_URL (e.g. https://dashboard-staging.vercel.app)
@@ -20,12 +21,13 @@
 import * as fs from "fs";
 import * as path from "path";
 
-const API_ORIGIN = process.env.ASSAB_STAGING_API_ORIGIN || process.env.VITE_API_BASE_URL || "";
+const DEFAULT_STAGING_ORIGIN = "https://szkrjqiuo9s6d6nsy5fldc0j.62.72.19.141.sslip.io";
+const API_ORIGIN = process.env.ASSAB_STAGING_API_ORIGIN || process.env.VITE_API_BASE_URL || DEFAULT_STAGING_ORIGIN;
 const STAGING_PASSWORD = process.env.ASSAB_STAGING_PASSWORD || process.env.ASSAB_E2E_FIXTURE_PASSWORD || "";
 const ROLELESS_EMAIL = process.env.ASSAB_ROLELESS_EMAIL || "";
 const FRONTEND_URL = process.env.ASSAB_VERCEL_FRONTEND_URL || "";
-const EXPECTED_BACKEND_SHA = process.env.ASSAB_BACKEND_DEPLOYED_SHA || "26f86c683a17a8c5ebe19771186d6b35230d62cf";
-const EXPECTED_FRONTEND_SHA = process.env.ASSAB_FRONTEND_DEPLOYED_SHA || "";
+const EXPECTED_BACKEND_SHA = process.env.ASSAB_BACKEND_DEPLOYED_SHA || "PENDING_OPERATOR_ATTESTATION";
+const EXPECTED_FRONTEND_SHA = process.env.ASSAB_FRONTEND_DEPLOYED_SHA || "PENDING_VERCEL_DEPLOYMENT";
 
 interface LoginResponse {
   accessToken?: string;
@@ -46,6 +48,7 @@ interface EndpointCheck {
   endpoint: string;
   method: string;
   description: string;
+  hookReference: string;
   halalaField?: string;
 }
 
@@ -53,15 +56,16 @@ interface EndpointResult {
   endpoint: string;
   method: string;
   description: string;
+  hookReference: string;
   status: number;
   statusText: string;
   durationMs: number;
   rootCauseClassification?: "OK" | "URL_NOT_FOUND" | "CONTRACT_MISSING" | "INSUFFICIENT_PERMISSION" | "ROLE_MISMATCH" | "SERVER_ERROR";
   currencyVerification?: {
-    rawHalalas: number;
+    rawHalalas: number | null;
     expectedSar: string;
-    actualScaled: string;
-    matchesExact: boolean;
+    uiBrowserVerification: string;
+    fieldValidated: boolean;
   };
   error?: string;
 }
@@ -97,7 +101,7 @@ async function request(url: string, options: RequestInit = {}): Promise<{ status
 
 async function login(email: string): Promise<{ token: string | null; sanitizedUser: any | null; status: number; error?: string }> {
   if (!API_ORIGIN || !STAGING_PASSWORD) {
-    return { token: null, sanitizedUser: null, status: 0, error: "CREDENTIALS_OR_ORIGIN_MISSING" };
+    return { token: null, sanitizedUser: null, status: 0, error: "CREDENTIALS_MISSING" };
   }
 
   const loginUrl = `${API_ORIGIN.replace(/\/$/, "")}/api/v1/auth/login`;
@@ -141,27 +145,29 @@ export async function runStagingSmoke(): Promise<{
   const timestamp = new Date().toISOString();
   const blockers: string[] = [];
 
-  if (!API_ORIGIN) {
-    blockers.push("ASSAB_STAGING_API_ORIGIN is not set. Attested Coolify Backend Staging URL must be provided by Mahmoud.");
-  }
   if (!STAGING_PASSWORD) {
     blockers.push("ASSAB_STAGING_PASSWORD is not set. Fixture password must be provided via environment variable (never stored in Git).");
   }
   if (!FRONTEND_URL) {
-    blockers.push("ASSAB_VERCEL_FRONTEND_URL is not set. Vercel Staging deployment URL must be provided by Mahmoud.");
+    blockers.push("ASSAB_VERCEL_FRONTEND_URL is not set. Vercel Staging deployment URL must be provided by Mahmoud for Browser QA.");
+  }
+  if (EXPECTED_BACKEND_SHA === "PENDING_OPERATOR_ATTESTATION") {
+    blockers.push("Coolify Backend deployment SHA is not yet attested by Mahmoud.");
   }
 
-  console.log(`[smoke-test] Execution at ${timestamp}`);
-  if (blockers.length > 0) {
+  console.log(`[smoke-test] Execution started at ${timestamp}`);
+  console.log(`[smoke-test] Target API Origin: ${API_ORIGIN}`);
+
+  if (!STAGING_PASSWORD) {
     console.warn("[smoke-test] STAGING SMOKE IS BLOCKED:");
     blockers.forEach(b => console.warn(` - ${b}`));
 
     return {
       timestamp,
-      apiOrigin: API_ORIGIN || "NOT_CONFIGURED",
+      apiOrigin: API_ORIGIN,
       frontendUrl: FRONTEND_URL || "NOT_CONFIGURED",
       backendSha: EXPECTED_BACKEND_SHA,
-      frontendSha: EXPECTED_FRONTEND_SHA || "PENDING_VERCEL_DEPLOYMENT",
+      frontendSha: EXPECTED_FRONTEND_SHA,
       environmentState: "BLOCKED",
       results: [],
       branchScopeEvaluation: null,
@@ -169,7 +175,6 @@ export async function runStagingSmoke(): Promise<{
     };
   }
 
-  console.log(`[smoke-test] Connecting to verified Backend: ${API_ORIGIN}`);
   const apiUrl = `${API_ORIGIN.replace(/\/$/, "")}/api/v1`;
   const results: RoleSmokeResult[] = [];
   let branchScopeEvaluation: any = null;
@@ -187,12 +192,12 @@ export async function runStagingSmoke(): Promise<{
   if (accLogin.token) {
     const headers = { "Authorization": `Bearer ${accLogin.token}` };
     const checks: EndpointCheck[] = [
-      { endpoint: "/shifts", method: "GET", description: "Accountant Shifts Queue", halalaField: "netSalesHalalas" },
-      { endpoint: "/operations?moduleKey=sales", method: "GET", description: "AccSalesPage Daily KPIs", halalaField: "totalSalesHalalas" },
-      { endpoint: "/operations?moduleKey=expenses", method: "GET", description: "AccExpensesPage List", halalaField: "amountHalalas" },
-      { endpoint: "/company/me/cash/custody", method: "GET", description: "AccCash Custody (Known 404 on unmounted routes)" },
-      { endpoint: "/employees", method: "GET", description: "AccEmployees Statement Roster" },
-      { endpoint: "/company/me/asset-drafts", method: "GET", description: "Asset Drafts (Backend E1 dependency)" },
+      { endpoint: "/accountant/shifts/live", method: "GET", description: "Live Shifts Queue", hookReference: "usePlatformLiveShifts", halalaField: "netSalesHalalas" },
+      { endpoint: "/accountant/shifts/history", method: "GET", description: "Shift History", hookReference: "usePlatformHistoryShifts" },
+      { endpoint: "/accountant/operations", method: "GET", description: "Daily Operations List", hookReference: "useAccountantOperationsPlatform", halalaField: "amountHalalas" },
+      { endpoint: "/accountant/employees", method: "GET", description: "Employee Statement Roster", hookReference: "usePlatformEmployees" },
+      { endpoint: "/company/me/cash/custody", method: "GET", description: "Cash Custody", hookReference: "useCashCustody" },
+      { endpoint: "/company/me/asset-drafts", method: "GET", description: "Asset Drafts (Backend E1 dependency)", hookReference: "useAssetDrafts" },
     ];
 
     for (const c of checks) {
@@ -201,6 +206,7 @@ export async function runStagingSmoke(): Promise<{
         endpoint: c.endpoint,
         method: c.method,
         description: c.description,
+        hookReference: c.hookReference,
         status: res.status,
         statusText: res.statusText,
         durationMs: res.durationMs,
@@ -210,14 +216,23 @@ export async function runStagingSmoke(): Promise<{
         epResult.rootCauseClassification = "OK";
         if (c.halalaField && Array.isArray(res.data?.data) && res.data.data.length > 0) {
           const item = res.data.data[0];
-          const raw = Number(item[c.halalaField] ?? 0);
-          const expectedSar = (raw / 100).toFixed(2);
-          epResult.currencyVerification = {
-            rawHalalas: raw,
-            expectedSar: `${expectedSar} SAR`,
-            actualScaled: `${expectedSar} SAR`,
-            matchesExact: true,
-          };
+          const raw = item?.[c.halalaField];
+          if (typeof raw === "number" && !isNaN(raw)) {
+            const expectedSar = (raw / 100).toFixed(2);
+            epResult.currencyVerification = {
+              rawHalalas: raw,
+              expectedSar: `${expectedSar} SAR`,
+              uiBrowserVerification: "NOT_RUN (Requires interactive Browser QA on deployed Vercel UI)",
+              fieldValidated: true,
+            };
+          } else {
+            epResult.currencyVerification = {
+              rawHalalas: null,
+              expectedSar: "N/A",
+              uiBrowserVerification: "FIELD_MISSING_OR_NON_NUMERIC",
+              fieldValidated: false,
+            };
+          }
         }
       } else if (res.status === 404) {
         epResult.rootCauseClassification = c.endpoint.includes("asset-drafts") ? "CONTRACT_MISSING" : "URL_NOT_FOUND";
@@ -244,10 +259,10 @@ export async function runStagingSmoke(): Promise<{
   if (headLogin.token) {
     const headers = { "Authorization": `Bearer ${headLogin.token}` };
     const checks: EndpointCheck[] = [
-      { endpoint: "/plans", method: "GET", description: "Subscription Plans (Task A2)" },
-      { endpoint: "/head/erp/batches", method: "GET", description: "ERP Batches Queue (Task D1)" },
-      { endpoint: "/head/erp/eligible-operations", method: "GET", description: "ERP Eligible Ops (Task D1)" },
-      { endpoint: "/shifts?status=pending_head_approval", method: "GET", description: "Head Shift Approval Queue" },
+      { endpoint: "/plans", method: "GET", description: "Subscription Plans Catalog (Task A2)", hookReference: "useCompanyPlans" },
+      { endpoint: "/head/erp/batches", method: "GET", description: "ERP Batches Queue (Task D1)", hookReference: "useERPBatches" },
+      { endpoint: "/head/erp/eligible-operations", method: "GET", description: "ERP Eligible Ops (Task D1)", hookReference: "useERPEligibleOperations" },
+      { endpoint: "/accountant/shifts/history?status=pending_head_approval", method: "GET", description: "Head Shift Approval Queue", hookReference: "usePlatformHistoryShifts" },
     ];
 
     for (const c of checks) {
@@ -256,6 +271,7 @@ export async function runStagingSmoke(): Promise<{
         endpoint: c.endpoint,
         method: c.method,
         description: c.description,
+        hookReference: c.hookReference,
         status: res.status,
         statusText: res.statusText,
         durationMs: res.durationMs,
@@ -265,7 +281,42 @@ export async function runStagingSmoke(): Promise<{
   }
   results.push(headResult);
 
-  // 3. BRANCH MANAGER SCOPE INSPECTION (Task B2)
+  // 3. COMPANY ADMIN ROLE SMOKE (Strictly Read-Only — NO Mutating POSTs)
+  const adminLogin = await login("admin@nakhat.sa");
+  const adminResult: RoleSmokeResult = {
+    role: "company-admin",
+    accountEmail: "admin@nakhat.sa",
+    loginStatus: adminLogin.status === 200 ? "PASS" : "FAIL",
+    authMeRolesSanitized: adminLogin.sanitizedUser?.roles,
+    endpoints: [],
+  };
+
+  if (adminLogin.token) {
+    const headers = { "Authorization": `Bearer ${adminLogin.token}` };
+    const checks: EndpointCheck[] = [
+      { endpoint: "/company/me/users", method: "GET", description: "Company Users Catalog", hookReference: "useCompanyUsers" },
+      { endpoint: "/company/invitations", method: "GET", description: "Pending Invitations List (Read-Only)", hookReference: "useCompanyInvitations" },
+      { endpoint: "/plans", method: "GET", description: "Subscription Plans (Task A2)", hookReference: "useCompanyPlans" },
+      { endpoint: "/company/me/subscription", method: "GET", description: "Company Subscription Status", hookReference: "useCompanySubscription" },
+    ];
+
+    for (const c of checks) {
+      const res = await request(`${apiUrl}${c.endpoint}`, { headers });
+      adminResult.endpoints.push({
+        endpoint: c.endpoint,
+        method: c.method,
+        description: c.description,
+        hookReference: c.hookReference,
+        status: res.status,
+        statusText: res.statusText,
+        durationMs: res.durationMs,
+        rootCauseClassification: res.status === 200 ? "OK" : res.status === 404 ? "URL_NOT_FOUND" : "INSUFFICIENT_PERMISSION",
+      });
+    }
+  }
+  results.push(adminResult);
+
+  // 4. BRANCH MANAGER SCOPE INSPECTION & GET /auth/me (Task B2)
   const branchLogin = await login("branch@nakhat.sa");
   const branchResult: RoleSmokeResult = {
     role: "branch",
@@ -275,24 +326,61 @@ export async function runStagingSmoke(): Promise<{
     endpoints: [],
   };
 
-  if (branchLogin.token && branchLogin.sanitizedUser?.roles) {
-    const bRole = branchLogin.sanitizedUser.roles.find((r: any) => r.key === "branch");
-    const guardPassed = Boolean(bRole && bRole.branchIdsCount === 1 && bRole.brandIdsCount === 0 && bRole.restaurantIdsCount === 0);
-    branchScopeEvaluation = {
-      roleKey: bRole?.key,
-      scope: bRole?.scope,
-      branchCount: bRole?.branchIdsCount,
-      brandCount: bRole?.brandIdsCount,
-      restaurantCount: bRole?.restaurantIdsCount,
-      guardPassed,
-      verdict: guardPassed 
-        ? "COMPATIBLE_WITH_ROLE_ACCESS_GUARD" 
-        : "COMPATIBILITY_HOLD_BACKEND_FIXTURE_POLLUTED",
-    };
+  if (branchLogin.token) {
+    const headers = { "Authorization": `Bearer ${branchLogin.token}` };
+    // B2 Requirement: Execute explicit GET /auth/me call
+    const authMeRes = await request(`${apiUrl}/auth/me`, { headers });
+    branchResult.endpoints.push({
+      endpoint: "/auth/me",
+      method: "GET",
+      description: "Direct GET /auth/me inspection for branch manager scope",
+      hookReference: "useAuthMe",
+      status: authMeRes.status,
+      statusText: authMeRes.statusText,
+      durationMs: authMeRes.durationMs,
+      rootCauseClassification: authMeRes.status === 200 ? "OK" : "SERVER_ERROR",
+    });
+
+    if (authMeRes.status === 200 && authMeRes.data) {
+      const roles = authMeRes.data.roles || authMeRes.data.user?.roles || [];
+      const bRole = roles.find((r: any) => r.key === "branch" || r.role === "branch");
+
+      const hasBranchScope = bRole?.scope === "branch";
+      const hasExactOneBranch = Array.isArray(bRole?.branchIds) && bRole.branchIds.length === 1;
+      const hasEmptyBrands = !bRole?.brandIds || bRole.brandIds.length === 0;
+      const hasEmptyRestaurants = !bRole?.restaurantIds || bRole.restaurantIds.length === 0;
+      const guardPassed = Boolean(hasBranchScope && hasExactOneBranch && hasEmptyBrands && hasEmptyRestaurants);
+
+      branchScopeEvaluation = {
+        roleKey: bRole?.key || bRole?.role,
+        scope: bRole?.scope,
+        hasBranchScope,
+        branchCount: bRole?.branchIds?.length ?? 0,
+        brandCount: bRole?.brandIds?.length ?? 0,
+        restaurantCount: bRole?.restaurantIds?.length ?? 0,
+        guardPassed,
+        verdict: guardPassed
+          ? "COMPATIBLE_WITH_ROLE_ACCESS_GUARD"
+          : "COMPATIBILITY_HOLD_BACKEND_FIXTURE_POLLUTED",
+      };
+    }
+
+    // Branch Overview View
+    const boRes = await request(`${apiUrl}/company/me/branch/overview`, { headers });
+    branchResult.endpoints.push({
+      endpoint: "/company/me/branch/overview",
+      method: "GET",
+      description: "Branch Overview Dashboard",
+      hookReference: "usePlatformBranchOverview",
+      status: boRes.status,
+      statusText: boRes.statusText,
+      durationMs: boRes.durationMs,
+      rootCauseClassification: boRes.status === 200 ? "OK" : "INSUFFICIENT_PERMISSION",
+    });
   }
   results.push(branchResult);
 
-  // 4. AUTHENTICATED ROLE-LESS USER (403 WRONG_ROLE check)
+  // 5. AUTHENTICATED ROLE-LESS USER (403 WRONG_ROLE check with error body inspection)
   if (ROLELESS_EMAIL) {
     const rolelessLogin = await login(ROLELESS_EMAIL);
     const rolelessResult: RoleSmokeResult = {
@@ -306,14 +394,19 @@ export async function runStagingSmoke(): Promise<{
       const res = await request(`${apiUrl}/company/me/shifts`, {
         headers: { "Authorization": `Bearer ${rolelessLogin.token}` },
       });
+      const errorPayload = res.data;
+      const hasWrongRoleCode = errorPayload?.code === "WRONG_ROLE" || errorPayload?.error === "WRONG_ROLE";
+      const hasArabicMessage = typeof errorPayload?.message === "string" && /غير مصرح|صلاحي/i.test(errorPayload.message);
+
       rolelessResult.endpoints.push({
         endpoint: "/company/me/shifts",
         method: "GET",
-        description: "Verify authenticated roleless user fails closed with 403 WRONG_ROLE",
+        description: "Verify authenticated roleless user receives 403 WRONG_ROLE with Arabic error",
+        hookReference: "useRoleGuard",
         status: res.status,
         statusText: res.statusText,
         durationMs: res.durationMs,
-        rootCauseClassification: res.status === 403 ? "OK" : "ROLE_MISMATCH",
+        rootCauseClassification: (res.status === 403 && (hasWrongRoleCode || hasArabicMessage)) ? "OK" : "ROLE_MISMATCH",
       });
     }
     results.push(rolelessResult);
