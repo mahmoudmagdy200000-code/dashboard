@@ -18,7 +18,7 @@ export function ok<T = any>(r: ApiResult<T>, label: string, expected = 200): Api
 
 // ── Branch manager (legacy mobile token) ──────────────────────────────────
 export const manager = {
-  /** GET branch-manager/workday/current — firstOrCreate's today's manager day (status not_started). */
+  /** UNSAFE FOR MODE A: GET branch-manager/workday/current uses firstOrCreate() and can write a manager day. Lifecycle/isolated mode only. */
   current: (bm: ApiClient) => bm.get('branch-manager/workday/current'),
   /** GET branch-manager/shifts — the branch's shift templates (ShiftController@index). */
   templates: (bm: ApiClient) => bm.get('branch-manager/shifts'),
