@@ -321,46 +321,6 @@ export function useFlagPlatformInventoryBranch() {
   });
 }
 
-export function useFlagPlatformInventoryItems() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: Record<string, unknown>) => {
-      const res = await api.post<unknown>(
-        "/accountant/inventory/items/flag",
-        body,
-      );
-      return res.data;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({
-        queryKey: ["platform", "accountant", "inventory"],
-      });
-      toast.success("تم تعليم العناصر");
-    },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
-  });
-}
-
-export function useSendInventoryConfirmation() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: Record<string, unknown>) => {
-      const res = await api.post<unknown>(
-        "/accountant/inventory/send-confirmation",
-        body,
-      );
-      return res.data;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({
-        queryKey: ["platform", "accountant", "inventory"],
-      });
-      toast.success("تم إرسال طلب التأكيد");
-    },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
-  });
-}
-
 // 2026-08-11 — the PUT response now reports whether the list actually reached the
 // branch's app worksheet: { savedCount, appListCount, newMobileItems, appListError,
 // pushedAt }. Previously the save could "succeed" (200) while nothing reached the

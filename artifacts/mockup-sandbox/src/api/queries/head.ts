@@ -222,7 +222,7 @@ export function useERPPreflight() {
   return useQuery({
     queryKey: queryKeys.erpPreflight,
     queryFn: async () => {
-      const res = await api.get<ERPPreflight>("/company/me/erp/preflight");
+      const res = await api.get<ERPPreflight>("/head/erp/preflight");
       return res.data;
     },
   });
@@ -234,7 +234,7 @@ export function useERPEligibleOperations() {
     queryFn: async () => {
       const res = await api.get<
         { data: ERPEligibleOperation[] } | ERPEligibleOperation[]
-      >("/company/me/erp/eligible-operations");
+      >("/head/erp/eligible-operations");
       const d = res.data as
         | { data?: ERPEligibleOperation[] }
         | ERPEligibleOperation[];
@@ -248,7 +248,7 @@ export function useERPBatches() {
     queryKey: queryKeys.erpBatches,
     queryFn: async () => {
       const res = await api.get<{ data: ERPBatch[] } | ERPBatch[]>(
-        "/company/me/erp/batches",
+        "/head/erp/batches",
       );
       const d = res.data as { data?: ERPBatch[] } | ERPBatch[];
       return Array.isArray(d) ? d : (d.data ?? []);
