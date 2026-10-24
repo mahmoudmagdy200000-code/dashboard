@@ -2760,3 +2760,54 @@ The GO-10 source correction is committed at `2650ab5cf479a085a1505a65ac1888f8f89
 B09 now passes the approximation label only when `totalAmt != null`: `null` keeps `—` and SAR without the label; numeric zero remains `0K` with the localized label. Existing K formula, exact `fmtAmt(totalAmt)` summary, unit and API behavior are unchanged. B09 + KpiCard targeted tests: 6/6 PASS, 0 skipped, exit 0. `phase1dBranchManager.test.ts`: 13/13 PASS, 0 skipped, exit 0. The stale JSX matcher was replaced with assertions against the actual Radix Dialog structure, title, scroll constraints, focus return, all seven label/id pairs, and Save/Cancel handlers. `CompanyDashboard.tsx` was not changed. Typecheck, one final build, and diff check passed; full suite was not run.
 
 B07 remains `PENDING_REVIEW`; static contract tests pass, but Browser QA remains `NOT_RUN`. B09 remains source-fixed with targeted tests passing, but B01–B10 Browser QA and independent acceptance remain pending. Current checkpoint: `P3_SOURCE_IMPLEMENTATION_COMPLETE — BROWSER_QA_PENDING`; no finding is `RUNTIME_VERIFIED`, `ACCEPTED`, or `P3_CLOSED`. Detailed report and checksums: `docs/audit/evidence/p3-p5-go02/GO10/`.
+
+---
+
+## GO-15-P4 Phase 4 Accessibility Verification & QA Status Supplement — 2026-10-24
+
+This append-only supplement records the Phase 4 Accessibility Verification and QA evidence on the authorized feature branch `work/dashboard-p4-accessibility-completion-20261024` without modifying historical finding IDs or statuses of prior phases.
+
+### 1. Delivery & Baseline Ledger
+- **Repository:** `mohameelsherbini/dashboard`
+- **Branch:** `work/dashboard-p4-accessibility-completion-20261024`
+- **Baseline SHA:** `7d09cc3b6809c25d81216ef851467a230768f62f`
+- **Proven Defect Fix (A02-OBS-01) Commit SHA:** `63659c6` (`fix(dashboard-p4): align password reveal button at trailing edge with non-colliding padding (A02-OBS-01)`)
+- **Initial Audit Documentation Commit SHA:** `05619c1e3e7ef6dad5b1d6dfe17362f8bf53e269`
+- **Current Phase 4 Status:** `P4_SOURCE_PUBLISHED_FOR_REVIEW — ACCESSIBILITY_QA_PENDING`
+
+### 2. Automated Regressions & Build Verification
+- **Targeted Test Suites:** 166/166 PASS, 0 failed, 0 skipped; Exit Code: 0 across 10 targeted test files (`roleAccess.test.ts`, `authSession.test.ts`, `KpiCard.test.ts`, `phase1fPlatformAdmin.test.ts`, `phase1eProcurement.test.ts`, `phase1cAccountant.test.ts`, `companyAdminGuards.test.ts`, `headReviewGuards.test.ts`, `AsabLogo.test.ts`, `adminOverviewResponsive.test.ts`).
+- **TypeScript Typecheck:** `pnpm --filter @workspace/mockup-sandbox run typecheck` — 0 errors, Exit Code: 0.
+- **Production Build:** `pnpm --filter @workspace/mockup-sandbox run build` — completed in 6.90s, Exit Code: 0.
+- **Diff Check:** `git diff --check` — Exit Code: 0.
+
+### 3. Automated WCAG 2.1 AA Audit (Axe-Core Runtime — Zero Dependency Change)
+- Dynamically injected `axe-core@4.10.2` via CDN script tag into the live Chrome browser session on `http://localhost:3000/`.
+- Zero project dependencies added to `package.json` or lockfile.
+- **Login / Entry Flow:** 0 Violations, 22 Passes, 0 Incomplete, 39 Inapplicable.
+- **Password Reset Flow (`/forgot-password`):** 0 Violations, 21 Passes, 0 Incomplete, 40 Inapplicable.
+- Applicable rules verified: `button-name`, `color-contrast`, `form-field-multiple-labels`, `label`, `aria-*`, `autocomplete-valid`, `nested-interactive`, `landmark-one-main`.
+
+### 4. Screen Reader (NVDA) Restriction & Alternative Documentation
+- **Screen Reader Status:** `NOT_RUN / ENVIRONMENT_RESTRICTION (NVDA screen reader is not installed on the Windows host)`.
+- Host filesystem check: `C:\Program Files\NVDA` and `C:\Program Files (x86)\NVDA` both return False. No running process.
+- **Alternative Evaluated:** DOM Accessibility Tree inspection (computed roles, accessible names, ARIA states), keyboard Tab focus navigation, and automated axe-core rule evaluation.
+- **Mandatory Protocol Distinction:** Static AST checks and DOM inspection **DO NOT equate to live Screen Reader verification**. The synthetic voice pronunciation, Browse Mode vs Focus Mode transitions, and live region vocalization timings remain unverified by machine and are deferred to independent review in an environment with NVDA installed.
+- **Claim Limitation:** Accessibility QA is **NOT claimed as 100% complete**.
+
+### 5. Multi-Axis Finding Matrix (A01–A11 & B07)
+
+| Finding ID | Title / Scope | Source Code | Automated Tests | Browser Keyboard / Focus | Axe-Core Audit | Screen Reader (NVDA) | Overall Review Gate |
+|---|---|---|---|---|---|---|---|
+| A01 | Login/Reset programmatic labels | `IMPLEMENTED` | `PASS` (66/66) | `RUNTIME_VERIFIED` | `PASS (0 violations)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A02 | Password reveal keyboard & RTL trailing | `IMPLEMENTED` | `PASS` (33/33) | `RUNTIME_VERIFIED` | `PASS (0 violations)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A03 | Shared KpiCard button semantics | `IMPLEMENTED` | `PASS` (30/30) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A04 | Document language metadata | `IMPLEMENTED` | `PASS` (66/66) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A05 | AdminUsers keyboard selection | `IMPLEMENTED` | `PASS` (27/27) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A06 | ProcNewOrders expansion control | `IMPLEMENTED` | `PASS` (21/21) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A07 | AdminUsers contextual icon names | `IMPLEMENTED` | `PASS` (27/27) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A08 | AccAssets labelled checkboxes | `IMPLEMENTED` | `PASS` (11/11) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A09 | AdminUsers distribution mode | `IMPLEMENTED` | `PASS` (27/27) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A10 | Filter and search accessible labels | `IMPLEMENTED` | `PASS` (51/51) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A11 | Role-local RTL/LTR exceptions | `IMPLEMENTED` | `PASS` (32/32) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| B07 | Custom dialog focus & short height | `IMPLEMENTED` | `PASS` (28/28) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |

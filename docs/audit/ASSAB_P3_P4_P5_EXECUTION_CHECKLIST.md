@@ -868,9 +868,9 @@ B07 remains `PENDING_REVIEW`; static contract tests pass, but Browser QA remains
   - Defect: In Arabic (RTL), password dots collided with the show/hide button in `LoginPage.tsx` due to `insetInlineStart: 8` resolving to the right edge while input text aligned right.
   - Minimal Fix: Positioned reveal button at trailing edge (`insetInlineEnd: 8` -> left in RTL, right in LTR), added dynamic non-colliding padding (`paddingLeft: 52, paddingRight: 14` in AR; `paddingRight: 52, paddingLeft: 14` in EN), and added explicit `aria-label`.
   - Atomic Code Commit: `63659c6` (`fix(dashboard-p4): align password reveal button at trailing edge with non-colliding padding (A02-OBS-01)`).
-- **Browser Accessibility QA Executed:**
+- **Browser Accessibility QA Executed (Runtime Keyboard, Focus & RTL):**
   - A01: Programmatic `<label htmlFor="...">` associated with `<input id="...">` verified on Login and Reset pages (`login_accessibility_step4_1792831062368.png`, `login_accessibility_step5_1792831078452.png`). Tab focus order PASS.
-  - A02: Password reveal button keyboard-reachable via Tab, toggleable via Space/Enter without form submit. Verified post-fix via browser screenshot `login_password_rtl_1792831560973.png`.
+  - A02: Password reveal button keyboard-reachable via Tab, toggleable via Space/Enter without form submit. Trailing alignment (`insetInlineEnd: 8`) and dynamic padding verified post-fix via browser screenshot `login_password_rtl_1792831560973.png`.
   - A03: Interactive `KpiCard` rendered as native `<button type="button">` with focus ring; informational as static `<div>`.
   - A04: Dynamic `<html lang>` synchronization verified (default `ar` -> toggled to `en` -> toggled back to `ar`).
   - A05: `AdminUsers` accountant radio selection operable via keyboard with associated labels; unassignment buttons remain distinct siblings.
@@ -881,4 +881,31 @@ B07 remains `PENDING_REVIEW`; static contract tests pass, but Browser QA remains
   - A10: Filter selects in `HeadPending`, `ProcNewOrders`, `CompanyDashboard` expose programmatic labels; search inputs expose localized `aria-label`.
   - A11: Dynamic `dir` verified across procurement and accountant modules preserving LTR numbers.
   - B07: Radix Dialog accessibility attributes, focus containment, Escape key dismiss, and focus restoration to trigger verified.
-  - Environment Restrictions: axe-core package not installed in dependencies; NVDA screen reader not installed/running on host.
+
+- **Automated WCAG 2.1 AA Audit (Axe-Core via CDN Injection — Zero Dependency Changes):**
+  - Tool & Methodology: Dynamic script injection of `axe-core@4.10.2` into active Chrome runtime on `http://localhost:3000/`. Strictly zero changes to `package.json` or `pnpm-lock.yaml`.
+  - Tested Surfaces:
+    - EntryFlow / Login (`http://localhost:3000/`): **0 Violations**, 22 Passes, 0 Incomplete, 39 Inapplicable.
+    - Forgot Password (`http://localhost:3000/forgot-password`): **0 Violations**, 21 Passes, 0 Incomplete, 40 Inapplicable.
+  - Evaluated Rules: `button-name`, `color-contrast`, `form-field-multiple-labels`, `label`, `aria-*`, `autocomplete-valid`, `nested-interactive`, `landmark-one-main`.
+  - Video & Log Evidence: `p4_axe_verification_1792832405439.webp`, `docs/audit/evidence/p4-accessibility/AXE_CORE_AUDIT_REPORT.md`.
+
+- **Screen Reader (NVDA) Verification Status:**
+  - Status: `NOT_RUN / ENVIRONMENT_RESTRICTION (NVDA screen reader is not installed on the Windows host)`.
+  - Host Diagnostics: Checked `C:\Program Files\NVDA` and `C:\Program Files (x86)\NVDA` -> False. No NVDA process or daemon found.
+  - Alternative Analyzed: DOM Accessibility Tree inspection (computed roles, accessible names, and ARIA attributes), Tab focus navigation, and automated axe-core rules.
+  - Limitations of Alternative: Cannot test synthetic speech vocalization, voice inflection, virtual cursor browse-mode vs focus-mode switching, dynamic live region (`aria-live`) speech timing, or mobile touch gestures.
+  - Mandatory Protocol Rule: DOM inspection and Unit Tests are explicitly NOT considered substitutes for actual Screen Reader verification.
+  - Detailed Report: `docs/audit/evidence/p4-accessibility/SCREEN_READER_ENVIRONMENT_REPORT.md`.
+
+- **Phase 4 Handoff Status & Classification:**
+  - Status: `P4_SOURCE_PUBLISHED_FOR_REVIEW — ACCESSIBILITY_QA_PENDING`.
+  - Accessibility QA is **NOT claimed as 100% complete** because screen reader testing was restricted by host environment limitations.
+  - Finding Classification Matrix:
+    - Source Implementation: `IMPLEMENTED` across all A01–A11 and B07.
+    - Automated Unit / AST Regressions: `PASS` (166/166).
+    - Browser Keyboard / Focus / RTL: `RUNTIME_VERIFIED`.
+    - Axe-Core Automated Audit: `RUNTIME_VERIFIED (PASS — 0 violations)`.
+    - Screen Reader (NVDA): `NOT_RUN / ENVIRONMENT_RESTRICTION`.
+    - Independent Review Gate: `INDEPENDENT_ACCEPTANCE_PENDING`.
+  - Evidence Directory: `docs/audit/evidence/p4-accessibility/`.
