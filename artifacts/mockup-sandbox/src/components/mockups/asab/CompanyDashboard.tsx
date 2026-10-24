@@ -5970,7 +5970,7 @@ function AccCompanyAssets() {
                 <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center flex-shrink-0"><Building2 size={15} className="text-amber-600"/></div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-800 text-sm truncate">{a.name}</p>
-                  <p className="text-[10px] text-gray-400" dir="ltr">{a.publicId} · {a.categoryLabelAr ?? catLabel(a.category)} · {fmt(Math.round((a.bookValueHalalas??0)/100))} {SAR}</p>
+                  <p className="text-[10px] text-gray-400" dir="ltr">{a.publicId} · {a.categoryLabelAr ?? catLabel(a.category)} · {fmt((a.bookValueHalalas ?? 0) / 100)} {SAR}</p>
                 </div>
                 <select value={assignBranch[a.id] ?? ""} onChange={e=>setAssignBranch(p=>({...p,[a.id]:e.target.value}))}
                   className="text-xs border border-amber-200 rounded-lg px-2 py-2 bg-white flex-shrink-0 max-w-[160px]">
@@ -6021,7 +6021,7 @@ function AccCompanyAssets() {
             </div>
             <div><p className="text-xs font-medium text-gray-700">{branchName(a.branchId)}</p><p className="text-[10px] text-gray-400">{a.custodian ?? "—"}</p></div>
             <span className="text-xs text-gray-500">{a.categoryLabelAr ?? catLabel(a.category)}</span>
-            <span className="font-mono font-bold text-gray-800 text-sm">{fmt(Math.round((a.bookValueHalalas??0)/100))}</span>
+            <span className="font-mono font-bold text-gray-800 text-sm">{fmt((a.bookValueHalalas ?? 0) / 100)}</span>
             <div className="flex items-center gap-1.5">
               <Badge className={`text-[10px] border ${SC[a.status]??SC.active}`}>{a.statusLabelAr ?? SL[a.status] ?? a.status}</Badge>
               <button onClick={e=>openEdit(a, e.currentTarget)} aria-label={t("تعديل الأصل: " + a.name, "Edit asset: " + a.name)} className="p-1 rounded text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"><Edit2 size={11}/></button>

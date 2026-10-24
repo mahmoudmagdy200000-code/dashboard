@@ -60,7 +60,7 @@ All endpoints in `scripts/smoke-test-staging.ts` are mapped directly to actual D
 | **Accountant** | `/accountant/shifts/history` | `GET` | `usePlatformHistoryShifts` | `OK` |
 | **Accountant** | `/accountant/operations` | `GET` | `useAccountantOperationsPlatform` | `OK` |
 | **Accountant** | `/accountant/employees` | `GET` | `usePlatformEmployees` | `OK` |
-| **Accountant** | `/company/me/cash/custody` | `GET` | `useCashCustody` | `URL_NOT_FOUND` (Known unmounted route) |
+| **Accountant** | `/company/me/cash-custody` | `GET` | `useCashCustody` | `OK` (Route aligned with useCashCustody) |
 | **Accountant** | `/company/me/asset-drafts` | `GET` | `useAssetDrafts` | `CONTRACT_MISSING` (Backend item E1) |
 | **Head Accountant** | `/plans` | `GET` | `useCompanyPlans` | `OK` (Task A2) |
 | **Head Accountant** | `/head/erp/batches` | `GET` | `useERPBatches` | `OK` (Task D1) |
@@ -71,23 +71,28 @@ All endpoints in `scripts/smoke-test-staging.ts` are mapped directly to actual D
 | **Company Admin** | `/company/me/subscription` | `GET` | `useCompanySubscription` | `OK` |
 | **Branch Manager** | `/auth/me` | `GET` | `useAuthMe` | `OK` (Direct scope inspection) |
 | **Branch Manager** | `/company/me/branch/overview` | `GET` | `usePlatformBranchOverview` | `OK` |
-| **Role-less User** | `/company/me/shifts` | `GET` | `useRoleGuard` | `ROLE_MISMATCH` (Expects 403 + `WRONG_ROLE` code) |
+| **Role-less User** | `/company/me/shifts` | `GET` | `useRoleGuard` | `ROLE_MISMATCH` (Expects 403 + error.code WRONG_ROLE + messageAr) |
 
 ---
 
 ## 5. Branch Manager Scope Contract Inspection (Task B2)
 
 - **Direct Endpoint Call**: `GET /auth/me` with Bearer token.
-- **Fail-Closed Guard Verification (`roleAccess.ts:33`)**:
+- **Fail-Closed Guard Verification (`roleAccess.ts:25-39`)**:
   ```ts
+  const isRoleKeyBranch = bRole?.key === "branch";
   const hasBranchScope = bRole?.scope === "branch";
-  const hasExactOneBranch = Array.isArray(bRole?.branchIds) && bRole.branchIds.length === 1;
-  const hasEmptyBrands = !bRole?.brandIds || bRole.brandIds.length === 0;
-  const hasEmptyRestaurants = !bRole?.restaurantIds || bRole.restaurantIds.length === 0;
-  const guardPassed = Boolean(hasBranchScope && hasExactOneBranch && hasEmptyBrands && hasEmptyRestaurants);
+  const isBrandIdsValid = validStringArray(bRole?.brandIds, UUID_PATTERN);
+  const hasEmptyBrands = isBrandIdsValid && bRole.brandIds.length === 0;
+  const isRestaurantIdsValid = validStringArray(bRole?.restaurantIds, UUID_PATTERN);
+  const hasEmptyRestaurants = isRestaurantIdsValid && bRole.restaurantIds.length === 0;
+  const isBranchIdsValid = validStringArray(bRole?.branchIds, UUID_PATTERN);
+  const hasExactOneBranch = isBranchIdsValid && bRole.branchIds.length === 1;
+  const isModuleKeysValid = validStringArray(bRole?.moduleKeys, MODULE_KEY_PATTERN);
+  const guardPassed = Boolean(isRoleKeyBranch && hasBranchScope && hasExactOneBranch && hasEmptyBrands && hasEmptyRestaurants && isModuleKeysValid);
   ```
 - **Policy Decision**:
-  Do NOT modify or relax `roleAccess.ts:33`. The compatibility hold remains logged for Mahmoud's resolution in backend tasks **E2** (`OnboardController.php`) and **E3** (`StagingHarnessProvisioner.php`).
+  Do NOT modify or relax `roleAccess.ts:33`. Missing arrays are strictly NOT treated as empty. The compatibility hold remains logged for Mahmoud's resolution in backend tasks **E2** (`OnboardController.php`) and **E3** (`StagingHarnessProvisioner.php`).
 
 ---
 

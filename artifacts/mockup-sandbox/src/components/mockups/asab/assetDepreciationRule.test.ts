@@ -88,3 +88,30 @@ test("T020: Enforce Rule ASSET-01 - Zero depreciation calculations and mandatory
     "AccAssets.tsx must not display 'الاستهلاك الشهري'",
   );
 });
+
+test("T020: Enforce Halala Financial Display Precision in CompanyDashboard.tsx", () => {
+  const filePath = new URL("./CompanyDashboard.tsx", import.meta.url);
+  const content = readFileSync(filePath, "utf8");
+
+  // 1. Zero Math.round wrapping bookValueHalalas
+  assert.equal(
+    /Math\.round\s*\([^)]*bookValueHalalas/i.test(content),
+    false,
+    "CompanyDashboard.tsx must not round bookValueHalalas to whole Riyal with Math.round",
+  );
+
+  // 2. Both asset displays must preserve halalas by dividing by 100 directly
+  assert.ok(
+    content.includes("fmt((a.bookValueHalalas ?? 0) / 100)"),
+    "CompanyDashboard.tsx must format bookValueHalalas as (a.bookValueHalalas ?? 0) / 100",
+  );
+
+  // 3. Halala precision test: 12345 halalas must scale to 123.45 SAR without losing decimal precision
+  const rawHalalas = 12345;
+  const scaledSar = (rawHalalas / 100);
+  assert.equal(scaledSar, 123.45, "12345 halalas must scale exactly to 123.45 SAR");
+  assert.notEqual(Math.round(scaledSar), 123.45, "Math.round drops the .45 halalas to whole SAR 123");
+
+  const fmt = (n: number | null | undefined) => n == null ? "-" : n.toLocaleString("en-US", { minimumFractionDigits: 2 });
+  assert.equal(fmt(scaledSar), "123.45", "fmt preserves 123.45 SAR");
+});

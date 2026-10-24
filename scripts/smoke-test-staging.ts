@@ -15,6 +15,7 @@
  *   - ASSAB_VERCEL_FRONTEND_URL (e.g. https://dashboard-staging.vercel.app)
  *   - ASSAB_BACKEND_DEPLOYED_SHA (operator-attested Coolify deployment SHA)
  *   - ASSAB_FRONTEND_DEPLOYED_SHA (operator-attested Vercel deployment SHA)
+ *   - ASSAB_DEPLOYMENT_ATTESTED ("true" if Mahmoud explicitly confirmed deployment)
  * - Zero logging of access tokens, refresh tokens, auth cookies, or personal identifiers.
  */
 
@@ -28,6 +29,18 @@ const ROLELESS_EMAIL = process.env.ASSAB_ROLELESS_EMAIL || "";
 const FRONTEND_URL = process.env.ASSAB_VERCEL_FRONTEND_URL || "";
 const EXPECTED_BACKEND_SHA = process.env.ASSAB_BACKEND_DEPLOYED_SHA || "PENDING_OPERATOR_ATTESTATION";
 const EXPECTED_FRONTEND_SHA = process.env.ASSAB_FRONTEND_DEPLOYED_SHA || "PENDING_VERCEL_DEPLOYMENT";
+const IS_DEPLOYMENT_ATTESTED = process.env.ASSAB_DEPLOYMENT_ATTESTED === "true";
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MODULE_KEY_PATTERN = /^[a-z][a-z0-9_-]*$/;
+
+export function validStringArray(val: unknown, pattern: RegExp): val is string[] {
+  return (
+    Array.isArray(val) &&
+    val.every(id => typeof id === "string" && id.trim() === id && pattern.test(id)) &&
+    new Set(val).size === val.length
+  );
+}
 
 interface LoginResponse {
   accessToken?: string;
@@ -40,6 +53,7 @@ interface LoginResponse {
       brandIds?: string[];
       branchIds?: string[];
       restaurantIds?: string[];
+      moduleKeys?: string[];
     }>;
   };
 }
@@ -137,7 +151,7 @@ export async function runStagingSmoke(): Promise<{
   frontendUrl: string;
   backendSha: string;
   frontendSha: string;
-  environmentState: "RUNNABLE" | "BLOCKED";
+  environmentState: "RUNNABLE" | "BLOCKED — NO REQUESTS EXECUTED";
   results: RoleSmokeResult[];
   branchScopeEvaluation: any;
   blockers: string[];
@@ -145,21 +159,23 @@ export async function runStagingSmoke(): Promise<{
   const timestamp = new Date().toISOString();
   const blockers: string[] = [];
 
-  if (!STAGING_PASSWORD) {
+  // STAGING READINESS GATE ENFORCEMENT
+  if (!STAGING_PASSWORD || STAGING_PASSWORD.trim().length === 0) {
     blockers.push("ASSAB_STAGING_PASSWORD is not set. Fixture password must be provided via environment variable (never stored in Git).");
   }
-  if (!FRONTEND_URL) {
+  if (!FRONTEND_URL || FRONTEND_URL.trim().length === 0 || FRONTEND_URL === "NOT_CONFIGURED") {
     blockers.push("ASSAB_VERCEL_FRONTEND_URL is not set. Vercel Staging deployment URL must be provided by Mahmoud for Browser QA.");
   }
-  if (EXPECTED_BACKEND_SHA === "PENDING_OPERATOR_ATTESTATION") {
-    blockers.push("Coolify Backend deployment SHA is not yet attested by Mahmoud.");
+  if (EXPECTED_BACKEND_SHA === "PENDING_OPERATOR_ATTESTATION" || !IS_DEPLOYMENT_ATTESTED) {
+    blockers.push("Coolify Backend deployment SHA is not yet attested by Mahmoud. Environment variable existence alone does not constitute deployment proof.");
   }
 
   console.log(`[smoke-test] Execution started at ${timestamp}`);
   console.log(`[smoke-test] Target API Origin: ${API_ORIGIN}`);
 
-  if (!STAGING_PASSWORD) {
-    console.warn("[smoke-test] STAGING SMOKE IS BLOCKED:");
+  // FAIL-CLOSED: If ANY readiness prerequisite is missing, execute ZERO requests!
+  if (blockers.length > 0) {
+    console.warn("[smoke-test] STAGING READINESS GATE: BLOCKED — NO REQUESTS EXECUTED");
     blockers.forEach(b => console.warn(` - ${b}`));
 
     return {
@@ -168,8 +184,13 @@ export async function runStagingSmoke(): Promise<{
       frontendUrl: FRONTEND_URL || "NOT_CONFIGURED",
       backendSha: EXPECTED_BACKEND_SHA,
       frontendSha: EXPECTED_FRONTEND_SHA,
-      environmentState: "BLOCKED",
-      results: [],
+      environmentState: "BLOCKED — NO REQUESTS EXECUTED",
+      results: [
+        { role: "accountant", accountEmail: "accountant.burger@nakhat.sa", loginStatus: "BLOCKED", endpoints: [] },
+        { role: "head", accountEmail: "head@nakhat.sa", loginStatus: "BLOCKED", endpoints: [] },
+        { role: "company-admin", accountEmail: "admin@nakhat.sa", loginStatus: "BLOCKED", endpoints: [] },
+        { role: "branch", accountEmail: "branch@nakhat.sa", loginStatus: "BLOCKED", endpoints: [] },
+      ],
       branchScopeEvaluation: null,
       blockers,
     };
@@ -196,7 +217,7 @@ export async function runStagingSmoke(): Promise<{
       { endpoint: "/accountant/shifts/history", method: "GET", description: "Shift History", hookReference: "usePlatformHistoryShifts" },
       { endpoint: "/accountant/operations", method: "GET", description: "Daily Operations List", hookReference: "useAccountantOperationsPlatform", halalaField: "amountHalalas" },
       { endpoint: "/accountant/employees", method: "GET", description: "Employee Statement Roster", hookReference: "usePlatformEmployees" },
-      { endpoint: "/company/me/cash/custody", method: "GET", description: "Cash Custody", hookReference: "useCashCustody" },
+      { endpoint: "/company/me/cash-custody", method: "GET", description: "Cash Custody", hookReference: "useCashCustody" },
       { endpoint: "/company/me/asset-drafts", method: "GET", description: "Asset Drafts (Backend E1 dependency)", hookReference: "useAssetDrafts" },
     ];
 
@@ -345,16 +366,38 @@ export async function runStagingSmoke(): Promise<{
       const roles = authMeRes.data.roles || authMeRes.data.user?.roles || [];
       const bRole = roles.find((r: any) => r.key === "branch" || r.role === "branch");
 
+      // Strict validation conforming to roleAccess.ts:25-39:
+      // Missing fields are NOT treated as empty arrays automatically!
+      const isRoleKeyBranch = bRole?.key === "branch";
       const hasBranchScope = bRole?.scope === "branch";
-      const hasExactOneBranch = Array.isArray(bRole?.branchIds) && bRole.branchIds.length === 1;
-      const hasEmptyBrands = !bRole?.brandIds || bRole.brandIds.length === 0;
-      const hasEmptyRestaurants = !bRole?.restaurantIds || bRole.restaurantIds.length === 0;
-      const guardPassed = Boolean(hasBranchScope && hasExactOneBranch && hasEmptyBrands && hasEmptyRestaurants);
+
+      const isBrandIdsValid = validStringArray(bRole?.brandIds, UUID_PATTERN);
+      const hasEmptyBrands = isBrandIdsValid && bRole.brandIds.length === 0;
+
+      const isRestaurantIdsValid = validStringArray(bRole?.restaurantIds, UUID_PATTERN);
+      const hasEmptyRestaurants = isRestaurantIdsValid && bRole.restaurantIds.length === 0;
+
+      const isBranchIdsValid = validStringArray(bRole?.branchIds, UUID_PATTERN);
+      const hasExactOneBranch = isBranchIdsValid && bRole.branchIds.length === 1;
+
+      const isModuleKeysValid = validStringArray(bRole?.moduleKeys, MODULE_KEY_PATTERN);
+
+      const guardPassed = Boolean(
+        isRoleKeyBranch &&
+        hasBranchScope &&
+        hasExactOneBranch &&
+        hasEmptyBrands &&
+        hasEmptyRestaurants &&
+        isModuleKeysValid
+      );
 
       branchScopeEvaluation = {
         roleKey: bRole?.key || bRole?.role,
         scope: bRole?.scope,
         hasBranchScope,
+        isBrandIdsValid,
+        isRestaurantIdsValid,
+        isBranchIdsValid,
         branchCount: bRole?.branchIds?.length ?? 0,
         brandCount: bRole?.brandIds?.length ?? 0,
         restaurantCount: bRole?.restaurantIds?.length ?? 0,
@@ -380,7 +423,7 @@ export async function runStagingSmoke(): Promise<{
   }
   results.push(branchResult);
 
-  // 5. AUTHENTICATED ROLE-LESS USER (403 WRONG_ROLE check with error body inspection)
+  // 5. AUTHENTICATED ROLE-LESS USER (403 WRONG_ROLE check with error envelope inspection)
   if (ROLELESS_EMAIL) {
     const rolelessLogin = await login(ROLELESS_EMAIL);
     const rolelessResult: RoleSmokeResult = {
@@ -394,19 +437,27 @@ export async function runStagingSmoke(): Promise<{
       const res = await request(`${apiUrl}/company/me/shifts`, {
         headers: { "Authorization": `Bearer ${rolelessLogin.token}` },
       });
-      const errorPayload = res.data;
-      const hasWrongRoleCode = errorPayload?.code === "WRONG_ROLE" || errorPayload?.error === "WRONG_ROLE";
-      const hasArabicMessage = typeof errorPayload?.message === "string" && /غير مصرح|صلاحي/i.test(errorPayload.message);
+
+      // Backend envelope: { error: { code: "WRONG_ROLE", messageAr: "..." }, requestId: "..." }
+      // All conditions required together (AND), not OR:
+      // 1. HTTP 403
+      // 2. error.code === "WRONG_ROLE"
+      // 3. Non-empty Arabic message in error.messageAr
+      const errEnvelope = res.data?.error;
+      const isHttp403 = res.status === 403;
+      const hasWrongRoleCode = errEnvelope?.code === "WRONG_ROLE";
+      const hasNonEmptyMessageAr = typeof errEnvelope?.messageAr === "string" && errEnvelope.messageAr.trim().length > 0;
+      const isWrongRoleEnvelopeValid = Boolean(isHttp403 && hasWrongRoleCode && hasNonEmptyMessageAr);
 
       rolelessResult.endpoints.push({
         endpoint: "/company/me/shifts",
         method: "GET",
-        description: "Verify authenticated roleless user receives 403 WRONG_ROLE with Arabic error",
+        description: "Verify authenticated roleless user receives 403 with error.code WRONG_ROLE and error.messageAr",
         hookReference: "useRoleGuard",
         status: res.status,
         statusText: res.statusText,
         durationMs: res.durationMs,
-        rootCauseClassification: (res.status === 403 && (hasWrongRoleCode || hasArabicMessage)) ? "OK" : "ROLE_MISMATCH",
+        rootCauseClassification: isWrongRoleEnvelopeValid ? "OK" : "ROLE_MISMATCH",
       });
     }
     results.push(rolelessResult);
@@ -429,10 +480,28 @@ if (process.argv[1] && (process.argv[1].endsWith("smoke-test-staging.ts") || pro
   runStagingSmoke()
     .then(report => {
       console.log(`[smoke-test] Completed with environment status: ${report.environmentState}`);
-      if (report.environmentState === "BLOCKED") {
-        console.log("[smoke-test] Standing Blockers:");
+      console.log("--------------------------------------------------");
+      console.log("ASSAB ERP - Sanitized Role Smoke Ledger:");
+      console.log("--------------------------------------------------");
+      report.results.forEach(r => {
+        console.log(`Role: [${r.role.padEnd(20)}] Login: ${r.loginStatus.padEnd(8)} Account: ${r.accountEmail}`);
+        r.endpoints.forEach(ep => {
+          console.log(`   -> [HTTP ${ep.status}] ${ep.method} ${ep.endpoint} (${ep.rootCauseClassification ?? "N/A"}) - ${ep.description}`);
+          if (ep.currencyVerification) {
+            console.log(`      * Currency Check: ${ep.currencyVerification.rawHalalas ?? "N/A"} halalas => ${ep.currencyVerification.expectedSar} | UI Browser QA: ${ep.currencyVerification.uiBrowserVerification}`);
+          }
+        });
+      });
+      console.log("--------------------------------------------------");
+      if (report.branchScopeEvaluation) {
+        console.log(`Branch Guard Evaluation: ${report.branchScopeEvaluation.verdict} (Guard Passed: ${report.branchScopeEvaluation.guardPassed})`);
+      }
+      if (report.blockers.length > 0) {
+        console.log("[smoke-test] Standing Environment Blockers:");
         report.blockers.forEach(b => console.log(` * ${b}`));
       }
+      console.log("Browser QA Status: NOT_RUN (Requires interactive browser session on deployed Vercel UI)");
+      console.log("--------------------------------------------------");
     })
     .catch(err => {
       console.error("[smoke-test] Unhandled execution error:", err);
