@@ -2818,3 +2818,37 @@ This append-only supplement records the Phase 4 Accessibility Verification and Q
 | A10 | Filter and search accessible labels | `IMPLEMENTED` | `PASS` (51/51) | `RUNTIME_VERIFIED` | `NOT_RUN (internal view not scanned)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
 | A11 | Role-local RTL/LTR exceptions | `IMPLEMENTED` | `PASS` (32/32) | `RUNTIME_VERIFIED` | `NOT_RUN (internal view not scanned)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
 | B07 | Custom dialog focus & short height | `IMPLEMENTED` | `PASS` (28/28) | `RUNTIME_VERIFIED` | `NOT_RUN (internal view not scanned)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+
+---
+
+## 9. Dashboard Backend Integration & Staging Verification (2026-10-24)
+
+**Feature Branch:** `001-dashboard-backend-integration-review`
+**Base Commit:** `7602da1` (`staging/dashboard-m9-candidate-20261016`)
+**Backend Target Reference:** `26f86c6` (Coolify Staging - awaiting operator attestation)
+**Execution Date:** 2026-10-24
+**Status Standard:** Strict Governance Protocol (Blocker 4 Honest Acceptance)
+
+### 9.1 Overview & Scope Adherence
+Reconciles Dashboard frontend (`7602da1`) with Backend v3.5 endpoints (`26f86c6`) across 7 distinct user stories without any backend changes, preserving fail-closed authentication in `roleAccess.ts:33`, and strictly maintaining `rawHalalas / 100` currency scaling.
+
+### 9.2 Tasks & Findings Status Matrix
+
+| Task ID | Finding / Requirement | Implementation Summary | Automated Test Suite | Staging / Vercel Runtime Status | Overall Item Status |
+|---|---|---|---|:---:|:---:|
+| **A1** (US1) | Company Admin Invitations Contract Alignment | Updated `buildInvitationPayload` & `CAUsers` modal requiring `brandId` for accountant, `branchId` for branch while strictly omitting `brandId`, and disabled submit button guard | `companyAdmin.test.ts` (6/6 PASS, exit 0) | `NOT_RUN` (Awaiting Vercel Deploy) | `PENDING_REVIEW` |
+| **A2** (US3) | Subscription Plans Route Realignment | Replaced dead `/company/plans` with active backend route `GET /plans` in `companyAdmin.ts` | `plansRoute.test.ts` (1/1 PASS, exit 0) | `NOT_RUN` (Awaiting Vercel Deploy) | `PENDING_REVIEW` |
+| **B1** (US2) | Multi-Role Read-Only Staging Smoke & Browser QA | Created `scripts/smoke-test-staging.ts` with credential hygiene, aligned routes (`/company/me/cash-custody`), fail-closed readiness gate (`BLOCKED — NO REQUESTS EXECUTED`), and sanitized ledger | `smokeContract.test.ts` (4/4 PASS, exit 0) | `BLOCKED` (Awaiting Operator Attestation & URLs) | `BLOCKED_ON_ENVIRONMENT` |
+| **B2** (US4) | Branch Manager Single-Branch Scope Verification | Preserved fail-closed guard `roleAccess.ts:25-39`; strict `validStringArray` check (no auto-empty fallbacks); logged compatibility hold for backend items E2/E3 | `smokeContract.test.ts` (4/4 PASS, exit 0) | `BLOCKED` (Fixture incompatibility hold) | `BLOCKED_ON_BACKEND` |
+| **C1** (US5) | Asset Depreciation Elimination (Rule ASSET-01) & Halala Precision | Removed all client-side depreciation calculations, formulas, and KPI cards; retained `usefulLifeMonths` with disclaimer; preserved halala display precision (`fmt((a.bookValueHalalas ?? 0) / 100)`) without `Math.round` | `assetDepreciationRule.test.ts` (3/3 PASS, exit 0) | `NOT_RUN` (Awaiting Vercel Deploy) | `PENDING_REVIEW` |
+| **C2** (US6) | Employee Statement Debit Balance Fallback (DIFF-04) | Implemented `hasEmployeeDebitWarning` helper evaluating `hasDebitBalance ?? autoDeductFromSalary` in `AccEmployees.tsx` and `CompanyDashboard.tsx` | `employeeStatementFallback.test.ts` (7/7 PASS, exit 0) | `NOT_RUN` (Awaiting Vercel Deploy) | `PENDING_REVIEW` |
+| **D1** (US7) | Obsolete Query Adapters Pruning & ERP Repointing | Repointed ERP hooks in `head.ts` to `/head/erp/*`; pruned dead platform hooks in `accountant.ts` and `branch.ts` while strictly preserving mobile shift stubs | `deadAdapters.test.ts` (3/3 PASS, exit 0) | `NOT_RUN` (Awaiting Vercel Deploy) | `PENDING_REVIEW` |
+
+### 9.3 Quality & Governance Verification Results
+- **Phase Status:** `GO17_SOURCE_AND_SMOKE_HARNESS_READY — STAGING_RUNTIME_PENDING`.
+- **TypeScript Typecheck:** `pnpm run typecheck` (3/3 workspace packages) — Exit Code: 0 (0 errors).
+- **Production Build:** `pnpm run build` (mockup-sandbox + api-server) — Exit Code: 0.
+- **Git Diff Syntax & Whitespace:** `git diff --check` — Exit Code: 0 (Clean).
+- **Automated Unit & Contract Tests:** 24/24 PASS across 6 test suites, Exit Code: 0.
+- **Audit Smoke Report:** `dashboard/docs/audit/ASSAB_DASHBOARD_AUTH_SMOKE_20261024.md`.
+
