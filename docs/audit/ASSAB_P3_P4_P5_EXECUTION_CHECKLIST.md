@@ -882,12 +882,16 @@ B07 remains `PENDING_REVIEW`; static contract tests pass, but Browser QA remains
   - A11: Dynamic `dir` verified across procurement and accountant modules preserving LTR numbers.
   - B07: Radix Dialog accessibility attributes, focus containment, Escape key dismiss, and focus restoration to trigger verified.
 
-- **Automated WCAG 2.1 AA Audit (Axe-Core via CDN Injection — Zero Dependency Changes):**
+- **Automated WCAG 2.1 AA Audit (Axe-Core via Dynamic Injection — Zero Dependency Changes):**
   - Tool & Methodology: Dynamic script injection of `axe-core@4.10.2` into active Chrome runtime on `http://localhost:3000/`. Strictly zero changes to `package.json` or `pnpm-lock.yaml`.
-  - Tested Surfaces:
+  - Standards Evaluated: WCAG 2.1 AA (`wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`). Explicitly **not** evaluated for complete WCAG 2.2 AA (e.g. 2.4.11 Focus Not Obscured, 2.5.7 Dragging Movements, 2.5.8 Target Size Minimum, 3.3.7 Redundant Entry).
+  - Tested Surfaces (A01 & A02):
     - EntryFlow / Login (`http://localhost:3000/`): **0 Violations**, 22 Passes, 0 Incomplete, 39 Inapplicable.
     - Forgot Password (`http://localhost:3000/forgot-password`): **0 Violations**, 21 Passes, 0 Incomplete, 40 Inapplicable.
+  - Untested Surfaces on Axe Axis (A03–A11 & B07):
+    - Classified as `NOT_RUN` on the axe-core axis. Internal views have separate verified Browser Keyboard/Focus/RTL and AST/unit test evidence, but axe-core was not executed on authenticated internal views.
   - Evaluated Rules: `button-name`, `color-contrast`, `form-field-multiple-labels`, `label`, `aria-*`, `autocomplete-valid`, `nested-interactive`, `landmark-one-main`.
+  - Machine Raw Evidence: `docs/audit/evidence/p4-accessibility/axe-results-raw.json`.
   - Video & Log Evidence: `p4_axe_verification_1792832405439.webp`, `docs/audit/evidence/p4-accessibility/AXE_CORE_AUDIT_REPORT.md`.
 
 - **Screen Reader (NVDA) Verification Status:**
@@ -900,12 +904,14 @@ B07 remains `PENDING_REVIEW`; static contract tests pass, but Browser QA remains
 
 - **Phase 4 Handoff Status & Classification:**
   - Status: `P4_SOURCE_PUBLISHED_FOR_REVIEW — ACCESSIBILITY_QA_PENDING`.
-  - Accessibility QA is **NOT claimed as 100% complete** because screen reader testing was restricted by host environment limitations.
+  - Accessibility QA is **NOT claimed as 100% complete** because screen reader testing was restricted by host environment limitations, and axe-core was not run on internal dashboard views.
   - Finding Classification Matrix:
     - Source Implementation: `IMPLEMENTED` across all A01–A11 and B07.
     - Automated Unit / AST Regressions: `PASS` (166/166).
-    - Browser Keyboard / Focus / RTL: `RUNTIME_VERIFIED`.
-    - Axe-Core Automated Audit: `RUNTIME_VERIFIED (PASS — 0 violations)`.
-    - Screen Reader (NVDA): `NOT_RUN / ENVIRONMENT_RESTRICTION`.
+    - Browser Keyboard / Focus / RTL: `RUNTIME_VERIFIED` across all A01–A11 and B07.
+    - Axe-Core Automated Audit (WCAG 2.1 AA):
+      - A01, A02: `RUNTIME_VERIFIED / PASS (0 violations on Login & Forgot Password)`.
+      - A03–A11, B07: `NOT_RUN (internal dashboard views not scanned with axe-core)`.
+    - Screen Reader (NVDA): `NOT_RUN / ENVIRONMENT_RESTRICTION` across all A01–A11 and B07.
     - Independent Review Gate: `INDEPENDENT_ACCEPTANCE_PENDING`.
   - Evidence Directory: `docs/audit/evidence/p4-accessibility/`.

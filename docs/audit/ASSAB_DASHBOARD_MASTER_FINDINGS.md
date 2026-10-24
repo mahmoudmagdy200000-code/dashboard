@@ -2773,6 +2773,7 @@ This append-only supplement records the Phase 4 Accessibility Verification and Q
 - **Baseline SHA:** `7d09cc3b6809c25d81216ef851467a230768f62f`
 - **Proven Defect Fix (A02-OBS-01) Commit SHA:** `63659c6` (`fix(dashboard-p4): align password reveal button at trailing edge with non-colliding padding (A02-OBS-01)`)
 - **Initial Audit Documentation Commit SHA:** `05619c1e3e7ef6dad5b1d6dfe17362f8bf53e269`
+- **Reviewed QA Commit SHA:** `5db6849b5eb0f201845d170e90b8a228cdd1eb7d`
 - **Current Phase 4 Status:** `P4_SOURCE_PUBLISHED_FOR_REVIEW — ACCESSIBILITY_QA_PENDING`
 
 ### 2. Automated Regressions & Build Verification
@@ -2784,9 +2785,15 @@ This append-only supplement records the Phase 4 Accessibility Verification and Q
 ### 3. Automated WCAG 2.1 AA Audit (Axe-Core Runtime — Zero Dependency Change)
 - Dynamically injected `axe-core@4.10.2` via CDN script tag into the live Chrome browser session on `http://localhost:3000/`.
 - Zero project dependencies added to `package.json` or lockfile.
-- **Login / Entry Flow:** 0 Violations, 22 Passes, 0 Incomplete, 39 Inapplicable.
-- **Password Reset Flow (`/forgot-password`):** 0 Violations, 21 Passes, 0 Incomplete, 40 Inapplicable.
-- Applicable rules verified: `button-name`, `color-contrast`, `form-field-multiple-labels`, `label`, `aria-*`, `autocomplete-valid`, `nested-interactive`, `landmark-one-main`.
+- **Standards Scope Limitation:** Evaluated against WCAG 2.1 AA standards (`wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`). This is **not** a claim of complete WCAG 2.2 AA compliance; criteria specific to WCAG 2.2 (such as 2.4.11 Focus Not Obscured, 2.5.7 Dragging Movements, 2.5.8 Target Size Minimum, and 3.3.7 Redundant Entry) were not evaluated.
+- **Tested Surfaces (A01 & A02):**
+  - **Login / Entry Flow (`/`):** 0 Violations, 22 Passes, 0 Incomplete, 39 Inapplicable.
+  - **Password Reset Flow (`/forgot-password`):** 0 Violations, 21 Passes, 0 Incomplete, 40 Inapplicable.
+- **Untested Surfaces on Axe Axis (A03–A11 & B07):**
+  - Authenticated internal dashboard views were not scanned with axe-core. In accordance with independent review governance, they are classified strictly as `NOT_RUN` on this axis, even though their browser keyboard, DOM structure, and unit tests have verified passes.
+- **Applicable Rules Verified:** `button-name`, `color-contrast`, `form-field-multiple-labels`, `label`, `aria-*`, `autocomplete-valid`, `nested-interactive`, `landmark-one-main`.
+- **Machine Raw Results:** `docs/audit/evidence/p4-accessibility/axe-results-raw.json`.
+- **Audit Report:** `docs/audit/evidence/p4-accessibility/AXE_CORE_AUDIT_REPORT.md`.
 
 ### 4. Screen Reader (NVDA) Restriction & Alternative Documentation
 - **Screen Reader Status:** `NOT_RUN / ENVIRONMENT_RESTRICTION (NVDA screen reader is not installed on the Windows host)`.
@@ -2797,17 +2804,17 @@ This append-only supplement records the Phase 4 Accessibility Verification and Q
 
 ### 5. Multi-Axis Finding Matrix (A01–A11 & B07)
 
-| Finding ID | Title / Scope | Source Code | Automated Tests | Browser Keyboard / Focus | Axe-Core Audit | Screen Reader (NVDA) | Overall Review Gate |
+| Finding ID | Title / Scope | Source Code | Automated Tests | Browser Keyboard / Focus | Axe-Core Audit (WCAG 2.1 AA) | Screen Reader (NVDA) | Overall Review Gate |
 |---|---|---|---|---|---|---|---|
-| A01 | Login/Reset programmatic labels | `IMPLEMENTED` | `PASS` (66/66) | `RUNTIME_VERIFIED` | `PASS (0 violations)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
-| A02 | Password reveal keyboard & RTL trailing | `IMPLEMENTED` | `PASS` (33/33) | `RUNTIME_VERIFIED` | `PASS (0 violations)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
-| A03 | Shared KpiCard button semantics | `IMPLEMENTED` | `PASS` (30/30) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
-| A04 | Document language metadata | `IMPLEMENTED` | `PASS` (66/66) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
-| A05 | AdminUsers keyboard selection | `IMPLEMENTED` | `PASS` (27/27) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
-| A06 | ProcNewOrders expansion control | `IMPLEMENTED` | `PASS` (21/21) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
-| A07 | AdminUsers contextual icon names | `IMPLEMENTED` | `PASS` (27/27) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
-| A08 | AccAssets labelled checkboxes | `IMPLEMENTED` | `PASS` (11/11) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
-| A09 | AdminUsers distribution mode | `IMPLEMENTED` | `PASS` (27/27) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
-| A10 | Filter and search accessible labels | `IMPLEMENTED` | `PASS` (51/51) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
-| A11 | Role-local RTL/LTR exceptions | `IMPLEMENTED` | `PASS` (32/32) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
-| B07 | Custom dialog focus & short height | `IMPLEMENTED` | `PASS` (28/28) | `RUNTIME_VERIFIED` | `PASS` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A01 | Login/Reset programmatic labels | `IMPLEMENTED` | `PASS` (66/66) | `RUNTIME_VERIFIED` | `PASS (0 violations, WCAG 2.1 AA)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A02 | Password reveal keyboard & RTL trailing | `IMPLEMENTED` | `PASS` (33/33) | `RUNTIME_VERIFIED` | `PASS (0 violations, WCAG 2.1 AA)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A03 | Shared KpiCard button semantics | `IMPLEMENTED` | `PASS` (30/30) | `RUNTIME_VERIFIED` | `NOT_RUN (internal view not scanned)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A04 | Document language metadata | `IMPLEMENTED` | `PASS` (66/66) | `RUNTIME_VERIFIED` | `NOT_RUN (internal view not scanned)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A05 | AdminUsers keyboard selection | `IMPLEMENTED` | `PASS` (27/27) | `RUNTIME_VERIFIED` | `NOT_RUN (internal view not scanned)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A06 | ProcNewOrders expansion control | `IMPLEMENTED` | `PASS` (21/21) | `RUNTIME_VERIFIED` | `NOT_RUN (internal view not scanned)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A07 | AdminUsers contextual icon names | `IMPLEMENTED` | `PASS` (27/27) | `RUNTIME_VERIFIED` | `NOT_RUN (internal view not scanned)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A08 | AccAssets labelled checkboxes | `IMPLEMENTED` | `PASS` (11/11) | `RUNTIME_VERIFIED` | `NOT_RUN (internal view not scanned)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A09 | AdminUsers distribution mode | `IMPLEMENTED` | `PASS` (27/27) | `RUNTIME_VERIFIED` | `NOT_RUN (internal view not scanned)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A10 | Filter and search accessible labels | `IMPLEMENTED` | `PASS` (51/51) | `RUNTIME_VERIFIED` | `NOT_RUN (internal view not scanned)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| A11 | Role-local RTL/LTR exceptions | `IMPLEMENTED` | `PASS` (32/32) | `RUNTIME_VERIFIED` | `NOT_RUN (internal view not scanned)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |
+| B07 | Custom dialog focus & short height | `IMPLEMENTED` | `PASS` (28/28) | `RUNTIME_VERIFIED` | `NOT_RUN (internal view not scanned)` | `NOT_RUN (Host restriction)` | `PENDING_REVIEW` |

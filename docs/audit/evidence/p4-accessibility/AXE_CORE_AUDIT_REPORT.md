@@ -5,18 +5,21 @@
 **Branch:** `work/dashboard-p4-accessibility-completion-20261024`
 **Execution Runtime:** Active Chrome Browser Session on `http://localhost:3000/` (Vite Dev Daemon Task)
 **Methodology:** Dynamic CDN injection of `axe-core@4.10.2` via script element.
+**Standard Evaluated:** **WCAG 2.1 AA** (`wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`).
+**Standard Limitation Note:** This audit specifically evaluated WCAG 2.1 AA tags supported by axe-core 4.10.2. It does **NOT** constitute proof of complete WCAG 2.2 AA compliance (which includes additional criteria such as 2.4.11 Focus Not Obscured, 2.5.7 Dragging Movements, 2.5.8 Target Size Minimum, and 3.3.7 Redundant Entry).
 **Dependency Impact:** **Zero dependency changes** — `package.json` and `pnpm-lock.yaml` remain completely untouched, strictly adhering to Minimal Engineering rules.
+**Raw Machine Results:** Recorded in [`docs/audit/evidence/p4-accessibility/axe-results-raw.json`](file:///D:/claude/ASSAB%20ERP%20GITHUB%20BACKEND%20ANTIGRAVITY/dashboard-p3-qa/docs/audit/evidence/p4-accessibility/axe-results-raw.json).
 
 ---
 
-## 1. Executive Summary
+## 1. Tested Surfaces & Executive Summary
 
-| Target Surface | URL / Route | WCAG Target | Violations | Passes | Incomplete | Inapplicable | Status |
-|---|---|---|---|---|---|---|---|
-| Entry & Login Flow | `http://localhost:3000/` | WCAG 2.1 AA (`wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`) | **0** | **22** | 0 | 39 | **PASS** |
-| Password Reset Flow | `http://localhost:3000/forgot-password` | WCAG 2.1 AA (`wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`) | **0** | **21** | 0 | 40 | **PASS** |
+| Target Surface | URL / Route | Applicable Findings | WCAG Target | Violations | Passes | Incomplete | Inapplicable | Status |
+|---|---|---|---|---|---|---|---|---|
+| Entry & Login Flow | `http://localhost:3000/` | **A01**, **A02** | WCAG 2.1 AA | **0** | **22** | 0 | 39 | **PASS** |
+| Password Reset Flow | `http://localhost:3000/forgot-password` | **A01** | WCAG 2.1 AA | **0** | **21** | 0 | 40 | **PASS** |
 
-**Total Accessibility Violations Found:** 0
+**Total Accessibility Violations on Tested Surfaces:** 0
 
 ---
 
@@ -88,7 +91,17 @@ document.head.appendChild(script);
 
 ---
 
-## 4. Visual & Video Evidence
+## 4. Internal Dashboard Surfaces (A03–A11 & B07) — Axe-Core Status: NOT_RUN
+
+Per Independent Review instructions and strict Governance Rules:
+- Automated axe-core scanning was **NOT** executed on internal authenticated dashboard views (`AdminUsers`, `ProcNewOrders`, `AccAssets`, `CompanyDashboard`, `HeadPending`, `BranchOverview`).
+- Accessing these internal views in runtime requires active authenticated session state and role selection; avoiding automated execution on internal views ensures no unsafe login loops, synthetic session mutations, or mock auth interference occur.
+- **Classification:** In the axe-core axis, findings **A03 through A11 and B07 are classified strictly as `NOT_RUN`**.
+- This classification does not diminish or invalidate the separate **Browser Keyboard Navigation**, **DOM Tree Inspection**, or **166/166 Targeted Unit/AST Test** passes achieved on these components, which remain fully documented and verified.
+
+---
+
+## 5. Visual & Video Evidence
 
 - Browser recording: `p4_axe_verification_1792832405439.webp`
 - Screenshots captured during audit:
