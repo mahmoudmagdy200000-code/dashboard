@@ -390,9 +390,10 @@ import { useLanguagePref } from "../../../auth/useLanguagePref";
 import { useAuth } from "../../../auth/AuthContext";
 import { readEntrySelection, clearEntrySelection } from "../../../auth/entrySelection";
 import { getSiteLang, setSiteLang, useDocumentLang } from "../../../auth/siteLang";
-import { V, G, CYAN, LOGO, ensureAuthStyles } from "../../../auth/authTheme";
+import { V, G, CYAN, ensureAuthStyles } from "../../../auth/authTheme";
 import { LangToggle } from "../../../auth/LangToggle";
 import { SUPPLIER_PORTAL_ENABLED } from "../../../featureFlags";
+import { AsabLogo } from "../../AsabLogo";
 
 // ─────────────────────────────────────────────
 // TYPES
@@ -893,7 +894,7 @@ function LoginScreen({ onLogin }: { onLogin: (r: RoleId) => void }) {
 
       {/* Top bar: logo + language */}
       <header style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 28px", borderBottom: `1px solid ${G[200]}`, background: "rgba(255,255,255,0.75)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
-        <img src={LOGO} alt="ASAB — عصب" style={{ height: 34, width: "auto" }} />
+        <AsabLogo variant="header" />
         <LangToggle lang={lang} onChange={setLang} variant="light" />
       </header>
 
@@ -1408,11 +1409,7 @@ function Sidebar({ role, ops, page, navigate, logout, collapsed, setCollapsed, m
       style={{ width: mobile ? "100%" : collapsed ? 64 : 252, height: mobile ? "100%" : undefined, background: "linear-gradient(180deg,#0F1C35 0%,#1B3A6B 100%)", minHeight: mobile ? undefined : "100vh", direction: dir }}>
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-3 py-4 border-b border-white/10">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: "linear-gradient(135deg,#7C3AED,#00D9FF)" }}>
-          <span className="text-white font-black text-sm">ع</span>
-        </div>
-        {!collapsed && <div className="flex-1 min-w-0"><div className="text-white font-bold text-base">عصب</div><div className="text-white/40 text-[10px]">ASAB System</div></div>}
+        <AsabLogo variant="sidebar" showWordmark={!collapsed} />
         <button onClick={() => mobile ? onClose?.() : setCollapsed(!collapsed)}
           aria-label={mobile ? (lang === "ar" ? "إغلاق القائمة" : "Close menu") : (lang === "ar" ? "طي القائمة أو توسيعها" : "Collapse or expand menu")}
           className="min-w-11 min-h-11 text-white/70 hover:text-white transition-colors ms-auto">

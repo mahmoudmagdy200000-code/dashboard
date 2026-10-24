@@ -1,4 +1,5 @@
 import { ReactNode, useState } from "react";
+import { AsabLogo } from "../../../AsabLogo";
 import {
   LayoutDashboard, FileText, ShoppingCart, Package, Building2,
   Clock, Users, Wallet, BarChart3, Settings, Bell, ChevronDown,
@@ -123,16 +124,7 @@ export function AppLayout({
       >
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 py-5 border-b border-white/10">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #7C3AED, #00D9FF)" }}>
-            <span className="text-white font-black text-sm">ع</span>
-          </div>
-          {!sidebarCollapsed && (
-            <div>
-              <div className="text-white font-bold text-base leading-tight">عصب</div>
-              <div className="text-white/50 text-[10px]">ASAB System</div>
-            </div>
-          )}
+          <AsabLogo variant="sidebar" showWordmark={!sidebarCollapsed} />
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="mr-auto text-white/40 hover:text-white transition-colors"

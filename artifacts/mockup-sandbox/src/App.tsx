@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { modules as discoveredModules } from "./.generated/mockup-components";
 import { EntryFlow } from "./auth/EntryFlow";
-import { V, G, CYAN, LOGO, ensureAuthStyles } from "./auth/authTheme";
+import { V, G, CYAN, ensureAuthStyles } from "./auth/authTheme";
 import { useSiteLang } from "./auth/siteLang";
 import { LangToggle } from "./auth/LangToggle";
+import { AsabLogo } from "./components/AsabLogo";
 import { readEntrySelection } from "./auth/entrySelection";
 import { canOpenDashboard, chooseGrantedRole, companyRoles, financialAccessFingerprint, preferredDashboard, prototypeRoles } from "./auth/roleAccess";
 import { useAuth } from "./auth/AuthContext";
@@ -183,7 +184,7 @@ function ASABLanding({ onLogout, user }: { onLogout: () => void; user: MeRespons
           WebkitBackdropFilter: "blur(10px)",
         }}
       >
-        <img src={LOGO} alt="ASAB — عصب" style={{ height: 34, width: "auto" }} />
+        <AsabLogo variant="header" />
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <LangToggle lang={lang} onChange={setLang} variant="light" />
           <span style={{ fontSize: 13, color: G[600] }}>

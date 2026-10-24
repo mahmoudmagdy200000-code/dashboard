@@ -97,8 +97,9 @@ import { useLanguagePref } from "../../../auth/useLanguagePref";
 import { readEntrySelection, clearEntrySelection } from "../../../auth/entrySelection";
 import { useAuth } from "../../../auth/AuthContext";
 import { getSiteLang, setSiteLang, useDocumentLang } from "../../../auth/siteLang";
-import { V, G, CYAN, LOGO, ensureAuthStyles } from "../../../auth/authTheme";
+import { V, G, CYAN, ensureAuthStyles } from "../../../auth/authTheme";
 import { LangToggle } from "../../../auth/LangToggle";
+import { AsabLogo } from "../../AsabLogo";
 import { NotificationPreferencesPage } from "../../shared/NotificationPreferencesPage";
 import { TwoFactorSetupWizard } from "../../shared/TwoFactorSetupWizard";
 import { ApiKeysPage } from "../../shared/ApiKeysPage";
@@ -879,7 +880,7 @@ function CompanyLoginScreen({ onSelect }:{ onSelect:(r:CRole)=>void }) {
 
       {/* Top bar: logo + language */}
       <header style={{ position:"relative", display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 28px", borderBottom:`1px solid ${G[200]}`, background:"rgba(255,255,255,0.75)", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)" }}>
-        <img src={LOGO} alt="ASAB — عصب" style={{ height:34, width:"auto" }} />
+        <AsabLogo variant="header" />
         <LangToggle lang={lang} onChange={setLang} variant="light" />
       </header>
 
