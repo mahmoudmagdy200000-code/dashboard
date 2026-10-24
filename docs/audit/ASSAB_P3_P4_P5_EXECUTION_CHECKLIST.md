@@ -844,3 +844,41 @@ The GO-10 source correction is committed at `2650ab5cf479a085a1505a65ac1888f8f89
 B09 now passes the approximation label only when `totalAmt != null`: `null` keeps `—` and SAR without the label; numeric zero remains `0K` with the localized label. Existing K formula, exact `fmtAmt(totalAmt)` summary, unit and API behavior are unchanged. B09 + KpiCard targeted tests: 6/6 PASS, 0 skipped, exit 0. `phase1dBranchManager.test.ts`: 13/13 PASS, 0 skipped, exit 0. The stale JSX matcher was replaced with assertions against the actual Radix Dialog structure, title, scroll constraints, focus return, all seven label/id pairs, and Save/Cancel handlers. `CompanyDashboard.tsx` was not changed. Typecheck, one final build, and diff check passed; full suite was not run.
 
 B07 remains `PENDING_REVIEW`; static contract tests pass, but Browser QA remains `NOT_RUN`. B09 remains source-fixed with targeted tests passing, but B01–B10 Browser QA and independent acceptance remain pending. Current checkpoint: `P3_SOURCE_IMPLEMENTATION_COMPLETE — BROWSER_QA_PENDING`; no finding is `RUNTIME_VERIFIED`, `ACCEPTED`, or `P3_CLOSED`. Detailed report and checksums: `docs/audit/evidence/p3-p5-go02/GO10/`.
+
+## GO-15-P4 Accessibility Verification & Minimal Remediation Checkpoint — 2026-10-24
+
+- **Authorized Scope:** Dashboard Phase 4 Accessibility Verification, Minimal Remediation & GitHub Publishing on isolated feature branch `work/dashboard-p4-accessibility-completion-20261024`.
+- **Baseline SHA:** `7d09cc3b6809c25d81216ef851467a230768f62f` (published Phase 3 HEAD).
+- **Targeted Test Execution:** 166/166 PASS, 0 failed, 0 skipped; Exit Code: 0.
+  - `roleAccess.test.ts` (33/33 PASS, including new GO-15 A01 & A02 regression tests)
+  - `authSession.test.ts` (35/35 PASS)
+  - `components/KpiCard.test.ts` (3/3 PASS)
+  - `phase1fPlatformAdmin.test.ts` (27/27 PASS)
+  - `phase1eProcurement.test.ts` (21/21 PASS)
+  - `phase1cAccountant.test.ts` (11/11 PASS)
+  - `companyAdminGuards.test.ts` (15/15 PASS)
+  - `headReviewGuards.test.ts` (15/15 PASS)
+  - `AsabLogo.test.ts` (3/3 PASS)
+  - `adminOverviewResponsive.test.ts` (3/3 PASS)
+- **TypeScript Typecheck:** `pnpm --filter @workspace/mockup-sandbox run typecheck` — 0 errors; Exit Code: 0.
+- **Production Build:** `pnpm --filter @workspace/mockup-sandbox run build` — built in 6.90s; Exit Code: 0.
+- **Diff & Whitespace Check:** `git diff --check` — Clean; Exit Code: 0.
+- **Secret Scan:** 0 uncommitted secrets, private keys, or credentials found across range `7d09cc3..HEAD`.
+- **Proven Defect Fix (A02-OBS-01):**
+  - Defect: In Arabic (RTL), password dots collided with the show/hide button in `LoginPage.tsx` due to `insetInlineStart: 8` resolving to the right edge while input text aligned right.
+  - Minimal Fix: Positioned reveal button at trailing edge (`insetInlineEnd: 8` -> left in RTL, right in LTR), added dynamic non-colliding padding (`paddingLeft: 52, paddingRight: 14` in AR; `paddingRight: 52, paddingLeft: 14` in EN), and added explicit `aria-label`.
+  - Atomic Code Commit: `63659c6` (`fix(dashboard-p4): align password reveal button at trailing edge with non-colliding padding (A02-OBS-01)`).
+- **Browser Accessibility QA Executed:**
+  - A01: Programmatic `<label htmlFor="...">` associated with `<input id="...">` verified on Login and Reset pages (`login_accessibility_step4_1792831062368.png`, `login_accessibility_step5_1792831078452.png`). Tab focus order PASS.
+  - A02: Password reveal button keyboard-reachable via Tab, toggleable via Space/Enter without form submit. Verified post-fix via browser screenshot `login_password_rtl_1792831560973.png`.
+  - A03: Interactive `KpiCard` rendered as native `<button type="button">` with focus ring; informational as static `<div>`.
+  - A04: Dynamic `<html lang>` synchronization verified (default `ar` -> toggled to `en` -> toggled back to `ar`).
+  - A05: `AdminUsers` accountant radio selection operable via keyboard with associated labels; unassignment buttons remain distinct siblings.
+  - A06: `ProcNewOrders` order expansion buttons expose `aria-expanded` with localized order name.
+  - A07: Contextual icon buttons in `AdminUsers` expose localized `aria-label` / `title`.
+  - A08: `AccAssets` Excel import checkboxes expose unique row-specific `aria-label` with asset name and row ID.
+  - A09: `AdminUsers` distribution mode buttons expose `aria-pressed` derived from active mode.
+  - A10: Filter selects in `HeadPending`, `ProcNewOrders`, `CompanyDashboard` expose programmatic labels; search inputs expose localized `aria-label`.
+  - A11: Dynamic `dir` verified across procurement and accountant modules preserving LTR numbers.
+  - B07: Radix Dialog accessibility attributes, focus containment, Escape key dismiss, and focus restoration to trigger verified.
+  - Environment Restrictions: axe-core package not installed in dependencies; NVDA screen reader not installed/running on host.
