@@ -1,0 +1,88 @@
+TAP version 13
+# Subtest: Phase 1D 1D-BRM-001 & 1D-BRM-015: Branch settings updates manager field correctly
+ok 1 - Phase 1D 1D-BRM-001 & 1D-BRM-015: Branch settings updates manager field correctly
+  ---
+  duration_ms: 10.371833
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-BRM-002: Supplier request payload includes contactPhone and reason
+ok 2 - Phase 1D 1D-BRM-002: Supplier request payload includes contactPhone and reason
+  ---
+  duration_ms: 11.44466
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-BRM-003 & 1D-BRM-014: Purchase requests contract mapping and quantity validation
+ok 3 - Phase 1D 1D-BRM-003 & 1D-BRM-014: Purchase requests contract mapping and quantity validation
+  ---
+  duration_ms: 7.113856
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-BRM-004, 1D-BRM-005 & 1D-BRM-013: Inventory item stock absence vs zero and count submission validation
+ok 4 - Phase 1D 1D-BRM-004, 1D-BRM-005 & 1D-BRM-013: Inventory item stock absence vs zero and count submission validation
+  ---
+  duration_ms: 7.167066
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-BRM-006, 1D-BRM-008 & 1D-BRM-024: Branch upload attachment inputs, validation and reset lifecycle
+ok 5 - Phase 1D 1D-BRM-006, 1D-BRM-008 & 1D-BRM-024: Branch upload attachment inputs, validation and reset lifecycle
+  ---
+  duration_ms: 8.23883
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-BRM-009: Branch staff maps shift, status, and phone correctly without inferring presence from active membership
+ok 6 - Phase 1D 1D-BRM-009: Branch staff maps shift, status, and phone correctly without inferring presence from active membership
+  ---
+  duration_ms: 9.361271
+  type: 'test'
+  ...
+# Subtest: Phase 1D Follow-up: BranchUpload blocks dual attachments with clear validation and UI warning
+ok 7 - Phase 1D Follow-up: BranchUpload blocks dual attachments with clear validation and UI warning
+  ---
+  duration_ms: 6.870469
+  type: 'test'
+  ...
+# Subtest: Phase 1D Follow-up: Attendance semantics unit mapping prevents false physical attendance
+ok 8 - Phase 1D Follow-up: Attendance semantics unit mapping prevents false physical attendance
+  ---
+  duration_ms: 0.484039
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-BRM-010: Sidebar navigation includes branch shifts and purchase requests
+ok 9 - Phase 1D 1D-BRM-010: Sidebar navigation includes branch shifts and purchase requests
+  ---
+  duration_ms: 7.871268
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-BRM-011: Branch overview avoids hardcoded branch name and hardcoded +5.2% delta
+ok 10 - Phase 1D 1D-BRM-011: Branch overview avoids hardcoded branch name and hardcoded +5.2% delta
+  ---
+  duration_ms: 8.649769
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-COM-016: Responsive layout classes applied across branch screens
+ok 11 - Phase 1D 1D-COM-016: Responsive layout classes applied across branch screens
+  ---
+  duration_ms: 8.860908
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-COM-017 & 1D-COM-018: Modal accessibility attributes and input labeling
+ok 12 - Phase 1D 1D-COM-017 & 1D-COM-018: Modal accessibility attributes and input labeling
+  ---
+  duration_ms: 6.448904
+  type: 'test'
+  ...
+# Subtest: Phase 1D 1D-COM-023: Sensitive query prefixes clear branch cache upon role switch
+ok 13 - Phase 1D 1D-COM-023: Sensitive query prefixes clear branch cache upon role switch
+  ---
+  duration_ms: 0.309757
+  type: 'test'
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 302.706997

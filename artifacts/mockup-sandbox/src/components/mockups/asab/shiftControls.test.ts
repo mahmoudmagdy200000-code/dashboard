@@ -19,9 +19,12 @@ function component(source: ts.SourceFile, name: string) {
 
 test("company and accountant shift screens retain a review slot with no legacy close request path", () => {
   const company = screen("CompanyDashboard.tsx");
-  const prototype = screen("ASABPrototype.tsx");
+  const accShifts = screen("_pages/accountant/AccShifts.tsx");
+  const prototypeRaw = readFileSync(new URL("ASABPrototype.tsx", import.meta.url), "utf8");
+  assert.match(prototypeRaw, /import\s*\{[^}]*AccShifts[^}]*\}\s*from\s*["']\.\/_pages\/accountant\/AccShifts["']/);
   assert.equal(company.statements.some(node => ts.isFunctionDeclaration(node) && node.name?.text === "ShiftCloseCard"), false);
-  for (const [source, name] of [[company, "AccCompanyShifts"], [prototype, "AccShifts"]] as const) {
+  assert.equal(accShifts.statements.some(node => ts.isFunctionDeclaration(node) && node.name?.text === "ShiftCloseCard"), false);
+  for (const [source, name] of [[company, "AccCompanyShifts"], [accShifts, "AccShifts"]] as const) {
     const body = component(source, name);
     assert.match(body, /مراجعة الورديات/);
     assert.match(body, /tab ===? "close"|tab==="close"/);

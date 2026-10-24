@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useDialogFocus } from "./useDialogFocus";
+import { useState, useRef } from "react";
 import { X, HelpCircle } from "lucide-react";
 
 interface Props {
@@ -6,7 +7,7 @@ interface Props {
   /** What's being clarified, e.g. operation publicId, for display only. */
   subject?: string;
   onClose: () => void;
-  onSubmit: (payload: { message: string }) => void;
+  onSubmit: (payload: { message: string }) => void | Promise<unknown>;
   /** Optional translate function. */
   t?: (ar: string, en: string) => string;
 }
@@ -23,21 +24,44 @@ export function ClarifyModal({
   t = (ar) => ar,
 }: Props) {
   const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const modalRef = useRef<HTMLDivElement>(null);
+  const submitLock = useRef(false);
+  const dir = t("rtl", "ltr") as "rtl" | "ltr";
+  useDialogFocus(open, modalRef, onClose, isSubmitting);
 
   if (!open) return null;
 
-  const canSubmit = message.trim().length > 0;
+  const canSubmit = message.trim().length > 0 && !isSubmitting;
 
-  function handleSubmit() {
-    if (!canSubmit) return;
-    onSubmit({ message: message.trim() });
-    setMessage("");
-    onClose();
+  async function handleSubmit() {
+    if (!canSubmit || submitLock.current) return;
+    submitLock.current = true;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      await onSubmit({ message: message.trim() });
+      setMessage("");
+      onClose();
+    } catch (err: any) {
+      setSubmitError(
+        err?.message ||
+          t(
+            "فشل إرسال طلب الإيضاح، يرجى المحاولة مرة أخرى",
+            "Failed to send clarification request. Please try again.",
+          ),
+      );
+    } finally {
+      submitLock.current = false;
+      setIsSubmitting(false);
+    }
   }
 
   return (
     <div
-      onClick={onClose}
+      onClick={() => { if (!submitLock.current) onClose(); }}
       style={{
         position: "fixed",
         inset: 0,
@@ -51,10 +75,18 @@ export function ClarifyModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        dir="rtl"
+        ref={modalRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="clarify-modal-title"
+        aria-busy={isSubmitting}
+        dir={dir}
         style={{
           width: "100%",
           maxWidth: 480,
+          maxHeight: "90dvh",
+          overflowY: "auto",
           background: "white",
           borderRadius: 16,
           padding: 24,
@@ -71,7 +103,7 @@ export function ClarifyModal({
           }}
         >
           <div>
-            <div
+            <div id="clarify-modal-title"
               style={{
                 fontSize: 18,
                 fontWeight: 700,
@@ -111,7 +143,9 @@ export function ClarifyModal({
             </div>
           </div>
           <button
-            onClick={onClose}
+            disabled={isSubmitting}
+            aria-label={t("إغلاق", "Close")}
+            onClick={() => { if (!submitLock.current) onClose(); }}
             style={{
               background: "transparent",
               border: "none",
@@ -124,7 +158,7 @@ export function ClarifyModal({
           </button>
         </div>
 
-        <label
+        <label htmlFor="clarify-message"
           style={{
             display: "block",
             fontSize: 12,
@@ -135,7 +169,7 @@ export function ClarifyModal({
         >
           {t("الرسالة", "Message")} <span style={{ color: "#ef4444" }}>*</span>
         </label>
-        <textarea
+        <textarea id="clarify-message" disabled={isSubmitting}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           rows={4}
@@ -152,6 +186,22 @@ export function ClarifyModal({
             marginBottom: 16,
           }}
         />
+
+        {submitError && (
+          <div role="alert"
+            style={{
+              padding: "8px 12px",
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              borderRadius: 8,
+              color: "#b91c1c",
+              fontSize: 12,
+              marginBottom: 16,
+            }}
+          >
+            {submitError}
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-start" }}>
           <button
@@ -172,7 +222,9 @@ export function ClarifyModal({
             {t("إرسال الطلب", "Send Request")}
           </button>
           <button
-            onClick={onClose}
+            disabled={isSubmitting}
+            aria-label={t("إغلاق", "Close")}
+            onClick={() => { if (!submitLock.current) onClose(); }}
             style={{
               padding: "10px 20px",
               background: "white",

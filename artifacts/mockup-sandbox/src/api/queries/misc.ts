@@ -11,11 +11,37 @@ export interface SearchResult {
   title: string;
   subtitle?: string;
   link?: string;
+  moduleKey?: string;
 }
 
 export interface SearchResponse {
   results: SearchResult[];
   groupedByType?: Record<string, SearchResult[]>;
+}
+
+/** Validate the established FE envelope; do not expose raw Backend groups until
+ * the response and assigned-branch authorization contract are independently verified.
+ */
+export function normalizeSearchResponse(value: unknown): SearchResponse {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Unsupported search response");
+  const data = value as Record<string, unknown>;
+  if (!Array.isArray(data.results)) throw new Error("Search response contract requires Backend verification");
+  const clean = (row: any): SearchResult => {
+    if (!row || typeof row.id !== "string" || typeof row.title !== "string" || typeof row.type !== "string") throw new Error("Invalid search result");
+    return { id: row.id, title: row.title, type: row.type,
+      publicId: typeof row.publicId === "string" ? row.publicId : undefined,
+      subtitle: typeof row.subtitle === "string" ? row.subtitle : undefined,
+      moduleKey: typeof row.moduleKey === "string" ? row.moduleKey : undefined };
+  };
+  const results = data.results.map(clean);
+  if (data.groupedByType === undefined) return { results };
+  if (!data.groupedByType || typeof data.groupedByType !== "object" || Array.isArray(data.groupedByType)) throw new Error("Invalid grouped search response");
+  const groupedByType: Record<string, SearchResult[]> = {};
+  for (const [key, rows] of Object.entries(data.groupedByType)) {
+    if (!Array.isArray(rows)) throw new Error("Invalid search group");
+    groupedByType[key] = rows.map(clean);
+  }
+  return { results, groupedByType };
 }
 
 export interface AuditLogEntry {
@@ -31,15 +57,16 @@ export interface AuditLogEntry {
 }
 
 // ─── Hooks ───────────────────────────────────────────────────────────────────
-export function useSearch(q: string, type?: string) {
+export function useSearch(q: string, type?: string, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: queryKeys.search(q, type),
-    enabled: Boolean(q && q.length >= 2),
+    enabled: options.enabled !== false && Boolean(q && q.length >= 2),
+    retry: false, // Explicit retry UI; never repeat an unsupported response contract automatically.
     queryFn: async () => {
       const res = await api.get<SearchResponse>("/company/me/search", {
-        params: { q, type },
+        params: { q, types: type === "ops" ? "operations" : type },
       });
-      return res.data;
+      return normalizeSearchResponse(res.data);
     },
     staleTime: 5_000,
   });

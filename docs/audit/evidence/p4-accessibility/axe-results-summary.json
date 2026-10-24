@@ -1,0 +1,84 @@
+{
+  "auditTimestamp": "2026-10-24T09:00:20.000Z",
+  "tool": "axe-core",
+  "version": "4.10.2",
+  "standardTarget": "WCAG 2.1 AA",
+  "runOnlyTags": ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"],
+  "surfacesTested": [
+    {
+      "url": "http://localhost:3000/",
+      "surface": "EntryFlow & Login Page",
+      "findingsMapped": ["A01", "A02"],
+      "violationsCount": 0,
+      "passesCount": 22,
+      "incompleteCount": 0,
+      "inapplicableCount": 39,
+      "passedRules": [
+        "aria-allowed-attr",
+        "aria-hidden-focus",
+        "aria-roles",
+        "aria-valid-attr-value",
+        "aria-valid-attr",
+        "autocomplete-valid",
+        "button-name",
+        "color-contrast",
+        "document-title",
+        "duplicate-id-active",
+        "duplicate-id-aria",
+        "duplicate-id",
+        "form-field-multiple-labels",
+        "html-has-lang",
+        "html-lang-valid",
+        "image-alt",
+        "input-button-name",
+        "label",
+        "landmark-one-main",
+        "link-name",
+        "nested-interactive",
+        "region"
+      ],
+      "violations": []
+    },
+    {
+      "url": "http://localhost:3000/forgot-password",
+      "surface": "Password Reset Form",
+      "findingsMapped": ["A01"],
+      "violationsCount": 0,
+      "passesCount": 21,
+      "incompleteCount": 0,
+      "inapplicableCount": 40,
+      "passedRules": [
+        "aria-allowed-attr",
+        "aria-hidden-focus",
+        "aria-roles",
+        "aria-valid-attr-value",
+        "aria-valid-attr",
+        "autocomplete-valid",
+        "button-name",
+        "color-contrast",
+        "document-title",
+        "duplicate-id-active",
+        "duplicate-id-aria",
+        "duplicate-id",
+        "form-field-multiple-labels",
+        "html-has-lang",
+        "html-lang-valid",
+        "image-alt",
+        "label",
+        "landmark-one-main",
+        "link-name",
+        "nested-interactive",
+        "region"
+      ],
+      "violations": []
+    }
+  ],
+  "untestedSurfaces": [
+    {
+      "surface": "Internal Authenticated Dashboards & Mockups (AdminUsers, ProcNewOrders, AccAssets, CompanyDashboard, HeadPending, BranchOverview)",
+      "findingsMapped": ["A03", "A04", "A05", "A06", "A07", "A08", "A09", "A10", "A11", "B07"],
+      "status": "NOT_RUN",
+      "reason": "Internal surfaces require active authenticated session / role selection; automated axe-core was not executed on these views to prevent unsafe production login loops. Classified strictly as NOT_RUN per independent review."
+    }
+  ]
+}

@@ -4,7 +4,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api, downloadBlob } from "../client";
+import { api, downloadBlob, withIdempotencyKey } from "../client";
 import { getErrorMessage, ApiError } from "../errors";
 import { queryKeys, type ProcurementOrdersFilter } from "./keys";
 import type { PurchaseOrderSendResult } from "../types/platform";
@@ -113,7 +113,7 @@ export function useProcurementOverview() {
     queryKey: queryKeys.procurementOverview,
     queryFn: async () => {
       const res = await api.get<ProcurementOverviewResponse>(
-        "/company/me/procurement/overview",
+        `${procBase()}/overview`,
       );
       return res.data;
     },
@@ -127,12 +127,17 @@ export function useProcurementOrders(filter: ProcurementOrdersFilter = {}) {
     queryKey: queryKeys.procurementOrders(filter),
     queryFn: async () => {
       const res = await api.get<
-        { data: ProcurementOrder[] } | ProcurementOrder[]
-      >("/company/me/procurement/orders", { params: filter });
-      const d = res.data as
-        | { data?: ProcurementOrder[] }
-        | ProcurementOrder[];
-      return Array.isArray(d) ? d : (d.data ?? []);
+        { data: ProcurementOrder[]; meta?: any } | ProcurementOrder[]
+      >(`${procBase()}/orders`, { params: filter });
+      const d = res.data;
+      if (Array.isArray(d)) {
+        const items = [...d] as ProcurementOrder[] & { meta?: any };
+        items.meta = { total: d.length, page: 1, pageSize: d.length, totalPages: 1 };
+        return items;
+      }
+      const items = [...(d.data ?? [])] as ProcurementOrder[] & { meta?: any };
+      items.meta = d.meta ?? { total: items.length, page: 1, pageSize: items.length, totalPages: 1 };
+      return items;
     },
   });
 }
@@ -143,7 +148,7 @@ export function useGroupedOrders() {
     queryFn: async () => {
       const res = await api.get<
         { data: ProcurementGroupedOrder[] } | ProcurementGroupedOrder[]
-      >("/company/me/procurement/orders/grouped");
+      >(`${procBase()}/orders/grouped`);
       const d = res.data as
         | { data?: ProcurementGroupedOrder[] }
         | ProcurementGroupedOrder[];
@@ -158,7 +163,7 @@ export function useSentOrders() {
     queryFn: async () => {
       const res = await api.get<
         { data: ProcurementOrder[] } | ProcurementOrder[]
-      >("/company/me/procurement/orders/sent");
+      >(`${procBase()}/orders/sent`);
       const d = res.data as
         | { data?: ProcurementOrder[] }
         | ProcurementOrder[];
@@ -175,10 +180,19 @@ export function useCreateProcurementOrder() {
       branchId?: string;
       items: ProcurementOrderItem[];
       notes?: string;
+      description?: string;
+      commandId?: string;
     }) => {
+      const { commandId, ...rest } = body;
+      const payload = {
+        ...rest,
+        description: body.description ?? body.notes,
+        notes: body.notes ?? body.description,
+      };
       const res = await api.post<ProcurementOrder>(
-        "/company/me/procurement/orders",
-        body,
+        `${procBase()}/orders`,
+        payload,
+        commandId ? withIdempotencyKey(commandId) : undefined,
       );
       return res.data;
     },
@@ -195,7 +209,7 @@ export function useDeleteProcurementOrder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await api.delete(`/company/me/procurement/orders/${id}`);
+      await api.delete(`${procBase()}/orders/${id}`);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["procurement", "orders"] });
@@ -214,7 +228,7 @@ export function useUpdateOrder() {
       ...patch
     }: { id: string } & Partial<ProcurementOrder>) => {
       const res = await api.patch<ProcurementOrder>(
-        `/company/me/procurement/orders/${id}`,
+        `${procBase()}/orders/${id}`,
         patch,
       );
       return res.data;
@@ -232,7 +246,7 @@ export function useApproveOrder() {
   return useMutation({
     mutationFn: async (id: string) => {
       const res = await api.post<ProcurementOrder>(
-        `/company/me/procurement/orders/${id}/approve`,
+        `${procBase()}/orders/${id}/approve`,
       );
       return res.data;
     },
@@ -258,7 +272,7 @@ export function useRejectOrder() {
       notes?: string;
     }) => {
       const res = await api.post<ProcurementOrder>(
-        `/company/me/procurement/orders/${id}/reject`,
+        `${procBase()}/orders/${id}/reject`,
         { reason, notes },
       );
       return res.data;
@@ -281,14 +295,14 @@ export function useSendGroupedOrder() {
       const { groupId, ...body } = vars;
       try {
         const res = await api.post<PurchaseOrderSendResult>(
-          "/company/me/procurement/purchase-orders/grouped/send",
+          `${procBase()}/purchase-orders/grouped/send`,
           body,
         );
         return res.data;
       } catch (e) {
         if (e instanceof ApiError && e.status === 404 && groupId) {
           const legacy = await api.post<{ sentOrderIds: string[] }>(
-            `/company/me/procurement/orders/grouped/${groupId}/send`,
+            `${procBase()}/orders/grouped/${groupId}/send`,
           );
           return { ordersCount: legacy.data?.sentOrderIds?.length ?? 0, whatsapp: null } as unknown as PurchaseOrderSendResult;
         }
@@ -320,7 +334,7 @@ export function useProcurementItems() {
     queryFn: async () => {
       const res = await api.get<
         { data: ProcurementItem[] } | ProcurementItem[]
-      >("/company/me/procurement/items");
+      >(`${procBase()}/items`);
       const d = res.data as
         | { data?: ProcurementItem[] }
         | ProcurementItem[];
@@ -454,9 +468,10 @@ export function useProcurementSuppliers() {
   return useQuery({
     queryKey: queryKeys.procurementSuppliers,
     queryFn: async () => {
+      const endpoint = procBase() === "/procurement" ? `${procBase()}/suppliers` : "/company/me/suppliers";
       const res = await api.get<
         { data: ProcurementSupplier[] } | ProcurementSupplier[]
-      >("/company/me/suppliers");
+      >(endpoint);
       const d = res.data as
         | { data?: ProcurementSupplier[] }
         | ProcurementSupplier[];

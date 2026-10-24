@@ -1,3 +1,5 @@
+import type { RoleKey } from "../../api/types";
+import { hasCompanySharedApi, sharedNotificationPage } from "./sharedNavigation";
 import { useState, useRef, useEffect } from "react";
 import { Bell, Check } from "lucide-react";
 import {
@@ -9,6 +11,9 @@ import {
 import type { AppNotification } from "../../api/types";
 
 interface Props {
+  role?: RoleKey;
+  pages?: readonly string[];
+  onNavigate?: (page: string) => void;
   /** Optional translate function; falls back to Arabic text only. */
   t?: (ar: string, en: string) => string;
   /** Optional theme — "light" for dashboards on white, "dark" for sidebar. */
@@ -26,17 +31,22 @@ function timeAgo(iso: string, t: (ar: string, en: string) => string): string {
   return `${t("منذ", "")} ${diffD} ${t("يوم", "d ago")}`;
 }
 
-export function NotificationBell({ t = (ar) => ar, theme = "light" }: Props) {
+export function NotificationBell({ t = (ar) => ar, theme = "light", role, pages = [], onNavigate }: Props) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
 
-  const { data, isLoading } = useNotifications();
+  const allowed = hasCompanySharedApi(role);
+  const dir = t("rtl", "ltr") as "rtl" | "ltr";
+  const { data, isLoading, isError, refetch } = useNotifications(undefined, { enabled: allowed });
+  const lock = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState("");
   const markRead = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
   const deleteOne = useDeleteNotification();
 
-  const items: AppNotification[] = data?.data ?? [];
+  const items: AppNotification[] = isError ? [] : data?.data ?? [];
   const unreadCount = items.filter((n) => !n.readAt).length;
 
   useEffect(() => {
@@ -55,16 +65,28 @@ export function NotificationBell({ t = (ar) => ar, theme = "light" }: Props) {
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  const handleItemClick = (notif: AppNotification) => {
-    if (!notif.readAt) markRead.mutate(notif.id);
-    if (notif.link) {
-      // Hash-based navigation (consistent with App.tsx routing)
-      if (notif.link.startsWith("/")) {
-        window.location.hash = `#${notif.link}`;
-      }
-    }
-    setOpen(false);
+  useEffect(() => {
+    if (!open) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { setOpen(false); buttonRef.current?.focus(); }
+    };
+    document.addEventListener("keydown", escape);
+    return () => document.removeEventListener("keydown", escape);
+  }, [open]);
+
+  const runAction = async (action: () => Promise<unknown>) => {
+    if (lock.current) return;
+    lock.current = true; setBusy(true); setActionError("");
+    try { await action(); }
+    catch { setActionError(t("تعذر حفظ إجراء الإشعار. أعد المحاولة.", "Could not save the notification action. Retry.")); }
+    finally { lock.current = false; setBusy(false); }
   };
+  const handleItemClick = (notif: AppNotification) => runAction(async () => {
+    if (!notif.readAt) await markRead.mutateAsync(notif.id);
+    const page = sharedNotificationPage(notif.link, pages);
+    if (page && onNavigate) onNavigate(page);
+    setOpen(false);
+  });
 
   const iconColor = theme === "dark" ? "#cbd5e1" : "#475569";
   const buttonBg = theme === "dark" ? "rgba(255,255,255,0.05)" : "transparent";
@@ -73,8 +95,12 @@ export function NotificationBell({ t = (ar) => ar, theme = "light" }: Props) {
     <div style={{ position: "relative", display: "inline-block" }}>
       <button
         ref={buttonRef}
+        disabled={!allowed}
         onClick={() => setOpen((v) => !v)}
         title={t("الإشعارات", "Notifications")}
+        aria-label={t("الإشعارات", "Notifications")}
+        aria-expanded={open}
+        aria-haspopup="true"
         style={{
           position: "relative",
           background: buttonBg,
@@ -118,13 +144,15 @@ export function NotificationBell({ t = (ar) => ar, theme = "light" }: Props) {
       {open && (
         <div
           ref={panelRef}
-          dir="rtl"
+          dir={dir}
+          role="region"
+          aria-label={t("قائمة الإشعارات", "Notifications List")}
           style={{
             position: "absolute",
             top: 46,
             insetInlineEnd: 0,
-            width: 380,
-            maxHeight: 480,
+            width: "min(380px, calc(100vw - 32px))",
+            maxHeight: "min(480px, 75dvh)",
             background: "white",
             border: "1px solid rgba(0,0,0,0.08)",
             borderRadius: 12,
@@ -163,8 +191,8 @@ export function NotificationBell({ t = (ar) => ar, theme = "light" }: Props) {
             </div>
             {unreadCount > 0 && (
               <button
-                onClick={() => markAll.mutate()}
-                disabled={markAll.isPending}
+                onClick={() => { void runAction(() => markAll.mutateAsync()); }}
+                disabled={busy || markAll.isPending}
                 style={{
                   background: "transparent",
                   border: "none",
@@ -180,6 +208,7 @@ export function NotificationBell({ t = (ar) => ar, theme = "light" }: Props) {
             )}
           </div>
 
+          {(isError || actionError) && <div role="alert" className="p-3">{actionError || t("تعذر تحميل الإشعارات", "Could not load notifications")} {isError && <button type="button" onClick={() => refetch()}>{t("إعادة المحاولة", "Retry")}</button>}</div>}
           {/* List */}
           <div style={{ overflowY: "auto", flex: 1 }}>
             {isLoading && (
@@ -187,7 +216,7 @@ export function NotificationBell({ t = (ar) => ar, theme = "light" }: Props) {
                 {t("جاري التحميل...", "Loading...")}
               </div>
             )}
-            {!isLoading && items.length === 0 && (
+            {!isError && !isLoading && items.length === 0 && (
               <div style={{ padding: 32, fontSize: 12, color: "#94a3b8", textAlign: "center" }}>
                 {t("لا توجد إشعارات", "No notifications")}
               </div>
@@ -197,7 +226,17 @@ export function NotificationBell({ t = (ar) => ar, theme = "light" }: Props) {
               return (
                 <div
                   key={n.id}
+                  role="button"
+                  tabIndex={busy ? -1 : 0}
+                  aria-disabled={busy}
                   onClick={() => handleItemClick(n)}
+                  onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return;
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleItemClick(n);
+                    }
+                  }}
                   style={{
                     padding: "12px 16px",
                     borderBottom: "1px solid rgba(0,0,0,0.04)",
@@ -252,20 +291,22 @@ export function NotificationBell({ t = (ar) => ar, theme = "light" }: Props) {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      deleteOne.mutate(n.id);
+                      void runAction(() => deleteOne.mutateAsync(n.id));
                     }}
+                    disabled={busy}
                     title={t("حذف", "Delete")}
+                    aria-label={t("حذف الإشعار", "Delete notification")}
                     style={{
                       background: "transparent",
                       border: "none",
                       color: "#cbd5e1",
                       cursor: "pointer",
-                      padding: 0,
+                      padding: 4,
                       fontSize: 14,
                       lineHeight: 1,
                     }}
                   >
-                    <Check size={12} />
+                    <Check size={14} />
                   </button>
                 </div>
               );

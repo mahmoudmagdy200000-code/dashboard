@@ -1,5 +1,11 @@
 import { api } from "./client";
-import { setTokens, clearTokens } from "./tokens";
+import type { AxiosRequestConfig } from "axios";
+import {
+  clearSessionTokensIfCurrent,
+  confirmSessionTokens,
+  getTokenState,
+  setProvisionalTokens,
+} from "./tokens";
 import type { LoginResponse, MeResponse } from "./types";
 
 // 2FA step-up response — when 2FA is enabled, login returns this instead of tokens.
@@ -27,12 +33,6 @@ export async function login(
     ...(opts?.code ? { code: opts.code } : {}),
     ...(opts?.rememberMe ? { rememberMe: true } : {}),
   });
-  if (!isTwoFactorChallenge(res.data)) {
-    setTokens({
-      accessToken: res.data.accessToken,
-      refreshToken: res.data.refreshToken,
-    });
-  }
   return res.data;
 }
 
@@ -45,20 +45,55 @@ export async function loginWithTwoFactor(
     twoFactorToken,
     code,
   });
-  setTokens({
-    accessToken: res.data.accessToken,
-    refreshToken: res.data.refreshToken,
-  });
   return res.data;
 }
 
-export async function logout(): Promise<void> {
+/** Commit a successful login only while its initiating session generation is active. */
+export async function establishLoginSession(
+  response: LoginResponse,
+  isCurrent: () => boolean,
+  autoConfirm = false,
+): Promise<MeResponse | null> {
+  if (!isCurrent()) return null;
+  const committedSession = setProvisionalTokens({
+    accessToken: response.accessToken,
+    refreshToken: response.refreshToken,
+  });
+  if (!isCurrent()) {
+    clearSessionTokensIfCurrent(committedSession);
+    return null;
+  }
+  let me: MeResponse;
   try {
-    await api.post("/auth/logout");
+    me = await fetchMe();
+  } catch (err) {
+    clearSessionTokensIfCurrent(committedSession);
+    throw err;
+  }
+  if (!isCurrent()) {
+    clearSessionTokensIfCurrent(committedSession);
+    return null;
+  }
+  if (me.id !== response.user.id) {
+    clearSessionTokensIfCurrent(committedSession);
+    throw new Error("Login identity does not match /auth/me");
+  }
+  if (autoConfirm) {
+    confirmSessionTokens(committedSession);
+  }
+  return me;
+}
+
+export async function logout(): Promise<void> {
+  const session = getTokenState();
+  try {
+    await api.post("/auth/logout", undefined, {
+      __authSessionId: session.sessionId,
+    } as AxiosRequestConfig & { __authSessionId: number });
   } catch {
     // best effort — server logout failure shouldn't block the client clearing state.
   }
-  clearTokens();
+  clearSessionTokensIfCurrent(session.sessionId);
 }
 
 export async function fetchMe(): Promise<MeResponse> {

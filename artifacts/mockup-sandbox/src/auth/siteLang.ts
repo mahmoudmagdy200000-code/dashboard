@@ -29,9 +29,17 @@ export function setSiteLang(lang: SiteLang): void {
   }
 }
 
+/** Keep screen-reader language metadata aligned with the active site locale. */
+export function useDocumentLang(lang: SiteLang): void {
+  useEffect(() => {
+    if (typeof document !== "undefined") document.documentElement.lang = lang;
+  }, [lang]);
+}
+
 /** Reactive site-language hook. Returns [lang, setLang, t] where t(ar,en) picks by lang. */
 export function useSiteLang(): [SiteLang, (l: SiteLang) => void, <T>(ar: T, en: T) => T] {
   const [lang, setLangState] = useState<SiteLang>(getSiteLang);
+  useDocumentLang(lang);
   useEffect(() => {
     const sync = () => setLangState(getSiteLang());
     window.addEventListener(EVT, sync);

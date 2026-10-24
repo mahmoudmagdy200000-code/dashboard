@@ -44,8 +44,8 @@ export function apiOpToCOp(op: ApiOperation, brands: readonly { name:string; col
     timeAgo: op.createdAt,
     status: op.status as COpStatus,
     attachments: op.attachmentCount ?? 0,
-    // Backend emits exactly exact|review|diff — pass through, default to "exact".
-    match: (op.match ?? "exact") as CMatch,
+    // HA-F38: missing/unknown match must NOT default to "exact". Default to "review".
+    match: (op.match === "exact" ? "exact" : op.match === "diff" ? "diff" : "review") as CMatch,
     diff: op.diffNote ?? undefined,
     submittedBy: op.submittedBy?.name ?? "—",
     date: op.operationDate,

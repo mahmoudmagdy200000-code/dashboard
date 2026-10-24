@@ -1,0 +1,10 @@
+GO-07 RED — developer execution record
+Repository: mohameelsherbini/dashboard
+Branch: work/dashboard-p345-remediation-v2-20261023
+Source baseline: ed836185b0a2cebcf850367d85f0ce2af17bea18
+Test: artifacts/mockup-sandbox/src/components/mockups/asab/companyAdminGuards.test.ts
+Command: TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/components/mockups/asab/companyAdminGuards.test.ts
+Exit code: 1
+Result: 13 passed, 2 failed, 0 skipped. The two GO-07 tests failed because the actual Edit Asset icon trigger had no contextual aria-label and the editAsset dialog's seven labels/controls had no htmlFor/id associations.
+Capture note: this summary records the actual pre-source-change TAP execution output from this session; the original complete console transcript is retained in the session tool output, not re-executed or reconstructed here.
+Evidence class: DEVELOPER_REPORTED_EXECUTION

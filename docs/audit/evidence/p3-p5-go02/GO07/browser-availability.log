@@ -1,0 +1,9 @@
+GO-07 browser availability probe — 2026-10-23
+Evidence class: DEVELOPER_REPORTED_EXECUTION
+No browser was launched and no remote site was contacted.
+Playwright package: 1.62.1, resolved from /opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.js
+Playwright Chromium executablePath(): /root/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome
+Executable exists: false
+System browser commands: command -v chromium, chromium-browser, google-chrome -> none found (each command returned no path).
+Browser QA: NOT_RUN / BLOCKED_ENVIRONMENT. No browser installation or dependency changes were attempted.
+Required to resume: provide an authorized environment with a matching Playwright Chromium executable; then run local-only, non-mutating B07 dialog and A07 keyboard/name checks, and the permitted responsive viewport checks without Staging/financial mutations.

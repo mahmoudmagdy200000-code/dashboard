@@ -19,10 +19,12 @@ export function LiveChatWidget({ t = (ar) => ar }: Props) {
   const [open, setOpen] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [text, setText] = useState("");
+  const startLock = useRef(false), sendLock = useRef(false), closeLock = useRef(false);
+  const dir = t("rtl", "ltr") as "rtl" | "ltr";
   const startMut = useStartChatSession();
   const sendMut = useSendChatMessage();
   const closeMut = useCloseChatSession();
-  const { data: session } = useChatSession(sessionId);
+  const { data: session, isError, refetch } = useChatSession(sessionId);
   const qc = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -48,8 +50,10 @@ export function LiveChatWidget({ t = (ar) => ar }: Props) {
   }, [session?.messages?.length]);
 
   const handleOpen = async () => {
+    if (startLock.current) return;
     setOpen(true);
     if (!sessionId) {
+      startLock.current = true;
       try {
         const res = await startMut.mutateAsync();
         setSessionId(res.sessionId);
@@ -58,21 +62,35 @@ export function LiveChatWidget({ t = (ar) => ar }: Props) {
         // onError already toasts — just close the panel instead of hanging on
         // "Connecting…" (and don't let the rejection reach the error overlay).
         setOpen(false);
-      }
+      } finally { startLock.current = false; }
     }
   };
 
-  const handleSend = (e: FormEvent) => {
+  const handleSend = async (e: FormEvent) => {
     e.preventDefault();
-    if (!text.trim() || !sessionId) return;
-    sendMut.mutate({ sessionId, text: text.trim() });
-    setText("");
+    if (!text.trim() || !sessionId || sendLock.current) return;
+    sendLock.current = true;
+    const currentText = text.trim();
+    try {
+      await sendMut.mutateAsync({ sessionId, text: currentText });
+      setText(draft => draft.trim() === currentText ? "" : draft);
+    } catch {
+      // Draft preserved in text state on failure!
+    } finally { sendLock.current = false; }
   };
 
-  const handleClose = () => {
-    if (sessionId) closeMut.mutate(sessionId);
-    setSessionId(null);
+  // Close the popup UI without terminating the active server session
+  const handleMinimize = () => {
     setOpen(false);
+  };
+
+  // Explicitly terminate the server session upon user confirmation
+  const handleEndSession = async () => {
+    if (!sessionId || closeLock.current || !window.confirm(t("هل أنت متأكد من إنهاء جلسة الدعم؟", "Are you sure you want to end this chat session?"))) return;
+    closeLock.current = true;
+    try { await closeMut.mutateAsync(sessionId); setSessionId(null); setOpen(false); }
+    catch { /* Keep the active session visible when the close request fails. */ }
+    finally { closeLock.current = false; }
   };
 
   // Floating launcher button
@@ -109,7 +127,7 @@ export function LiveChatWidget({ t = (ar) => ar }: Props) {
 
   return (
     <div
-      dir="rtl"
+      dir={dir}
       style={{
         position: "fixed",
         insetInlineEnd: 24,
@@ -151,14 +169,44 @@ export function LiveChatWidget({ t = (ar) => ar }: Props) {
                   : t("انتهت المحادثة", "Chat ended")}
           </div>
         </div>
-        <button onClick={handleClose} style={{ background: "transparent", border: "none", color: "white", cursor: "pointer", padding: 4 }}>
-          <X size={18} />
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {sessionId && !closed && (
+            <button
+              type="button"
+              disabled={closeMut.isPending}
+              onClick={handleEndSession}
+              style={{
+                background: "rgba(239,68,68,0.2)",
+                border: "1px solid rgba(255,255,255,0.3)",
+                color: "white",
+                fontSize: 10,
+                borderRadius: 6,
+                padding: "2px 8px",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+              title={t("إنهاء الجلسة", "End session")}
+              aria-label={t("إنهاء الجلسة", "End session")}
+            >
+              {t("إنهاء", "End")}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleMinimize}
+            style={{ background: "transparent", border: "none", color: "white", cursor: "pointer", padding: 4 }}
+            title={t("تصغير", "Minimize")}
+            aria-label={t("تصغير نافذة الدردشة", "Minimize chat window")}
+          >
+            <X size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Messages */}
       <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: 14, background: "#f8fafc", display: "flex", flexDirection: "column", gap: 8 }}>
-        {(startMut.isPending || !session) && (
+        {isError && <div role="alert">{t("تعذر تحميل المحادثة", "Could not load the conversation")} <button type="button" onClick={() => refetch()}>{t("إعادة المحاولة", "Retry")}</button></div>}
+        {!isError && (startMut.isPending || !session) && (
           <div style={{ display: "flex", justifyContent: "center", padding: 20 }}>
             <Loader2 size={22} className="animate-spin" style={{ color: "#7C3AED" }} />
           </div>
@@ -194,6 +242,7 @@ export function LiveChatWidget({ t = (ar) => ar }: Props) {
       {/* Composer */}
       <form onSubmit={handleSend} style={{ display: "flex", gap: 8, padding: 12, borderTop: "1px solid #e2e8f0" }}>
         <input
+          aria-label={t("رسالة الدعم", "Support message")}
           value={text}
           onChange={(e) => setText(e.target.value)}
           disabled={closed}
@@ -210,20 +259,21 @@ export function LiveChatWidget({ t = (ar) => ar }: Props) {
         />
         <button
           type="submit"
-          disabled={closed || !text.trim()}
+          disabled={closed || !text.trim() || sendMut.isPending}
+          aria-label={t("إرسال الرسالة", "Send message")}
           style={{
             width: 42,
             borderRadius: 10,
             border: "none",
-            background: closed || !text.trim() ? "#cbd5e1" : "linear-gradient(135deg, #7C3AED, #00D9FF)",
+            background: closed || !text.trim() || sendMut.isPending ? "#cbd5e1" : "linear-gradient(135deg, #7C3AED, #00D9FF)",
             color: "white",
-            cursor: closed || !text.trim() ? "not-allowed" : "pointer",
+            cursor: closed || !text.trim() || sendMut.isPending ? "not-allowed" : "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Send size={16} />
+          {sendMut.isPending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
         </button>
       </form>
     </div>
