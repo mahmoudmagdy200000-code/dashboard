@@ -400,18 +400,71 @@ export function useCompanyInvitations() {
   });
 }
 
+export interface CreateCompanyInvitationInput {
+  email: string;
+  name?: string;
+  roleKey: "company-admin" | "head" | "accountant" | "branch" | "procurement";
+  brandId?: string;
+  branchId?: string;
+}
+
+export function buildInvitationPayload(input: CreateCompanyInvitationInput): {
+  email: string;
+  name?: string;
+  roleKey: string;
+  brandId?: string;
+  branchId?: string;
+} {
+  const email = input.email?.trim() ?? "";
+  if (!email) {
+    throw new Error("Email is required");
+  }
+  const roleKey = input.roleKey;
+  if (!roleKey) {
+    throw new Error("Role is required");
+  }
+
+  const payload: {
+    email: string;
+    name?: string;
+    roleKey: string;
+    brandId?: string;
+    branchId?: string;
+  } = {
+    email,
+    roleKey,
+  };
+
+  if (input.name?.trim()) {
+    payload.name = input.name.trim();
+  }
+
+  if (roleKey === "accountant") {
+    if (!input.brandId?.trim()) {
+      throw new Error("Brand selection is required for accountant role");
+    }
+    payload.brandId = input.brandId.trim();
+  } else if (roleKey === "branch") {
+    if (!input.branchId?.trim()) {
+      throw new Error("Branch selection is required for branch role");
+    }
+    payload.branchId = input.branchId.trim();
+  } else {
+    if (input.brandId?.trim()) payload.brandId = input.brandId.trim();
+    if (input.branchId?.trim()) payload.branchId = input.branchId.trim();
+  }
+
+  return payload;
+}
+
 export function useCreateCompanyInvitation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (body: {
-      email: string;
-      role: string;
-      brandIds?: string[];
-      branchIds?: string[];
-    }) => {
+    mutationFn: async (input: CreateCompanyInvitationInput) => {
+      const payload = buildInvitationPayload(input);
       const res = await api.post<CompanyInvitation>(
         "/company/invitations",
-        body,
+        payload,
       );
       return res.data;
     },

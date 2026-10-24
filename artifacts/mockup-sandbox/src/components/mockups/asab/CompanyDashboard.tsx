@@ -2279,20 +2279,46 @@ function CAUsers() {
     status: u.status === "active" ? "active" : "inactive",
     last: u.lastActiveAt || "",
   }));
+  const { data: brandLookup = [] } = useLookup("brands");
+  const { data: branchLookup = [] } = useLookup("branches");
   const [showAdd,setShowAdd]=useState(false);
   const [search,setSearch]=useState("");
-  const [inviteForm,setInviteForm]=useState({ name:"", email:"", role:"accountant" });
+  const [inviteForm,setInviteForm]=useState<{
+    name: string;
+    email: string;
+    roleKey: "company-admin" | "head" | "accountant" | "branch" | "procurement";
+    brandId: string;
+    branchId: string;
+  }>({ name:"", email:"", roleKey:"accountant", brandId:"", branchId:"" });
   // CA-F08 — Edit User controlled state & validation
   const [editingUser, setEditingUser] = useState<U | null>(null);
   const [editUserName, setEditUserName] = useState("");
   const [editUserPhone, setEditUserPhone] = useState("");
   const [editUserError, setEditUserError] = useState<string | null>(null);
 
+  const isInviteValid = Boolean(
+    inviteForm.email.trim() &&
+    inviteForm.roleKey &&
+    (inviteForm.roleKey !== "accountant" || inviteForm.brandId) &&
+    (inviteForm.roleKey !== "branch" || inviteForm.branchId)
+  );
+
   const submitInvite=()=>{
-    if(!inviteForm.email.trim())return;
+    if(!isInviteValid)return;
     inviteMut.mutate(
-      { name:inviteForm.name||undefined, email:inviteForm.email, role:inviteForm.role } as any,
-      { onSuccess: ()=>{ setShowAdd(false); setInviteForm({ name:"", email:"", role:"accountant" }); } },
+      {
+        name: inviteForm.name.trim() || undefined,
+        email: inviteForm.email.trim(),
+        roleKey: inviteForm.roleKey,
+        brandId: inviteForm.roleKey === "accountant" ? inviteForm.brandId : undefined,
+        branchId: inviteForm.roleKey === "branch" ? inviteForm.branchId : undefined,
+      },
+      {
+        onSuccess: ()=>{
+          setShowAdd(false);
+          setInviteForm({ name:"", email:"", roleKey:"accountant", brandId:"", branchId:"" });
+        },
+      },
     );
   };
   const toggle=(id:string)=>{
@@ -2441,9 +2467,57 @@ function CAUsers() {
             <div className="p-5 space-y-3">
               <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الاسم الكامل","Full Name")}</label><input value={inviteForm.name} onChange={e=>setInviteForm(f=>({...f,name:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
               <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("البريد الإلكتروني","Email")}</label><input value={inviteForm.email} onChange={e=>setInviteForm(f=>({...f,email:e.target.value}))} dir="ltr" placeholder="email@company.sa" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
-              <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الدور","Role")}</label><select value={inviteForm.role} onChange={e=>setInviteForm(f=>({...f,role:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"><option value="head">رئيس الحسابات</option><option value="accountant">محاسب</option><option value="branch">مدير فرع</option><option value="procurement">مدير مشتريات</option></select></div>
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">{t("الدور","Role")}</label>
+                <select
+                  value={inviteForm.roleKey}
+                  onChange={e=>setInviteForm(f=>({...f,roleKey:e.target.value as any,brandId:"",branchId:""}))}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"
+                >
+                  <option value="head">{t("رئيس الحسابات","Head Accountant")}</option>
+                  <option value="accountant">{t("محاسب","Accountant")}</option>
+                  <option value="branch">{t("مدير فرع","Branch Manager")}</option>
+                  <option value="procurement">{t("مدير مشتريات","Procurement Manager")}</option>
+                  <option value="company-admin">{t("مدير منشأة","Company Admin")}</option>
+                </select>
+              </div>
+              {inviteForm.roleKey === "accountant" && (
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">{t("العلامة التجارية (مطلوب)","Brand (required)")}</label>
+                  <select
+                    value={inviteForm.brandId}
+                    onChange={e=>setInviteForm(f=>({...f,brandId:e.target.value}))}
+                    className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"
+                  >
+                    <option value="">{t("اختر العلامة التجارية...","Select brand...")}</option>
+                    {(brandLookup as any[]).map((b: any)=>(
+                      <option key={b.id} value={b.id}>{b.nameAr || b.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {inviteForm.roleKey === "branch" && (
+                <div>
+                  <label className="text-xs font-semibold text-gray-600 block mb-1">{t("الفرع (مطلوب)","Branch (required)")}</label>
+                  <select
+                    value={inviteForm.branchId}
+                    onChange={e=>setInviteForm(f=>({...f,branchId:e.target.value}))}
+                    className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"
+                  >
+                    <option value="">{t("اختر الفرع...","Select branch...")}</option>
+                    {(branchLookup as any[]).map((br: any)=>(
+                      <option key={br.id} value={br.id}>{br.nameAr || br.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 text-[11px] text-blue-700">{t("يُرسَل رابط الدعوة إلى بريد المدعوّ مباشرةً.","An invitation link is emailed directly to the invitee.")}</div>
-              <div className="flex gap-2 justify-end"><Btn onClick={()=>setShowAdd(false)}>{t("إلغاء","Cancel")}</Btn><Btn variant="primary" onClick={submitInvite} disabled={!inviteForm.email.trim()||inviteMut.isPending}><Send size={13}/> {t("إرسال دعوة","Send Invite")}</Btn></div>
+              <div className="flex gap-2 justify-end">
+                <Btn onClick={()=>setShowAdd(false)}>{t("إلغاء","Cancel")}</Btn>
+                <Btn variant="primary" onClick={submitInvite} disabled={!isInviteValid||inviteMut.isPending}>
+                  <Send size={13}/> {t("إرسال دعوة","Send Invite")}
+                </Btn>
+              </div>
             </div>
           </div>
         </div>
