@@ -74,7 +74,7 @@ interface EndpointResult {
   status: number;
   statusText: string;
   durationMs: number;
-  rootCauseClassification?: "OK" | "URL_NOT_FOUND" | "CONTRACT_MISSING" | "INSUFFICIENT_PERMISSION" | "ROLE_MISMATCH" | "SERVER_ERROR";
+  rootCauseClassification?: "OK" | "URL_NOT_FOUND" | "CONTRACT_MISSING" | "INSUFFICIENT_PERMISSION" | "ROLE_MISMATCH" | "SERVER_ERROR" | "NOT_FOUND" | "CONTRACT_MISMATCH";
   currencyVerification?: {
     rawHalalas: number | null;
     expectedSar: string;
@@ -90,6 +90,44 @@ interface RoleSmokeResult {
   loginStatus: "PASS" | "FAIL" | "BLOCKED" | "NOT_RUN";
   authMeRolesSanitized?: any[];
   endpoints: EndpointResult[];
+}
+
+/**
+ * S-1 (GO-17 review): explicit money check for the balanced Mode C fixture shift.
+ * Fields are the real ShiftPresenter keys (halalas). The approved case is
+ * gross 115 SAR, cards 50, apps 25, opening 0, counted cash 40 => expected 40, variance 0.
+ * A fixture shift that is not returned is NOT_FOUND, never a silent pass.
+ */
+export const EXPECTED_FIXTURE_SHIFT = {
+  salesHalalas: 11500,
+  cashExpectedHalalas: 4000,
+  cashActualHalalas: 4000,
+  varianceHalalas: 0,
+  cashCountState: "counted",
+} as const;
+
+export function evaluateFixtureShift(items: unknown): { found: boolean; matches: boolean; mismatches: string[]; rawSalesHalalas: number | null } {
+  if (!Array.isArray(items)) return { found: false, matches: false, mismatches: ["response data is not an array"], rawSalesHalalas: null };
+  const candidate = items.find((i: any) => i && i.salesHalalas === EXPECTED_FIXTURE_SHIFT.salesHalalas);
+  if (!candidate) return { found: false, matches: false, mismatches: ["no shift with salesHalalas=11500 in the fixture date window"], rawSalesHalalas: null };
+  const mismatches: string[] = [];
+  for (const [key, expected] of Object.entries(EXPECTED_FIXTURE_SHIFT)) {
+    if ((candidate as any)[key] !== expected) mismatches.push(`${key}: expected ${String(expected)}, got ${String((candidate as any)[key])}`);
+  }
+  return { found: true, matches: mismatches.length === 0, mismatches, rawSalesHalalas: candidate.salesHalalas };
+}
+
+/** S-4 (GO-17 review): end the smoke session so no staging token stays valid. Best effort, never logs the token. */
+async function logout(token: string | null): Promise<void> {
+  if (!token) return;
+  try {
+    await request(`${API_ORIGIN.replace(/\/$/, "")}/api/v1/auth/logout`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}` },
+    });
+  } catch {
+    // best effort
+  }
 }
 
 async function request(url: string, options: RequestInit = {}): Promise<{ status: number; statusText: string; data: any; durationMs: number }> {
@@ -139,7 +177,7 @@ async function login(email: string): Promise<{ token: string | null; sanitizedUs
         branchIds: r.branchIds,
       })),
     };
-    return { token: loginData.accessToken, sanitizedUser, status: 200 };
+    return { token: loginData.accessToken ?? null, sanitizedUser, status: 200 };
   }
 
   return { token: null, sanitizedUser: null, status: res.status, error: typeof res.data === "string" ? res.data : JSON.stringify(res.data) };
@@ -213,7 +251,7 @@ export async function runStagingSmoke(): Promise<{
   if (accLogin.token) {
     const headers = { "Authorization": `Bearer ${accLogin.token}` };
     const checks: EndpointCheck[] = [
-      { endpoint: "/accountant/shifts/live", method: "GET", description: "Live Shifts Queue", hookReference: "usePlatformLiveShifts", halalaField: "netSalesHalalas" },
+      { endpoint: "/accountant/shifts/live", method: "GET", description: "Live Shifts Queue", hookReference: "usePlatformLiveShifts" },
       { endpoint: "/accountant/shifts/history", method: "GET", description: "Shift History", hookReference: "usePlatformHistoryShifts" },
       { endpoint: "/accountant/operations", method: "GET", description: "Daily Operations List", hookReference: "useAccountantOperationsPlatform", halalaField: "amountHalalas" },
       { endpoint: "/accountant/employees", method: "GET", description: "Employee Statement Roster", hookReference: "usePlatformEmployees" },
@@ -264,7 +302,40 @@ export async function runStagingSmoke(): Promise<{
       }
       accResult.endpoints.push(epResult);
     }
+
+    // S-1: explicit fixture-shift money check (history window = fixture business date)
+    const fixtureDate = process.env.ASSAB_SMOKE_FIXTURE_DATE || "2026-10-24";
+    const fxPath = `/accountant/shifts/history?dateFrom=${fixtureDate}&dateTo=${fixtureDate}`;
+    const fxRes = await request(`${apiUrl}${fxPath}`, { headers });
+    const fx = fxRes.status === 200 ? evaluateFixtureShift(fxRes.data?.data) : null;
+    accResult.endpoints.push({
+      endpoint: fxPath,
+      method: "GET",
+      description: "Fixture shift money check (115 gross / 50 card / 25 apps / counted 40 => expected 40.00 SAR, variance 0)",
+      hookReference: "usePlatformHistoryShifts",
+      status: fxRes.status,
+      statusText: fxRes.statusText,
+      durationMs: fxRes.durationMs,
+      rootCauseClassification:
+        fxRes.status !== 200
+          ? (fxRes.status === 404 ? "URL_NOT_FOUND" : fxRes.status === 403 ? "INSUFFICIENT_PERMISSION" : "SERVER_ERROR")
+          : !fx || !fx.found
+            ? "NOT_FOUND"
+            : fx.matches
+              ? "OK"
+              : "CONTRACT_MISMATCH",
+      currencyVerification: fx && fx.found
+        ? {
+            rawHalalas: fx.rawSalesHalalas,
+            expectedSar: "115.00 SAR gross; expected cash 40.00 SAR",
+            uiBrowserVerification: "NOT_RUN (Requires interactive Browser QA on deployed Vercel UI)",
+            fieldValidated: fx.matches,
+          }
+        : undefined,
+      error: fx && fx.mismatches.length > 0 ? fx.mismatches.join("; ") : undefined,
+    });
   }
+  await logout(accLogin.token);
   results.push(accResult);
 
   // 2. HEAD ACCOUNTANT ROLE SMOKE
@@ -283,7 +354,7 @@ export async function runStagingSmoke(): Promise<{
       { endpoint: "/plans", method: "GET", description: "Subscription Plans Catalog (Task A2)", hookReference: "useCompanyPlans" },
       { endpoint: "/head/erp/batches", method: "GET", description: "ERP Batches Queue (Task D1)", hookReference: "useERPBatches" },
       { endpoint: "/head/erp/eligible-operations", method: "GET", description: "ERP Eligible Ops (Task D1)", hookReference: "useERPEligibleOperations" },
-      { endpoint: "/accountant/shifts/history?status=pending_head_approval", method: "GET", description: "Head Shift Approval Queue", hookReference: "usePlatformHistoryShifts" },
+      { endpoint: "/operations?moduleKey=shifts&pageSize=100&page=1", method: "GET", description: "Head Shift Approval Queue (same source as CompanyDashboard useOperations)", hookReference: "useOperations" },
     ];
 
     for (const c of checks) {
@@ -300,6 +371,7 @@ export async function runStagingSmoke(): Promise<{
       });
     }
   }
+  await logout(headLogin.token);
   results.push(headResult);
 
   // 3. COMPANY ADMIN ROLE SMOKE (Strictly Read-Only — NO Mutating POSTs)
@@ -335,6 +407,7 @@ export async function runStagingSmoke(): Promise<{
       });
     }
   }
+  await logout(adminLogin.token);
   results.push(adminResult);
 
   // 4. BRANCH MANAGER SCOPE INSPECTION & GET /auth/me (Task B2)
@@ -421,6 +494,7 @@ export async function runStagingSmoke(): Promise<{
       rootCauseClassification: boRes.status === 200 ? "OK" : "INSUFFICIENT_PERMISSION",
     });
   }
+  await logout(branchLogin.token);
   results.push(branchResult);
 
   // 5. AUTHENTICATED ROLE-LESS USER (403 WRONG_ROLE check with error envelope inspection)
@@ -460,6 +534,7 @@ export async function runStagingSmoke(): Promise<{
         rootCauseClassification: isWrongRoleEnvelopeValid ? "OK" : "ROLE_MISMATCH",
       });
     }
+    await logout(rolelessLogin.token);
     results.push(rolelessResult);
   }
 

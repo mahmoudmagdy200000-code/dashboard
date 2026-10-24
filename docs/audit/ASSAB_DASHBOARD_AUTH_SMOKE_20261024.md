@@ -54,26 +54,29 @@
 
 All endpoints in `scripts/smoke-test-staging.ts` are mapped directly to actual Dashboard hooks:
 
-| Role Tested | Endpoint | HTTP Method | Dashboard Hook Reference | Root Cause Classification |
-|---|---|:---:|---|---|
-| **Accountant** | `/accountant/shifts/live` | `GET` | `usePlatformLiveShifts` | `OK` (When authenticated) |
-| **Accountant** | `/accountant/shifts/history` | `GET` | `usePlatformHistoryShifts` | `OK` |
-| **Accountant** | `/accountant/operations` | `GET` | `useAccountantOperationsPlatform` | `OK` |
-| **Accountant** | `/accountant/employees` | `GET` | `usePlatformEmployees` | `OK` |
-| **Accountant** | `/company/me/cash-custody` | `GET` | `useCashCustody` | `OK` (Route aligned with useCashCustody) |
-| **Accountant** | `/company/me/asset-drafts` | `GET` | `useAssetDrafts` | `CONTRACT_MISSING` (Backend item E1) |
-| **Head Accountant** | `/plans` | `GET` | `useCompanyPlans` | `OK` (Task A2) |
-| **Head Accountant** | `/head/erp/batches` | `GET` | `useERPBatches` | `OK` (Task D1) |
-| **Head Accountant** | `/head/erp/eligible-operations` | `GET` | `useERPEligibleOperations` | `OK` (Task D1) |
-| **Head Accountant** | `/accountant/shifts/history?status=pending_head_approval` | `GET` | `usePlatformHistoryShifts` | `OK` |
-| **Company Admin** | `/company/me/users` | `GET` | `useCompanyUsers` | `OK` |
-| **Company Admin** | `/company/invitations` | `GET` | `useCompanyInvitations` | `OK` (Read-only; NO POST) |
-| **Company Admin** | `/company/me/subscription` | `GET` | `useCompanySubscription` | `OK` |
-| **Branch Manager** | `/auth/me` | `GET` | `useAuthMe` | `OK` (Direct scope inspection) |
-| **Branch Manager** | `/company/me/branch/overview` | `GET` | `usePlatformBranchOverview` | `OK` |
-| **Role-less User** | `/company/me/shifts` | `GET` | `useRoleGuard` | `ROLE_MISMATCH` (Expects 403 + error.code WRONG_ROLE + messageAr) |
+| Role Tested | Endpoint | HTTP Method | Dashboard Hook Reference | Expected Classification | ACTUAL (after run) |
+|---|---|:---:|---|---| --- |
+| **Accountant** | `/accountant/shifts/live` | `GET` | `usePlatformLiveShifts` | `OK` (When authenticated) | `NOT_RUN` |
+| **Accountant** | `/accountant/shifts/history` | `GET` | `usePlatformHistoryShifts` | `OK` | `NOT_RUN` |
+| **Accountant** | `/accountant/shifts/history?dateFrom=2026-10-24&dateTo=2026-10-24` | `GET` | `usePlatformHistoryShifts` | `OK` only if `salesHalalas=11500, cashExpectedHalalas=4000, cashActualHalalas=4000, varianceHalalas=0, cashCountState=counted`; `NOT_FOUND` if the fixture shift is absent; `CONTRACT_MISMATCH` otherwise (S-1) | `NOT_RUN` |
+| **Accountant** | `/accountant/operations` | `GET` | `useAccountantOperationsPlatform` | `OK` | `NOT_RUN` |
+| **Accountant** | `/accountant/employees` | `GET` | `usePlatformEmployees` | `OK` | `NOT_RUN` |
+| **Accountant** | `/company/me/cash-custody` | `GET` | `useCashCustody` | `OK` (Route aligned with useCashCustody) | `NOT_RUN` |
+| **Accountant** | `/company/me/asset-drafts` | `GET` | `useAssetDrafts` | `CONTRACT_MISSING` (Backend item E1) | `NOT_RUN` |
+| **Head Accountant** | `/plans` | `GET` | `useCompanyPlans` | `OK` (Task A2) | `NOT_RUN` |
+| **Head Accountant** | `/head/erp/batches` | `GET` | `useERPBatches` | `OK` (Task D1) | `NOT_RUN` |
+| **Head Accountant** | `/head/erp/eligible-operations` | `GET` | `useERPEligibleOperations` | `OK` (Task D1) | `NOT_RUN` |
+| **Head Accountant** | `/operations?moduleKey=shifts&pageSize=100&page=1` | `GET` | `useOperations` | `OK` (S-2: same source the approval page reads) | `NOT_RUN` |
+| **Company Admin** | `/company/me/users` | `GET` | `useCompanyUsers` | `OK` | `NOT_RUN` |
+| **Company Admin** | `/company/invitations` | `GET` | `useCompanyInvitations` | `OK` (Read-only; NO POST) | `NOT_RUN` |
+| **Company Admin** | `/company/me/subscription` | `GET` | `useCompanySubscription` | `OK` | `NOT_RUN` |
+| **Branch Manager** | `/auth/me` | `GET` | `useAuthMe` | `OK` (Direct scope inspection) | `NOT_RUN` |
+| **Branch Manager** | `/company/me/branch/overview` | `GET` | `usePlatformBranchOverview` | `OK` | `NOT_RUN` |
+| **Role-less User** | `/company/me/shifts` | `GET` | `useRoleGuard` | `ROLE_MISMATCH` (Expects 403 + error.code WRONG_ROLE + messageAr) | `NOT_RUN` |
 
 ---
+
+> **Integration note (25/10/2026):** the first column set was an *expectation*, not a result. Every ACTUAL cell stays `NOT_RUN` until `scripts/smoke-test-staging.ts` is executed against the attested backend. The smoke runner now (a) checks the 24/10 fixture shift explicitly instead of the non-existent `netSalesHalalas` field, (b) reads the head queue from `/operations`, and (c) logs out every role session after use.
 
 ## 5. Branch Manager Scope Contract Inspection (Task B2)
 
