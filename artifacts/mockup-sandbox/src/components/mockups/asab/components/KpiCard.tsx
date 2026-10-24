@@ -42,7 +42,7 @@ export function KpiCard({
             <span className="min-w-0 max-w-full break-words text-xs font-medium leading-tight text-gray-500">{valueLabel}</span>
           </span>
         ) : (
-          <span className="block text-gray-900 font-extrabold text-3xl mt-1 leading-none font-mono">{value}</span>
+          <span className="block text-gray-900 font-extrabold text-3xl mt-1 leading-none font-mono whitespace-nowrap">{value}</span>
         )}
         {sub && <span className="block text-gray-400 text-xs mt-1.5">{sub}</span>}
         {onClick && <span className="block text-[10px] text-purple-500 mt-1">← اضغط للتفاصيل</span>}
