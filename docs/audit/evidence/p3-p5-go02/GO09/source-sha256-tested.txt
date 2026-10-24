@@ -1,0 +1,3 @@
+ad67cbfb20768bb9b2bdd750fd58444e04001f75e8c4c23f96ed285d63f5b454  artifacts/mockup-sandbox/src/components/mockups/asab/_pages/head/HeadPending.tsx
+9d3a26c4722bf595f3a02451ff03766784ec7705643c459784ad2bf9c967ae0b  artifacts/mockup-sandbox/src/components/mockups/asab/components/KpiCard.tsx
+3f8d32f369975c57280b159f5d07b4e1fa04528eafe78f4fcaa3135fbf8071c5  artifacts/mockup-sandbox/src/components/mockups/asab/headPendingB09.test.ts

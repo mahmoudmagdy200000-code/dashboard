@@ -151,7 +151,7 @@ export function initialShiftCorrectionDraft(detail: ShiftCorrectionOperation): S
   const cashCollectedSar = isSafeHalalas(rawCashCollected)
     ? halalasToSar(rawCashCollected)
     : (typeof p?.cash_collected === "string" && parseCorrectionSar(p.cash_collected) ? parseCorrectionSar(p.cash_collected)!.sar : null);
-  
+
   const notesSupported = Boolean(
     (p && ("handoverNotes" in p || "handover_notes" in p || "notes" in p)) ||
     ("handoverNotes" in (detail as Record<string, unknown>) || "handover_notes" in (detail as Record<string, unknown>))

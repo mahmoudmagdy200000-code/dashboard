@@ -1,0 +1,3 @@
+source_sha=5313b6f5bde200d2ce021c4833614647f7e20e4c
+command=TZ=UTC node --import ./node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/loader.mjs --test --test-force-exit --test-reporter=tap artifacts/mockup-sandbox/src/components/mockups/asab/companyAdminGuards.test.ts
+exit_code=0

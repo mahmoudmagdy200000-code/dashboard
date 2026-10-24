@@ -1,0 +1,18 @@
+GO-08 browser availability check — 2026-10-23
+Evidence class: DEVELOPER_REPORTED_EXECUTION
+Repository source was not modified for this check.
+
+Command:
+node -e "const p=require('/opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'); console.log(JSON.stringify({version:require('/opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/package.json').version, chromium:p.chromium.executablePath()}))"
+Observed output:
+{"version":"1.62.1","chromium":"/root/.cache/ms-playwright/chromium-1234/chrome-linux64/chrome"}
+Exit code: 0
+
+System browser paths checked: $HOME/.cache/ms-playwright, /ms-playwright, /opt/google/chrome, /usr/bin/chromium, /usr/bin/chromium-browser, /usr/bin/google-chrome. No usable executable was present.
+Node: v24.19.0. pnpm: 11.25.0.
+
+Authorized isolated Playwright-managed Chromium installation had been attempted at /workspace/scratch/a7556329ed86/.go08-chromium using:
+PLAYWRIGHT_BROWSERS_PATH=/workspace/scratch/a7556329ed86/.go08-chromium node /opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/cli.js install chromium
+Reported result: exit 1; downloaded archive was invalid/incomplete; retry encountered a stale installer lock. The installer transcript was not persisted at recovery, so this is a summary and not represented as raw stdout/stderr.
+
+No browser was launched, no dashboard was served, and no external site/API was contacted. Browser acceptance: NOT_RUN / BLOCKED_ENVIRONMENT. No Chromium dependency or project package/lockfile was changed.

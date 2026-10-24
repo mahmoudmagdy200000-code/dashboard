@@ -1,0 +1,31 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> @assab/e2e-shift-cycle@0.1.0 test:unit
+> playwright test --project=unit
+
+
+Running 12 tests using 1 worker
+
+(node:56) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:56) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [unit] › tests/unit/core.spec.ts:13:3 › reference arithmetic (BR v3.4 §4 approved example) › 115 / 50 / 25 / confirmed opening 10 / counted 30 (5ms)
+  ✓   2 [unit] › tests/unit/core.spec.ts:27:3 › reference arithmetic (BR v3.4 §4 approved example) › 115 / 50 / 25 / opening 0 / counted 20 (no confirmed transfer) (1ms)
+  ✓   3 [unit] › tests/unit/core.spec.ts:36:3 › reference arithmetic (BR v3.4 §4 approved example) › surplus 40 → 45 belongs to the branch and does not change sales (1ms)
+  ✓   4 [unit] › tests/unit/core.spec.ts:48:3 › reference arithmetic (BR v3.4 §4 approved example) › SAR ↔ halala conversion is exact and rejects sub-halala input (6ms)
+  ✓   5 [unit] › tests/unit/core.spec.ts:81:3 › financial mutation guard › unit and preflight never mutate (1ms)
+  ✓   6 [unit] › tests/unit/core.spec.ts:92:3 › financial mutation guard › isolated accepts loopback only (1ms)
+  ✓   7 [unit] › tests/unit/core.spec.ts:105:3 › financial mutation guard › staging-financial requires every safeguard (5ms)
+  ✓   8 [unit] › tests/unit/core.spec.ts:147:3 › secret hygiene › redact removes passwords and tokens at any depth (2ms)
+  ✓   9 [unit] › tests/unit/core.spec.ts:164:3 › secret hygiene › built-in Playwright tracing stays OFF (it records login bodies and Bearer headers) (1ms)
+  ✓  10 [unit] › tests/unit/core.spec.ts:170:3 › secret hygiene › no credential-looking literal is committed in suite sources (16ms)
+  ✓  11 [unit] › tests/unit/core.spec.ts:180:3 › error envelopes › errorCode normalises the three backend shapes (2ms)
+  ✓  12 [unit] › tests/unit/core.spec.ts:202:3 › traceability › every rule id referenced by a spec exists in Business Rules v3.4 / its registry (28ms)
+
+  12 passed (878ms)
+
+To open last HTML report run:
+[36m[39m
+[36m  npx playwright show-report reports/html[39m
+[36m[39m

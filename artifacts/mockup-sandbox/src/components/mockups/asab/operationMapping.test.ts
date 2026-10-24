@@ -99,10 +99,18 @@ test("legacy operation without review keeps legacy channels and existing display
   assert.strictEqual(mapped.payload, op.payload);
   assert.equal(mapped.moduleLabel, "مبيعات");
   assert.equal(mapped.brandColor, "#123456");
-  assert.equal(mapped.match, "exact");
+  // HA-F38: missing/unknown match must safely default to "review", never "exact"
+  assert.equal(mapped.match, "review");
   assert.equal(mapped.attachments, 0);
   assert.equal(mapped.submittedBy, "—");
   assert.equal(mapped.salesBreakdown, null);
+});
+
+test("HA-F38: match mapping safely falls back to review for unknown or missing match values", () => {
+  assert.equal(apiOpToCOp({ ...baseOperation, match: "exact" }).match, "exact");
+  assert.equal(apiOpToCOp({ ...baseOperation, match: "diff" }).match, "diff");
+  assert.equal(apiOpToCOp({ ...baseOperation, match: undefined }).match, "review");
+  assert.equal(apiOpToCOp({ ...baseOperation, match: "unknown" as any }).match, "review");
 });
 
 test("explicit null review and source stay null; absent payload stays absent", () => {

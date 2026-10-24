@@ -1,8 +1,13 @@
+import type { RoleKey } from "../../api/types";
+import { hasCompanySharedApi, sharedSearchPage } from "./sharedNavigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { useSearch, type SearchResult } from "../../api/queries/misc";
 
 interface Props {
+  role?: RoleKey;
+  pages?: readonly string[];
+  onNavigate?: (page: string) => void;
   /** Optional translate helper; falls back to Arabic. */
   t?: (ar: string, en: string) => string;
   /** Optional type-filter (e.g. "ops" | "branches" | …). */
@@ -44,17 +49,21 @@ export function GlobalSearch({
   type,
   placeholder,
   theme = "light",
+  role, pages = [], onNavigate,
 }: Props) {
   const [raw, setRaw] = useState("");
   const [open, setOpen] = useState(false);
   const debounced = useDebounced(raw.trim(), 300);
   const wrapRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const { data, isLoading, isFetching } = useSearch(debounced, type);
+  const allowed = hasCompanySharedApi(role);
+  const dir = t("rtl", "ltr") as "rtl" | "ltr";
+  const { data, isLoading, isFetching, isError, refetch } = useSearch(debounced, type, { enabled: allowed });
 
   // Group results by type (prefer backend-grouped payload when available).
   const grouped = useMemo<Record<string, SearchResult[]>>(() => {
-    if (!data) return {};
+    if (!data || isError || raw.trim() !== debounced) return {};
     if (data.groupedByType && Object.keys(data.groupedByType).length > 0) {
       return data.groupedByType;
     }
@@ -64,7 +73,7 @@ export function GlobalSearch({
       (out[key] ||= []).push(r);
     }
     return out;
-  }, [data]);
+  }, [data, isError, raw, debounced]);
 
   // Close on outside click.
   useEffect(() => {
@@ -80,7 +89,7 @@ export function GlobalSearch({
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") { inputRef.current?.focus(); setOpen(false); }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
@@ -92,17 +101,10 @@ export function GlobalSearch({
   );
 
   const handlePick = (r: SearchResult) => {
-    setOpen(false);
-    setRaw("");
-    if (!r.link) return;
-    // Backend may return either a full hash route ("#/preview/...") or a path ("/preview/...").
-    if (r.link.startsWith("#")) {
-      window.location.hash = r.link.slice(1);
-    } else if (r.link.startsWith("/")) {
-      window.location.hash = r.link;
-    } else {
-      window.location.hash = `/${r.link}`;
-    }
+    const page = sharedSearchPage(role, r, pages);
+    if (!page || !onNavigate) return;
+    onNavigate(page); // Opens the visible list, not an invented operation-detail URL.
+    setOpen(false); setRaw("");
   };
 
   const dark = theme === "dark";
@@ -114,8 +116,9 @@ export function GlobalSearch({
 
   return (
     <div
+      role="search"
       ref={wrapRef}
-      dir="rtl"
+      dir={dir}
       style={{
         position: "relative",
         width: "100%",
@@ -140,7 +143,11 @@ export function GlobalSearch({
           }}
         />
         <input
-          type="text"
+          ref={inputRef}
+          type="search"
+          disabled={!allowed}
+          aria-label={t("البحث في الشركة", "Company search")}
+          aria-busy={isLoading || isFetching}
           value={raw}
           onChange={(e) => {
             setRaw(e.target.value);
@@ -189,13 +196,13 @@ export function GlobalSearch({
 
       {open && debounced.length >= 2 && (
         <div
-          dir="rtl"
+          dir={dir}
           style={{
             position: "absolute",
             top: 46,
             insetInlineStart: 0,
             insetInlineEnd: 0,
-            maxHeight: 460,
+            maxHeight: "min(460px, 65dvh)",
             background: dropdownBg,
             border: "1px solid rgba(0,0,0,0.08)",
             borderRadius: 12,
@@ -231,9 +238,11 @@ export function GlobalSearch({
             )}
           </div>
 
+          <p className="px-3 text-xs text-gray-500">{t("النتائج المسموحة تفتح قائمة الصفحة، وليس تفاصيل سجل بعينه.", "Supported results open the page list, not a specific record detail.")}</p>
+          {isError && <div role="alert" className="p-3">{t("تعذر تحميل نتائج البحث", "Could not load search results")} <button type="button" onClick={() => refetch()}>{t("إعادة المحاولة", "Retry")}</button></div>}
           {/* Body */}
           <div style={{ overflowY: "auto", flex: 1 }}>
-            {!isLoading && totalResults === 0 && (
+            {!isError && !isLoading && !isFetching && raw.trim() === debounced && totalResults === 0 && (
               <div
                 style={{
                   padding: 32,
@@ -272,10 +281,12 @@ export function GlobalSearch({
                     <button
                       key={`${key}:${r.id}`}
                       onClick={() => handlePick(r)}
+                      disabled={!onNavigate || !sharedSearchPage(role, r, pages)}
+                      title={t("فتح قائمة الصفحة إذا كانت ضمن التنقل المسموح", "Open the page list when available in your menu")}
                       style={{
                         display: "block",
                         width: "100%",
-                        textAlign: "right",
+                        textAlign: "start",
                         padding: "10px 14px",
                         background: "transparent",
                         border: "none",
@@ -345,10 +356,12 @@ export function GlobalSearch({
                       <button
                         key={`${key}:${r.id}`}
                         onClick={() => handlePick(r)}
+                      disabled={!onNavigate || !sharedSearchPage(role, r, pages)}
+                      title={t("فتح قائمة الصفحة إذا كانت ضمن التنقل المسموح", "Open the page list when available in your menu")}
                         style={{
                           display: "block",
                           width: "100%",
-                          textAlign: "right",
+                          textAlign: "start",
                           padding: "10px 14px",
                           background: "transparent",
                           border: "none",

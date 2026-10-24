@@ -1,0 +1,101 @@
+TAP version 13
+# Subtest: CA-F07: validateBranchCreate requires explicit restaurantId and at least 2 char name
+ok 1 - CA-F07: validateBranchCreate requires explicit restaurantId and at least 2 char name
+  ---
+  duration_ms: 0.945705
+  type: 'test'
+  ...
+# Subtest: CA-F08: validateUserEdit ensures ID and valid name, only exposes name & phone
+ok 2 - CA-F08: validateUserEdit ensures ID and valid name, only exposes name & phone
+  ---
+  duration_ms: 0.625192
+  type: 'test'
+  ...
+# Subtest: CA-F03: parseInvoice and calculateBillingKpis compute totalPaid ONLY from paid invoices
+ok 3 - CA-F03: parseInvoice and calculateBillingKpis compute totalPaid ONLY from paid invoices
+  ---
+  duration_ms: 0.279702
+  type: 'test'
+  ...
+# Subtest: CA-REV-01: parseInvoice separates internal id (for PDF download) and public displayId
+ok 4 - CA-REV-01: parseInvoice separates internal id (for PDF download) and public displayId
+  ---
+  duration_ms: 0.103506
+  type: 'test'
+  ...
+# Subtest: CA-REV-02: calculateBillingKpis handles backend reality when outstandingHalalas is absent, respects amountDue=0, and handles pagination
+ok 5 - CA-REV-02: calculateBillingKpis handles backend reality when outstandingHalalas is absent, respects amountDue=0, and handles pagination
+  ---
+  duration_ms: 0.202304
+  type: 'test'
+  ...
+# Subtest: CA-REV-03: parseInvoice matches issueDate from Backend before falling back to issuedAt / createdAt
+ok 6 - CA-REV-03: parseInvoice matches issueDate from Backend before falling back to issuedAt / createdAt
+  ---
+  duration_ms: 0.1993
+  type: 'test'
+  ...
+# Subtest: CA-F09: parseSupportChannel maps backend fields and determines correct actionType
+ok 7 - CA-F09: parseSupportChannel maps backend fields and determines correct actionType
+  ---
+  duration_ms: 0.217648
+  type: 'test'
+  ...
+# Subtest: CA-F10: formatPlanPrice handles null and custom pricing without runtime exception
+ok 8 - CA-F10: formatPlanPrice handles null and custom pricing without runtime exception
+  ---
+  duration_ms: 12.124303
+  type: 'test'
+  ...
+# Subtest: CA-F11: formatQuota displays unlimited quotas safely as infinity
+ok 9 - CA-F11: formatQuota displays unlimited quotas safely as infinity
+  ---
+  duration_ms: 0.253121
+  type: 'test'
+  ...
+# Subtest: CA-F23: attemptChatSend preserves draft text on failure and prevents duplicate calls
+ok 10 - CA-F23: attemptChatSend preserves draft text on failure and prevents duplicate calls
+  ---
+  duration_ms: 0.42456
+  type: 'test'
+  ...
+# Subtest: CA-F16 / CA-F22: canToggleModule allows toggle only if module is in plan and not pending
+ok 11 - CA-F16 / CA-F22: canToggleModule allows toggle only if module is in plan and not pending
+  ---
+  duration_ms: 0.104568
+  type: 'test'
+  ...
+# Subtest: CA-REV-05: trapDrawerFocus and breakpoint constants ensure accessible focus loop and resize safety
+ok 12 - CA-REV-05: trapDrawerFocus and breakpoint constants ensure accessible focus loop and resize safety
+  ---
+  duration_ms: 0.179951
+  type: 'test'
+  ...
+# Subtest: GO-06 B07: editAsset uses the existing modal dialog primitive and preserves form actions
+ok 13 - GO-06 B07: editAsset uses the existing modal dialog primitive and preserves form actions
+  ---
+  duration_ms: 4.039074
+  type: 'test'
+  ...
+# Subtest: GO-07 B07: Edit Asset trigger has a contextual Arabic and English accessible name
+ok 14 - GO-07 B07: Edit Asset trigger has a contextual Arabic and English accessible name
+  ---
+  duration_ms: 2.587057
+  type: 'test'
+  ...
+# Subtest: GO-07 B07: editAsset labels are programmatically associated with every form control
+ok 15 - GO-07 B07: editAsset labels are programmatically associated with every form control
+  ---
+  duration_ms: 1.976277
+  type: 'test'
+  ...
+1..15
+# tests 15
+# suites 0
+# pass 15
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 221.947832
+Exit code: 0

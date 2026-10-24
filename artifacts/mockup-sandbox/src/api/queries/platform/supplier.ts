@@ -36,7 +36,10 @@ export function useSupplierOrders(filter: SupplierOrdersFilter = {}) {
         { params: filter },
       );
       const d = res.data;
-      return Array.isArray(d) ? d : (d.data ?? []);
+      // Preserve the server's pagination. Legacy array responses are one page only.
+      return Array.isArray(d)
+        ? { data: d, meta: { page: 1, pageSize: d.length, total: d.length, totalPages: 1 } }
+        : d;
     },
   });
 }
@@ -106,7 +109,7 @@ export function useMarkSupplierOrderDelivered() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["platform", "supplier", "orders"] });
       qc.invalidateQueries({ queryKey: ["platform", "supplier", "overview"] });
-      toast.success("تم تأكيد التسليم");
+      toast.success("تم تسجيل إقرار المورد بالتسليم");
     },
     onError: (e) => toast.error(getErrorMessage(e, "ar")),
   });
@@ -243,9 +246,11 @@ export function useSupplierItemsTemplate() {
 export function useImportSupplierItems() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async (input: File | { file: File; supplierId?: string }) => {
+      const { file, supplierId } = input instanceof File ? { file: input, supplierId: undefined } : input;
       const fd = new FormData();
       fd.append("file", file);
+      if (supplierId) fd.append("supplierId", supplierId);
       const res = await api.post<{
         itemCount: number;
         errors?: Array<{ row: number; message: string }>;
@@ -263,6 +268,47 @@ export function useImportSupplierItems() {
     },
     onError: (e) => toast.error(getErrorMessage(e, "ar")),
   });
+}
+
+/** IDs are supplied by the authenticated Backend ambiguity response, not guessed. */
+export function supplierRecordChoices(error: unknown): string[] {
+  const e = error as { code?: string; details?: { supplierIds?: unknown } } | null;
+  if (e?.code !== "SUPPLIER_RECORD_AMBIGUOUS" || !Array.isArray(e.details?.supplierIds)) return [];
+  return [...new Set(e.details.supplierIds.filter((id): id is string => typeof id === "string" && id.length > 0))];
+}
+
+export interface SupplierItemForm {
+  name: string; code: string; unit: string; price: string;
+  minQty: string; maxQty: string; leadTimeDays: string; available: boolean;
+}
+
+/** Catalog quantity constraints are integer fields in the existing Backend contract.
+ * This does not choose a fractional purchase-quantity rounding policy (PUR-05).
+ */
+export function buildSupplierItemBody(form: SupplierItemForm) {
+  if (!form.name.trim() || form.name.trim().length > 200 || form.code.trim().length > 32 || form.unit.trim().length > 16)
+    throw new Error("Invalid item name, code or unit");
+  const raw = form.price.trim();
+  if (!/^\d+(\.\d{1,2})?$/.test(raw)) throw new Error("Enter a non-negative price with at most two decimals");
+  const [major, minor = ""] = raw.split(".");
+  const priceHalalas = Number(major) * 100 + Number(minor.padEnd(2, "0"));
+  if (!Number.isSafeInteger(priceHalalas)) throw new Error("Price exceeds safe halala precision");
+  const quantity = (value: string) => {
+    if (value.trim() === "") return undefined;
+    if (!/^\d+$/.test(value.trim()) || !Number.isSafeInteger(Number(value))) throw new Error("Quantity and lead time must be non-negative integers");
+    return Number(value);
+  };
+  const minQty = quantity(form.minQty), maxQty = quantity(form.maxQty);
+  if (minQty !== undefined && maxQty !== undefined && minQty > maxQty) throw new Error("Minimum quantity exceeds maximum");
+  return { name: form.name.trim(), code: form.code.trim() || undefined, unit: form.unit.trim() || undefined,
+    priceHalalas, minQty, maxQty, leadTimeDays: quantity(form.leadTimeDays), available: form.available };
+}
+
+/** Synchronous UI lock only. Server transaction/idempotency guarantees remain separate. */
+export async function runSupplierMutation<T>(lock: { current: boolean }, mutate: () => Promise<T>): Promise<T | undefined> {
+  if (lock.current) return undefined;
+  lock.current = true;
+  try { return await mutate(); } finally { lock.current = false; }
 }
 
 export function useExportSupplierOrders() {

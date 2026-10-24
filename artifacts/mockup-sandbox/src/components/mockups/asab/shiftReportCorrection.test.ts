@@ -536,5 +536,3 @@ test("Security P1: fail-closed in-memory session protection distinguishes fronte
   assert.ok(frontendCleared && backendRevocationRequiresApi,
     "Frontend non-restoration operates locally without unauthorized backend auth mutations");
 });
-
-

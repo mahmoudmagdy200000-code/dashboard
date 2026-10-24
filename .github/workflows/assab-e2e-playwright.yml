@@ -1,0 +1,187 @@
+name: ASSAB shift-cycle E2E (Playwright)
+
+# Manual only. Never runs on push / pull_request / schedule.
+#   preflight          Mode A — read-only checks against a target (no business writes).
+#   isolated           Mode B — full financial lifecycle against a DISPOSABLE backend
+#                      (fresh SQLite inside the runner). Touches no shared system.
+#   staging-financial  Mode C — financial lifecycle against staging. DISABLED by default:
+#                      requires repository variable ASSAB_E2E_STAGING_FINANCIAL_ENABLED=true,
+#                      the protected environment "assab-staging-financial" (configure required
+#                      reviewers), the exact dated acknowledgement phrase, and an operator-attested
+#                      deployed backend SHA equal to the expected SHA.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: preflight | isolated | staging-financial
+        required: true
+        default: preflight
+        type: choice
+        options: [preflight, isolated, staging-financial]
+      backend_ref:
+        description: Backend commit to test in Mode B (full SHA)
+        required: false
+        default: 289fe09d15cc91bbe4d9877a51482b80abb4c7bf
+      api_origin:
+        description: Mode A/C backend origin without /api/v1
+        required: false
+        default: ''
+      frontend_url:
+        description: Deployed dashboard URL (enables UI steps)
+        required: false
+        default: ''
+      expected_backend_sha:
+        description: Full SHA expected on the target (Mode A/C)
+        required: false
+        default: ''
+      attested_deployed_backend_sha:
+        description: Deployed backend SHA as attested by the operator from Coolify (Mode A/C)
+        required: false
+        default: ''
+      financial_ack:
+        description: 'Mode C only: MUTATE_ASSAB_STAGING_FINANCIAL_FIXTURE:<namespace>:<YYYY-MM-DD Riyadh>'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assab-e2e-${{ inputs.mode }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: e2e
+
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npx playwright test --project=unit
+        env:
+          ASSAB_E2E_MODE: unit
+
+  preflight:
+    if: inputs.mode == 'preflight'
+    needs: unit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: assab-staging-readonly
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Read-only preflight
+        env:
+          ASSAB_E2E_MODE: preflight
+          ASSAB_E2E_API_ORIGIN: ${{ inputs.api_origin }}
+          ASSAB_E2E_FRONTEND_URL: ${{ inputs.frontend_url }}
+          ASSAB_E2E_EXPECTED_BACKEND_SHA: ${{ inputs.expected_backend_sha }}
+          ASSAB_E2E_ATTESTED_DEPLOYED_BACKEND_SHA: ${{ inputs.attested_deployed_backend_sha }}
+          ASSAB_E2E_FIXTURE_PASSWORD: ${{ secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
+        run: npx playwright test --project=preflight
+      - run: node scripts/build-traceability.mjs
+        if: always()
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: assab-e2e-preflight-${{ github.run_id }}
+          path: |
+            e2e/reports/
+            e2e/traceability/TRACEABILITY.md
+          retention-days: 14
+
+  isolated:
+    if: inputs.mode == 'isolated'
+    needs: unit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Checkout backend under test
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: mahmoudmagdy200000-code/Assab
+          ref: ${{ inputs.backend_ref }}
+          token: ${{ secrets.ASSAB_BACKEND_READ_TOKEN }}
+          path: backend
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, sqlite3, intl, bcmath
+          coverage: none
+      - name: Install backend dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Mode B — disposable backend lifecycle + regression
+        env:
+          ASSAB_BACKEND_DIR: ${{ github.workspace }}/backend
+          ASSAB_E2E_PROJECTS: preflight lifecycle regression
+        run: |
+          # Throw-away password for the disposable fixture; never printed, never stored.
+          ASSAB_E2E_FIXTURE_PASSWORD="$(openssl rand -base64 33 | tr -d '/+=')"
+          export ASSAB_E2E_FIXTURE_PASSWORD
+          echo "::add-mask::$ASSAB_E2E_FIXTURE_PASSWORD"
+          bash scripts/isolated/run-isolated.sh
+      - run: node scripts/build-traceability.mjs
+        if: always()
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: assab-e2e-isolated-${{ github.run_id }}
+          path: |
+            e2e/reports/
+            e2e/traceability/TRACEABILITY.md
+          retention-days: 14
+
+  staging-financial:
+    if: inputs.mode == 'staging-financial' && vars.ASSAB_E2E_STAGING_FINANCIAL_ENABLED == 'true'
+    needs: unit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: assab-staging-financial
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Read-only preflight first
+        env:
+          ASSAB_E2E_MODE: preflight
+          ASSAB_E2E_API_ORIGIN: ${{ inputs.api_origin }}
+          ASSAB_E2E_FRONTEND_URL: ${{ inputs.frontend_url }}
+          ASSAB_E2E_EXPECTED_BACKEND_SHA: ${{ inputs.expected_backend_sha }}
+          ASSAB_E2E_ATTESTED_DEPLOYED_BACKEND_SHA: ${{ inputs.attested_deployed_backend_sha }}
+          ASSAB_E2E_FIXTURE_PASSWORD: ${{ secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
+          ASSAB_E2E_REPORT_DIR: reports/preflight
+        run: npx playwright test --project=preflight --grep "A01|A03|A08"
+      - name: Mode C — approved balanced fixture through one shift report
+        env:
+          ASSAB_E2E_MODE: staging-financial
+          ASSAB_E2E_API_ORIGIN: ${{ inputs.api_origin }}
+          ASSAB_E2E_FRONTEND_URL: ${{ inputs.frontend_url }}
+          ASSAB_E2E_ALLOWED_API_HOSTS: ${{ vars.ASSAB_E2E_ALLOWED_API_HOSTS }}
+          ASSAB_E2E_EXPECTED_BACKEND_SHA: ${{ inputs.expected_backend_sha }}
+          ASSAB_E2E_ATTESTED_DEPLOYED_BACKEND_SHA: ${{ inputs.attested_deployed_backend_sha }}
+          ASSAB_E2E_FINANCIAL_ACK: ${{ inputs.financial_ack }}
+          ASSAB_E2E_FIXTURE_PASSWORD: ${{ secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
+          ASSAB_E2E_REPORT_DIR: reports/lifecycle
+        run: npx playwright test --project=lifecycle --grep '^P0[1-4](b| )'
+      - run: node scripts/build-traceability.mjs
+        if: always()
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: assab-e2e-staging-financial-${{ github.run_id }}
+          path: |
+            e2e/reports/
+            e2e/traceability/TRACEABILITY.md
+          retention-days: 7
+

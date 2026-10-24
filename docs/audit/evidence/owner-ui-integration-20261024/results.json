@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-24",
+  "sourceMerge": "2e2c4cdd9416c38805510a2b9566ed3c317d919f",
+  "sherbiniHead": "a7b030e37ddca1348bc5a191aceff4d86253ceb1",
+  "dashboard": {
+    "pass": 345,
+    "fail": 0,
+    "skip": 0,
+    "typecheck": "PASS",
+    "build": "PASS_WITH_WARNINGS"
+  },
+  "e2eUnit": {
+    "pass": 12,
+    "fail": 0,
+    "skip": 0,
+    "typecheck": "PASS"
+  },
+  "localBrowser": {
+    "viewports": [
+      375,
+      1024
+    ],
+    "entryToLogin": "PASS",
+    "horizontalOverflow": false,
+    "pageErrors": 0,
+    "nonlocalRequestsBlockedPerViewport": 2,
+    "authenticated": false
+  },
+  "branchFixtureContract": "COMPATIBILITY_HOLD",
+  "staging": "NOT_RUN",
+  "published": false,
+  "accepted": false
+}

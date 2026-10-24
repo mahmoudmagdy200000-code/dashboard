@@ -1,0 +1,3 @@
+source_sha=5313b6f5bde200d2ce021c4833614647f7e20e4c
+command=git diff --check
+exit_code=0

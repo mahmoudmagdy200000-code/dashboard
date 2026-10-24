@@ -153,4 +153,3 @@ test("FIN-01 confirmed receipt of 10.00 SAR (1,000 halalas) is displayed correct
   assert.ok(html.includes(formatShiftHalalas(5000, "ar")), "Expected cash remains exact server value (50.00 SAR)");
   assert.doesNotMatch(html, /60\.00|6,000/, "Opening cash is never double counted into Expected Cash in React");
 });
-

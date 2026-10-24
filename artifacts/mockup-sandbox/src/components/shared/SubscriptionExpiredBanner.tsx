@@ -39,9 +39,9 @@ export function SubscriptionExpiredBanner() {
     >
       <AlertTriangle size={16} />
       <span style={{ fontWeight: 700 }}>انتهى اشتراك الشركة.</span>
-      <span>جدّد الباقة لاستعادة الوصول الكامل.</span>
+      <span>يرجى التواصل مع إدارة المنصة لتجديد الاشتراك.</span>
       <a
-        href="#/preview/asab/CompanyDashboard?page=ca-subscription"
+        href="#/preview/asab/CompanyDashboard"
         style={{
           marginInlineStart: 12,
           background: "#991b1b",
@@ -52,7 +52,7 @@ export function SubscriptionExpiredBanner() {
           textDecoration: "none",
         }}
       >
-        ترقية الباقة
+        عرض تفاصيل الاشتراك
       </a>
     </div>
   );

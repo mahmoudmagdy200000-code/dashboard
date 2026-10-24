@@ -20,5 +20,13 @@ export const modules: ModuleMap = {
   "./components/mockups/asab/SalesModule.tsx": () => import("../components/mockups/asab/SalesModule.tsx"),
   "./components/mockups/asab/SalesOperationDetail.tsx": () => import("../components/mockups/asab/SalesOperationDetail.tsx"),
   "./components/mockups/asab/ShiftsModule.tsx": () => import("../components/mockups/asab/ShiftsModule.tsx"),
-  "./components/mockups/asab/SupplierDashboard.tsx": () => import("../components/mockups/asab/SupplierDashboard.tsx")
+  "./components/mockups/asab/SupplierDashboard.tsx": () => import("../components/mockups/asab/SupplierDashboard.tsx"),
+  "./components/mockups/asab/components/Badge.tsx": () => import("../components/mockups/asab/components/Badge.tsx"),
+  "./components/mockups/asab/components/Breadcrumb.tsx": () => import("../components/mockups/asab/components/Breadcrumb.tsx"),
+  "./components/mockups/asab/components/Btn.tsx": () => import("../components/mockups/asab/components/Btn.tsx"),
+  "./components/mockups/asab/components/Card.tsx": () => import("../components/mockups/asab/components/Card.tsx"),
+  "./components/mockups/asab/components/EmptyState.tsx": () => import("../components/mockups/asab/components/EmptyState.tsx"),
+  "./components/mockups/asab/components/KpiCard.tsx": () => import("../components/mockups/asab/components/KpiCard.tsx"),
+  "./components/mockups/asab/components/PageHeader.tsx": () => import("../components/mockups/asab/components/PageHeader.tsx"),
+  "./components/mockups/asab/components/SimplePage.tsx": () => import("../components/mockups/asab/components/SimplePage.tsx")
 };

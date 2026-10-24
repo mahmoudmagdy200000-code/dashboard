@@ -22,6 +22,7 @@ export const SALES_RETURN_HINT = {
 
 const isSales = (op?: SalesGuardOperation | null) => (op?.moduleKey ?? op?.module) === "sales";
 const isShf = (op?: SalesGuardOperation | null) => op?.moduleKey === "shifts" || op?.module === "shifts";
+const isExpenses = (op?: SalesGuardOperation | null) => (op?.moduleKey ?? op?.module) === "expenses";
 
 /** Use only the API's review evidence, never an origin, ID prefix or money value. */
 export function isPkg6SalesReport(op?: SalesGuardOperation | null): boolean {
@@ -31,6 +32,7 @@ export function isPkg6SalesReport(op?: SalesGuardOperation | null): boolean {
 export function getSalesActionPolicy({ operation, detail, role, locked, financialDataReady }: SalesActionContext) {
   const sales = isSales(operation) || isSales(detail);
   const shf = isShf(operation) || isShf(detail);
+  const expenses = isExpenses(operation) || isExpenses(detail);
   // A null/absent detail review must not erase positive list evidence.
   const pkg6 = isPkg6SalesReport(operation) || isPkg6SalesReport(detail);
   const status = detail?.status ?? operation?.status;
@@ -47,13 +49,13 @@ export function getSalesActionPolicy({ operation, detail, role, locked, financia
     edit: editable,
     save: editable,
     assign: editable,
-    // Other modules keep their existing handlers and permission rules.
-    return: !!operation && (!sales || (!pkg6 && !isLocked &&
+    // Other modules keep their existing handlers and permission rules; expenses are reserved for Owner (EXP-06).
+    return: !!operation && !expenses && (!sales || (!pkg6 && !isLocked &&
       ((role === "accountant" && status === "pending") || (role === "head" && status === "approved")))),
-    returnForReview: !!operation && (!sales || (!pkg6 && !isLocked && role === "head" && status === "approved")),
-    correct: !!operation && (!sales || (!pkg6 && status === "final-approved" &&
+    returnForReview: !!operation && !expenses && (!sales || (!pkg6 && !isLocked && role === "head" && status === "approved")),
+    correct: !!operation && !expenses && (!sales || (!pkg6 && status === "final-approved" &&
       (role === "accountant" || role === "head"))),
-    bulkApprove: !!operation && !shf && (!sales || (!pkg6 && role === "accountant" && status === "pending")),
+    bulkApprove: !!operation && !shf && !expenses && (!sales || (!pkg6 && role === "accountant" && status === "pending")),
   };
 }
 
@@ -74,9 +76,18 @@ export function hasSalesReconciliationEvidence(value: unknown): boolean {
 /** Re-evaluate immediately at the effect boundary, including modal confirmation. */
 export function runSalesAction(
   context: SalesActionContext | (() => SalesActionContext), action: SalesAction, effect: () => void,
-): boolean {
+): boolean;
+export function runSalesAction<T>(
+  context: SalesActionContext | (() => SalesActionContext), action: SalesAction, effect: () => Promise<T>,
+): Promise<T> | false;
+export function runSalesAction(
+  context: SalesActionContext | (() => SalesActionContext), action: SalesAction, effect: () => any,
+): any {
   if (!getSalesActionPolicy(typeof context === "function" ? context() : context)[action]) return false;
-  effect();
+  const result = effect();
+  if (result && typeof result.then === "function") {
+    return result;
+  }
   return true;
 }
 

@@ -129,7 +129,7 @@ test("actual preview path parser recognizes empty and unknown hash/path URLs for
   }
 });
 
-test("financial cache cancellation excludes unrelated queries and ignores late responses", async () => {
+test("financial and shared cache cancellation preserves auth queries and ignores late responses", async () => {
   const client = new QueryClient({defaultOptions:{queries:{retry:false}}});
   let finish!: (value:string)=>void;
   const pending = new Promise<string>(resolve => {finish = resolve;});
@@ -139,7 +139,8 @@ test("financial cache cancellation excludes unrelated queries and ignores late r
   client.setQueryData(["asset-drafts"],{secret:"draft"});
   client.setQueryData(["platform","accountant","operations"],{secret:"platform"});
   client.setQueryData(["platform","admin","overview"],{secret:"admin"});
-  client.setQueryData(["notifications",{}],{safe:true});
+  client.setQueryData(["notifications",{}],{privateNotification:true});
+  client.setQueryData(["auth","me"],{safe:true});
   const inFlight = observer.refetch();
   await purgeFinancialQueries(client);
   finish("late financial data");
@@ -149,7 +150,8 @@ test("financial cache cancellation excludes unrelated queries and ignores late r
   assert.equal(client.getQueryData(["asset-drafts"]),undefined);
   assert.equal(client.getQueryData(["platform","accountant","operations"]),undefined);
   assert.equal(client.getQueryData(["platform","admin","overview"]),undefined);
-  assert.deepEqual(client.getQueryData(["notifications",{}]),{safe:true});
+  assert.equal(client.getQueryData(["notifications",{}]),undefined);
+  assert.deepEqual(client.getQueryData(["auth","me"]),{safe:true});
   unsubscribe();
   client.clear();
 });
@@ -313,7 +315,7 @@ test("final approval does not mutate after a late detail response crosses access
 
 test("bulk final approval and head return stop before mutation after access invalidation", async () => {
   for (const [operation,run] of [
-    [{id:"bulk-op",moduleKey:"expenses",status:"approved"},"bulk"] as const,
+    [{id:"bulk-op",moduleKey:"purchases",status:"approved"},"bulk"] as const,
     [{id:"return-op",moduleKey:"shifts",status:"approved",reportReview:{phase:"head_review"}},"return"] as const,
   ]) {
     const {actions,client,mutations,requests}=mountHeadActions(operation,run==="return");
@@ -323,9 +325,19 @@ test("bulk final approval and head return stop before mutation after access inva
     assert.equal(requests.length,1,run);
     await purgeFinancialQueries(client);
     requests[0].resolve({data:operation});
-    await action;
+    await action.catch(() => {});
     assert.deepEqual(mutations,[],run);
     assert.equal(client.getQueryData(["operations",operation.id]),undefined,run);
+    client.clear();
+  }
+
+  // EXP-06: expenses are explicitly blocked from head bulk approval
+  {
+    const expenseOp = { id: "expense-blocked-op", moduleKey: "expenses", status: "approved" };
+    const { actions, client, mutations, requests } = mountHeadActions(expenseOp);
+    await actions.bulkFinalApprove([expenseOp.id]);
+    assert.equal(requests.length, 0, "EXP-06: bulk final approval of expenses must emit zero requests");
+    assert.deepEqual(mutations, [], "EXP-06: bulk final approval of expenses must emit zero mutations");
     client.clear();
   }
 });
@@ -493,15 +505,23 @@ test("actual head history components render with History and assigned branches, 
   const queryCalls:unknown[] = [];
   const lookupQueries:Array<{queryFn:()=>Promise<unknown>}> = [];
   const branchRequests:string[] = [];
-  for (const name of ["CompanyDashboard.tsx","ASABPrototype.tsx"]) {
+
+  const prototypeRaw = readFileSync(new URL("../components/mockups/asab/ASABPrototype.tsx", import.meta.url), "utf8");
+  assert.match(prototypeRaw, /import\s*\{[^}]*HeadShiftHistory[^}]*\}\s*from\s*["']\.\/_pages\/head\/HeadShiftHistory["']/);
+
+  for (const [name, filePath] of [
+    ["CompanyDashboard.tsx", "../components/mockups/asab/CompanyDashboard.tsx"],
+    ["HeadShiftHistory.tsx", "../components/mockups/asab/_pages/head/HeadShiftHistory.tsx"],
+  ] as const) {
     const source = ts.createSourceFile(name,
-      readFileSync(new URL("../components/mockups/asab/" + name,import.meta.url),"utf8"),
-      ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+      readFileSync(new URL(filePath, import.meta.url), "utf8"),
+      ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
     const declaration = source.statements.find(node =>
       ts.isFunctionDeclaration(node) && node.name?.text === "HeadShiftHistory");
-    assert.ok(declaration,name);
-    const compiled = ts.transpileModule(declaration.getText(source),{
-      compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None,jsx:ts.JsxEmit.React},
+    assert.ok(declaration, name);
+    const declText = declaration.getText(source).replace(/^export\s+/, "");
+    const compiled = ts.transpileModule(declText, {
+      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None, jsx: ts.JsxEmit.React },
     }).outputText;
     const HeadShiftHistory = new Function(
       "React","useState","useCLang","useLang","useShiftsHistory","historyPageTarget",
@@ -888,4 +908,130 @@ test("bootstrap /auth/me response is discarded after a later session boundary", 
   sessionEpoch.current++;refreshRequest.current++;
   resolveFetch(accountant);await pending;
   assert.deepEqual(writes,[]);
+});
+
+test("S1H-F06: role change cache isolation covers reports, audit-logs, attachments, platform/reminders, company, modules, exceptions, exports and preserves auth identity", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { gcTime: 0, retry: false } } });
+
+  const testNamespaces: Array<[readonly unknown[], unknown]> = [
+    [["reports", "catalog"], { report: "secret" }],
+    [["audit-logs", { filter: "recent" }], { log: "sensitive-audit" }],
+    [["attachments", "att-42"], { file: "doc.pdf" }],
+    [["reminders", "missing"], { count: 3 }],
+    [["platform", "reminders", "rules"], { rule: "active" }],
+    [["company", "subscription"], { plan: "enterprise" }],
+    [["modules", "aggregation"], { modules: ["fin", "ops"] }],
+    [["exceptions", { unresolved: true }], { err: "critical" }],
+    [["exports", "job", "job-99"], { status: "ready" }],
+  ];
+
+  for (const [key, data] of testNamespaces) {
+    client.setQueryData(key, data);
+  }
+  client.setQueryData(["auth", "me"], { id: "user-123", email: "user@example.com" });
+
+  // Verify delayed in-flight responses across sensitive namespaces cannot restore purged cache
+  let resolveDelayed!: (value: unknown) => void;
+  const delayedPromise = new Promise(resolve => { resolveDelayed = resolve; });
+  const inFlightQuery = client.fetchQuery({
+    queryKey: ["reports", "pending-run"],
+    queryFn: () => delayedPromise,
+  });
+  const inFlightHandled = inFlightQuery.catch(() => "cancelled");
+
+  await purgeFinancialQueries(client);
+
+  resolveDelayed({ report: "late-arriving-data" });
+  await inFlightHandled;
+
+  // Assert all sensitive namespaces were purged
+  for (const [key] of testNamespaces) {
+    assert.equal(client.getQueryData(key), undefined, `Query key ${JSON.stringify(key)} must be removed from cache`);
+  }
+  assert.equal(client.getQueryData(["reports", "pending-run"]), undefined, "Late arriving query response must not restore purged cache");
+
+  // Assert auth identity query data is strictly preserved
+  assert.deepEqual(client.getQueryData(["auth", "me"]), { id: "user-123", email: "user@example.com" });
+
+  client.clear();
+});
+
+test("S1H-F06-EXT-A: delayed in-flight audit-logs response cannot restore purged cache; auth/me preserved", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { gcTime: 0, retry: false } } });
+  client.setQueryData(["audit-logs", { filter: "recent" }], { log: "pre-purge-sensitive" });
+  client.setQueryData(["audit-logs", "summary"], { total: 42 });
+  client.setQueryData(["auth", "me"], { id: "user-ext-a", email: "a@example.com" });
+
+  let resolveAudit!: (value: unknown) => void;
+  const auditPromise = new Promise(resolve => { resolveAudit = resolve; });
+  const inFlight = client.fetchQuery({ queryKey: ["audit-logs", "live"], queryFn: () => auditPromise });
+  const inFlightHandled = inFlight.catch(() => "cancelled");
+
+  await purgeFinancialQueries(client);
+
+  resolveAudit({ log: "late-audit-response" });
+  await inFlightHandled;
+
+  assert.equal(client.getQueryData(["audit-logs", { filter: "recent" }]), undefined, "audit-logs pre-purge cache must be cleared");
+  assert.equal(client.getQueryData(["audit-logs", "summary"]), undefined, "audit-logs summary must be cleared");
+  assert.equal(client.getQueryData(["audit-logs", "live"]), undefined, "audit-logs in-flight late response must not restore cache");
+  assert.deepEqual(client.getQueryData(["auth", "me"]), { id: "user-ext-a", email: "a@example.com" });
+
+  client.clear();
+});
+
+test("S1H-F06-EXT-B: delayed in-flight attachments response cannot restore purged cache; auth/me preserved", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { gcTime: 0, retry: false } } });
+  client.setQueryData(["attachments", "att-01"], { file: "sensitive.pdf" });
+  client.setQueryData(["attachments", "list", { page: 1 }], { items: ["att-01"] });
+  client.setQueryData(["auth", "me"], { id: "user-ext-b", email: "b@example.com" });
+
+  let resolveAttach!: (value: unknown) => void;
+  const attachPromise = new Promise(resolve => { resolveAttach = resolve; });
+  const inFlight = client.fetchQuery({ queryKey: ["attachments", "pending-upload"], queryFn: () => attachPromise });
+  const inFlightHandled = inFlight.catch(() => "cancelled");
+
+  await purgeFinancialQueries(client);
+
+  resolveAttach({ file: "late-upload-response.pdf" });
+  await inFlightHandled;
+
+  assert.equal(client.getQueryData(["attachments", "att-01"]), undefined, "attachments pre-purge cache must be cleared");
+  assert.equal(client.getQueryData(["attachments", "list", { page: 1 }]), undefined, "attachments list must be cleared");
+  assert.equal(client.getQueryData(["attachments", "pending-upload"]), undefined, "attachments in-flight late response must not restore cache");
+  assert.deepEqual(client.getQueryData(["auth", "me"]), { id: "user-ext-b", email: "b@example.com" });
+
+  client.clear();
+});
+
+test("GO-15 A01: LoginPage and ForgotPasswordPage bind programmatic labels to all inputs", () => {
+  const loginSrc = readFileSync(new URL("./LoginPage.tsx", import.meta.url), "utf8");
+  assert.match(loginSrc, /<label\s+htmlFor="login-email"/);
+  assert.match(loginSrc, /<input\s+[^>]*id="login-email"/);
+  assert.match(loginSrc, /<label\s+htmlFor="login-password"/);
+  assert.match(loginSrc, /<input\s+[^>]*id="login-password"/);
+  assert.match(loginSrc, /<label\s+htmlFor="login-two-factor-code"/);
+  assert.match(loginSrc, /<input\s+[^>]*id="login-two-factor-code"/);
+
+  const forgotSrc = readFileSync(new URL("./ForgotPasswordPage.tsx", import.meta.url), "utf8");
+  assert.match(forgotSrc, /<label\s+htmlFor="forgot-password-email"/);
+  assert.match(forgotSrc, /<input\s+[^>]*id="forgot-password-email"/);
+  assert.match(forgotSrc, /<label\s+htmlFor="forgot-password-token"/);
+  assert.match(forgotSrc, /<input\s+[^>]*id="forgot-password-token"/);
+  assert.match(forgotSrc, /<label\s+htmlFor="forgot-password-new-password"/);
+  assert.match(forgotSrc, /<input\s+[^>]*id="forgot-password-new-password"/);
+});
+
+test("GO-15 A02: LoginPage password reveal button is keyboard accessible with trailing positioning and non-colliding padding", () => {
+  const loginSrc = readFileSync(new URL("./LoginPage.tsx", import.meta.url), "utf8");
+  // type="button" and no tabIndex={-1}
+  assert.match(loginSrc, /<button\s+[^>]*type="button"[^>]*onClick=\{\(\)\s*=>\s*setShowPassword/);
+  assert.doesNotMatch(loginSrc, /setShowPassword[\s\S]*?tabIndex=\{-1\}/);
+  // Trailing positioning (insetInlineEnd)
+  assert.match(loginSrc, /insetInlineEnd:\s*8/);
+  // Non-colliding padding matching lang
+  assert.match(loginSrc, /paddingLeft:\s*lang\s*===\s*"ar"\s*\?\s*52\s*:\s*14/);
+  assert.match(loginSrc, /paddingRight:\s*lang\s*===\s*"ar"\s*\?\s*14\s*:\s*52/);
+  // Localized accessible name
+  assert.match(loginSrc, /aria-label=\{showPassword\s*\?\s*t\("إخفاء كلمة المرور",\s*"Hide password"\)\s*:\s*t\("إظهار كلمة المرور",\s*"Show password"\)\}/);
 });

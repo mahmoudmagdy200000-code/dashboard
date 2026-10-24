@@ -1,0 +1,1259 @@
+TAP version 13
+# Subtest: password login returns tokens without writing before its session controller accepts them
+ok 1 - password login returns tokens without writing before its session controller accepts them
+  ---
+  duration_ms: 4.603495
+  type: 'test'
+  ...
+# Subtest: 2FA login returns tokens without committing them ahead of its session controller
+ok 2 - 2FA login returns tokens without committing them ahead of its session controller
+  ---
+  duration_ms: 0.592152
+  type: 'test'
+  ...
+# Subtest: logout completion cannot clear a token pair committed by a newer session
+ok 3 - logout completion cannot clear a token pair committed by a newer session
+  ---
+  duration_ms: 0.547184
+  type: 'test'
+  ...
+# Subtest: logout request from A is not dispatched with B's Authorization header
+ok 4 - logout request from A is not dispatched with B's Authorization header
+  ---
+  duration_ms: 5.727577
+  type: 'test'
+  ...
+# Subtest: logout clears its session after a same-session refresh but does not clear a replacement
+ok 5 - logout clears its session after a same-session refresh but does not clear a replacement
+  ---
+  duration_ms: 2.679977
+  type: 'test'
+  ...
+# Subtest: concurrent login and 2FA responses remain uncommitted until their controller accepts one
+ok 6 - concurrent login and 2FA responses remain uncommitted until their controller accepts one
+  ---
+  duration_ms: 2.803654
+  type: 'test'
+  ...
+# Subtest: latest login wins: only B commits credentials and hydrates B identity
+ok 7 - latest login wins: only B commits credentials and hydrates B identity
+  ---
+  duration_ms: 1.907874
+  type: 'test'
+  ...
+# Subtest: AuthContext login callback keeps both applied UI user and token on B when A resolves last
+ok 8 - AuthContext login callback keeps both applied UI user and token on B when A resolves last
+  ---
+  duration_ms: 159.08425
+  type: 'test'
+  ...
+# Subtest: a late 2FA login cannot replace a newer password-login session
+ok 9 - a late 2FA login cannot replace a newer password-login session
+  ---
+  duration_ms: 59.994014
+  type: 'test'
+  ...
+# Subtest: login response arriving after forced logout cannot restore tokens or request /auth/me
+ok 10 - login response arriving after forced logout cannot restore tokens or request /auth/me
+  ---
+  duration_ms: 42.004185
+  type: 'test'
+  ...
+# Subtest: login token identity must match /auth/me before establishing the session
+ok 11 - login token identity must match /auth/me before establishing the session
+  ---
+  duration_ms: 1.014849
+  type: 'test'
+  ...
+# Subtest: late refresh success for session A cannot overwrite or retry as session B
+ok 12 - late refresh success for session A cannot overwrite or retry as session B
+  ---
+  duration_ms: 1.406649
+  type: 'test'
+  ...
+# Subtest: obsolete refresh rejection cannot clear or force-logout a newer session
+ok 13 - obsolete refresh rejection cannot clear or force-logout a newer session
+  ---
+  duration_ms: 1.129491
+  type: 'test'
+  ...
+# Subtest: normal same-session refresh rotates tokens and retries exactly once with the new Authorization header
+ok 14 - normal same-session refresh rotates tokens and retries exactly once with the new Authorization header
+  ---
+  duration_ms: 1.006096
+  type: 'test'
+  ...
+# [auth] Storage cleanup failed during session invalidation: Storage quota exceeded
+# Subtest: concurrent same-session 401 responses share one refresh and retry once each
+ok 15 - concurrent same-session 401 responses share one refresh and retry once each
+  ---
+  duration_ms: 23.004758
+  type: 'test'
+  ...
+# Subtest: current-session refresh rejection clears only that session and broadcasts one forced logout
+ok 16 - current-session refresh rejection clears only that session and broadcasts one forced logout
+  ---
+  duration_ms: 1.77271
+  type: 'test'
+  ...
+# Subtest: an A request that receives 401 after B replaces the session is never retried as B
+ok 17 - an A request that receives 401 after B replaces the session is never retried as B
+  ---
+  duration_ms: 0.772825
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-FINAL-01: Login A provisional tokens are invalidated immediately when Login B receives 2FA challenge
+ok 18 - F-SHIFT-FINAL-01: Login A provisional tokens are invalidated immediately when Login B receives 2FA challenge
+  ---
+  duration_ms: 37.592358
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-FINAL-01: late Login A /auth/me completion cannot clear or overwrite newer successful Login B session
+ok 19 - F-SHIFT-FINAL-01: late Login A /auth/me completion cannot clear or overwrite newer successful Login B session
+  ---
+  duration_ms: 34.787263
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-FINAL-01: forced logout during pending /auth/me immediately clears provisional tokens and ignores late arrival
+ok 20 - F-SHIFT-FINAL-01: forced logout during pending /auth/me immediately clears provisional tokens and ignores late arrival
+  ---
+  duration_ms: 25.807591
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-FINAL-01: obsolete login cleanup cannot delete a newer authenticated user's tokens (compare-and-set)
+ok 21 - F-SHIFT-FINAL-01: obsolete login cleanup cannot delete a newer authenticated user's tokens (compare-and-set)
+  ---
+  duration_ms: 0.20535
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-FINAL-01: /auth/me failure during login clears provisional tokens immediately
+ok 22 - F-SHIFT-FINAL-01: /auth/me failure during login clears provisional tokens immediately
+  ---
+  duration_ms: 1.032105
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-FINAL-01 residual: Login A tokens do not survive when Login B starts during pending resetQueryClient
+ok 23 - F-SHIFT-FINAL-01 residual: Login A tokens do not survive when Login B starts during pending resetQueryClient
+  ---
+  duration_ms: 31.832111
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-FINAL-01 residual: Login B completes successfully while Login A is obsolete during resetQueryClient
+ok 24 - F-SHIFT-FINAL-01 residual: Login B completes successfully while Login A is obsolete during resetQueryClient
+  ---
+  duration_ms: 37.233447
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-FINAL-01 residual: forced logout during resetQueryClient immediately purges provisional tokens
+ok 25 - F-SHIFT-FINAL-01 residual: forced logout during resetQueryClient immediately purges provisional tokens
+  ---
+  duration_ms: 34.05555
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-P1-02: fail-closed token cleanup across all 4 clearing functions when storage removeItem throws
+ok 26 - F-SHIFT-P1-02: fail-closed token cleanup across all 4 clearing functions when storage removeItem throws
+  ---
+  duration_ms: 0.47134
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-P1-02: API request interceptor never attaches Bearer header after failed storage cleanup
+ok 27 - F-SHIFT-P1-02: API request interceptor never attaches Bearer header after failed storage cleanup
+  ---
+  duration_ms: 0.26553
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-P1-02: in-flight refresh cannot restore credentials after session invalidation with storage failure
+ok 28 - F-SHIFT-P1-02: in-flight refresh cannot restore credentials after session invalidation with storage failure
+  ---
+  duration_ms: 0.116395
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-P1-02: 401 retry never attempts to retry with revoked credentials after storage cleanup error
+ok 29 - F-SHIFT-P1-02: 401 retry never attempts to retry with revoked credentials after storage cleanup error
+  ---
+  duration_ms: 0.622849
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-P1-02: Session B logs in successfully and remains active after Session A storage cleanup failure
+ok 30 - F-SHIFT-P1-02: Session B logs in successfully and remains active after Session A storage cleanup failure
+  ---
+  duration_ms: 0.24523
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-P1-02: forced logout clears UI state and tokens even if storage cleanup throws
+ok 31 - F-SHIFT-P1-02: forced logout clears UI state and tokens even if storage cleanup throws
+  ---
+  duration_ms: 20.773472
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-P1-02: application reload preserves invalidation via storage fallback
+ok 32 - F-SHIFT-P1-02: application reload preserves invalidation via storage fallback
+  ---
+  duration_ms: 0.284679
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-P1-02: P1-A failed refresh with storage cleanup error still dispatches forced logout and clears credentials
+ok 33 - F-SHIFT-P1-02: P1-A failed refresh with storage cleanup error still dispatches forced logout and clears credentials
+  ---
+  duration_ms: 0.885214
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-P1-02: P1-A failed refresh forced logout cleans real QueryClient, unmounts user, and protects Session B
+ok 34 - F-SHIFT-P1-02: P1-A failed refresh forced logout cleans real QueryClient, unmounts user, and protects Session B
+  ---
+  duration_ms: 52.401686
+  type: 'test'
+  ...
+# Subtest: F-SHIFT-P1-02: Phase A - storage failure never resurrects credentials on reload or new tab, requires fresh login
+ok 35 - F-SHIFT-P1-02: Phase A - storage failure never resurrects credentials on reload or new tab, requires fresh login
+  ---
+  duration_ms: 0.932845
+  type: 'test'
+  ...
+# Subtest: isErrorBody detects all three error envelopes and rejects non-errors
+ok 36 - isErrorBody detects all three error envelopes and rejects non-errors
+  ---
+  duration_ms: 1.111394
+  type: 'test'
+  ...
+# Subtest: HTTP 403 Forbidden normalization
+ok 37 - HTTP 403 Forbidden normalization
+  ---
+  duration_ms: 0.3051
+  type: 'test'
+  ...
+# Subtest: HTTP 409 Conflict normalization
+ok 38 - HTTP 409 Conflict normalization
+  ---
+  duration_ms: 0.215505
+  type: 'test'
+  ...
+# Subtest: HTTP 422 Validation Error normalization
+ok 39 - HTTP 422 Validation Error normalization
+  ---
+  duration_ms: 0.923632
+  type: 'test'
+  ...
+# Subtest: Normalization across all three response envelopes
+ok 40 - Normalization across all three response envelopes
+  ---
+  duration_ms: 0.219621
+  type: 'test'
+  ...
+# Subtest: Backend scope rules accept valid hierarchy arrays and reject malformed grants
+ok 41 - Backend scope rules accept valid hierarchy arrays and reject malformed grants
+  ---
+  duration_ms: 2.477732
+  type: 'test'
+  ...
+# Subtest: ambiguous repeated same-role assignments fail closed in either order
+ok 42 - ambiguous repeated same-role assignments fail closed in either order
+  ---
+  duration_ms: 0.467774
+  type: 'test'
+  ...
+# Subtest: actual preview path parser recognizes empty and unknown hash/path URLs for denial
+ok 43 - actual preview path parser recognizes empty and unknown hash/path URLs for denial
+  ---
+  duration_ms: 23.710527
+  type: 'test'
+  ...
+# Subtest: financial and shared cache cancellation preserves auth queries and ignores late responses
+ok 44 - financial and shared cache cancellation preserves auth queries and ignores late responses
+  ---
+  duration_ms: 4.156822
+  type: 'test'
+  ...
+# Subtest: financial purge increments generation immediately and aborts registered direct requests
+ok 45 - financial purge increments generation immediately and aborts registered direct requests
+  ---
+  duration_ms: 1.440239
+  type: 'test'
+  ...
+# Subtest: tenant client rotation isolates mounted QueryClientProvider from late query and mutation responses
+ok 46 - tenant client rotation isolates mounted QueryClientProvider from late query and mutation responses
+  ---
+  duration_ms: 8.697271
+  type: 'test'
+  ...
+# Subtest: actual loadFreshDetail discards a late direct response after access invalidation
+ok 47 - actual loadFreshDetail discards a late direct response after access invalidation
+  ---
+  duration_ms: 300.978535
+  type: 'test'
+  ...
+# Subtest: final approval does not mutate after a late detail response crosses access generation
+ok 48 - final approval does not mutate after a late detail response crosses access generation
+  ---
+  duration_ms: 224.201021
+  type: 'test'
+  ...
+# Subtest: bulk final approval and head return stop before mutation after access invalidation
+ok 49 - bulk final approval and head return stop before mutation after access invalidation
+  ---
+  duration_ms: 412.4283
+  type: 'test'
+  ...
+# Subtest: scope fingerprints change on role order, grant narrowing and revocation
+ok 50 - scope fingerprints change on role order, grant narrowing and revocation
+  ---
+  duration_ms: 0.425862
+  type: 'test'
+  ...
+# Subtest: login landing, direct URL, refresh and Back/Forward decisions use /auth/me grants
+ok 51 - login landing, direct URL, refresh and Back/Forward decisions use /auth/me grants
+  ---
+  duration_ms: 0.446082
+  type: 'test'
+  ...
+# Subtest: pre-login role selection and internal role switching cannot invent grants
+ok 52 - pre-login role selection and internal role switching cannot invent grants
+  ---
+  duration_ms: 0.180161
+  type: 'test'
+  ...
+# Subtest: missing or malformed grants fail closed even if legacy fields claim accountant
+ok 53 - missing or malformed grants fail closed even if legacy fields claim accountant
+  ---
+  duration_ms: 0.254564
+  type: 'test'
+  ...
+# Subtest: role matrix permits history for head but configs only for accountant
+ok 54 - role matrix permits history for head but configs only for accountant
+  ---
+  duration_ms: 0.194764
+  type: 'test'
+  ...
+# Subtest: actual platform operations hook emits zero unauthorized API requests
+ok 55 - actual platform operations hook emits zero unauthorized API requests
+  ---
+  duration_ms: 0.510729
+  type: 'test'
+  ...
+# Subtest: isolated route and child-query mock blocks unauthorized mounts before requests
+ok 56 - isolated route and child-query mock blocks unauthorized mounts before requests
+  ---
+  duration_ms: 0.191358
+  type: 'test'
+  ...
+# Subtest: actual App route boundary blocks a dashboard mount before its mocked query runs
+ok 57 - actual App route boundary blocks a dashboard mount before its mocked query runs
+  ---
+  duration_ms: 18.922464
+  type: 'test'
+  ...
+# Subtest: actual head history components render with History and assigned branches, never Configs
+ok 58 - actual head history components render with History and assigned branches, never Configs
+  ---
+  duration_ms: 119.686382
+  type: 'test'
+  ...
+# Subtest: actual CompanyDashboard component boundary does not mount accountant draft query for head or company admin
+ok 59 - actual CompanyDashboard component boundary does not mount accountant draft query for head or company admin
+  ---
+  duration_ms: 103.814854
+  type: 'test'
+  ...
+# Subtest: actual CompanyDashboard operations hook suppresses cached financial rows and requests outside financial roles
+ok 60 - actual CompanyDashboard operations hook suppresses cached financial rows and requests outside financial roles
+  ---
+  duration_ms: 123.066795
+  type: 'test'
+  ...
+# Subtest: CompanyDashboard role switch hides populated ops and purges cache before selecting the next role
+ok 61 - CompanyDashboard role switch hides populated ops and purges cache before selecting the next role
+  ---
+  duration_ms: 72.620283
+  type: 'test'
+  ...
+# Subtest: ASABPrototype role switch clears local financial ops before the new role mounts
+ok 62 - ASABPrototype role switch clears local financial ops before the new role mounts
+  ---
+  duration_ms: 18.315851
+  type: 'test'
+  ...
+# Subtest: AuthContext grant narrowing blocks rendering until financial cache is purged
+ok 63 - AuthContext grant narrowing blocks rendering until financial cache is purged
+  ---
+  duration_ms: 6.746773
+  type: 'test'
+  ...
+# Subtest: AuthContext rotates the whole client for a company change and keeps targeted purge for role changes
+ok 64 - AuthContext rotates the whole client for a company change and keeps targeted purge for role changes
+  ---
+  duration_ms: 8.798074
+  type: 'test'
+  ...
+# Subtest: newer /auth/me response wins when overlapping refreshes resolve out of order
+ok 65 - newer /auth/me response wins when overlapping refreshes resolve out of order
+  ---
+  duration_ms: 4.768563
+  type: 'test'
+  ...
+# Subtest: an obsolete refresh rejection cannot replace the latest user or transition state
+ok 66 - an obsolete refresh rejection cannot replace the latest user or transition state
+  ---
+  duration_ms: 7.142259
+  type: 'test'
+  ...
+# Subtest: logout, forced logout and login session boundaries invalidate pending refresh responses
+ok 67 - logout, forced logout and login session boundaries invalidate pending refresh responses
+  ---
+  duration_ms: 9.350415
+  type: 'test'
+  ...
+# Subtest: bootstrap /auth/me response is discarded after a later session boundary
+ok 68 - bootstrap /auth/me response is discarded after a later session boundary
+  ---
+  duration_ms: 4.070842
+  type: 'test'
+  ...
+# Subtest: S1H-F06: role change cache isolation covers reports, audit-logs, attachments, platform/reminders, company, modules, exceptions, exports and preserves auth identity
+ok 69 - S1H-F06: role change cache isolation covers reports, audit-logs, attachments, platform/reminders, company, modules, exceptions, exports and preserves auth identity
+  ---
+  duration_ms: 1.039235
+  type: 'test'
+  ...
+# Subtest: S1H-F06-EXT-A: delayed in-flight audit-logs response cannot restore purged cache; auth/me preserved
+ok 70 - S1H-F06-EXT-A: delayed in-flight audit-logs response cannot restore purged cache; auth/me preserved
+  ---
+  duration_ms: 0.684681
+  type: 'test'
+  ...
+# Subtest: S1H-F06-EXT-B: delayed in-flight attachments response cannot restore purged cache; auth/me preserved
+ok 71 - S1H-F06-EXT-B: delayed in-flight attachments response cannot restore purged cache; auth/me preserved
+  ---
+  duration_ms: 0.449316
+  type: 'test'
+  ...
+# Subtest: SHF preserves its source, review and counted FIN-01 financial evidence
+ok 72 - SHF preserves its source, review and counted FIN-01 financial evidence
+  ---
+  duration_ms: 1.989306
+  type: 'test'
+  ...
+# Subtest: daily sales report retains memberships and evidence revision IDs unchanged
+ok 73 - daily sales report retains memberships and evidence revision IDs unchanged
+  ---
+  duration_ms: 0.261123
+  type: 'test'
+  ...
+# Subtest: legacy operation without review keeps legacy channels and existing display defaults
+ok 74 - legacy operation without review keeps legacy channels and existing display defaults
+  ---
+  duration_ms: 0.209495
+  type: 'test'
+  ...
+# Subtest: HA-F38: match mapping safely falls back to review for unknown or missing match values
+ok 75 - HA-F38: match mapping safely falls back to review for unknown or missing match values
+  ---
+  duration_ms: 0.170517
+  type: 'test'
+  ...
+# Subtest: explicit null review and source stay null; absent payload stays absent
+ok 76 - explicit null review and source stay null; absent payload stays absent
+  ---
+  duration_ms: 0.15298
+  type: 'test'
+  ...
+# Subtest: counted, unknown and null count states remain distinct even with zero variance
+ok 77 - counted, unknown and null count states remain distinct even with zero variance
+  ---
+  duration_ms: 0.243576
+  type: 'test'
+  ...
+# Subtest: unknown and missing financial evidence is never filled with zero or a count
+ok 78 - unknown and missing financial evidence is never filled with zero or a count
+  ---
+  duration_ms: 0.142435
+  type: 'test'
+  ...
+# Subtest: null or absent operation amount stays unknown; zero, halalas and signs are preserved
+ok 79 - null or absent operation amount stays unknown; zero, halalas and signs are preserved
+  ---
+  duration_ms: 0.157477
+  type: 'test'
+  ...
+# Subtest: operation totals remain unknown if any mapped amount is unknown
+ok 80 - operation totals remain unknown if any mapped amount is unknown
+  ---
+  duration_ms: 2.499565
+  type: 'test'
+  ...
+# Subtest: nullable Shift presenter evidence is preserved when mapped into an SHF
+ok 81 - nullable Shift presenter evidence is preserved when mapped into an SHF
+  ---
+  duration_ms: 0.343728
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F39: ClarifyModal retains input on failure and manages submission state
+ok 82 - Phase 1C ACC-F39: ClarifyModal retains input on failure and manages submission state
+  ---
+  duration_ms: 1.370424
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F35: Employee account note aligns with Business Rules v3.5 (no automatic payroll deduction)
+ok 83 - Phase 1C ACC-F35: Employee account note aligns with Business Rules v3.5 (no automatic payroll deduction)
+  ---
+  duration_ms: 14.233006
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F04: Sales variance allocation is restricted to shortages (surplus cannot create employee debit)
+ok 84 - Phase 1C ACC-F04: Sales variance allocation is restricted to shortages (surplus cannot create employee debit)
+  ---
+  duration_ms: 16.083066
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F07: Bulk sales approval is scoped to active filtered pending entries
+ok 85 - Phase 1C ACC-F07: Bulk sales approval is scoped to active filtered pending entries
+  ---
+  duration_ms: 11.193843
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F12: Expense approval decisions are restricted from Accountant view per EXP-06
+ok 86 - Phase 1C ACC-F12: Expense approval decisions are restricted from Accountant view per EXP-06
+  ---
+  duration_ms: 9.894995
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F14 & ACC-F15: Asset draft conversion preserves invoiceIndex and handles async outcome
+ok 87 - Phase 1C ACC-F14 & ACC-F15: Asset draft conversion preserves invoiceIndex and handles async outcome
+  ---
+  duration_ms: 12.644107
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F20: Asset book value preserves exact halalas on edit open
+ok 88 - Phase 1C ACC-F20: Asset book value preserves exact halalas on edit open
+  ---
+  duration_ms: 7.187607
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F28 & ACC-F29: Waste allocations avoid stale state and bulk approve preserves non-pending entries
+ok 89 - Phase 1C ACC-F28 & ACC-F29: Waste allocations avoid stale state and bulk approve preserves non-pending entries
+  ---
+  duration_ms: 11.229366
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F26: Daily inventory variance allocation button is wired to mutation
+ok 90 - Phase 1C ACC-F26: Daily inventory variance allocation button is wired to mutation
+  ---
+  duration_ms: 1.246508
+  type: 'test'
+  ...
+# Subtest: Phase 1C EXP-06: Negative authorization ensures Accountant and Head Accountant cannot approve or reject expenses
+ok 91 - Phase 1C EXP-06: Negative authorization ensures Accountant and Head Accountant cannot approve or reject expenses
+  ---
+  duration_ms: 15.256741
+  type: 'test'
+  ...
+# Subtest: Phase 1C ACC-F02: Halala precision preserves exact two decimals without integer-SAR rounding
+ok 92 - Phase 1C ACC-F02: Halala precision preserves exact two decimals without integer-SAR rounding
+  ---
+  duration_ms: 14.950081
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F19: roleAccess sensitivePrefixes includes all procurement query keys
+ok 93 - Phase 1E PROC-F19: roleAccess sensitivePrefixes includes all procurement query keys
+  ---
+  duration_ms: 4.99238
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F24: useCreateProcurementOrder aliases description and notes
+ok 94 - Phase 1E PROC-F24: useCreateProcurementOrder aliases description and notes
+  ---
+  duration_ms: 0.718413
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F01 & PROC-F25: ProcOverview renders exact halala amounts and distinct statuses
+ok 95 - Phase 1E PROC-F01 & PROC-F25: ProcOverview renders exact halala amounts and distinct statuses
+  ---
+  duration_ms: 23.940023
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F03 & PROC-F05: ProcNew validates quantity and calculates priced order payload
+ok 96 - Phase 1E PROC-F03 & PROC-F05: ProcNew validates quantity and calculates priced order payload
+  ---
+  duration_ms: 16.351631
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F02: procurement query hooks route through procBase()
+ok 97 - Phase 1E PROC-F02: procurement query hooks route through procBase()
+  ---
+  duration_ms: 0.65736
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F04 & PUR-01: ProcNew supports editing notes and fails closed on unauthorized approvals
+ok 98 - Phase 1E PROC-F04 & PUR-01: ProcNew supports editing notes and fails closed on unauthorized approvals
+  ---
+  duration_ms: 20.049426
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F06: ProcNew establishes intent-level idempotency via draftCommandId and withIdempotencyKey
+ok 99 - Phase 1E PROC-F06: ProcNew establishes intent-level idempotency via draftCommandId and withIdempotencyKey
+  ---
+  duration_ms: 18.177917
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F20: server pagination and filtering preserve metadata and expose UI controls
+ok 100 - Phase 1E PROC-F20: server pagination and filtering preserve metadata and expose UI controls
+  ---
+  duration_ms: 10.998989
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F07 & PROC-F08: ProcGrouped maps dual contract fields and supports groupId
+ok 101 - Phase 1E PROC-F07 & PROC-F08: ProcGrouped maps dual contract fields and supports groupId
+  ---
+  duration_ms: 12.007407
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F09: ProcGrouped WhatsApp action is clearly labeled as preparation
+ok 102 - Phase 1E PROC-F09: ProcGrouped WhatsApp action is clearly labeled as preparation
+  ---
+  duration_ms: 17.070233
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F10: ProcSent accurately tracks inTransit, sentAt, and ETA
+ok 103 - Phase 1E PROC-F10: ProcSent accurately tracks inTransit, sentAt, and ETA
+  ---
+  duration_ms: 11.435315
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F12 & PROC-F13: ProcSuppliers normalizes ratings and authoritative spend
+ok 104 - Phase 1E PROC-F12 & PROC-F13: ProcSuppliers normalizes ratings and authoritative spend
+  ---
+  duration_ms: 12.102741
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F14: ProcSuppliers enforces PUR-04 Accountant supplier ownership rule
+ok 105 - Phase 1E PROC-F14: ProcSuppliers enforces PUR-04 Accountant supplier ownership rule
+  ---
+  duration_ms: 12.522623
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F15 & PROC-F16: ProcItems validates unit and positive price without rounding halalas
+ok 106 - Phase 1E PROC-F15 & PROC-F16: ProcItems validates unit and positive price without rounding halalas
+  ---
+  duration_ms: 11.436677
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F17: PUR-05 VAT exclusion notice is presented on items and purchase orders
+ok 107 - Phase 1E PROC-F17: PUR-05 VAT exclusion notice is presented on items and purchase orders
+  ---
+  duration_ms: 14.400572
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F18: ProcReports provides dual export formats (PDF & Excel per INTG-01)
+ok 108 - Phase 1E PROC-F18: ProcReports provides dual export formats (PDF & Excel per INTG-01)
+  ---
+  duration_ms: 7.586272
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F21: Modals implement accessibility attributes and Escape key handling
+ok 109 - Phase 1E PROC-F21: Modals implement accessibility attributes and Escape key handling
+  ---
+  duration_ms: 7.459076
+  type: 'test'
+  ...
+# Subtest: Phase 1E PROC-F22: Procurement grids use responsive layout classes
+ok 110 - Phase 1E PROC-F22: Procurement grids use responsive layout classes
+  ---
+  duration_ms: 6.735366
+  type: 'test'
+  ...
+# Subtest: Phase 1E Behavioral: Order creation strictly rejects invalid, zero, negative, and non-finite price and quantity
+ok 111 - Phase 1E Behavioral: Order creation strictly rejects invalid, zero, negative, and non-finite price and quantity
+  ---
+  duration_ms: 12.435312
+  type: 'test'
+  ...
+# Subtest: Phase 1E Behavioral: Draft idempotency key covers complete effective payload and rotates on notes modification
+ok 112 - Phase 1E Behavioral: Draft idempotency key covers complete effective payload and rotates on notes modification
+  ---
+  duration_ms: 13.046973
+  type: 'test'
+  ...
+# Subtest: Phase 1E Behavioral: ProcNewOrders strictly enforces PUR-01 fail-closed financial approval authority across all roles
+ok 113 - Phase 1E Behavioral: ProcNewOrders strictly enforces PUR-01 fail-closed financial approval authority across all roles
+  ---
+  duration_ms: 0.435456
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F04: AddUserModal updates admin users only on server success
+ok 114 - Phase 1F ADM-F04: AddUserModal updates admin users only on server success
+  ---
+  duration_ms: 2.353425
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F05: Edit permissions button in user row navigates to admin-permissions
+ok 115 - Phase 1F ADM-F05: Edit permissions button in user row navigates to admin-permissions
+  ---
+  duration_ms: 0.305019
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F06: deleteUser removes user from list only after server confirms deletion
+ok 116 - Phase 1F ADM-F06: deleteUser removes user from list only after server confirms deletion
+  ---
+  duration_ms: 0.30536
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F07: syncAssignments handles rollback on error
+ok 117 - Phase 1F ADM-F07: syncAssignments handles rollback on error
+  ---
+  duration_ms: 0.376938
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F10: BRANDS renders flat API arrays without blanking out
+ok 118 - Phase 1F ADM-F10: BRANDS renders flat API arrays without blanking out
+  ---
+  duration_ms: 0.468195
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F12: Default brand selection syncs with first accessible brand
+ok 119 - Phase 1F ADM-F12: Default brand selection syncs with first accessible brand
+  ---
+  duration_ms: 0.675378
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F13: admin-branch-requests is active in sidebar navigation
+ok 120 - Phase 1F ADM-F13: admin-branch-requests is active in sidebar navigation
+  ---
+  duration_ms: 1.079206
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F14: Subscription renewal does not use hardcoded expiry and updates from response
+ok 121 - Phase 1F ADM-F14: Subscription renewal does not use hardcoded expiry and updates from response
+  ---
+  duration_ms: 0.314744
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F15: Auto-reminder toggle supports rollback on mutation failure
+ok 122 - Phase 1F ADM-F15: Auto-reminder toggle supports rollback on mutation failure
+  ---
+  duration_ms: 0.311018
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F16: Subscription card action buttons bind onSuspendSub and onActivateSub
+ok 123 - Phase 1F ADM-F16: Subscription card action buttons bind onSuspendSub and onActivateSub
+  ---
+  duration_ms: 0.376948
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F17: Company subscription lifecycle updates only on confirmed server response
+ok 124 - Phase 1F ADM-F17: Company subscription lifecycle updates only on confirmed server response
+  ---
+  duration_ms: 0.381665
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F18 & ADM-F19: Revenue and catalog prices carry SUB-01 catalog disclaimers
+ok 125 - Phase 1F ADM-F18 & ADM-F19: Revenue and catalog prices carry SUB-01 catalog disclaimers
+  ---
+  duration_ms: 0.265029
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F20 & ADM-F21: Permissions matrix reset restores state and save sets saved on success
+ok 126 - Phase 1F ADM-F20 & ADM-F21: Permissions matrix reset restores state and save sets saved on success
+  ---
+  duration_ms: 0.234343
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F24: Reports preview does not fabricate financial amounts when API rows missing
+ok 127 - Phase 1F ADM-F24: Reports preview does not fabricate financial amounts when API rows missing
+  ---
+  duration_ms: 0.404829
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F27: Activity log date filter compares normalized Date objects
+ok 128 - Phase 1F ADM-F27: Activity log date filter compares normalized Date objects
+  ---
+  duration_ms: 0.229025
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F29 & ADM-F30: ERP export requires confirmation and indicates file export
+ok 129 - Phase 1F ADM-F29 & ADM-F30: ERP export requires confirmation and indicates file export
+  ---
+  duration_ms: 0.262125
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F31 & ADM-F32: Settings includes security preference notice
+ok 130 - Phase 1F ADM-F31 & ADM-F32: Settings includes security preference notice
+  ---
+  duration_ms: 3.502626
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F34 & ADM-F35: Modals and tables use dynamic dir and dialog accessibility
+ok 131 - Phase 1F ADM-F34 & ADM-F35: Modals and tables use dynamic dir and dialog accessibility
+  ---
+  duration_ms: 1.180698
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F02 & ADM-F03: ASABPrototype guards search and notifications for companyless platform admin
+ok 132 - Phase 1F ADM-F02 & ADM-F03: ASABPrototype guards search and notifications for companyless platform admin
+  ---
+  duration_ms: 0.895419
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F25: AdminReports guards wizard progression and blocks step 4 without verified file and preview
+ok 133 - Phase 1F ADM-F25: AdminReports guards wizard progression and blocks step 4 without verified file and preview
+  ---
+  duration_ms: 0.35881
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F26: AdminReports guards delivery status KPI from false confirmation
+ok 134 - Phase 1F ADM-F26: AdminReports guards delivery status KPI from false confirmation
+  ---
+  duration_ms: 0.407744
+  type: 'test'
+  ...
+# Subtest: Phase 1F ADM-F22 & ADM-F23: AdminPermissions guards role cloning under PERM-00 governance
+ok 135 - Phase 1F ADM-F22 & ADM-F23: AdminPermissions guards role cloning under PERM-00 governance
+  ---
+  duration_ms: 0.239871
+  type: 'test'
+  ...
+# Subtest: Phase 1F Behavioral: AdminReports step navigation gate strictly prevents progression to send without verified file and server preview
+ok 136 - Phase 1F Behavioral: AdminReports step navigation gate strictly prevents progression to send without verified file and server preview
+  ---
+  duration_ms: 0.263567
+  type: 'test'
+  ...
+# Subtest: Phase 1F Behavioral: AdminPermissions fail-closed state preservation under PERM-00
+ok 137 - Phase 1F Behavioral: AdminPermissions fail-closed state preservation under PERM-00
+  ---
+  duration_ms: 1.060428
+  type: 'test'
+  ...
+# Subtest: Phase 1F Behavioral: AdminReports delivery KPIs honestly show '—' when server has not returned confirmed records
+ok 138 - Phase 1F Behavioral: AdminReports delivery KPIs honestly show '—' when server has not returned confirmed records
+  ---
+  duration_ms: 1.015289
+  type: 'test'
+  ...
+# Subtest: SUP-F04: orders retain Backend pagination and request the selected page
+ok 139 - SUP-F04: orders retain Backend pagination and request the selected page
+  ---
+  duration_ms: 135.172149
+  type: 'test'
+  ...
+# Subtest: SUP-F06: the synchronous mutation lock rejects a second click and releases on 403/409
+ok 140 - SUP-F06: the synchronous mutation lock rejects a second click and releases on 403/409
+  ---
+  duration_ms: 56.379919
+  type: 'test'
+  ...
+# Subtest: SUP-F11: import passes the explicit supplier record in multipart data
+ok 141 - SUP-F11: import passes the explicit supplier record in multipart data
+  ---
+  duration_ms: 35.056859
+  type: 'test'
+  ...
+# Subtest: SUP-F09: ambiguous records use Backend supplierIds without inventing names
+ok 142 - SUP-F09: ambiguous records use Backend supplierIds without inventing names
+  ---
+  duration_ms: 30.732945
+  type: 'test'
+  ...
+# Subtest: SUP-F20: actual item body preserves halalas and rejects malformed input
+ok 143 - SUP-F20: actual item body preserves halalas and rejects malformed input
+  ---
+  duration_ms: 32.230046
+  type: 'test'
+  ...
+# Subtest: SUP-F01: a disabled supplier build gate denies direct role resolution
+ok 144 - SUP-F01: a disabled supplier build gate denies direct role resolution
+  ---
+  duration_ms: 1.027638
+  type: 'test'
+  ...
+# Subtest: SUP-F06: a successful frontend mutation releases its lock without changing the result
+ok 145 - SUP-F06: a successful frontend mutation releases its lock without changing the result
+  ---
+  duration_ms: 19.327875
+  type: 'test'
+  ...
+# Subtest: SUP-F04: an existing legacy array response remains an explicitly single-page list
+ok 146 - SUP-F04: an existing legacy array response remains an explicitly single-page list
+  ---
+  duration_ms: 22.515447
+  type: 'test'
+  ...
+# Subtest: SUP-F10: update passes an explicit record without dropping the item identity
+ok 147 - SUP-F10: update passes an explicit record without dropping the item identity
+  ---
+  duration_ms: 18.461569
+  type: 'test'
+  ...
+# Subtest: SUP-F13/F14/F16 source wiring: supplier cannot mount company search, notifications, chat or the unused period filter
+ok 148 - SUP-F13/F14/F16 source wiring: supplier cannot mount company search, notifications, chat or the unused period filter
+  ---
+  duration_ms: 1.169823
+  type: 'test'
+  ...
+# Subtest: SUP-F01/F15 source wiring: the active picker filters the build flag and no new-order badge is fabricated
+ok 149 - SUP-F01/F15 source wiring: the active picker filters the build flag and no new-order badge is fabricated
+  ---
+  duration_ms: 0.824132
+  type: 'test'
+  ...
+# Subtest: SUP-F17/F18 source wiring: supplier forms use the installed modal primitive and direction context
+ok 150 - SUP-F17/F18 source wiring: supplier forms use the installed modal primitive and direction context
+  ---
+  duration_ms: 0.349897
+  type: 'test'
+  ...
+# Subtest: SUP-F04/F21 source wiring: all supplier order pages retain paging, loading and failure states
+ok 151 - SUP-F04/F21 source wiring: all supplier order pages retain paging, loading and failure states
+  ---
+  duration_ms: 0.193051
+  type: 'test'
+  ...
+# Subtest: SUP-F07/F08: canDeclareSupplierDelivery permits declaration only when filter and order are both accepted
+ok 152 - SUP-F07/F08: canDeclareSupplierDelivery permits declaration only when filter and order are both accepted
+  ---
+  duration_ms: 0.133401
+  type: 'test'
+  ...
+# Subtest: SUP-F07: delivered-history mode (status=delivered filter) must suppress the declare button for all order statuses
+ok 153 - SUP-F07: delivered-history mode (status=delivered filter) must suppress the declare button for all order statuses
+  ---
+  duration_ms: 0.181433
+  type: 'test'
+  ...
+# Subtest: SUP-F07/F08 source wiring: SupAccepted render uses canDeclareSupplierDelivery predicate, not raw statusKey comparison
+ok 154 - SUP-F07/F08 source wiring: SupAccepted render uses canDeclareSupplierDelivery predicate, not raw statusKey comparison
+  ---
+  duration_ms: 0.369076
+  type: 'test'
+  ...
+# Subtest: S1H-F06: role change removes shared/supplier caches but retains auth identity
+ok 155 - S1H-F06: role change removes shared/supplier caches but retains auth identity
+  ---
+  duration_ms: 3.732162
+  type: 'test'
+  ...
+# Subtest: S1H-F06: a shared query completing after role purge cannot restore old data
+ok 156 - S1H-F06: a shared query completing after role purge cannot restore old data
+  ---
+  duration_ms: 1.352888
+  type: 'test'
+  ...
+# Subtest: S1H-F20: clarification parent keeps the modal open until the real mutation promise resolves
+ok 157 - S1H-F20: clarification parent keeps the modal open until the real mutation promise resolves
+  ---
+  duration_ms: 54.952209
+  type: 'test'
+  ...
+# Subtest: S1H-F20: clarification propagates 403, retains the modal and releases its lock
+ok 158 - S1H-F20: clarification propagates 403, retains the modal and releases its lock
+  ---
+  duration_ms: 13.527768
+  type: 'test'
+  ...
+# Subtest: S1H-F20: clarification propagates 409, retains the modal and releases its lock
+ok 159 - S1H-F20: clarification propagates 409, retains the modal and releases its lock
+  ---
+  duration_ms: 8.969551
+  type: 'test'
+  ...
+# Subtest: S1H-F20: denied clarification sends no mutation and does not close as success
+ok 160 - S1H-F20: denied clarification sends no mutation and does not close as success
+  ---
+  duration_ms: 13.659657
+  type: 'test'
+  ...
+# Subtest: S1H-F20: duplicate clarification cannot send a second request
+ok 161 - S1H-F20: duplicate clarification cannot send a second request
+  ---
+  duration_ms: 14.501745
+  type: 'test'
+  ...
+# Subtest: S1H-F07 source invariant: shared widgets never assign arbitrary server links to window.location.hash
+ok 162 - S1H-F07 source invariant: shared widgets never assign arbitrary server links to window.location.hash
+  ---
+  duration_ms: 0.685552
+  type: 'test'
+  ...
+# Subtest: S1H-F03/F04 negative display capability: no company shared API for platform/supplier/unknown
+ok 163 - S1H-F03/F04 negative display capability: no company shared API for platform/supplier/unknown
+  ---
+  duration_ms: 0.441144
+  type: 'test'
+  ...
+# Subtest: S1H-F07: list navigation respects role, module and the actual visible menu
+ok 164 - S1H-F07: list navigation respects role, module and the actual visible menu
+  ---
+  duration_ms: 0.243176
+  type: 'test'
+  ...
+# Subtest: S1H-F07: notifications reject external, preview, encoded and out-of-role links
+ok 165 - S1H-F07: notifications reject external, preview, encoded and out-of-role links
+  ---
+  duration_ms: 0.245159
+  type: 'test'
+  ...
+# Subtest: S1H-F07: accepted FE search rows expose only established display fields
+ok 166 - S1H-F07: accepted FE search rows expose only established display fields
+  ---
+  duration_ms: 1.125034
+  type: 'test'
+  ...
+# Subtest: S1H-F07: raw Backend groups are blocked pending contract/scope verification, never silently empty or exposed
+ok 167 - S1H-F07: raw Backend groups are blocked pending contract/scope verification, never silently empty or exposed
+  ---
+  duration_ms: 2.010749
+  type: 'test'
+  ...
+# Subtest: S1H-F12/F13: real shared dialogs render named, labelled LTR/RTL markup (SSR unit, not browser)
+ok 168 - S1H-F12/F13: real shared dialogs render named, labelled LTR/RTL markup (SSR unit, not browser)
+  ---
+  duration_ms: 17.912843
+  type: 'test'
+  ...
+# Subtest: S1H-F19: actual chat handler retains failed and newer drafts and synchronously blocks duplicates
+ok 169 - S1H-F19: actual chat handler retains failed and newer drafts and synchronously blocks duplicates
+  ---
+  duration_ms: 8.390064
+  type: 'test'
+  ...
+# Subtest: S1H-F16/F17 source reconciliation: former orphan routes already have navigation
+ok 170 - S1H-F16/F17 source reconciliation: former orphan routes already have navigation
+  ---
+  duration_ms: 3.297232
+  type: 'test'
+  ...
+# Subtest: S1H-F06/F14 source wiring: role-keyed chat and an installed mobile Sheet remain on actual routes
+ok 171 - S1H-F06/F14 source wiring: role-keyed chat and an installed mobile Sheet remain on actual routes
+  ---
+  duration_ms: 3.808447
+  type: 'test'
+  ...
+# Subtest: PKG-6 sales guards prevent legacy effects for accountant and head
+ok 172 - PKG-6 sales guards prevent legacy effects for accountant and head
+  ---
+  duration_ms: 1.73934
+  type: 'test'
+  ...
+# Subtest: legacy accountant edit/save/assign/return and pending bulk approval remain active
+ok 173 - legacy accountant edit/save/assign/return and pending bulk approval remain active
+  ---
+  duration_ms: 0.396017
+  type: 'test'
+  ...
+# Subtest: absent and null reportReview permit legacy actions without inferring a mobile review
+ok 174 - absent and null reportReview permit legacy actions without inferring a mobile review
+  ---
+  duration_ms: 0.21938
+  type: 'test'
+  ...
+# Subtest: any non-null API review protects a sales day; SHF review does not trigger sales guards
+ok 175 - any non-null API review protects a sales day; SHF review does not trigger sales guards
+  ---
+  duration_ms: 0.211228
+  type: 'test'
+  ...
+# Subtest: head may return approved legacy sales, but cannot edit or assign its figures
+ok 176 - head may return approved legacy sales, but cannot edit or assign its figures
+  ---
+  duration_ms: 0.330188
+  type: 'test'
+  ...
+# Subtest: unrelated roles and missing operation never gain legacy sales mutation permissions
+ok 177 - unrelated roles and missing operation never gain legacy sales mutation permissions
+  ---
+  duration_ms: 0.360713
+  type: 'test'
+  ...
+# Subtest: locked or final legacy rows cannot save or assign; linked legacy correction stays available
+ok 178 - locked or final legacy rows cannot save or assign; linked legacy correction stays available
+  ---
+  duration_ms: 0.26524
+  type: 'test'
+  ...
+# Subtest: actual sales edit/save/assign handlers send no forbidden requests in either screen
+ok 179 - actual sales edit/save/assign handlers send no forbidden requests in either screen
+  ---
+  duration_ms: 772.805703
+  type: 'test'
+  ...
+# Subtest: actual reject confirmation and return handlers recheck review before HTTP or optimistic updates
+ok 180 - actual reject confirmation and return handlers recheck review before HTTP or optimistic updates
+  ---
+  duration_ms: 488.289086
+  type: 'test'
+  ...
+# Subtest: nullable Backend legacy evidence permits actual edit/save/assign only for allowed roles and states
+ok 181 - nullable Backend legacy evidence permits actual edit/save/assign only for allowed roles and states
+  ---
+  duration_ms: 1221.678033
+  type: 'test'
+  ...
+# Subtest: actual bulk handlers exclude PKG-6 before requests and optimistic state changes
+ok 182 - actual bulk handlers exclude PKG-6 before requests and optimistic state changes
+  ---
+  duration_ms: 74.331621
+  type: 'test'
+  ...
+# Subtest: accountant bulk selection excludes SHF across mixed selections and detail evidence
+ok 183 - accountant bulk selection excludes SHF across mixed selections and detail evidence
+  ---
+  duration_ms: 0.302625
+  type: 'test'
+  ...
+# Subtest: Dashboard and ASABPrototype shared bulk handlers never emit SHF or PKG-6 IDs
+ok 184 - Dashboard and ASABPrototype shared bulk handlers never emit SHF or PKG-6 IDs
+  ---
+  duration_ms: 515.408648
+  type: 'test'
+  ...
+# Subtest: ASABPrototype blocks protected approved rows while preserving head Legacy bulk
+ok 185 - ASABPrototype blocks protected approved rows while preserving head Legacy bulk
+  ---
+  duration_ms: 43.41573
+  type: 'test'
+  ...
+# Subtest: review arriving from detail blocks a legacy-looking list row, and null detail cannot erase list review
+ok 186 - review arriving from detail blocks a legacy-looking list row, and null detail cannot erase list review
+  ---
+  duration_ms: 0.148193
+  type: 'test'
+  ...
+# Subtest: a modal opened as legacy rechecks current API evidence before sending
+ok 187 - a modal opened as legacy rechecks current API evidence before sending
+  ---
+  duration_ms: 0.236627
+  type: 'test'
+  ...
+# Subtest: sales bulk approval sends only loaded eligible legacy IDs; expense and PKG-6 are excluded
+ok 188 - sales bulk approval sends only loaded eligible legacy IDs; expense and PKG-6 are excluded
+  ---
+  duration_ms: 0.260502
+  type: 'test'
+  ...
+# Subtest: an all-PKG-6 or empty selection sends no bulk request, including detail-only review
+ok 189 - an all-PKG-6 or empty selection sends no bulk request, including detail-only review
+  ---
+  duration_ms: 0.119641
+  type: 'test'
+  ...
+# Subtest: stale member evidence is preserved without inventing review or financial defaults
+ok 190 - stale member evidence is preserved without inventing review or financial defaults
+  ---
+  duration_ms: 0.125479
+  type: 'test'
+  ...
+# Subtest: missing financial evidence prevents editing, saving and assigning without blocking a legacy return
+ok 191 - missing financial evidence prevents editing, saving and assigning without blocking a legacy return
+  ---
+  duration_ms: 0.092189
+  type: 'test'
+  ...
+# Subtest: reconciliation evidence requires the API's actual integer amounts, including genuine zero
+ok 192 - reconciliation evidence requires the API's actual integer amounts, including genuine zero
+  ---
+  duration_ms: 0.125899
+  type: 'test'
+  ...
+# Subtest: channel POS and difference accept explicit null independently without changing evidence
+ok 193 - channel POS and difference accept explicit null independently without changing evidence
+  ---
+  duration_ms: 0.262826
+  type: 'test'
+  ...
+# Subtest: nullable channels still reject malformed amounts and missing required evidence
+ok 194 - nullable channels still reject malformed amounts and missing required evidence
+  ---
+  duration_ms: 0.374795
+  type: 'test'
+  ...
+# Subtest: COR-05 is available only for the accountant's current pending report-review phase with actual revisions
+ok 195 - COR-05 is available only for the accountant's current pending report-review phase with actual revisions
+  ---
+  duration_ms: 2.219573
+  type: 'test'
+  ...
+# Subtest: supported review absence follows Backend fallback, while missing or inconsistent versions fail closed
+ok 196 - supported review absence follows Backend fallback, while missing or inconsistent versions fail closed
+  ---
+  duration_ms: 0.37198
+  type: 'test'
+  ...
+# Subtest: draft exposes only present valid money and preserves separate SAR and halala units
+ok 197 - draft exposes only present valid money and preserves separate SAR and halala units
+  ---
+  duration_ms: 0.59086
+  type: 'test'
+  ...
+# Subtest: correction payload uses exact decimal strings, expected versions, and excludes gross sales
+ok 198 - correction payload uses exact decimal strings, expected versions, and excludes gross sales
+  ---
+  duration_ms: 0.890402
+  type: 'test'
+  ...
+# Subtest: allocation changes use integer halalas and require the current allocation version
+ok 199 - allocation changes use integer halalas and require the current allocation version
+  ---
+  duration_ms: 0.512673
+  type: 'test'
+  ...
+# Subtest: aggregator correction maps only the contract id and SAR amount without inventing labels or fields
+ok 200 - aggregator correction maps only the contract id and SAR amount without inventing labels or fields
+  ---
+  duration_ms: 0.267132
+  type: 'test'
+  ...
+# Subtest: fresh detail, role, phase and revisions are rechecked before a single mutation
+ok 201 - fresh detail, role, phase and revisions are rechecked before a single mutation
+  ---
+  duration_ms: 0.828388
+  type: 'test'
+  ...
+# Subtest: correction mutation hook posts to the dedicated endpoint and invalidates shift and review data
+ok 202 - correction mutation hook posts to the dedicated endpoint and invalidates shift and review data
+  ---
+  duration_ms: 86.181652
+  type: 'test'
+  ...
+# Subtest: the existing SHF detail panel mounts COR-05 only through the accountant evidence gate
+ok 203 - the existing SHF detail panel mounts COR-05 only through the accountant evidence gate
+  ---
+  duration_ms: 266.02293
+  type: 'test'
+  ...
+# Subtest: F-COR05-01 draft reads cash_collected and handover_notes, preserves original values, and detects modifications
+ok 204 - F-COR05-01 draft reads cash_collected and handover_notes, preserves original values, and detects modifications
+  ---
+  duration_ms: 0.35805
+  type: 'test'
+  ...
+# Subtest: COR-05-01 authoritative null notes are handled separately from unsupported/missing field
+ok 205 - COR-05-01 authoritative null notes are handled separately from unsupported/missing field
+  ---
+  duration_ms: 0.302075
+  type: 'test'
+  ...
+# Subtest: COR-05-02 lost POST response reconciles safely with exact command identity attribution without duplicate financial POST
+ok 206 - COR-05-02 lost POST response reconciles safely with exact command identity attribution without duplicate financial POST
+  ---
+  duration_ms: 2.6891
+  type: 'test'
+  ...
+# Subtest: COR-05-03 unit contract simulation: Dashboard branch employee selection behavior with >100 eligible employees
+ok 207 - COR-05-03 unit contract simulation: Dashboard branch employee selection behavior with >100 eligible employees
+  ---
+  duration_ms: 1.056662
+  type: 'test'
+  ...
+# Subtest: Security P1: fail-closed in-memory session protection distinguishes frontend non-restoration from backend revocation
+ok 208 - Security P1: fail-closed in-memory session protection distinguishes frontend non-restoration from backend revocation
+  ---
+  duration_ms: 0.223506
+  type: 'test'
+  ...
+1..208
+# tests 208
+# suites 0
+# pass 208
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4552.117392

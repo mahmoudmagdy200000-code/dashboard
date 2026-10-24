@@ -1,5 +1,6 @@
 import type { RoleKey } from "../api/types";
 import type { QueryClient } from "@tanstack/react-query";
+import { SUPPLIER_PORTAL_ENABLED } from "../featureFlags";
 
 type Identity = { roles?: unknown; id?: unknown; companyId?: unknown } | null | undefined;
 
@@ -98,6 +99,14 @@ const sensitivePrefixes: readonly (readonly string[])[] = [
   ["platform", "admin"], ["platform", "erp"], ["platform", "reports"], ["erp"], ["sales"],
   ["expense-invoices"], ["expenses"], ["assets"], ["cash-custody"],
   ["employees"], ["inventory"], ["waste"], ["purchases"], ["pipeline"], ["billing"],
+  ["branch"], ["platform", "branch"],
+  ["procurement"], ["platform", "procurement"], ["purchase-orders"],
+  ["platform", "supplier"],
+  ["search"], ["notifications"], ["support"], ["lookups"], ["suppliers"],
+  ["company-admin"], ["company-users"], ["company-invitations"],
+  ["company-brands"], ["company-modules"], ["company-settings"], ["subscription"],
+  ["reports"], ["audit-logs"], ["attachments"], ["reminders"], ["platform", "reminders"],
+  ["company"], ["modules"], ["exceptions"], ["exports"],
 ];
 
 /** Cancel before removal so a prior role's late response cannot restore financial cache. */
@@ -135,8 +144,9 @@ export function chooseGrantedRole(
   identity: Identity,
   supported: readonly RoleKey[],
   requested?: unknown,
+  supplierPortalEnabled = SUPPLIER_PORTAL_ENABLED,
 ): RoleKey | null {
-  const granted = grantedRoleKeys(identity);
+  const granted = grantedRoleKeys(identity).filter(role => role !== "supplier" || supplierPortalEnabled);
   if (typeof requested === "string" && supported.includes(requested as RoleKey)
     && granted.includes(requested as RoleKey)) return requested as RoleKey;
   return granted.find(role => supported.includes(role)) ?? null;
@@ -149,7 +159,7 @@ export function canOpenDashboard(identity: Identity, slug: string): boolean {
 }
 
 export function preferredDashboard(identity: Identity): string | null {
-  const role = grantedRoleKeys(identity)[0];
+  const role = grantedRoleKeys(identity).find(role => role !== "supplier" || SUPPLIER_PORTAL_ENABLED);
   if (!role) return null;
   return role === "admin" || role === "supplier" ? "asab/ASABPrototype" : "asab/CompanyDashboard";
 }

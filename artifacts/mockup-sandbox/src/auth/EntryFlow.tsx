@@ -2,9 +2,10 @@ import { useState, type ReactNode } from "react";
 import { LoginPage } from "./LoginPage";
 import { writeEntrySelection } from "./entrySelection";
 import { SUPPLIER_PORTAL_ENABLED } from "../featureFlags";
-import { V, G, CYAN, LOGO, ensureAuthStyles } from "./authTheme";
+import { V, G, CYAN, ensureAuthStyles } from "./authTheme";
 import { useSiteLang, type SiteLang } from "./siteLang";
 import { LangToggle } from "./LangToggle";
+import { AsabLogo } from "../components/AsabLogo";
 
 // Pre-login entry: choose dashboard → choose role → login. A professional split-panel
 // experience on the client's Electric Violet + GreyScale palette, fully bilingual
@@ -73,9 +74,7 @@ function BrandPanel({ t }: { t: Tr }) {
       <div className="asab-blob asab-blob--b" style={{ width: 360, height: 360, background: V[400], opacity: 0.28, bottom: -120, insetInlineEnd: -80 }} />
 
       <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column" }}>
-        <div className="asab-logo-in" style={{ background: "#fff", borderRadius: 18, padding: "14px 20px", alignSelf: "flex-start", boxShadow: "0 12px 32px rgba(0,0,0,.22)" }}>
-          <img src={LOGO} alt="ASAB — عصب" style={{ height: 52, width: "auto", display: "block" }} />
-        </div>
+        <AsabLogo variant="brand-card" />
 
         <div style={{ marginTop: "auto" }}>
           <h1 className="asab-rise" style={{ animationDelay: "80ms", fontSize: 34, fontWeight: 800, lineHeight: 1.25, margin: "0 0 14px", letterSpacing: "-0.01em" }}>

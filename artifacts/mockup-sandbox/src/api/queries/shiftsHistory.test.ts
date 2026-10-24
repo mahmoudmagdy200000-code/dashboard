@@ -70,18 +70,35 @@ test("branch options use only branch-scoped API rows, never brand or malformed r
 });
 
 test("both existing history screens reset pages and hide stale rows while fetching", () => {
-  const company = readFileSync(new URL("../../components/mockups/asab/CompanyDashboard.tsx",import.meta.url),"utf8");
-  const prototype = readFileSync(new URL("../../components/mockups/asab/ASABPrototype.tsx",import.meta.url),"utf8");
-  for (const screen of [company,prototype]) {
-    assert.match(screen,/useShiftsHistory\(\{dateFrom:historyDateFrom,dateTo:historyDateTo,branchId:historyBranchId,page:historyPageNum,pageSize:20\}\)/);
-    assert.match(screen,/setHistoryDateFrom\(e\.target\.value\);setHistoryPageNum\(1\)/);
-    assert.match(screen,/setHistoryDateTo\(e\.target\.value\);setHistoryPageNum\(1\)/);
-    assert.match(screen,/setHistoryBranchId\(e\.target\.value\);setHistoryPageNum\(1\)/);
-    assert.match(screen,/historyQuery\.isFetching/);
-    assert.match(screen,/historyPageTarget\(/);
-    assert.match(screen,/historyQuery\.isError/);
-    assert.match(screen,/history\.length===0|shiftHistory\.length===0/);
-    assert.match(screen,/historyBusy \|\| historyQuery\.isError \? \[\] :/);
-    assert.match(screen,/useShiftConfigs\("branch"\)/);
+  const company = readFileSync(new URL("../../components/mockups/asab/CompanyDashboard.tsx", import.meta.url), "utf8");
+  const accShifts = readFileSync(new URL("../../components/mockups/asab/_pages/accountant/AccShifts.tsx", import.meta.url), "utf8");
+  const headShift = readFileSync(new URL("../../components/mockups/asab/_pages/head/HeadShiftHistory.tsx", import.meta.url), "utf8");
+  const prototype = readFileSync(new URL("../../components/mockups/asab/ASABPrototype.tsx", import.meta.url), "utf8");
+
+  assert.match(prototype, /import\s*\{[^}]*AccShifts[^}]*\}\s*from\s*["']\.\/_pages\/accountant\/AccShifts["']/);
+  assert.match(prototype, /import\s*\{[^}]*HeadShiftHistory[^}]*\}\s*from\s*["']\.\/_pages\/head\/HeadShiftHistory["']/);
+
+  for (const screen of [company, accShifts]) {
+    assert.match(screen, /useShiftsHistory\(\{\s*dateFrom:\s*historyDateFrom,\s*dateTo:\s*historyDateTo,\s*branchId:\s*historyBranchId,\s*page:\s*historyPageNum,\s*pageSize:\s*20\s*\}\)/);
+    assert.match(screen, /setHistoryDateFrom\(e\.target\.value\);\s*setHistoryPageNum\(1\)/);
+    assert.match(screen, /setHistoryDateTo\(e\.target\.value\);\s*setHistoryPageNum\(1\)/);
+    assert.match(screen, /setHistoryBranchId\(e\.target\.value\);\s*setHistoryPageNum\(1\)/);
+    assert.match(screen, /historyQuery\.isFetching/);
+    assert.match(screen, /historyPageTarget\(/);
+    assert.match(screen, /historyQuery\.isError/);
+    assert.match(screen, /history\.length===0|shiftHistory\.length\s*===\s*0/);
+    assert.match(screen, /historyBusy\s*\|\|\s*historyQuery\.isError\s*\?\s*\[\]\s*:/);
+    assert.match(screen, /useShiftConfigs\("branch"\)/);
   }
+
+  // Head Shift History verification
+  assert.match(headShift, /useShiftsHistory\(\{\s*dateFrom,\s*dateTo,\s*branchId,\s*page,\s*pageSize:\s*20\s*\}\)/);
+  assert.match(headShift, /setDateFrom\(e\.target\.value\);\s*setPage\(1\)/);
+  assert.match(headShift, /setDateTo\(e\.target\.value\);\s*setPage\(1\)/);
+  assert.match(headShift, /setBranchId\(e\.target\.value\);\s*setPage\(1\)/);
+  assert.match(headShift, /query\.isFetching/);
+  assert.match(headShift, /historyPageTarget\(/);
+  assert.match(headShift, /query\.isError/);
+  assert.match(headShift, /rows\.length\s*===\s*0/);
+  assert.match(headShift, /busy\s*\|\|\s*query\.isError\s*\?\s*\[\]\s*:/);
 });

@@ -122,11 +122,11 @@ export interface CompanyModule {
 export interface CompanySettings {
   name?: string;
   city?: string;
-  crNumber?: string;
-  email?: string;
-  phone?: string;
-  vatNumber?: string;
-  logoUrl?: string;
+  crNumber?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  vatNumber?: string | null;
+  logoUrl?: string | null;
   [k: string]: unknown;
 }
 

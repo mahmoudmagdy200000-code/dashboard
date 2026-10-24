@@ -6,10 +6,12 @@ import axios, {
 import { clearTokensIfCurrent, getTokenState, rotateTokensIfCurrent, type TokenState } from "./tokens";
 import { ApiError, isErrorBody, type ApiErrorBody } from "./errors";
 
-const BASE_RAW = import.meta.env.VITE_API_BASE_URL ?? "";
+const BASE_RAW =
+  (typeof import.meta !== "undefined" && import.meta?.env?.VITE_API_BASE_URL) ||
+  "";
 const BASE = BASE_RAW.replace(/\/$/, "");
 
-if (!BASE) {
+if (!BASE && typeof window !== "undefined") {
   // eslint-disable-next-line no-console
   console.warn(
     "[api] VITE_API_BASE_URL is not set. Set it in .env (frontend root) before making API calls.",
