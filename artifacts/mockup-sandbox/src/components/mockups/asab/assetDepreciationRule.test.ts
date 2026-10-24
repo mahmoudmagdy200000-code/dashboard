@@ -102,8 +102,12 @@ test("T020: Enforce Halala Financial Display Precision in CompanyDashboard.tsx",
 
   // 2. Both asset displays must preserve halalas by dividing by 100 directly
   assert.ok(
-    content.includes("fmt((a.bookValueHalalas ?? 0) / 100)"),
-    "CompanyDashboard.tsx must format bookValueHalalas as (a.bookValueHalalas ?? 0) / 100",
+    content.includes("fmtSar2((a.bookValueHalalas ?? 0) / 100)"),
+    "CompanyDashboard.tsx must format bookValueHalalas as fmtSar2((a.bookValueHalalas ?? 0) / 100)",
+  );
+  assert.ok(
+    content.includes("minimumFractionDigits: 2, maximumFractionDigits: 2"),
+    "fmtSar2 must pin SAR display to exactly 2 decimals (review D-3)",
   );
 
   // 3. Halala precision test: 12345 halalas must scale to 123.45 SAR without losing decimal precision
@@ -112,6 +116,8 @@ test("T020: Enforce Halala Financial Display Precision in CompanyDashboard.tsx",
   assert.equal(scaledSar, 123.45, "12345 halalas must scale exactly to 123.45 SAR");
   assert.notEqual(Math.round(scaledSar), 123.45, "Math.round drops the .45 halalas to whole SAR 123");
 
-  const fmt = (n: number | null | undefined) => n == null ? "-" : n.toLocaleString("en-US", { minimumFractionDigits: 2 });
+  const fmt = (n: number | null | undefined) => n == null ? "-" : n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   assert.equal(fmt(scaledSar), "123.45", "fmt preserves 123.45 SAR");
+  assert.equal(fmt(1250 / 100), "12.50", "1250 halalas renders as 12.50 SAR");
+  assert.equal(fmt(1200 / 100), "12.00", "1200 halalas renders as 12.00 SAR");
 });
