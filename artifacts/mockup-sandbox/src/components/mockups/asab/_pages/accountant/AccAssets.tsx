@@ -391,7 +391,7 @@ function ExcelImportModal({
                   "اسم الفرع",
                   "رقم الفاتورة",
                   "التكلفة (ر.س)",
-                  "العمر الافتراضي (شهر)",
+                  "العمر الافتراضي (شهر) — لا يُستخدم لحساب إهلاك",
                   "أمين العهدة",
                   "ملاحظات",
                 ].map((col) => (
@@ -457,7 +457,7 @@ function ExcelImportModal({
                     <th className="px-3 py-2.5 text-right">الفرع</th>
                     <th className="px-3 py-2.5 text-center">رقم الفاتورة</th>
                     <th className="px-3 py-2.5 text-center">التكلفة</th>
-                    <th className="px-3 py-2.5 text-center">العمر (شهر)</th>
+                    <th className="px-3 py-2.5 text-center">العمر (شهر) — دون إهلاك</th>
                     <th className="px-3 py-2.5 text-center">أمين العهدة</th>
                   </tr>
                 </thead>
@@ -2084,7 +2084,7 @@ export function AccAssets({ navigate }: PageProps) {
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 block mb-1">
-                      العمر الافتراضي (شهر)
+                      {t("العمر الافتراضي (شهر) — لا يُستخدم لحساب إهلاك", "Useful life (months) — not used for depreciation")}
                     </label>
                     <input
                       value={newAsset.usefulLife}

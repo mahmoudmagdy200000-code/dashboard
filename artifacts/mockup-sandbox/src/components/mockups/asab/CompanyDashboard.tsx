@@ -5941,7 +5941,6 @@ function AccCompanyAssets() {
                 </div>
                 <div className="text-left flex-shrink-0">
                   <p className="font-mono font-bold text-purple-700 text-sm">{fmt(d.amount)} {SAR}</p>
-                  <p className="text-[10px] text-gray-400">{t("الاستهلاك","Depr.")}: {fmt(Math.round(d.amount/(d.usefulLife/12)))} {SAR}/{t("سنة","yr")}</p>
                 </div>
                 {d.status==="draft" ? (
                   <div className="flex gap-1.5 flex-shrink-0">
