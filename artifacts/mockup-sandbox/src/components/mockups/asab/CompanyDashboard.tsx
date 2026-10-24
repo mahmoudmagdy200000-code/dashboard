@@ -428,8 +428,8 @@ function ConvertToAssetModalCD({
           {step===2 && (
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-semibold text-gray-600 block mb-1">العمر الإنتاجي (الاستهلاك)</label>
-                <div className="grid grid-cols-2 gap-2">
+                <label className="text-xs font-semibold text-gray-600 block mb-1">{t("العمر الإنتاجي (شهراً) — لا يُستخدم لحساب إهلاك","Useful Life (months) — not used for depreciation")}</label>
+                <div className="grid grid-cols-3 gap-2">
                   {USEFUL_LIFE_CD.map(o=>(
                     <button key={o.val} onClick={()=>setUseful(o.val)}
                       className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-all text-right ${usefulLife===o.val?"bg-purple-600 text-white border-purple-600":"border-gray-200 text-gray-600 hover:border-purple-300"}`}>
@@ -442,8 +442,6 @@ function ConvertToAssetModalCD({
                 <div className="flex justify-between"><span className="text-gray-500">اسم الأصل</span><span className="font-semibold text-gray-800">{assetName}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">الفئة</span><span className="font-semibold text-gray-800">{catOptions.find(c=>c.key===cat)?.labelAr ?? cat}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">القيمة (قبل الضريبة)</span><span className="font-mono font-bold text-purple-700">{fmt(amtBeforeVat)} ر.س</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">الاستهلاك السنوي</span><span className="font-mono font-bold text-amber-700">{fmt(Math.round(amtBeforeVat/(usefulLife/12)))} ر.س/سنة</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">الاستهلاك الشهري</span><span className="font-mono font-bold text-amber-600">{fmt(Math.round(amtBeforeVat/usefulLife))} ر.س/شهر</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">العهدة</span><span className="font-semibold text-gray-800">{custodian||"—"}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">الكمية</span><span className="font-semibold text-gray-800">{qty}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">الفرع</span><span className="font-semibold text-gray-800">{branch}</span></div>
@@ -5858,10 +5856,9 @@ function AccCompanyAssets() {
     pending_accountant:"bg-purple-50 text-purple-700 border border-purple-200",
     confirmed:"bg-blue-50 text-blue-700 border border-blue-200",
   };
-  const SL:Record<string,string>={active:"نشط",maintenance:"صيانة",retired:"مُهلك",pending_branch:"بانتظار الفرع",pending_accountant:"بانتظار المحاسب",confirmed:"مؤكد"};
+  const SL:Record<string,string>={active:"نشط",maintenance:"صيانة",retired:"مستبعد",pending_branch:"بانتظار الفرع",pending_accountant:"بانتظار المحاسب",confirmed:"مؤكد"};
 
   const totalValue = summary ? summary.bookValueTotal/100 : apiAssets.reduce((s,a)=>s+(a.bookValueHalalas??0)/100,0);
-  const totalDep = apiAssets.reduce((s,a)=>s+(a.annualDepreciationHalalas??0)/100,0);
   const activeCount = summary?.active ?? apiAssets.filter(a=>a.status==="active").length;
   const maintCount = summary?.maintenance ?? apiAssets.filter(a=>a.status==="maintenance").length;
   const totalCount = summary?.total ?? apiAssets.length;
@@ -5990,9 +5987,8 @@ function AccCompanyAssets() {
         </div>
       )}
 
-      <div className="grid grid-cols-4 gap-4">
-        <KpiCard label={t("القيمة الدفترية","Book Value")}  value={fmt(totalValue)}  sub={SAR} icon={<Building2 size={18} className="text-blue-600"/>} accent="blue"/>
-        <KpiCard label={t("الاستهلاك السنوي","Annual Depr.")} value={fmt(totalDep)}   sub={`${SAR}/${t("سنة","yr")}`} icon={<ArrowLeftRight size={18} className="text-amber-600"/>} accent="amber"/>
+      <div className="grid grid-cols-3 gap-4">
+        <KpiCard label={t("القيمة المسجّلة","Registered Value")} value={fmt(totalValue)} sub={SAR} icon={<Building2 size={18} className="text-blue-600"/>} accent="blue"/>
         <KpiCard label={t("أصول نشطة","Active")}            value={String(activeCount)} sub={`${t("من","of")} ${totalCount}`} icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
         <KpiCard label={summary?t("بانتظار الفرع","Pending branch"):t("في صيانة","Maintenance")} value={String(summary?summary.pendingBranch:maintCount)} sub={t("أصول","assets")} icon={<AlertTriangle size={18} className="text-red-500"/>} accent="red"/>
       </div>
@@ -6012,13 +6008,13 @@ function AccCompanyAssets() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="grid grid-cols-7 gap-3 px-5 py-3 border-b border-gray-100 bg-gray-50 text-[10px] font-semibold text-gray-500">
-          <span className="col-span-2">{t("الأصل","Asset")}</span><span>{t("الفرع","Branch")}</span><span>{t("الفئة","Category")}</span><span>{t("القيمة الدفترية","Book value")}</span><span>{t("الاستهلاك/سنة","Depr./yr")}</span><span>{t("الحالة","Status")}</span>
+        <div className="grid grid-cols-6 gap-3 px-5 py-3 border-b border-gray-100 bg-gray-50 text-[10px] font-semibold text-gray-500">
+          <span className="col-span-2">{t("الأصل","Asset")}</span><span>{t("الفرع","Branch")}</span><span>{t("الفئة","Category")}</span><span>{t("القيمة المسجّلة","Registered Value")}</span><span>{t("الحالة","Status")}</span>
         </div>
         {apiAssets.length===0 ? (
           <div className="py-10 text-center text-gray-400 text-sm">✅ {t("لا توجد أصول","No assets")}</div>
         ) : apiAssets.map(a=>(
-          <div key={a.id} className="grid grid-cols-7 gap-3 px-5 py-4 border-b border-gray-50 last:border-0 items-center hover:bg-gray-50/50">
+          <div key={a.id} className="grid grid-cols-6 gap-3 px-5 py-4 border-b border-gray-50 last:border-0 items-center hover:bg-gray-50/50">
             <div className="col-span-2">
               <p className="font-semibold text-gray-800 text-sm">{a.name}</p>
               <p className="text-[10px] text-gray-400" dir="ltr">{a.publicId}{a.serial?` · ${a.serial}`:""}</p>
@@ -6026,7 +6022,6 @@ function AccCompanyAssets() {
             <div><p className="text-xs font-medium text-gray-700">{branchName(a.branchId)}</p><p className="text-[10px] text-gray-400">{a.custodian ?? "—"}</p></div>
             <span className="text-xs text-gray-500">{a.categoryLabelAr ?? catLabel(a.category)}</span>
             <span className="font-mono font-bold text-gray-800 text-sm">{fmt(Math.round((a.bookValueHalalas??0)/100))}</span>
-            <span className="font-mono text-xs text-amber-700">{fmt(Math.round((a.annualDepreciationHalalas??0)/100))}</span>
             <div className="flex items-center gap-1.5">
               <Badge className={`text-[10px] border ${SC[a.status]??SC.active}`}>{a.statusLabelAr ?? SL[a.status] ?? a.status}</Badge>
               <button onClick={e=>openEdit(a, e.currentTarget)} aria-label={t("تعديل الأصل: " + a.name, "Edit asset: " + a.name)} className="p-1 rounded text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"><Edit2 size={11}/></button>
@@ -6047,7 +6042,7 @@ function AccCompanyAssets() {
                 <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("رقم الفاتورة","Invoice #")}</label><input value={aForm.invNum} onChange={e=>setAForm(f=>({...f,invNum:e.target.value}))} dir="ltr" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
                 <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("الرقم التسلسلي","Serial")}</label><input value={aForm.serial} onChange={e=>setAForm(f=>({...f,serial:e.target.value}))} dir="ltr" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
                 <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("السعر (ر.س)","Price (SAR)")}</label><input type="number" value={aForm.price} onChange={e=>setAForm(f=>({...f,price:e.target.value}))} dir="ltr" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
-                <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("العمر الإنتاجي (شهر)","Useful Life (months)")}</label><select value={aForm.usefulLifeMonths} onChange={e=>setAForm(f=>({...f,usefulLifeMonths:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none">{USEFUL_LIFE_CD.map(o=><option key={o.val} value={String(o.val)}>{o.label}</option>)}</select></div>
+                <div><label className="text-xs font-semibold text-gray-600 block mb-1">{t("العمر الإنتاجي (شهر) — لا يُستخدم لحساب إهلاك","Useful Life (months) — not used for depreciation")}</label><select value={aForm.usefulLifeMonths} onChange={e=>setAForm(f=>({...f,usefulLifeMonths:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none">{USEFUL_LIFE_CD.map(o=><option key={o.val} value={String(o.val)}>{o.label}</option>)}</select></div>
                 <div className="col-span-2"><label className="text-xs font-semibold text-gray-600 block mb-1">{t("العهدة","Custodian")}</label><input value={aForm.custodian} onChange={e=>setAForm(f=>({...f,custodian:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
               </div>
               <div className="flex gap-2 justify-end pt-1"><Btn onClick={()=>setShowAdd(false)}>{t("إلغاء","Cancel")}</Btn><Btn variant="primary" onClick={submitAsset} disabled={!aForm.name.trim()||!aForm.branchId||createAssetMut.isPending}><Plus size={13}/> {t("إضافة","Add")}</Btn></div>
@@ -6067,7 +6062,7 @@ function AccCompanyAssets() {
                 <div><label htmlFor="edit-asset-category" className="text-xs font-semibold text-gray-600 block mb-1">{t("الفئة","Category")}</label><select id="edit-asset-category" value={eForm.category} onChange={e=>setEForm(f=>({...f,category:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none">{catOptions.map(c=><option key={c.key} value={c.key}>{c.labelAr}</option>)}</select></div>
                 <div><label htmlFor="edit-asset-status" className="text-xs font-semibold text-gray-600 block mb-1">{t("الحالة","Status")}</label><select id="edit-asset-status" value={eForm.status} onChange={e=>setEForm(f=>({...f,status:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none">{Object.keys(SL).map(k=><option key={k} value={k}>{SL[k]}</option>)}</select></div>
                 <div className="col-span-2"><label htmlFor="edit-asset-branch" className="text-xs font-semibold text-gray-600 block mb-1">{t("الفرع","Branch")}</label><select id="edit-asset-branch" value={eForm.branchId} onChange={e=>setEForm(f=>({...f,branchId:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"><option value="">{t("غير مخصص","Unassigned")}</option>{branchOpts.map(b=><option key={b.branchId} value={b.branchId}>{b.branchName}</option>)}</select></div>
-                <div><label htmlFor="edit-asset-book-value" className="text-xs font-semibold text-gray-600 block mb-1">{t("القيمة الدفترية (ر.س)","Book value (SAR)")}</label><input id="edit-asset-book-value" type="number" value={eForm.bookValue} onChange={e=>setEForm(f=>({...f,bookValue:e.target.value}))} dir="ltr" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
+                <div><label htmlFor="edit-asset-book-value" className="text-xs font-semibold text-gray-600 block mb-1">{t("القيمة المسجّلة (ر.س)","Registered value (SAR)")}</label><input id="edit-asset-book-value" type="number" value={eForm.bookValue} onChange={e=>setEForm(f=>({...f,bookValue:e.target.value}))} dir="ltr" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
                 <div><label htmlFor="edit-asset-serial" className="text-xs font-semibold text-gray-600 block mb-1">{t("الرقم التسلسلي","Serial")}</label><input id="edit-asset-serial" value={eForm.serial} onChange={e=>setEForm(f=>({...f,serial:e.target.value}))} dir="ltr" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
                 <div className="col-span-2"><label htmlFor="edit-asset-custodian" className="text-xs font-semibold text-gray-600 block mb-1">{t("العهدة","Custodian")}</label><input id="edit-asset-custodian" value={eForm.custodian} onChange={e=>setEForm(f=>({...f,custodian:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"/></div>
               </div>
