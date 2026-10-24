@@ -157,7 +157,7 @@ export function useCompanyPlans() {
   return useQuery({
     queryKey: queryKeys.plans,
     queryFn: async () => {
-      const res = await api.get<Plan[]>("/company/plans");
+      const res = await api.get<Plan[]>("/plans");
       return res.data;
     },
     staleTime: 60_000,
