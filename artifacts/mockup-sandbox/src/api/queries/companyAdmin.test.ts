@@ -2,7 +2,31 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
-import { buildInvitationPayload, type CreateCompanyInvitationInput } from "./companyAdmin.js";
+
+type CreateCompanyInvitationInput = {
+  email: string;
+  name?: string;
+  roleKey: "company-admin" | "head" | "accountant" | "branch" | "procurement";
+  brandId?: string;
+  branchId?: string;
+};
+
+const tsPath = new URL("./companyAdmin.ts", import.meta.url);
+const tsContent = readFileSync(tsPath, "utf8");
+const sourceFile = ts.createSourceFile("companyAdmin.ts", tsContent, ts.ScriptTarget.Latest, true);
+
+const fnDeclaration = sourceFile.statements.find(
+  (s): s is ts.FunctionDeclaration => ts.isFunctionDeclaration(s) && s.name?.text === "buildInvitationPayload",
+);
+assert.ok(fnDeclaration, "buildInvitationPayload must be declared in companyAdmin.ts");
+const fnText = fnDeclaration.getText(sourceFile).replace(/^export\s+/, "");
+const { outputText: jsCode } = ts.transpileModule(fnText, {
+  compilerOptions: { module: ts.ModuleKind.None },
+});
+const buildInvitationPayload: (input: CreateCompanyInvitationInput) => any = new Function(
+  `${jsCode}; return buildInvitationPayload;`,
+)();
+
 
 test("T007: buildInvitationPayload creates valid accountant payload requiring brandId", () => {
   const input: CreateCompanyInvitationInput = {

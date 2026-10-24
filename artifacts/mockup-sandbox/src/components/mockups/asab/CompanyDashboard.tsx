@@ -9,6 +9,7 @@ import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRows, shfReviewPageTarget, type ShfReviewAction, type ShfReviewGroup } from "./shiftReviewQueue";
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT, HEAD_EXPENSE_EVIDENCE_HINT } from "./headReviewGuards";
 import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocationHalalas, runShfAllocationCorrection, type ShfAllocationRow } from "./shiftAllocationCorrection";
+import { hasEmployeeDebitWarning } from "./_shared/formatters";
 import { api, generateCommandId } from "../../../api/client";
 import { toast } from "sonner";
 import { useState, useMemo, useEffect, useLayoutEffect, useRef, ReactNode, createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
@@ -6869,7 +6870,7 @@ function AccCompanyEmployees() {
                     <p className={`font-mono font-black text-sm ${balColor(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}`}>{fmtH(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}</p>
                   </div>
                 </div>
-                {statement?.autoDeductFromSalary && (
+                {hasEmployeeDebitWarning(statement) && (
                   <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
                     <AlertTriangle size={13} className="text-amber-600 flex-shrink-0"/>
                     <p className="text-[11px] text-amber-800 font-semibold">{t("رصيد مدين مسجل في كشف الحساب للتسوية وفق سياسة المنشأة","Debit balance recorded on employee statement for settlement per company policy")}</p>

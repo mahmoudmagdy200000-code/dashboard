@@ -24,7 +24,7 @@ import { Card } from "../../components/Card";
 import { Btn } from "../../components/Btn";
 import { Badge } from "../../components/Badge";
 import { EmptyState } from "../../components/EmptyState";
-import { fmtAmt } from "../../_shared/formatters";
+import { fmtAmt, hasEmployeeDebitWarning } from "../../_shared/formatters";
 import { BRANCHES } from "../../_shared/filterOps";
 import { useLang } from "../../_shared/LangContext";
 import type { PageProps } from "../../_shared/types";
@@ -468,7 +468,7 @@ export function AccEmployees({ setModal }: PageProps) {
                     </p>
                   </div>
                 </div>
-                {statement?.autoDeductFromSalary && (
+                {hasEmployeeDebitWarning(statement) && (
                   <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
                     <AlertTriangle
                       size={13}

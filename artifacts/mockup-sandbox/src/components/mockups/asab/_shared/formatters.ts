@@ -52,3 +52,10 @@ export const resolveAssetUrl = (u?: string | null): string => {
   const abs = /^https?:/i.test(s) ? s : `${APP_BASE_URL}${s.startsWith("/") ? "" : "/"}${s}`;
   return abs.replace(/(^https?:\/\/)|\/{2,}/gi, (_m, proto) => proto || "/");
 };
+
+/** Evaluates statement debit warning banner with fallback per Rule DIFF-04. */
+export const hasEmployeeDebitWarning = (
+  statement?: { hasDebitBalance?: boolean; autoDeductFromSalary?: boolean } | null
+): boolean => {
+  return Boolean(statement?.hasDebitBalance ?? statement?.autoDeductFromSalary);
+};
