@@ -3,6 +3,27 @@
 
 import type { OperationStatus, ModuleKey } from "./index";
 
+// ─── Company Invitations (Task A1 / FR-001) ──────────────────────────────────
+export interface CreateCompanyInvitationPayload {
+  email: string;
+  name?: string;
+  roleKey: "company-admin" | "head" | "accountant" | "branch" | "procurement";
+  brandId?: string;   // Mandatory if roleKey === 'accountant'
+  branchId?: string;  // Mandatory if roleKey === 'branch', strictly omit brandId
+}
+
+export interface CompanyInvitation {
+  id: string;
+  email: string;
+  name?: string;
+  roleKey: string;
+  brandId?: string;
+  branchId?: string;
+  status: "pending" | "accepted" | "revoked" | "expired";
+  createdAt: string;
+  expiresAt?: string;
+}
+
 // ─── Accountant dashboard summary (T04 §1) ───────────────────────────────────
 export interface AccDashboardCounts {
   awaitingReview: number;
@@ -658,8 +679,8 @@ export interface Asset {
   bookValue: number;
   bookValueHalalas: number;
   usefulLifeMonths: number;
-  monthlyDepreciationHalalas: number;
-  annualDepreciationHalalas: number;
+  monthlyDepreciationHalalas?: number;
+  annualDepreciationHalalas?: number;
   status: AssetStatus;
   statusLabelAr?: string;
   invNum?: string | null;
@@ -926,8 +947,10 @@ export interface EmployeeStatement {
   balance: number;
   balanceHalalas: number;
   balanceCaption: LabelCaption;
-  /** Standing balance < 0 → render the salary-deduction banner. */
-  autoDeductFromSalary: boolean;
+  /** Primary flag from backend v3.5 */
+  hasDebitBalance?: boolean;
+  /** Standing balance < 0 → render the salary-deduction banner (fallback). */
+  autoDeductFromSalary?: boolean;
   totalCredit: number;
   totalDebit: number;
   movementCount: number;

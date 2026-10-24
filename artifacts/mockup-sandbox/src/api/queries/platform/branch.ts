@@ -43,32 +43,6 @@ export function useBranchUploadStatusPlatform() {
   });
 }
 
-export function useBranchUploadPlatform() {
-  const qc = useQueryClient();
-  return useMutation({
-    // FormData is allowed — keep body loose to support multipart.
-    mutationFn: async ({
-      reportType,
-      body,
-    }: {
-      reportType: PlatformBranchReportType;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      body: any;
-    }) => {
-      const res = await api.post<unknown>(`/company/me/branch/upload/${reportType}`, body);
-      return res.data;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({
-        queryKey: ["platform", "branch", "upload", "status"],
-      });
-      qc.invalidateQueries({ queryKey: ["platform", "branch", "overview"] });
-      toast.success("تم رفع الملف");
-    },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
-  });
-}
-
 // ─── Employees ──────────────────────────────────────────────────────────────
 export function useBranchEmployeesPlatform() {
   return useQuery({
@@ -170,37 +144,6 @@ export function useUpdateBranchSettingsPlatform() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["platform", "branch", "settings"] });
       toast.success("تم تحديث الإعدادات");
-    },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
-  });
-}
-
-// ─── Asset / inventory confirmations ────────────────────────────────────────
-export function useConfirmBranchAssetPlatform() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const res = await api.post<unknown>(`/company/me/branch/assets/${id}/confirm`);
-      return res.data;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["platform", "branch", "overview"] });
-      toast.success("تم تأكيد الأصل");
-    },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
-  });
-}
-
-export function useReconfirmBranchInventoryPlatform() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const res = await api.post<unknown>(`/company/me/branch/inventory/${id}/reconfirm`);
-      return res.data;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["platform", "branch", "overview"] });
-      toast.success("تم تأكيد الجرد");
     },
     onError: (e) => toast.error(getErrorMessage(e, "ar")),
   });
