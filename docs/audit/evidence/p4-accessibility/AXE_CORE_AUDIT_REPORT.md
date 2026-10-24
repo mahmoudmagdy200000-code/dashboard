@@ -8,7 +8,7 @@
 **Standard Evaluated:** **WCAG 2.1 AA** (`wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`).
 **Standard Limitation Note:** This audit specifically evaluated WCAG 2.1 AA tags supported by axe-core 4.10.2. It does **NOT** constitute proof of complete WCAG 2.2 AA compliance (which includes additional criteria such as 2.4.11 Focus Not Obscured, 2.5.7 Dragging Movements, 2.5.8 Target Size Minimum, and 3.3.7 Redundant Entry).
 **Dependency Impact:** **Zero dependency changes** — `package.json` and `pnpm-lock.yaml` remain completely untouched, strictly adhering to Minimal Engineering rules.
-**Raw Machine Results:** Recorded in [`docs/audit/evidence/p4-accessibility/axe-results-raw.json`](file:///D:/claude/ASSAB%20ERP%20GITHUB%20BACKEND%20ANTIGRAVITY/dashboard-p3-qa/docs/audit/evidence/p4-accessibility/axe-results-raw.json).
+**Machine Results Summary:** Recorded in [`docs/audit/evidence/p4-accessibility/axe-results-summary.json`](file:///D:/claude/ASSAB%20ERP%20GITHUB%20BACKEND%20ANTIGRAVITY/dashboard-p3-qa/docs/audit/evidence/p4-accessibility/axe-results-summary.json).
 
 ---
 

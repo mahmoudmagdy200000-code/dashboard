@@ -891,7 +891,7 @@ B07 remains `PENDING_REVIEW`; static contract tests pass, but Browser QA remains
   - Untested Surfaces on Axe Axis (A03–A11 & B07):
     - Classified as `NOT_RUN` on the axe-core axis. Internal views have separate verified Browser Keyboard/Focus/RTL and AST/unit test evidence, but axe-core was not executed on authenticated internal views.
   - Evaluated Rules: `button-name`, `color-contrast`, `form-field-multiple-labels`, `label`, `aria-*`, `autocomplete-valid`, `nested-interactive`, `landmark-one-main`.
-  - Machine Raw Evidence: `docs/audit/evidence/p4-accessibility/axe-results-raw.json`.
+  - Machine Results Summary: `docs/audit/evidence/p4-accessibility/axe-results-summary.json`.
   - Video & Log Evidence: `p4_axe_verification_1792832405439.webp`, `docs/audit/evidence/p4-accessibility/AXE_CORE_AUDIT_REPORT.md`.
 
 - **Screen Reader (NVDA) Verification Status:**

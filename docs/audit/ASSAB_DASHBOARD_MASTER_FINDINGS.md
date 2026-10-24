@@ -2792,7 +2792,7 @@ This append-only supplement records the Phase 4 Accessibility Verification and Q
 - **Untested Surfaces on Axe Axis (A03–A11 & B07):**
   - Authenticated internal dashboard views were not scanned with axe-core. In accordance with independent review governance, they are classified strictly as `NOT_RUN` on this axis, even though their browser keyboard, DOM structure, and unit tests have verified passes.
 - **Applicable Rules Verified:** `button-name`, `color-contrast`, `form-field-multiple-labels`, `label`, `aria-*`, `autocomplete-valid`, `nested-interactive`, `landmark-one-main`.
-- **Machine Raw Results:** `docs/audit/evidence/p4-accessibility/axe-results-raw.json`.
+- **Machine Results Summary:** `docs/audit/evidence/p4-accessibility/axe-results-summary.json`.
 - **Audit Report:** `docs/audit/evidence/p4-accessibility/AXE_CORE_AUDIT_REPORT.md`.
 
 ### 4. Screen Reader (NVDA) Restriction & Alternative Documentation
