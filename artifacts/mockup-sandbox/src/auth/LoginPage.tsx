@@ -126,14 +126,19 @@ export function LoginPage() {
           autoComplete="current-password"
           required
           disabled={loggingIn}
-          style={{ ...inputBase, paddingInlineStart: 52 }}
+          style={{
+            ...inputBase,
+            paddingLeft: lang === "ar" ? 52 : 14,
+            paddingRight: lang === "ar" ? 14 : 52,
+          }}
         />
         <button
           type="button"
+          aria-label={showPassword ? t("إخفاء كلمة المرور", "Hide password") : t("إظهار كلمة المرور", "Show password")}
           onClick={() => setShowPassword((v) => !v)}
           style={{
             position: "absolute",
-            insetInlineStart: 8,
+            insetInlineEnd: 8,
             top: "50%",
             transform: "translateY(-50%)",
             background: "transparent",

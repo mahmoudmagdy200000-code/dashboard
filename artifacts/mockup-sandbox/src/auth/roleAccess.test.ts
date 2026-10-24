@@ -1003,3 +1003,35 @@ test("S1H-F06-EXT-B: delayed in-flight attachments response cannot restore purge
 
   client.clear();
 });
+
+test("GO-15 A01: LoginPage and ForgotPasswordPage bind programmatic labels to all inputs", () => {
+  const loginSrc = readFileSync(new URL("./LoginPage.tsx", import.meta.url), "utf8");
+  assert.match(loginSrc, /<label\s+htmlFor="login-email"/);
+  assert.match(loginSrc, /<input\s+[^>]*id="login-email"/);
+  assert.match(loginSrc, /<label\s+htmlFor="login-password"/);
+  assert.match(loginSrc, /<input\s+[^>]*id="login-password"/);
+  assert.match(loginSrc, /<label\s+htmlFor="login-two-factor-code"/);
+  assert.match(loginSrc, /<input\s+[^>]*id="login-two-factor-code"/);
+
+  const forgotSrc = readFileSync(new URL("./ForgotPasswordPage.tsx", import.meta.url), "utf8");
+  assert.match(forgotSrc, /<label\s+htmlFor="forgot-password-email"/);
+  assert.match(forgotSrc, /<input\s+[^>]*id="forgot-password-email"/);
+  assert.match(forgotSrc, /<label\s+htmlFor="forgot-password-token"/);
+  assert.match(forgotSrc, /<input\s+[^>]*id="forgot-password-token"/);
+  assert.match(forgotSrc, /<label\s+htmlFor="forgot-password-new-password"/);
+  assert.match(forgotSrc, /<input\s+[^>]*id="forgot-password-new-password"/);
+});
+
+test("GO-15 A02: LoginPage password reveal button is keyboard accessible with trailing positioning and non-colliding padding", () => {
+  const loginSrc = readFileSync(new URL("./LoginPage.tsx", import.meta.url), "utf8");
+  // type="button" and no tabIndex={-1}
+  assert.match(loginSrc, /<button\s+[^>]*type="button"[^>]*onClick=\{\(\)\s*=>\s*setShowPassword/);
+  assert.doesNotMatch(loginSrc, /setShowPassword[\s\S]*?tabIndex=\{-1\}/);
+  // Trailing positioning (insetInlineEnd)
+  assert.match(loginSrc, /insetInlineEnd:\s*8/);
+  // Non-colliding padding matching lang
+  assert.match(loginSrc, /paddingLeft:\s*lang\s*===\s*"ar"\s*\?\s*52\s*:\s*14/);
+  assert.match(loginSrc, /paddingRight:\s*lang\s*===\s*"ar"\s*\?\s*14\s*:\s*52/);
+  // Localized accessible name
+  assert.match(loginSrc, /aria-label=\{showPassword\s*\?\s*t\("إخفاء كلمة المرور",\s*"Hide password"\)\s*:\s*t\("إظهار كلمة المرور",\s*"Show password"\)\}/);
+});
