@@ -1,0 +1,148 @@
+name: ASSAB ERP — Staging Read-Only Smoke & Compatibility
+
+# ==============================================================================
+# ASSAB ERP — GO-17 / GO-18 STAGING READ-ONLY SMOKE DISPATCHER
+#
+# PURPOSE:
+# Automated, read-only smoke verification against Coolify Backend Staging
+# and Vercel Frontend Staging.
+#
+# SECURITY & GOVERNANCE RULES:
+# 1. Trigger: Strictly workflow_dispatch only. Never push/PR/schedule.
+# 2. Origin: The code that receives the staging password is checked out from THIS
+#    repository only (never from a fork), pinned to one exact commit SHA that is
+#    verified before any secret is exposed.
+# 3. Permissions: Strictly `contents: read`. Zero write or deploy permissions.
+# 4. Zero Secrets in Code or Logs: Passwords and tokens are never printed or saved.
+# 5. Pinned Source: Checks out the exact reviewed commit of PR #6 (see PINNED_SHA below).
+# 6. Mode: Strictly Read-Only API smoke (with safe session login and logout).
+#    Zero mutating operations; does NOT run financial fixtures or DB mutations.
+# 7. Fail-Closed: Execution aborts immediately if the secret or the operator
+#    attestation is missing. NOTE: the backend SHA input is an OPERATOR ATTESTATION
+#    (evidence label OPERATOR_PROVIDED), not a server-side verification.
+#
+# NOTE ON GITHUB ACTIONS WORKFLOW_DISPATCH VISIBILITY:
+# GitHub Actions requires a workflow definition to be present on the repository's
+# DEFAULT BRANCH (main) before the manual "Run workflow" button appears in the
+# GitHub UI. Pushing this file to the feature review branch prepares the workflow;
+# it will become active in GitHub UI once merged to main by Mahmoud.
+# ==============================================================================
+
+on:
+  workflow_dispatch:
+    inputs:
+      attested_deployed_backend_sha:
+        description: "Confirmed Coolify Backend deployment SHA (from Coolify logs by Mahmoud)"
+        required: true
+        type: string
+        default: "26f86c683a17a8c5ebe19771186d6b35230d62cf"
+      fixture_shift_id:
+        description: "Optional id of the 2026-10-24 balanced fixture shift (from the Mode C run). Without it, more than one shift on that date is reported BLOCKED."
+        required: false
+        type: string
+        default: ""
+      attested_frontend_staging_url:
+        description: "Attested Vercel Frontend staging URL (optional for API smoke, required for Browser QA)"
+        required: false
+        type: string
+        default: "https://assab-dashboard-staging.vercel.app"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assab-staging-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Staging Read-Only Smoke Verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: assab-staging-smoke
+
+    steps:
+      - name: Check out reviewed Dashboard commit
+        uses: actions/checkout@v4
+        with:
+          ref: "76035d89808961eae63b02ebf73a807eb7eaf58f"
+          persist-credentials: false
+
+      - name: Cryptographically verify checked-out commit matches audited SHA
+        run: |
+          set -euo pipefail
+          EXPECTED_AUDITED_SHA="76035d89808961eae63b02ebf73a807eb7eaf58f"
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          echo "Expected Audited SHA: $EXPECTED_AUDITED_SHA"
+          echo "Actual Checked-Out SHA: $ACTUAL_SHA"
+          if [ "$ACTUAL_SHA" != "$EXPECTED_AUDITED_SHA" ]; then
+            echo "::error::Security gate blocked: Checked out commit ($ACTUAL_SHA) does not match audited SHA ($EXPECTED_AUDITED_SHA). Refusing to run with secrets."
+            exit 1
+          fi
+          echo "Security verification passed: Exact audited commit confirmed."
+
+      - name: Fail closed if secrets or operator attestation are missing
+        env:
+          # Operator attestation only: this compares the dispatch input with the SHA
+          # Mahmoud read in Coolify. It does not query the server.
+          CONFIRMED_BACKEND_SHA: "26f86c683a17a8c5ebe19771186d6b35230d62cf"
+          INPUT_BACKEND_SHA: ${{ inputs.attested_deployed_backend_sha }}
+          STAGING_PASSWORD: ${{ secrets.ASSAB_STAGING_PASSWORD || secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          echo "Verifying environment prerequisites..."
+          if [ -z "$STAGING_PASSWORD" ]; then
+            echo "::error::ASSAB_STAGING_PASSWORD secret is missing in assab-staging-smoke environment."
+            exit 1
+          fi
+          if [ "$INPUT_BACKEND_SHA" != "$CONFIRMED_BACKEND_SHA" ]; then
+            echo "::error::Attested Backend SHA ($INPUT_BACKEND_SHA) does not match confirmed Coolify SHA ($CONFIRMED_BACKEND_SHA)."
+            exit 1
+          fi
+          echo "Prerequisites present: operator-attested Backend SHA ($CONFIRMED_BACKEND_SHA) and credentials. Attestation is not server verification."
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Verify TypeScript compilation
+        run: pnpm run typecheck
+
+      - name: Run targeted contract unit tests
+        run: |
+          node --import ./scripts/node_modules/tsx/dist/loader.mjs --test --test-force-exit \
+            artifacts/mockup-sandbox/src/api/queries/smokeContract.test.ts
+
+      - name: Execute Read-Only Staging Smoke & Sanitized Evidence Collection
+        shell: bash
+        env:
+          ASSAB_STAGING_API_ORIGIN: "https://szkrjqiuo9s6d6nsy5fldc0j.62.72.19.141.sslip.io"
+          ASSAB_STAGING_PASSWORD: ${{ secrets.ASSAB_STAGING_PASSWORD || secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
+          ASSAB_ROLELESS_EMAIL: ${{ secrets.ASSAB_ROLELESS_EMAIL || '' }}
+          ASSAB_VERCEL_FRONTEND_URL: ${{ inputs.attested_frontend_staging_url }}
+          ASSAB_BACKEND_DEPLOYED_SHA: ${{ inputs.attested_deployed_backend_sha }}
+          ASSAB_FRONTEND_DEPLOYED_SHA: "PENDING_VERCEL_DEPLOYMENT_ATTESTATION"
+          ASSAB_DEPLOYMENT_ATTESTED: "true"
+          ASSAB_SMOKE_FIXTURE_SHIFT_ID: ${{ inputs.fixture_shift_id }}
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/smoke-evidence
+          node --import ./scripts/node_modules/tsx/dist/loader.mjs scripts/smoke-test-staging.ts 2>&1 \
+            | tee artifacts/smoke-evidence/smoke-output.log
+
+      - name: Upload sanitized smoke test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: assab-smoke-evidence-${{ github.run_id }}
+          path: artifacts/smoke-evidence/
+          retention-days: 14
