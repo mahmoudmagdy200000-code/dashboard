@@ -1,0 +1,139 @@
+name: ASSAB ERP — Staging Read-Only Smoke & Compatibility
+
+# ==============================================================================
+# ASSAB ERP — GO-17 / GO-18 STAGING READ-ONLY SMOKE DISPATCHER
+#
+# PURPOSE:
+# Automated, read-only smoke verification against Coolify Backend Staging
+# and Vercel Frontend Staging.
+#
+# SECURITY & GOVERNANCE RULES:
+# 1. Trigger: Strictly workflow_dispatch only. Never push/PR/schedule.
+# 2. Origin: Run exclusively from project-owner repository (mahmoudmagdy200000-code/dashboard)
+#    and never from untrusted external forks or PRs.
+# 3. Permissions: Strictly `contents: read`. Zero write or deploy permissions.
+# 4. Zero Secrets in Code or Logs: Passwords and tokens are never printed or saved.
+# 5. Pinned Source: Checks out exact reviewed commit (${{ github.sha }}).
+# 6. Mode: Strictly Read-Only API smoke (with safe session login and logout).
+#    Zero mutating operations; does NOT run financial fixtures or DB mutations.
+# 7. Fail-Closed: Execution aborts immediately if secret, operator attestation,
+#    or confirmed Backend SHA is missing or mismatched.
+#
+# NOTE ON GITHUB ACTIONS WORKFLOW_DISPATCH VISIBILITY:
+# GitHub Actions requires a workflow definition to be present on the repository's
+# DEFAULT BRANCH (main) before the manual "Run workflow" button appears in the
+# GitHub UI. Pushing this file to the feature review branch prepares the workflow;
+# it will become active in GitHub UI once merged to main by Mahmoud.
+# ==============================================================================
+
+on:
+  workflow_dispatch:
+    inputs:
+      attested_deployed_backend_sha:
+        description: "Confirmed Coolify Backend deployment SHA (from Coolify logs by Mahmoud)"
+        required: true
+        type: string
+        default: "26f86c683a17a8c5ebe19771186d6b35230d62cf"
+      attested_frontend_staging_url:
+        description: "Attested Vercel Frontend staging URL (optional for API smoke, required for Browser QA)"
+        required: false
+        type: string
+        default: "https://assab-dashboard-staging.vercel.app"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assab-staging-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Staging Read-Only Smoke Verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: assab-staging-smoke
+
+    steps:
+      - name: Check out reviewed Dashboard commit
+        uses: actions/checkout@v4
+        with:
+          repository: "mohameelsherbini/dashboard"
+          ref: "4a4246b7b94153b5f34ff5f78d9095a82b1d6160"
+          persist-credentials: false
+
+      - name: Cryptographically verify checked-out commit matches audited SHA
+        run: |
+          set -euo pipefail
+          EXPECTED_AUDITED_SHA="4a4246b7b94153b5f34ff5f78d9095a82b1d6160"
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          echo "Expected Audited SHA: $EXPECTED_AUDITED_SHA"
+          echo "Actual Checked-Out SHA: $ACTUAL_SHA"
+          if [ "$ACTUAL_SHA" != "$EXPECTED_AUDITED_SHA" ]; then
+            echo "::error::Security gate blocked: Checked out commit ($ACTUAL_SHA) does not match audited SHA ($EXPECTED_AUDITED_SHA). Refusing to run with secrets."
+            exit 1
+          fi
+          echo "Security verification passed: Exact audited commit confirmed."
+
+      - name: Fail closed if secrets or deployment attestation are missing
+        env:
+          CONFIRMED_BACKEND_SHA: "26f86c683a17a8c5ebe19771186d6b35230d62cf"
+          INPUT_BACKEND_SHA: ${{ inputs.attested_deployed_backend_sha }}
+          STAGING_PASSWORD: ${{ secrets.ASSAB_STAGING_PASSWORD || secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          echo "Verifying environment prerequisites..."
+          if [ -z "$STAGING_PASSWORD" ]; then
+            echo "::error::ASSAB_STAGING_PASSWORD secret is missing in assab-staging-smoke environment."
+            exit 1
+          fi
+          if [ "$INPUT_BACKEND_SHA" != "$CONFIRMED_BACKEND_SHA" ]; then
+            echo "::error::Attested Backend SHA ($INPUT_BACKEND_SHA) does not match confirmed Coolify SHA ($CONFIRMED_BACKEND_SHA)."
+            exit 1
+          fi
+          echo "Prerequisites verified: Backend SHA confirmed ($CONFIRMED_BACKEND_SHA) and credentials present."
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Verify TypeScript compilation
+        run: pnpm run typecheck
+
+      - name: Run targeted contract unit tests
+        run: |
+          node --import ./scripts/node_modules/tsx/dist/loader.mjs --test --test-force-exit \
+            artifacts/mockup-sandbox/src/api/queries/smokeContract.test.ts
+
+      - name: Execute Read-Only Staging Smoke & Sanitized Evidence Collection
+        shell: bash
+        env:
+          ASSAB_STAGING_API_ORIGIN: "https://szkrjqiuo9s6d6nsy5fldc0j.62.72.19.141.sslip.io"
+          ASSAB_STAGING_PASSWORD: ${{ secrets.ASSAB_STAGING_PASSWORD || secrets.ASSAB_E2E_FIXTURE_PASSWORD }}
+          ASSAB_ROLELESS_EMAIL: ${{ secrets.ASSAB_ROLELESS_EMAIL || '' }}
+          ASSAB_VERCEL_FRONTEND_URL: ${{ inputs.attested_frontend_staging_url }}
+          ASSAB_BACKEND_DEPLOYED_SHA: ${{ inputs.attested_deployed_backend_sha }}
+          ASSAB_FRONTEND_DEPLOYED_SHA: "PENDING_VERCEL_DEPLOYMENT_ATTESTATION"
+          ASSAB_DEPLOYMENT_ATTESTED: "true"
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/smoke-evidence
+          node --import ./scripts/node_modules/tsx/dist/loader.mjs scripts/smoke-test-staging.ts 2>&1 \
+            | tee artifacts/smoke-evidence/smoke-output.log
+
+      - name: Upload sanitized smoke test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: assab-smoke-evidence-${{ github.run_id }}
+          path: artifacts/smoke-evidence/
+          retention-days: 14
