@@ -25,6 +25,7 @@ export async function openAs(page: Page, frontendUrl: string, session: AdminSess
   await page.addInitScript(
     ([tk, ek, lk, tokens, entry]) => {
       try {
+        window.sessionStorage.setItem(tk, tokens);
         window.localStorage.setItem(tk, tokens);
         window.localStorage.setItem(ek, entry);
         window.localStorage.setItem(lk, 'en');

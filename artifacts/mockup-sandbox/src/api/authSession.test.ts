@@ -15,6 +15,16 @@ Object.defineProperty(globalThis, "localStorage", {
     removeItem: (key: string) => { storage.delete(key); },
   },
 });
+const sessionStorageStore = new Map<string, string>();
+Object.defineProperty(globalThis, "sessionStorage", {
+  configurable: true,
+  value: {
+    getItem: (key: string) => sessionStorageStore.get(key) ?? null,
+    setItem: (key: string, value: string) => { sessionStorageStore.set(key, value); },
+    removeItem: (key: string) => { sessionStorageStore.delete(key); },
+    clear: () => { sessionStorageStore.clear(); },
+  },
+});
 if (!globalThis.window) Object.defineProperty(globalThis, "window", { configurable: true, value: new EventTarget() });
 if (!globalThis.CustomEvent) Object.defineProperty(globalThis, "CustomEvent", { configurable: true, value: class<T> extends Event {
   detail: T;
@@ -43,7 +53,7 @@ const vite = await createServer({
     },
   ],
 });
-const [{ api }, auth, tokens, { clearRetiredQueryClient }, { createQueryClient }] = await Promise.all([
+const [{ api }, auth, tokens, { clearRetiredQueryClient, pageForRole }, { createQueryClient }] = await Promise.all([
   vite.ssrLoadModule("/src/api/client.ts"),
   vite.ssrLoadModule("/src/api/auth.ts"),
   vite.ssrLoadModule("/src/api/tokens.ts"),
@@ -1147,6 +1157,7 @@ test("F-SHIFT-P1-02: P1-A failed refresh forced logout cleans real QueryClient, 
   currentUser = { id: "user-B" };
   assert.deepEqual(tokens.getTokens(), pair("Session-B"));
   assert.equal(currentUser.id, "user-B");
+  tokens.clearTokens();
 });
 
 test("F-SHIFT-P1-02: Phase A - storage failure never resurrects credentials on reload or new tab, requires fresh login", async () => {
@@ -1187,6 +1198,227 @@ test("F-SHIFT-P1-02: Phase A - storage failure never resurrects credentials on r
     globalThis.localStorage.setItem = originalSet;
     tokens.clearTokens();
   }
+});
+
+test("Phase 2: confirmed tokens in sessionStorage ARE restored across tab reload into memory", async () => {
+  tokens._resetSessionModuleForTesting();
+  sessionStorageStore.clear();
+  storage.clear();
+
+  // 1. Establish confirmed session
+  tokens.setTokens(pair("tab-user"));
+  assert.deepEqual(tokens.getTokens(), pair("tab-user"));
+  assert.ok(globalThis.sessionStorage.getItem("asab.tokens"), "Tokens committed to sessionStorage");
+
+  // 2. Simulate page reload (module re-initialization in the same tab)
+  tokens._resetSessionModuleForTesting();
+  assert.deepEqual(tokens.getTokens(), pair("tab-user"), "Tokens restored into memory on reload");
+  assert.equal(tokens.getTokenState().isProvisional, false, "Restored tokens are not provisional");
+
+  // 3. API interceptor attaches restored tokens
+  let attachedAuth: string | undefined;
+  api.defaults.adapter = (async (config: any) => {
+    attachedAuth = config.headers?.Authorization as string | undefined;
+    return response(config, { id: "user-123" });
+  }) as AxiosAdapter;
+
+  await api.get("/auth/me");
+  assert.equal(attachedAuth, "Bearer tab-user-access", "Axios interceptor sends restored access token");
+
+  tokens.clearTokens();
+});
+
+test("Phase 2: tab isolation: opening a new tab with empty sessionStorage starts logged out", async () => {
+  tokens._resetSessionModuleForTesting();
+  sessionStorageStore.clear();
+  storage.clear();
+
+  // Tab A logs in
+  tokens.setTokens(pair("tab-A-user"));
+  assert.deepEqual(tokens.getTokens(), pair("tab-A-user"));
+
+  // Tab B opens (has empty sessionStorage in browser, even if Tab A has active session)
+  tokens._resetSessionModuleForTesting();
+  sessionStorageStore.clear(); // tab B has its own independent sessionStorage
+
+  assert.equal(tokens.getTokens(), null, "Tab B has null tokens");
+  assert.equal(tokens.getTokenState().tokens, null, "Tab B token state is null");
+
+  // Legacy localStorage was NOT polluted with Tab A credentials
+  assert.equal(globalThis.localStorage.getItem("asab.tokens"), null, "localStorage does not contain tokens from tab A");
+
+  tokens.clearTokens();
+});
+
+test("Phase 2: revocation marker in sessionStorage prevents token restoration on reload", async () => {
+  tokens._resetSessionModuleForTesting();
+  sessionStorageStore.clear();
+
+  // Stuck tokens in sessionStorage, but revocation marker is set
+  globalThis.sessionStorage.setItem("asab.tokens", JSON.stringify(pair("revoked-user")));
+  globalThis.sessionStorage.setItem("asab.session_revoked", "1");
+
+  tokens._resetSessionModuleForTesting();
+
+  assert.equal(tokens.getTokens(), null, "Revocation marker prevents restoration");
+  assert.equal(tokens.getTokenState().tokens, null, "TokenState is null");
+});
+
+test("Phase 2: legacy tokens in localStorage are scrubbed and never restored on initialization", async () => {
+  tokens._resetSessionModuleForTesting();
+  sessionStorageStore.clear();
+  storage.clear();
+
+  // Legacy persistent token in localStorage
+  globalThis.localStorage.setItem("asab.tokens", JSON.stringify(pair("legacy-cross-tab-token")));
+
+  tokens._resetSessionModuleForTesting();
+
+  assert.equal(tokens.getTokens(), null, "Legacy localStorage tokens are NOT restored");
+  assert.equal(globalThis.localStorage.getItem("asab.tokens"), null, "Legacy localStorage tokens were scrubbed from storage");
+});
+
+test("Phase 2: provisional tokens during pending login or 2FA are never persisted to sessionStorage", async () => {
+  tokens._resetSessionModuleForTesting();
+  sessionStorageStore.clear();
+
+  // Store provisional credentials (e.g. login credentials awaiting /auth/me or 2FA)
+  tokens.setProvisionalTokens(pair("provisional-user"));
+  assert.deepEqual(tokens.getTokens(), pair("provisional-user"));
+  assert.equal(tokens.hasProvisionalTokens(), true);
+  assert.equal(globalThis.sessionStorage.getItem("asab.tokens"), null, "Provisional tokens NOT committed to sessionStorage");
+
+  // Reload tab while provisional
+  tokens._resetSessionModuleForTesting();
+  assert.equal(tokens.getTokens(), null, "Provisional credentials do NOT survive reload");
+
+  // Now test confirmSessionTokens(): commits to storage once verified
+  const sessionId = tokens.setProvisionalTokens(pair("confirmed-user"));
+  assert.equal(globalThis.sessionStorage.getItem("asab.tokens"), null);
+  tokens.confirmSessionTokens(sessionId);
+  assert.ok(globalThis.sessionStorage.getItem("asab.tokens"), "Confirmed credentials committed to sessionStorage");
+
+  // Now reload restores it
+  tokens._resetSessionModuleForTesting();
+  assert.deepEqual(tokens.getTokens(), pair("confirmed-user"), "Confirmed credentials restored on reload");
+
+  tokens.clearTokens();
+});
+
+test("Phase 2 Mandatory Security Gate: double storage failure on logout + server token revocation protects user on reload", async () => {
+  resetAdapters();
+  tokens._resetSessionModuleForTesting();
+  sessionStorageStore.clear();
+
+  // 1. User logs in
+  tokens.setTokens(pair("gate-user"));
+  let serverRevoked = false;
+
+  // 2. Server-side logout endpoint revokes token in DB (Sanctum behavior)
+  api.defaults.adapter = (async (config: any) => {
+    if (config.url?.includes("/auth/logout")) {
+      serverRevoked = true;
+      return response(config, {});
+    }
+    if (config.url?.includes("/auth/me")) {
+      if (serverRevoked) throw unauthorized(config);
+      return response(config, { id: "gate-user", role: "branch" });
+    }
+    return response(config, {});
+  }) as AxiosAdapter;
+
+  axios.defaults.adapter = (async (config: any) => {
+    if (config.url?.includes("/auth/refresh")) {
+      // Refresh token was also revoked in the family
+      throw unauthorized(config);
+    }
+    return response(config, {});
+  }) as AxiosAdapter;
+
+  // 3. User logs out, BUT storage completely fails (both removeItem and setItem throw)
+  const origSessionRemove = globalThis.sessionStorage.removeItem;
+  const origSessionSet = globalThis.sessionStorage.setItem;
+  globalThis.sessionStorage.removeItem = () => { throw new Error("Storage failure: disk read-only"); };
+  globalThis.sessionStorage.setItem = () => { throw new Error("Storage failure: quota exceeded"); };
+
+  try {
+    await auth.logout();
+  } catch {}
+  finally {
+    globalThis.sessionStorage.removeItem = origSessionRemove;
+    globalThis.sessionStorage.setItem = origSessionSet;
+  }
+
+  assert.equal(serverRevoked, true, "Server received logout request and revoked token family");
+  assert.equal(tokens.getTokens(), null, "In-memory tokens cleared during logout");
+
+  // Because storage writes failed, the old token string was left stuck in sessionStorageStore
+  globalThis.sessionStorage.setItem("asab.tokens", JSON.stringify(pair("gate-user")));
+
+  // 4. Now simulate tab reload (F5)
+  tokens._resetSessionModuleForTesting();
+
+  // Tokens read from storage into unconfirmed memory state
+  assert.deepEqual(tokens.getTokens(), pair("gate-user"));
+
+  // 5. AuthContext bootstrap runs /auth/me revalidation:
+  // Server returns 401 Unauthorized because server revoked the token!
+  // Axios refresh interceptor tries /auth/refresh, which also fails with 401.
+  let forcedLogoutDispatched = false;
+  const onForcedLogout = () => { forcedLogoutDispatched = true; };
+  window.addEventListener("asab:auth:logout", onForcedLogout);
+
+  try {
+    await assert.rejects(api.get("/auth/me"), (err: any) => err.status === 401 || err.message === "Unauthorized");
+  } finally {
+    window.removeEventListener("asab:auth:logout", onForcedLogout);
+  }
+
+  assert.equal(forcedLogoutDispatched, true, "Forced logout dispatched when server rejects revoked token");
+  assert.equal(tokens.getTokens(), null, "Tokens wiped from memory");
+  tokens.clearTokens();
+});
+
+test("Phase 2 Mandatory Security Gate: boundary documentation for offline logout with broken storage", async () => {
+  tokens._resetSessionModuleForTesting();
+  sessionStorageStore.clear();
+
+  // Documentation boundary test:
+  // When BOTH the network is down (server never receives logout) AND
+  // the client browser storage refuses writes/deletes (disk full/read-only),
+  // browser storage physically cannot retain the logout intent across process restart.
+  // We assert that the client-side system fails closed as much as possible:
+  tokens.setTokens(pair("offline-fail-user"));
+  const origRemove = globalThis.sessionStorage.removeItem;
+  globalThis.sessionStorage.removeItem = () => { throw new Error("Disk full"); };
+
+  try {
+    assert.throws(() => tokens.clearTokens(), /Disk full/);
+  } finally {
+    globalThis.sessionStorage.removeItem = origRemove;
+  }
+
+  // Memory is immediately zeroed in the active session
+  assert.equal(tokens.getTokens(), null, "In-memory tokens are immediately cleared in finally block");
+  assert.equal(tokens.getTokenState().tokens, null, "Active session terminated in memory");
+});
+
+test("Phase 2: subpage history restoration: valid subpage restored, invalid subpage rejected", () => {
+  // 1. Accountant role valid subpage (must start with 'acc-')
+  const accPage = pageForRole("accountant" as any, "acc-expenses", "acc-shifts");
+  assert.equal(accPage, "acc-expenses", "Authorized subpage 'acc-expenses' is permitted for accountant");
+
+  // 2. Head role valid subpage (must start with 'head-')
+  const headPage = pageForRole("head" as any, "head-final-approvals", "head-approvals");
+  assert.equal(headPage, "head-final-approvals", "Authorized subpage 'head-final-approvals' is permitted for head");
+
+  // 3. Branch manager trying to access accountant-only 'acc-expenses' subpage
+  const branchAttempt = pageForRole("branch" as any, "acc-expenses", "");
+  assert.notEqual(branchAttempt, "acc-expenses", "Branch manager cannot access accountant subpage");
+
+  // 4. Fallback is applied when subpage is invalid for role
+  const safeBranchPage = pageForRole("branch" as any, "acc-expenses", "branch-dashboard");
+  assert.equal(safeBranchPage, "branch-dashboard", "Invalid subpage safely falls back to default role page");
 });
 
 test.after(async () => {

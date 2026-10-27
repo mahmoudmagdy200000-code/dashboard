@@ -8483,7 +8483,16 @@ function CompanyDashboardInner() {
   const initRole = chooseGrantedRole(user,companyRoles,
     initSel?.slug === "asab/CompanyDashboard" ? initSel.role : null) as CRole | null;
   const [role, setRole] = useState<CRole|null>(initRole);
-  const [page, setPage] = useState<string>(initRole ? DEFAULT_PAGE[initRole] : "");
+  let initPage = initRole ? DEFAULT_PAGE[initRole] : "";
+  if (initRole && typeof window !== "undefined") {
+    try {
+      const historyPage = (window.history?.state as { asabCoPage?: string } | null)?.asabCoPage;
+      if (typeof historyPage === "string" && pageForRole(initRole, historyPage, "") === historyPage) {
+        initPage = historyPage;
+      }
+    } catch {}
+  }
+  const [page, setPage] = useState<string>(initPage);
   const allowedRoles = grantedRoleKeys(user).filter(r => companyRoles.includes(r)) as CRole[];
   const currentRole = role && allowedRoles.includes(role) ? role : allowedRoles[0] ?? null;
   const currentPage = currentRole ? pageForRole(currentRole,page,DEFAULT_PAGE[currentRole]) : "";
