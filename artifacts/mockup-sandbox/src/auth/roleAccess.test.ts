@@ -61,6 +61,12 @@ test("Backend scope rules accept valid hierarchy arrays and reject malformed gra
   assert.deepEqual(grantedRoleKeys(identity([{...grant("accountant","brand",[brandA]),
     restaurantIds:[restaurantA],branchIds:[branchA]}])),["accountant"]);
   assert.deepEqual(grantedRoleKeys(identity([grant("branch","branch",[branchA])])),["branch"]);
+  assert.deepEqual(grantedRoleKeys(identity([{...grant("branch","branch",[branchA]),
+    brandIds:[brandA]}])),["branch"]);
+  assert.deepEqual(grantedRoleKeys(identity([{...grant("branch","branch",[branchA]),
+    restaurantIds:[restaurantA]}])),["branch"]);
+  assert.deepEqual(grantedRoleKeys(identity([{...grant("branch","branch",[branchA]),
+    brandIds:[brandA],restaurantIds:[restaurantA]}])),["branch"]);
   assert.deepEqual(grantedRoleKeys(identity([grant("accountant","restaurant",[restaurantA])])),["accountant"]);
   assert.deepEqual(grantedRoleKeys(identity([{...grant("accountant","restaurant",[restaurantA]),
     brandIds:[brandA],branchIds:[branchA]}])),["accountant"]);
@@ -68,8 +74,8 @@ test("Backend scope rules accept valid hierarchy arrays and reject malformed gra
   for (const bad of [
     grant("accountant","branch",[branchA]), grant("branch","brand",[brandA]),
     grant("branch","branch",[]),grant("branch","branch",[branchA,restaurantA]),
-    {...grant("branch","branch",[branchA]),brandIds:[brandA]},
-    {...grant("branch","branch",[branchA]),restaurantIds:[restaurantA]},
+    {...grant("branch","branch",[branchA]),brandIds:[brandA,branchA]},
+    {...grant("branch","branch",[branchA]),restaurantIds:[restaurantA,branchA]},
     grant("accountant","restaurant",[]),
     {...grant("accountant","brand",[brandA]),brandIds:[" "]},
     {...grant("accountant","brand",[brandA]),brandIds:["not-a-uuid"]},
@@ -1034,4 +1040,381 @@ test("GO-15 A02: LoginPage password reveal button is keyboard accessible with tr
   assert.match(loginSrc, /paddingRight:\s*lang\s*===\s*"ar"\s*\?\s*14\s*:\s*52/);
   // Localized accessible name
   assert.match(loginSrc, /aria-label=\{showPassword\s*\?\s*t\("إخفاء كلمة المرور",\s*"Hide password"\)\s*:\s*t\("إظهار كلمة المرور",\s*"Show password"\)\}/);
+});
+
+const brandB = "44444444-4444-4444-8444-444444444444";
+const restaurantB = "55555555-5555-4555-8555-555555555555";
+const branchB = "66666666-6666-4666-8666-666666666666";
+const companyUuidA = "77777777-7777-4777-8777-777777777777";
+const companyUuidB = "88888888-8888-4888-8888-888888888888";
+
+const harnessBranchGrant = {
+  key: "branch",
+  scope: "branch",
+  brandIds: [brandA],
+  restaurantIds: [restaurantA],
+  branchIds: [branchA],
+  moduleKeys: [],
+};
+
+const harnessBranchManager = {
+  id: "99999999-9999-4999-8999-999999999999",
+  name: "[HARNESS] Branch Manager",
+  email: "assab-ui-qa-20261018.branch-manager@fixture.invalid",
+  companyId: companyUuidA,
+  defaultPage: "/company/me/branch/overview",
+  roles: [harnessBranchGrant],
+  permissions: {},
+};
+
+test("Branch Manager positive grants: accepts populated parent Brand/Restaurant IDs and valid single-branch shapes", () => {
+  // 1. Exact live staging harness /auth/me payload (1 brandId, 1 restaurantId, 1 branchId)
+  assert.deepEqual(grantedRoleKeys(harnessBranchManager), ["branch"]);
+  assert.equal(hasRoleGrant(harnessBranchManager, "branch"), true);
+  assert.equal(
+    hasRoleGrant(harnessBranchManager, "admin", "company-admin", "head", "accountant", "procurement", "supplier"),
+    false,
+  );
+
+  // 2. Company Admin invitation-acceptance shape (OnboardController: 1 brandId, 0 restaurantIds, 1 branchId)
+  const invitedBranchManager = {
+    ...harnessBranchManager,
+    roles: [{ ...harnessBranchGrant, restaurantIds: [] }],
+  };
+  assert.deepEqual(grantedRoleKeys(invitedBranchManager), ["branch"]);
+
+  // 3. Admin direct-creation shape (Admin\UserController: 0 brandIds, 0 restaurantIds, 1 branchId)
+  const minimalBranchManager = {
+    ...harnessBranchManager,
+    roles: [{ ...harnessBranchGrant, brandIds: [], restaurantIds: [] }],
+  };
+  assert.deepEqual(grantedRoleKeys(minimalBranchManager), ["branch"]);
+
+  // 4. Restaurant-linked single-branch shape with explicit valid moduleKeys
+  const restaurantTaggedBranchManager = {
+    ...harnessBranchManager,
+    roles: [{ ...harnessBranchGrant, brandIds: [], moduleKeys: ["sales", "inventory"] }],
+  };
+  assert.deepEqual(grantedRoleKeys(restaurantTaggedBranchManager), ["branch"]);
+});
+
+test("Branch Manager negative grants: rejects zero/multiple branches, inconsistent multi-hierarchy, invalid UUIDs, duplicates, and unauthorized roles", () => {
+  const invalidGrants: unknown[] = [
+    // Zero branchIds (even when parent brandIds/restaurantIds are populated)
+    { ...harnessBranchGrant, branchIds: [] },
+    { ...harnessBranchGrant, brandIds: [], restaurantIds: [], branchIds: [] },
+    // Multiple branchIds (unsupported by single-branch contract)
+    { ...harnessBranchGrant, branchIds: [branchA, branchB] },
+    { ...harnessBranchGrant, brandIds: [], restaurantIds: [], branchIds: [branchA, branchB] },
+    // Wrong scope labels for branch role
+    { ...harnessBranchGrant, scope: "all" },
+    { ...harnessBranchGrant, scope: "brand" },
+    { ...harnessBranchGrant, scope: "restaurant" },
+    { ...harnessBranchGrant, scope: "tenant" },
+    // Inconsistent multi-brand or multi-restaurant arrays on a single-branch grant (blocks TenantBranchResolver widening)
+    { ...harnessBranchGrant, brandIds: [brandA, brandB] },
+    { ...harnessBranchGrant, restaurantIds: [restaurantA, restaurantB] },
+    // Invalid, whitespace-padded, or duplicate UUIDs in any hierarchy array
+    { ...harnessBranchGrant, branchIds: ["not-a-uuid"] },
+    { ...harnessBranchGrant, branchIds: [` ${branchA} `] },
+    { ...harnessBranchGrant, brandIds: ["invalid-brand-uuid"] },
+    { ...harnessBranchGrant, brandIds: [brandA, brandA] },
+    { ...harnessBranchGrant, restaurantIds: ["invalid-restaurant-uuid"] },
+    { ...harnessBranchGrant, restaurantIds: [restaurantA, restaurantA] },
+    // Malformed payloads (missing arrays, null, non-array fields, invalid moduleKeys)
+    { key: "branch", scope: "branch", branchIds: [branchA] },
+    { ...harnessBranchGrant, brandIds: null },
+    { ...harnessBranchGrant, restaurantIds: undefined },
+    { ...harnessBranchGrant, branchIds: branchA },
+    { ...harnessBranchGrant, moduleKeys: null },
+    { ...harnessBranchGrant, moduleKeys: ["INVALID_UPPER"] },
+    { ...harnessBranchGrant, moduleKeys: ["sales", "sales"] },
+    // Unauthorized / unknown role keys
+    { ...harnessBranchGrant, key: "cashier" },
+    { ...harnessBranchGrant, key: "branch_manager" },
+    { ...harnessBranchGrant, key: "brand-owner" },
+    { ...harnessBranchGrant, key: "" },
+  ];
+
+  for (const badGrant of invalidGrants) {
+    // Even if legacy top-level role claims "admin" or "branch", invalid /auth/me grants fail closed.
+    const subject = { ...harnessBranchManager, role: "admin", roles: [badGrant] };
+    assert.deepEqual(grantedRoleKeys(subject), []);
+    assert.equal(canOpenDashboard(subject, "asab/CompanyDashboard"), false);
+    assert.equal(canOpenDashboard(subject, "asab/ASABPrototype"), false);
+    assert.equal(preferredDashboard(subject), null);
+  }
+
+  // Duplicate branch role assignments fail closed in either order
+  for (const dupRoles of [
+    [harnessBranchGrant, harnessBranchGrant],
+    [harnessBranchGrant, { ...harnessBranchGrant, branchIds: [branchB] }],
+    [harnessBranchGrant, { ...harnessBranchGrant, brandIds: [], restaurantIds: [] }],
+  ]) {
+    assert.deepEqual(grantedRoleKeys({ ...harnessBranchManager, roles: dupRoles }), []);
+    assert.equal(canOpenDashboard({ ...harnessBranchManager, roles: dupRoles }, "asab/CompanyDashboard"), false);
+  }
+
+  // Pairing a valid branch grant alongside an unauthorized or malformed sibling grant also fails closed
+  assert.deepEqual(
+    grantedRoleKeys({ ...harnessBranchManager, roles: [harnessBranchGrant, { ...harnessBranchGrant, key: "cashier" }] }),
+    [],
+  );
+  assert.deepEqual(
+    grantedRoleKeys({ ...harnessBranchManager, roles: [harnessBranchGrant, null] }),
+    [],
+  );
+});
+
+test("Branch Manager routing, stale EntrySelection fallback, default landing on branch-overview, and Admin denial", () => {
+  // Preferred dashboard and allowed surfaces
+  assert.equal(preferredDashboard(harnessBranchManager), "asab/CompanyDashboard");
+  assert.equal(canOpenDashboard(harnessBranchManager, "asab/CompanyDashboard"), true);
+  assert.equal(canOpenDashboard(harnessBranchManager, "asab/ASABPrototype"), true);
+  assert.equal(canOpenDashboard(harnessBranchManager, "asab/AdminDashboard"), false);
+
+  // UI role selection cannot escalate Branch Manager to admin, company-admin, head, or accountant
+  for (const escalated of ["admin", "company-admin", "head", "accountant", "procurement", "supplier"]) {
+    assert.equal(chooseGrantedRole(harnessBranchManager, companyRoles, escalated), "branch");
+    assert.equal(chooseGrantedRole(harnessBranchManager, prototypeRoles, escalated), "branch");
+  }
+  assert.equal(chooseGrantedRole(harnessBranchManager, ["admin"]), null);
+
+  // Page router prefix isolation keeps Branch Manager on branch-overview and blocks admin/company-admin/finance pages
+  assert.equal(pageForRole("branch", "branch-overview", "branch-overview"), "branch-overview");
+  assert.equal(pageForRole("branch", "branch-shifts", "branch-overview"), "branch-shifts");
+  for (const forbiddenPage of ["admin-overview", "admin-users", "ca-dashboard", "head-dashboard", "acc-dashboard", "acc-shifts", "/company/me/branch/overview"]) {
+    assert.equal(pageForRole("branch", forbiddenPage, "branch-overview"), "branch-overview");
+  }
+
+  // Financial operation / shift config hooks remain strictly disabled for Branch Manager
+  for (const active of ["branch", "accountant", "head", "admin"] as const) {
+    assert.equal(canRunAccountantOperations(harnessBranchManager, active), false);
+    assert.equal(canRunShiftHistory(harnessBranchManager, active), false);
+    assert.equal(canRunShiftConfigs(harnessBranchManager, active), false);
+  }
+
+  // Tenant/hierarchy fingerprint isolation: changing companyId or any hierarchy ID changes the access fingerprint
+  assert.notEqual(
+    financialAccessFingerprint(harnessBranchManager),
+    financialAccessFingerprint({ ...harnessBranchManager, companyId: companyUuidB }),
+  );
+  assert.notEqual(
+    financialAccessFingerprint(harnessBranchManager),
+    financialAccessFingerprint({
+      ...harnessBranchManager,
+      roles: [{ ...harnessBranchGrant, brandIds: [brandB] }],
+    }),
+  );
+  assert.notEqual(
+    financialAccessFingerprint(harnessBranchManager),
+    financialAccessFingerprint({
+      ...harnessBranchManager,
+      roles: [{ ...harnessBranchGrant, branchIds: [branchB] }],
+    }),
+  );
+
+  // Real App.tsx route boundary + post-login redirect effect with valid, null, and stale/incompatible EntrySelection
+  const appSource = ts.createSourceFile("App.tsx",
+    readFileSync(new URL("../App.tsx", import.meta.url), "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const appDecl = appSource.statements.find(node =>
+    ts.isFunctionDeclaration(node) && node.name?.text === "App");
+  assert.ok(appDecl);
+  const compiledApp = ts.transpileModule(appDecl.getText(appSource), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None, jsx: ts.JsxEmit.React },
+  }).outputText;
+
+  let currentUser: unknown = harnessBranchManager;
+  let storedSelection: { slug: string; role: string } | null = { slug: "asab/CompanyDashboard", role: "branch" };
+  const mockWindow = {
+    location: { hash: "#/", pathname: "/" },
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+  const mountedPaths: string[] = [];
+  const getPreviewPath = () => {
+    const m = mockWindow.location.hash.match(/^#\/preview\/(.*)$/);
+    return m ? m[1] : null;
+  };
+  const runAppPass = () => {
+    const effects: Array<() => void> = [];
+    const App = new Function(
+      "React", "useAuth", "useState", "useRef", "useEffect", "ensureAuthStyles", "getPreviewPath",
+      "canOpenDashboard", "readEntrySelection", "preferredDashboard", "chooseGrantedRole", "financialAccessFingerprint",
+      "prototypeRoles", "companyRoles", "window", "SubscriptionExpiredBanner", "PreviewRenderer", "discoveredModules",
+      "ASABLanding",
+      compiledApp + "\nreturn App;",
+    )(
+      React,
+      () => ({ user: currentUser, initializing: false, financialTransition: false, logout: async () => {} }),
+      React.useState,
+      React.useRef,
+      (fn: () => void) => { effects.push(fn); },
+      () => {},
+      getPreviewPath,
+      canOpenDashboard,
+      () => storedSelection,
+      preferredDashboard,
+      chooseGrantedRole,
+      financialAccessFingerprint,
+      prototypeRoles,
+      companyRoles,
+      mockWindow,
+      () => null,
+      ({ componentPath }: { componentPath: string }) => {
+        mountedPaths.push(componentPath);
+        return React.createElement("div", null, `mounted:${componentPath}`);
+      },
+      {},
+      () => React.createElement("div", null, "landing"),
+    ) as React.ComponentType;
+    const firstHtml = renderToStaticMarkup(React.createElement(App));
+    for (const eff of effects) eff();
+    const secondHtml = renderToStaticMarkup(React.createElement(App));
+    return { firstHtml, secondHtml };
+  };
+
+  // Case A: Valid pre-login pick (CompanyDashboard + branch) redirects and mounts CompanyDashboard without denial alert
+  mockWindow.location.hash = "#/";
+  mountedPaths.length = 0;
+  let pass = runAppPass();
+  assert.equal(mockWindow.location.hash, "#/preview/asab/CompanyDashboard");
+  assert.match(pass.secondHtml, /mounted:asab\/CompanyDashboard/);
+  assert.doesNotMatch(pass.secondHtml, /ليس لديك صلاحية/);
+
+  // Case B: Stale/incompatible pre-login pick attempting System Admin (ASABPrototype + admin) falls back to CompanyDashboard
+  mockWindow.location.hash = "#/preview/asab/ASABPrototype";
+  storedSelection = { slug: "asab/ASABPrototype", role: "admin" };
+  mountedPaths.length = 0;
+  pass = runAppPass();
+  assert.equal(mockWindow.location.hash, "#/preview/asab/CompanyDashboard");
+  assert.match(pass.secondHtml, /mounted:asab\/CompanyDashboard/);
+
+  // Case C: Stale unknown dashboard slug falls back safely to CompanyDashboard
+  mockWindow.location.hash = "#/";
+  storedSelection = { slug: "asab/AdminOnlyDashboard", role: "admin" };
+  pass = runAppPass();
+  assert.equal(mockWindow.location.hash, "#/preview/asab/CompanyDashboard");
+
+  // Case D: Unprivileged / malformed Branch Manager attempting to open Admin or Company Dashboard is denied
+  currentUser = { ...harnessBranchManager, roles: [{ ...harnessBranchGrant, branchIds: [] }] };
+  storedSelection = null;
+  for (const targetHash of ["#/preview/asab/ASABPrototype", "#/preview/asab/CompanyDashboard"]) {
+    mockWindow.location.hash = targetHash;
+    mountedPaths.length = 0;
+    pass = runAppPass();
+    assert.match(pass.firstHtml, /ليس لديك صلاحية للوصول إلى هذه اللوحة/);
+    assert.deepEqual(mountedPaths, []);
+  }
+
+  // Verify real CompanyDashboardInner + DEFAULT_PAGE + ASABPrototype ROLE_PROFILES land Branch Manager on branch-overview
+  const cdRaw = readFileSync(new URL("../components/mockups/asab/CompanyDashboard.tsx", import.meta.url), "utf8");
+  assert.match(cdRaw, /const\s+DEFAULT_PAGE[\s\S]*?branch:\s*"branch-overview"/);
+  const protoRaw = readFileSync(new URL("../components/mockups/asab/ASABPrototype.tsx", import.meta.url), "utf8");
+  assert.match(protoRaw, /branch:\s*\{[^}]*defaultPage:\s*"branch-overview"/);
+
+  const cdSource = ts.createSourceFile("CompanyDashboard.tsx", cdRaw, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const innerDecl = cdSource.statements.find(node =>
+    ts.isFunctionDeclaration(node) && node.name?.text === "CompanyDashboardInner");
+  assert.ok(innerDecl);
+  const compiledInner = ts.transpileModule(innerDecl.getText(cdSource), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None, jsx: ts.JsxEmit.React },
+  }).outputText;
+
+  let activeSel: { slug: string; role: string } | null = { slug: "asab/CompanyDashboard", role: "company-admin" };
+  const renderedRoutes: Array<{ role: string; page: string }> = [];
+  const draftMounts: number[] = [];
+  const Inner = new Function(
+    "React", "useState", "useEffect", "useRef", "useQueryClient", "useAuth", "useCLang", "readEntrySelection",
+    "chooseGrantedRole", "companyRoles", "grantedRoleKeys", "pageForRole", "DEFAULT_PAGE",
+    "useSharedOps", "financialAccessFingerprint", "Shell", "PageRouter", "RejectModal", "ClarifyModal", "LiveChatWidget",
+    "CAssetDraftProvider",
+    compiledInner + "\nreturn CompanyDashboardInner;",
+  )(
+    React, React.useState, React.useEffect, React.useRef, () => ({}),
+    () => ({ user: harnessBranchManager, logout: async () => {} }),
+    () => ({ t: (ar: string) => ar }),
+    () => activeSel,
+    chooseGrantedRole, companyRoles, grantedRoleKeys, pageForRole,
+    {
+      "company-admin": "ca-dashboard",
+      head: "head-dashboard",
+      accountant: "acc-dashboard",
+      branch: "branch-overview",
+      procurement: "proc-overview",
+    },
+    () => ({
+      ops: [], approve: () => {}, reject: () => {}, requestClarification: () => {}, finalApprove: () => {},
+      bulkApprove: () => {}, bulkFinalApprove: () => {}, actionsPending: false, shiftReviewPage: 1,
+      setShiftReviewPage: () => {}, rejectModalProps: {}, clarifyModalProps: {}, clearDialogs: () => {},
+    }),
+    financialAccessFingerprint,
+    ({ children }: { children: React.ReactNode }) => React.createElement("div", null, children),
+    ({ role, page }: { role: string; page: string }) => {
+      renderedRoutes.push({ role, page });
+      return React.createElement("span", null, `${role}:${page}`);
+    },
+    () => null, () => null, () => null,
+    ({ children }: { children: React.ReactNode }) => {
+      draftMounts.push(1);
+      return React.createElement("div", null, children);
+    },
+  ) as React.ComponentType;
+
+  // Even with a stale "company-admin" EntrySelection, Branch Manager lands on branch:branch-overview
+  const htmlStale = renderToStaticMarkup(React.createElement(Inner));
+  assert.match(htmlStale, /branch:branch-overview/);
+  activeSel = { slug: "asab/CompanyDashboard", role: "branch" };
+  const htmlExplicit = renderToStaticMarkup(React.createElement(Inner));
+  assert.match(htmlExplicit, /branch:branch-overview/);
+  assert.deepEqual(renderedRoutes, [
+    { role: "branch", page: "branch-overview" },
+    { role: "branch", page: "branch-overview" },
+  ]);
+  assert.deepEqual(draftMounts, []);
+});
+
+test("Non-regression matrix: Accountant, Head Accountant, Company Admin, Procurement, and System Admin authorization remain intact", () => {
+  const procurementTenant = identity([grant("procurement", "brand", [brandA])]);
+  const procurementPlatform = { ...identity([grant("procurement", "all")]), companyId: null };
+  const headScoped = identity([grant("head", "brand", [brandA])]);
+  const companyAdminAll = identity([grant("company-admin", "all")]);
+  const accountantRest = identity([grant("accountant", "restaurant", [restaurantA])]);
+
+  assert.deepEqual(grantedRoleKeys(admin), ["admin"]);
+  assert.deepEqual(grantedRoleKeys(companyAdminAll), ["company-admin"]);
+  assert.deepEqual(grantedRoleKeys(head), ["head"]);
+  assert.deepEqual(grantedRoleKeys(headScoped), ["head"]);
+  assert.deepEqual(grantedRoleKeys(accountant), ["accountant"]);
+  assert.deepEqual(grantedRoleKeys(accountantRest), ["accountant"]);
+  assert.deepEqual(grantedRoleKeys(procurementTenant), ["procurement"]);
+  assert.deepEqual(grantedRoleKeys(procurementPlatform), ["procurement"]);
+
+  // Preserved negative rules on other roles:
+  // - System Admin cannot carry hierarchy IDs or non-"all" scope
+  assert.deepEqual(grantedRoleKeys(identity([{ ...grant("admin", "all"), brandIds: [brandA] }])), []);
+  assert.deepEqual(grantedRoleKeys(identity([grant("admin", "brand", [brandA])])), []);
+  // - Accountant cannot use scope="all" or scope="branch" or empty brand/restaurant scope
+  assert.deepEqual(grantedRoleKeys(identity([grant("accountant", "all")])), []);
+  assert.deepEqual(grantedRoleKeys(identity([grant("accountant", "branch", [branchA])])), []);
+  assert.deepEqual(grantedRoleKeys(identity([grant("accountant", "brand", [])])), []);
+  // - Scoped non-"all" roles with zero IDs across all hierarchy arrays remain rejected
+  assert.deepEqual(grantedRoleKeys(identity([grant("head", "brand", [])])), []);
+  assert.deepEqual(grantedRoleKeys(identity([grant("company-admin", "brand", [])])), []);
+  assert.deepEqual(grantedRoleKeys(identity([grant("procurement", "branch", [])])), []);
+
+  // Dashboard surface boundaries remain intact for every existing role
+  assert.equal(canOpenDashboard(admin, "asab/ASABPrototype"), true);
+  assert.equal(canOpenDashboard(admin, "asab/CompanyDashboard"), false);
+  assert.equal(preferredDashboard(admin), "asab/ASABPrototype");
+
+  assert.equal(canOpenDashboard(companyAdminAll, "asab/CompanyDashboard"), true);
+  assert.equal(canOpenDashboard(companyAdminAll, "asab/ASABPrototype"), false);
+  assert.equal(preferredDashboard(companyAdminAll), "asab/CompanyDashboard");
+
+  for (const subject of [head, headScoped, accountant, accountantRest, procurementTenant, procurementPlatform]) {
+    assert.equal(canOpenDashboard(subject, "asab/CompanyDashboard"), true);
+    assert.equal(canOpenDashboard(subject, "asab/ASABPrototype"), true);
+    assert.equal(preferredDashboard(subject), "asab/CompanyDashboard");
+  }
 });
