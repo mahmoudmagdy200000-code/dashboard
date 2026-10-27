@@ -11,6 +11,7 @@ import {
 import { flushSync } from "react-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { toast } from "sonner";
+import axios from "axios";
 import {
   fetchMe,
   login as apiLogin,
@@ -150,12 +151,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           userRef.current = me;
           setUser(me);
         }
-      } catch {
-        // Token invalid / network. Clear and route to login.
+      } catch (err: unknown) {
         if (bootstrapSession === sessionEpoch.current && bootstrapRequest === refreshRequest.current) {
-          try {
-            clearTokens();
-          } catch {}
+          const isNetworkError =
+            (axios.isAxiosError(err) && (!err.response || err.code === "ERR_NETWORK" || err.message === "Network Error")) ||
+            (typeof navigator !== "undefined" && !navigator.onLine);
+
+          if (!isNetworkError) {
+            // Definite authentication rejection (e.g. 401 Unauthorized / revoked token)
+            try {
+              clearTokens();
+            } catch (clearErr) {
+              console.error("[auth] Token clearance failed during bootstrap rejection:", clearErr);
+            }
+          } else {
+            console.warn("[auth] Network unavailable during bootstrap; preserving session tokens for retry.");
+          }
         }
       } finally {
         if (!cancelled && bootstrapSession === sessionEpoch.current && bootstrapRequest === refreshRequest.current)

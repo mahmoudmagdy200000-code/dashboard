@@ -27,10 +27,55 @@ function initSessionFromStorage(): void {
   if (sessionInitialized) return;
   sessionInitialized = true;
 
-  // Security P1 (Mahmoud approved): Disable automatic restoration of persisted credentials
-  // after reload or in a new tab. In-memory credentials require fresh login, guaranteeing
-  // that obsolete or invalidated tokens cannot be resurrected even if browser storage write
-  // and deletion operations fail completely.
+  // Scrub legacy persistent localStorage tokens to prevent cross-tab or indefinite leakage
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(KEY);
+    }
+  } catch {}
+
+  // Check if session was revoked in this tab
+  try {
+    if (typeof sessionStorage !== "undefined" && sessionStorage.getItem(REVOKED_KEY) === "1") {
+      inMemoryTokens = null;
+      isSessionActive = false;
+      return;
+    }
+  } catch {}
+
+  // Tab-scoped session restoration: restore confirmed tokens from sessionStorage across refresh
+  let storedJson: string | null = null;
+  try {
+    if (typeof sessionStorage !== "undefined") {
+      storedJson = sessionStorage.getItem(KEY);
+    }
+  } catch {}
+
+  if (storedJson) {
+    try {
+      const parsed = JSON.parse(storedJson);
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        typeof parsed.accessToken === "string" &&
+        parsed.accessToken.trim() !== "" &&
+        typeof parsed.refreshToken === "string" &&
+        parsed.refreshToken.trim() !== "" &&
+        !parsed.provisional
+      ) {
+        inMemoryTokens = {
+          accessToken: parsed.accessToken,
+          refreshToken: parsed.refreshToken,
+        };
+        isSessionActive = true;
+        sessionId++;
+        revision++;
+        provisionalSessionId = null;
+        return;
+      }
+    } catch {}
+  }
+
   inMemoryTokens = null;
   isSessionActive = false;
 }
@@ -75,11 +120,12 @@ export function setTokens(t: Tokens): void {
   try {
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.removeItem(REVOKED_KEY);
+      sessionStorage.setItem(KEY, JSON.stringify(t));
     }
   } catch {}
   try {
     if (typeof localStorage !== "undefined") {
-      localStorage.setItem(KEY, JSON.stringify(t));
+      localStorage.removeItem(KEY);
     }
   } catch {}
 }
@@ -92,14 +138,16 @@ export function setProvisionalTokens(t: Tokens): number {
   sessionId++;
   revision++;
   provisionalSessionId = sessionId;
+  // Provisional credentials exist in memory only; never commit them to storage until confirmed
   try {
     if (typeof sessionStorage !== "undefined") {
       sessionStorage.removeItem(REVOKED_KEY);
+      sessionStorage.removeItem(KEY);
     }
   } catch {}
   try {
     if (typeof localStorage !== "undefined") {
-      localStorage.setItem(KEY, JSON.stringify(t));
+      localStorage.removeItem(KEY);
     }
   } catch {}
   return sessionId;
@@ -112,21 +160,41 @@ export function confirmSessionTokens(expectedSessionId?: number): boolean {
     return false;
   }
   provisionalSessionId = null;
+  if (inMemoryTokens) {
+    try {
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem(KEY, JSON.stringify(inMemoryTokens));
+        sessionStorage.removeItem(REVOKED_KEY);
+      }
+    } catch {}
+  }
   return true;
 }
 
 function clearStorageWithFallback(): void {
   let removeError: unknown = null;
   try {
-    if (typeof localStorage !== "undefined") {
-      localStorage.removeItem(KEY);
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.removeItem(KEY);
     }
   } catch (err) {
     removeError = err;
   }
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(KEY);
+    }
+  } catch (err) {
+    removeError ??= err;
+  }
 
   // Fallback 1: overwrite KEY with empty value if removeItem threw or failed
   if (removeError) {
+    try {
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem(KEY, "");
+      }
+    } catch {}
     try {
       if (typeof localStorage !== "undefined") {
         localStorage.setItem(KEY, "");
@@ -185,8 +253,8 @@ export function rotateTokensIfCurrent(expected: TokenState, next: Tokens): boole
   inMemoryTokens = { accessToken: next.accessToken, refreshToken: next.refreshToken };
   revision++;
   try {
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(KEY, JSON.stringify(next));
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(KEY, JSON.stringify(next));
     }
   } catch {}
   return true;

@@ -31,7 +31,7 @@ test('A09 accountant signs in through the real entry flow and lands on the dashb
   await expect(page.getByRole('button', { name: /^\s*(Shift Management|إدارة الشفتات)(\s+\d+)?\s*$/ }).first()).toBeVisible({ timeout: 45_000 });
 
   // Revoke the session the browser created.
-  const tokens = await page.evaluate(() => window.localStorage.getItem('asab.tokens'));
+  const tokens = await page.evaluate(() => window.sessionStorage.getItem('asab.tokens') || window.localStorage.getItem('asab.tokens'));
   if (tokens) {
     const { accessToken, refreshToken } = JSON.parse(tokens) as { accessToken: string; refreshToken: string };
     const api = (await ApiClient.create(env.apiOrigin!)).withToken(accessToken);

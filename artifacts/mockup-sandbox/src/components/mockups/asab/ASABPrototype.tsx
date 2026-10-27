@@ -1909,7 +1909,16 @@ export function ASABPrototype() {
     const sel = readEntrySelection();
     const role = chooseGrantedRole(user, prototypeRoles,
       sel?.slug === "asab/ASABPrototype" ? sel.role : null) as RoleId | null;
-    return { role, page: role ? ROLE_PROFILES[role].defaultPage : "", detailId: null, modal: null };
+    let initialPage = role ? ROLE_PROFILES[role].defaultPage : "";
+    if (role && typeof window !== "undefined") {
+      try {
+        const historyPage = (window.history?.state as { asabPage?: string } | null)?.asabPage;
+        if (typeof historyPage === "string" && pageForRole(role, historyPage, "") === historyPage) {
+          initialPage = historyPage as PageId;
+        }
+      } catch {}
+    }
+    return { role, page: initialPage, detailId: null, modal: null };
   });
   const allowedRoles = grantedRoleKeys(user).filter(r => prototypeRoles.includes(r) && (r !== "supplier" || SUPPLIER_PORTAL_ENABLED)) as RoleId[];
   const currentRole = appState.role && allowedRoles.includes(appState.role) ? appState.role : allowedRoles[0] ?? null;
