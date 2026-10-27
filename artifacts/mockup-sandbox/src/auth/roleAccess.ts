@@ -30,8 +30,9 @@ function validGrant(grant: Record<string, unknown>): grant is Record<string, unk
   if (grant.key === "accountant" && !(
     (grant.scope === "brand" && grant.brandIds.length > 0)
     || (grant.scope === "restaurant" && grant.restaurantIds.length > 0))) return false;
+  // Single-branch grants require 1 branchId and allow at most 1 parent brandId and 1 parent restaurantId.
   if (grant.key === "branch" && (grant.scope !== "branch" || grant.branchIds.length !== 1
-    || grant.brandIds.length !== 0 || grant.restaurantIds.length !== 0)) return false;
+    || grant.brandIds.length > 1 || grant.restaurantIds.length > 1)) return false;
   if (grant.key === "admin" && (grant.scope !== "all" || grant.brandIds.length
     || grant.restaurantIds.length || grant.branchIds.length)) return false;
   // TenantBranchResolver ORs all populated hierarchy arrays, regardless of the scope label.
