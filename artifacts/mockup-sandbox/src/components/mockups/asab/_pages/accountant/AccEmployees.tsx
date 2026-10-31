@@ -24,7 +24,8 @@ import {
   useExportPayroll,
 } from "../../../../../api/queries";
 import { useAuth } from "../../../../../auth/AuthContext";
-import { grantedRoleKeys } from "../../../../../auth/roleAccess";
+import { grantedRoleKeys, financialAccessGeneration, isFinancialSessionActive } from "../../../../../auth/roleAccess";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFinancialIntent } from "../../../../../api/idempotencyIntent.ts";
 import { getUnconfirmedIntent, setUnconfirmedIntent, removeUnconfirmedIntent } from "../../../../../api/queries/financialIntentStore.ts";
 import { Card } from "../../components/Card";
@@ -199,6 +200,7 @@ export function AsabEmpMovementModal({
 
 export function AccEmployees({ setModal }: PageProps) {
   const { t } = useLang();
+  const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [empFilter, setEmpFilter] = useState({
     q: "",
@@ -289,6 +291,8 @@ export function AccEmployees({ setModal }: PageProps) {
       }
     }
 
+    const capturedGen = financialAccessGeneration(queryClient);
+
     settleMut.mutate(
       {
         employeeId: selectedId,
@@ -299,27 +303,26 @@ export function AccEmployees({ setModal }: PageProps) {
       },
       {
         onSuccess: (data: any) => {
+          if (!isFinancialSessionActive(queryClient, capturedGen, intent.actorId, intent.companyId)) {
+            return;
+          }
           intent.status = "resolved";
           const activeCompanyId = (user as any)?.companyId;
-          if (user?.id && user.id === intent.actorId && activeCompanyId === intent.companyId) {
-            removeUnconfirmedIntent("employee_settlement", selectedId, user.id, activeCompanyId);
-            setShowSettleModal(false);
-            setSettleReason("");
-            setSettleError("");
-            if (data?.settlementId || data?.id) {
-              setReviewSettlementId(data?.settlementId ?? data?.id);
-            }
-          } else {
-            removeUnconfirmedIntent("employee_settlement", selectedId, intent.actorId, intent.companyId);
+          removeUnconfirmedIntent("employee_settlement", selectedId, user?.id, activeCompanyId);
+          setShowSettleModal(false);
+          setSettleReason("");
+          setSettleError("");
+          if (data?.settlementId || data?.id) {
+            setReviewSettlementId(data?.settlementId ?? data?.id);
           }
         },
         onError: (err: any) => {
-          intent.status = "timed_out";
-          const activeCompanyId = (user as any)?.companyId;
-          if (!user?.id || user.id !== intent.actorId || activeCompanyId !== intent.companyId) {
+          if (!isFinancialSessionActive(queryClient, capturedGen, intent.actorId, intent.companyId)) {
             return;
           }
-          setUnconfirmedIntent("employee_settlement", selectedId, intent, user.id, activeCompanyId);
+          intent.status = "timed_out";
+          const activeCompanyId = (user as any)?.companyId;
+          setUnconfirmedIntent("employee_settlement", selectedId, intent, user?.id, activeCompanyId);
           const msg =
             err?.response?.data?.messageAr ||
             err?.response?.data?.message ||

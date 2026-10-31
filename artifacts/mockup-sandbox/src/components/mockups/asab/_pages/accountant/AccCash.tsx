@@ -36,7 +36,8 @@ import { fmtAmt } from "../../_shared/formatters";
 import { BRANCHES } from "../../_shared/filterOps";
 import type { PageProps } from "../../_shared/types";
 import { useAuth } from "../../../../../auth/AuthContext";
-import { grantedRoleKeys } from "../../../../../auth/roleAccess.ts";
+import { grantedRoleKeys, financialAccessGeneration, isFinancialSessionActive } from "../../../../../auth/roleAccess.ts";
+import { useQueryClient } from "@tanstack/react-query";
 import { getErrorMessage } from "../../../../../api/errors";
 import { useAccountantFundingRequests, useExecuteFundingRequest } from "../../../../../api/queries/fundingRequests";
 import { createFinancialIntent, type FinancialIntent } from "../../../../../api/idempotencyIntent.ts";
@@ -46,6 +47,7 @@ import { getUnconfirmedIntent, setUnconfirmedIntent, removeUnconfirmedIntent } f
 
 function FundingExecution() {
   const { isRole, user } = useAuth();
+  const queryClient = useQueryClient();
   const accountant = isRole("accountant");
   const { data: requests = [], isError, refetch } = useAccountantFundingRequests(accountant);
   const execute = useExecuteFundingRequest();
@@ -156,6 +158,8 @@ function FundingExecution() {
                 }
                 setIntent(currentIntent);
 
+                const capturedGen = financialAccessGeneration(queryClient);
+
                 execute.mutate(
                   {
                     id: request.id,
@@ -168,34 +172,34 @@ function FundingExecution() {
                   },
                   {
                     onSuccess: () => {
+                      if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) {
+                        // Defunct session / switched user: fail closed, do not touch UI or storage
+                        return;
+                      }
                       currentIntent.status = "resolved";
                       const activeCompanyId = (user as any)?.companyId;
-                      if (user?.id && user.id === currentIntent.actorId && activeCompanyId === currentIntent.companyId) {
-                        removeUnconfirmedIntent("funding", request.id, user.id, activeCompanyId);
-                        toast.success("تم توثيق الإرسال؛ بانتظار تأكيد المدير");
-                        setSelectedId(null);
-                        setProof(null);
-                        setReference("");
-                        setIntent(null);
-                      } else {
-                        // Late response after logout or session change: safely purge without polluting foreign session
-                        removeUnconfirmedIntent("funding", request.id, currentIntent.actorId, currentIntent.companyId);
-                      }
+                      removeUnconfirmedIntent("funding", request.id, user?.id, activeCompanyId);
+                      toast.success("تم توثيق الإرسال؛ بانتظار تأكيد المدير");
+                      setSelectedId(null);
+                      setProof(null);
+                      setReference("");
+                      setIntent(null);
                     },
                     onError: async (error) => {
-                      currentIntent.status = "timed_out";
-                      const activeCompanyId = (user as any)?.companyId;
-                      if (!user?.id || user.id !== currentIntent.actorId || activeCompanyId !== currentIntent.companyId) {
+                      if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) {
                         // Late error after session change: fail closed, do not save or display into foreign session
                         return;
                       }
-                      setUnconfirmedIntent("funding", request.id, currentIntent, user.id, activeCompanyId);
+                      currentIntent.status = "timed_out";
+                      const activeCompanyId = (user as any)?.companyId;
+                      setUnconfirmedIntent("funding", request.id, currentIntent, user?.id, activeCompanyId);
                       // Automatic server reconciliation upon timeout/error
                       try {
                         const { data: latest = [], isError: refetchErr } = await refetch();
                         if (!refetchErr) {
                           const recon = reconcileExecutionStatus(request.id, latest);
                           if (recon.alreadyExecuted) {
+                            if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) return;
                             currentIntent.status = "resolved";
                             removeUnconfirmedIntent("funding", request.id, user?.id, (user as any)?.companyId);
                             toast.success("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير");
@@ -354,6 +358,7 @@ export function AsabCashTxnModal({
   onClose: () => void;
 }) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const companyId = (user as any)?.companyId;
   const createMut = useCreateCashTransaction();
   const [intent] = useState<FinancialIntent<any>>(() => {
@@ -414,6 +419,8 @@ export function AsabCashTxnModal({
       },
     };
 
+    const capturedGen = financialAccessGeneration(queryClient);
+
     createMut.mutate(
       {
         custodyId,
@@ -424,19 +431,19 @@ export function AsabCashTxnModal({
       },
       {
         onSuccess: () => {
-          intent.status = "resolved";
-          if (user?.id && user.id === intent.actorId && companyId === intent.companyId) {
-            removeUnconfirmedIntent("custody_debit", custodyId, user.id, companyId);
-            onClose();
-          } else {
-            removeUnconfirmedIntent("custody_debit", custodyId, intent.actorId, intent.companyId);
+          if (!isFinancialSessionActive(queryClient, capturedGen, intent.actorId, intent.companyId)) {
+            return;
           }
+          intent.status = "resolved";
+          removeUnconfirmedIntent("custody_debit", custodyId, user?.id, companyId);
+          onClose();
         },
         onError: () => {
-          intent.status = "timed_out";
-          if (user?.id && user.id === intent.actorId && companyId === intent.companyId) {
-            setUnconfirmedIntent("custody_debit", custodyId, intent, user.id, companyId);
+          if (!isFinancialSessionActive(queryClient, capturedGen, intent.actorId, intent.companyId)) {
+            return;
           }
+          intent.status = "timed_out";
+          setUnconfirmedIntent("custody_debit", custodyId, intent, user?.id, companyId);
         },
       },
     );

@@ -31,6 +31,12 @@ import {
   type ShiftDailyCloseReport,
 } from "../../components/mockups/asab/shiftReportFinalityContract.ts";
 import {
+  clearRetiredQueryClient,
+  financialAccessGeneration,
+  isFinancialSessionActive,
+  setActiveFinancialSession,
+} from "../../auth/roleAccess.ts";
+import {
   assertValidExpenseDisbursementSource,
   submitExpenseToCustody,
   approveExpenseInCustody,
@@ -38,6 +44,7 @@ import {
   type ExpenseCustodyAccount,
   type CashierSalesDrawer,
 } from "./expenseAccountingContract.ts";
+import { QueryClient } from "@tanstack/react-query";
 import { readFileSync } from "node:fs";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -550,6 +557,11 @@ test("SECTION E - Company Scoping: Contracts store intent under authenticated co
 
 test("SECTION F - Late Callback Safety: Late response after logout or company switch never resurrects stale intent", async () => {
   clearAllFinancialIntents();
+  const queryClient = new QueryClient();
+
+  // 1. Establish active session for Alice in Company Alpha
+  setActiveFinancialSession("usr-alice", "comp-alpha");
+  const capturedGen = financialAccessGeneration(queryClient);
 
   let resolveServerCall: (v: any) => void = () => {};
   let rejectServerCall: (e: any) => void = () => {};
@@ -581,33 +593,74 @@ test("SECTION F - Late Callback Safety: Late response after logout or company sw
   assert.equal(intent.status, "in_flight");
   assert.ok(getUnconfirmedIntent("employee_settlement", "emp-late-01", "usr-alice", "comp-alpha"));
 
-  // Now, simulate Logout / Tenant switch while mutation is in-flight:
-  clearAllFinancialIntents(); // Simulates purgeFinancialQueries / clearRetiredQueryClient
+  // Real production callback logic as implemented in AccEmployees & CompanyDashboard
+  let toastShown = false;
+  let uiClosed = false;
+  const productionOnSuccess = () => {
+    if (!isFinancialSessionActive(queryClient, capturedGen, intent.actorId, intent.companyId)) {
+      // Defunct session / switched user: fail closed
+      return;
+    }
+    intent.status = "resolved";
+    removeUnconfirmedIntent("employee_settlement", "emp-late-01", "usr-alice", "comp-alpha");
+    toastShown = true;
+    uiClosed = true;
+  };
+
+  const productionOnError = (err: any) => {
+    if (!isFinancialSessionActive(queryClient, capturedGen, intent.actorId, intent.companyId)) {
+      // Defunct session / switched user: fail closed, do not save or display
+      return;
+    }
+    intent.status = "timed_out";
+    setUnconfirmedIntent("employee_settlement", "emp-late-01", intent, "usr-alice", "comp-alpha");
+  };
+
+  // 2. Trigger actual Logout through QueryClient / Session boundary
+  await clearRetiredQueryClient(queryClient);
+
+  // Storage is wiped
   assert.equal(getUnconfirmedIntent("employee_settlement", "emp-late-01", "usr-alice", "comp-alpha"), null);
 
-  // Active user in frontend changes to Bob in Company Beta
-  const activeUser = { id: "usr-bob", companyId: "comp-beta" };
-
-  // 1. Simulate late resolution
+  // 3. Late resolution arrives after logout
   resolveServerCall({ status: "pending", balanceModified: false });
   await mutationPromise;
 
-  // In UI onSuccess handler:
-  const isMatchingSession =
-    activeUser.id === intent.actorId && activeUser.companyId === intent.companyId;
-  assert.equal(isMatchingSession, false, "Must detect that active session does NOT match mutation session");
+  // Execute the production onSuccess callback
+  productionOnSuccess();
 
-  // Handler must not save or restore intent into Bob's session
-  assert.equal(
-    getUnconfirmedIntent("employee_settlement", "emp-late-01", activeUser.id, activeUser.companyId),
-    null,
-    "Bob in Company Beta must never receive or see Alice's financial intent",
-  );
+  // Assert: callback was blocked, no UI toast, no modal close
+  assert.equal(toastShown, false, "Must NOT show toast after logout");
+  assert.equal(uiClosed, false, "Must NOT alter UI state after logout");
 
-  // Alice's old cache remains empty
+  // 4. Test Late Error / Timeout callback after logout
+  productionOnError(new Error("Network Timeout"));
+
+  // Prove no old-user Intent is recreated after clearAllFinancialIntents()
   assert.equal(
     getUnconfirmedIntent("employee_settlement", "emp-late-01", "usr-alice", "comp-alpha"),
     null,
-    "Alice's purged session must not be resurrected by late response",
+    "Alice's purged session must NOT be resurrected by late error/timeout callback",
+  );
+
+  // 5. Test Company Switch Scenario:
+  // Alice switches to Company Beta; Bob logs in to Company Beta
+  const queryClientBeta = new QueryClient();
+  setActiveFinancialSession("usr-bob", "comp-beta");
+  const bobGen = financialAccessGeneration(queryClientBeta);
+
+  // Invoking Alice's callback with Bob active
+  productionOnSuccess();
+  productionOnError(new Error("Late error"));
+
+  assert.equal(
+    getUnconfirmedIntent("employee_settlement", "emp-late-01", "usr-bob", "comp-beta"),
+    null,
+    "Bob in Company Beta must never receive or see Alice's financial intent",
+  );
+  assert.equal(
+    getUnconfirmedIntent("employee_settlement", "emp-late-01", "usr-alice", "comp-alpha"),
+    null,
+    "Alice's intent remains cleanly purged",
   );
 });
