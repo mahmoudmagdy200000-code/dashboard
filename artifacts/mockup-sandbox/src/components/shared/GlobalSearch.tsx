@@ -1,6 +1,6 @@
 import type { RoleKey } from "../../api/types";
 import { hasCompanySharedApi, sharedSearchPage } from "./sharedNavigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { useSearch, type SearchResult } from "../../api/queries/misc";
 

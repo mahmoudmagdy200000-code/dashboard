@@ -5,8 +5,8 @@ import { getTokens } from "./tokens";
 
 let echoInstance: Echo<"pusher"> | null = null;
 
-const PUSHER_KEY = import.meta.env.VITE_PUSHER_APP_KEY ?? "";
-const PUSHER_CLUSTER = import.meta.env.VITE_PUSHER_APP_CLUSTER ?? "mt1";
+const PUSHER_KEY = import.meta.env?.VITE_PUSHER_APP_KEY ?? "";
+const PUSHER_CLUSTER = import.meta.env?.VITE_PUSHER_APP_CLUSTER ?? "mt1";
 
 /**
  * Returns the singleton Echo instance, or null if Pusher credentials are not

@@ -4,7 +4,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api, downloadBlob } from "../client";
+import { api, downloadBlob, withIdempotencyKey } from "../client";
 import type {
   CashCustodyLedger,
   CashCustodyPage,
@@ -12,6 +12,17 @@ import type {
   CashTransactionInput,
 } from "../types/company";
 import { getErrorMessage } from "../errors";
+import {
+  assertDirectCashTransaction,
+  executeCashDisbursementFlow,
+  type DirectDebitSafetyContext,
+} from "./cashTransactionContract.ts";
+import type { FinancialIntent } from "../idempotencyIntent.ts";
+import {
+  financialAccessGeneration,
+  getActiveFinancialSession,
+  isFinancialSessionActive,
+} from "../../auth/roleAccess.ts";
 import { queryKeys, type CashFilter } from "./keys";
 
 // ─── B1. List — GET /company/me/cash-custody ({data, meta.kpis}) ──────────────
@@ -53,30 +64,63 @@ export function useCashTransactions(
   });
 }
 
-// ─── B3. Add transaction (replenish / disburse) — POST …/{id}/transactions ────
-// txnType=credit → money in (تعزيز); debit → disbursement. status pending|approved.
+// ─── B3. Direct disbursement — POST …/{id}/transactions ─────────────────────
+// Funding uses the separate approved request and branch receipt workflow.
+export interface CreateCashTransactionParams {
+  custodyId: string;
+  payload: CashTransactionInput;
+  context?: DirectDebitSafetyContext;
+  intent?: FinancialIntent<any>;
+  idempotencyKey?: string;
+  companyId?: string;
+}
+
+export async function executeCashTransaction({
+  custodyId,
+  payload,
+  context,
+  intent,
+  idempotencyKey,
+  companyId,
+}: CreateCashTransactionParams): Promise<CashTransaction> {
+  return executeCashDisbursementFlow(
+    { custodyId, payload, context, intent, idempotencyKey, companyId },
+    async (url, body, headers) => {
+      const res = await api.post<CashTransaction>(url, body, {
+        headers: headers ? { ...headers } : undefined,
+      });
+      return res.data;
+    },
+  );
+}
+
 export function useCreateCashTransaction() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      custodyId,
-      payload,
-    }: {
-      custodyId: string;
-      payload: CashTransactionInput;
-    }) => {
-      const res = await api.post<CashTransaction>(
-        `/company/me/cash-custody/${custodyId}/transactions`,
-        payload,
-      );
-      return res.data;
+    mutationFn: executeCashTransaction,
+    onMutate: (vars) => {
+      const startGen = financialAccessGeneration(qc);
+      const session = getActiveFinancialSession();
+      return {
+        startGen,
+        actorId: vars?.context?.actor?.id ?? session?.actorId ?? null,
+        companyId: vars?.companyId ?? session?.companyId ?? null,
+      };
     },
-    onSuccess: (_d, vars) => {
+    onSuccess: (_d, vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
       qc.invalidateQueries({ queryKey: ["cash-custody", vars.custodyId] });
       qc.invalidateQueries({ queryKey: ["cash-custody"] });
       toast.success("تم تسجيل المعاملة");
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e, _vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
+      toast.error(getErrorMessage(e, "ar"));
+    },
   });
 }
 
@@ -96,12 +140,29 @@ export function useApproveCashTxn() {
       );
       return res.data;
     },
-    onSuccess: (_d, vars) => {
+    onMutate: () => {
+      const startGen = financialAccessGeneration(qc);
+      const session = getActiveFinancialSession();
+      return {
+        startGen,
+        actorId: session?.actorId ?? null,
+        companyId: session?.companyId ?? null,
+      };
+    },
+    onSuccess: (_d, vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
       qc.invalidateQueries({ queryKey: ["cash-custody", vars.custodyId] });
       qc.invalidateQueries({ queryKey: ["cash-custody"] });
       toast.success("تم اعتماد الحركة");
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e, _vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
+      toast.error(getErrorMessage(e, "ar"));
+    },
   });
 }
 
@@ -124,12 +185,29 @@ export function useRejectCashTxn() {
       );
       return res.data;
     },
-    onSuccess: (_d, vars) => {
+    onMutate: () => {
+      const startGen = financialAccessGeneration(qc);
+      const session = getActiveFinancialSession();
+      return {
+        startGen,
+        actorId: session?.actorId ?? null,
+        companyId: session?.companyId ?? null,
+      };
+    },
+    onSuccess: (_d, vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
       qc.invalidateQueries({ queryKey: ["cash-custody", vars.custodyId] });
       qc.invalidateQueries({ queryKey: ["cash-custody"] });
       toast.success("تم رفض الحركة");
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e, _vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
+      toast.error(getErrorMessage(e, "ar"));
+    },
   });
 }
 
@@ -143,17 +221,34 @@ export function useRequestCashSettlement() {
       );
       return res.data;
     },
-    onSuccess: (_d, vars) => {
+    onMutate: () => {
+      const startGen = financialAccessGeneration(qc);
+      const session = getActiveFinancialSession();
+      return {
+        startGen,
+        actorId: session?.actorId ?? null,
+        companyId: session?.companyId ?? null,
+      };
+    },
+    onSuccess: (_d, vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
       qc.invalidateQueries({ queryKey: ["cash-custody", vars.custodyId] });
       qc.invalidateQueries({ queryKey: ["cash-custody"] });
       toast.success("تم إرسال طلب التسوية");
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e, _vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
+      toast.error(getErrorMessage(e, "ar"));
+    },
   });
 }
 
 // ─── B5b. Settle — POST …/cash-custody/{id}/settle ({ newDepositHalalas? }) ───
-// Zeroes used, posts settlement debit + credit for any new deposit, drains pending requests.
+// Closing is metadata only; funding requires the request and receipt workflow.
 export function useSettleCash() {
   const qc = useQueryClient();
   return useMutation({
@@ -164,18 +259,38 @@ export function useSettleCash() {
       custodyId: string;
       newDepositHalalas?: number;
     }) => {
+      if (newDepositHalalas !== undefined && newDepositHalalas > 0) {
+        throw new Error("New deposit requires the approved funding request workflow");
+      }
       const res = await api.post(
         `/company/me/cash-custody/${custodyId}/settle`,
         newDepositHalalas !== undefined ? { newDepositHalalas } : {},
       );
       return res.data;
     },
-    onSuccess: (_d, vars) => {
+    onMutate: () => {
+      const startGen = financialAccessGeneration(qc);
+      const session = getActiveFinancialSession();
+      return {
+        startGen,
+        actorId: session?.actorId ?? null,
+        companyId: session?.companyId ?? null,
+      };
+    },
+    onSuccess: (_d, vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
       qc.invalidateQueries({ queryKey: ["cash-custody", vars.custodyId] });
       qc.invalidateQueries({ queryKey: ["cash-custody"] });
       toast.success("تمت تسوية العهدة");
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e, _vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
+      toast.error(getErrorMessage(e, "ar"));
+    },
   });
 }
 

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import { toast } from "sonner";
 import {
   AlertTriangle,
   X,
@@ -34,39 +35,499 @@ import { EmptyState } from "../../components/EmptyState";
 import { fmtAmt } from "../../_shared/formatters";
 import { BRANCHES } from "../../_shared/filterOps";
 import type { PageProps } from "../../_shared/types";
+import { useAuth } from "../../../../../auth/AuthContext";
+import { grantedRoleKeys, financialAccessGeneration, isFinancialSessionActive } from "../../../../../auth/roleAccess.ts";
+import { useQueryClient } from "@tanstack/react-query";
+import { getErrorMessage } from "../../../../../api/errors";
+import { useAccountantFundingRequests, useExecuteFundingRequest } from "../../../../../api/queries/fundingRequests";
+import { createFinancialIntent, type FinancialIntent } from "../../../../../api/idempotencyIntent.ts";
+import { checkCustodyWriteAuthorization, type DirectDebitSafetyContext } from "../../../../../api/queries/cashTransactionContract.ts";
+import { reconcileExecutionStatus, computeFileHash } from "../../../../../api/queries/fundingExecutionContract.ts";
+import { getUnconfirmedIntent, setUnconfirmedIntent, removeUnconfirmedIntent } from "../../../../../api/queries/financialIntentStore.ts";
 
-// «تعزيز / صرف» modal (T09 §B3).
-export function AsabCashTxnModal({ custodyId, custodianName, remainingHalalas, onClose }: { custodyId: string; custodianName: string; remainingHalalas: number; onClose: () => void }) {
+export function FundingExecution() {
+  const { isRole, user } = useAuth();
+  const queryClient = useQueryClient();
+  const accountant = isRole("accountant");
+  const { data: requests = [], isError, refetch } = useAccountantFundingRequests(accountant);
+  const execute = useExecuteFundingRequest();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [reference, setReference] = useState("");
+  const [proof, setProof] = useState<File | null>(null);
+  const [intent, setIntent] = useState<FinancialIntent<any> | null>(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+
+  if (!accountant) return null;
+  return (
+    <section className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3" dir="rtl">
+      <h3 className="font-bold text-gray-900 text-sm">طلبات تغذية عهدة الفرع</h3>
+      <p className="text-xs text-gray-600">إرسال المحاسب يوثق التحويل فقط. يزداد الرصيد بعد تأكيد مدير الفرع الاستلام.</p>
+      {isError && <p role="alert" className="text-xs text-red-700">تعذر تحميل الطلبات المخولة. أعد المحاولة لاحقًا.</p>}
+      {!isError && requests.length === 0 && <p className="text-xs text-gray-500">لا توجد طلبات معتمدة ضمن صلاحياتك.</p>}
+      {requests.map((request) => (
+        <div key={request.id} className="border border-gray-200 rounded-lg p-3 space-y-2">
+          <div className="flex justify-between gap-3 text-sm">
+            <span>{request.branchName ?? "الفرع"} — {request.amount} ر.س</span>
+            <span className="text-xs font-semibold">
+              {request.receivedAt ? "استلم المدير واكتمل الترحيل" : request.executedAt ? "أُرسل، بانتظار تأكيد المدير" : "معتمد، بانتظار إرسال المحاسب"}
+            </span>
+          </div>
+          {request.transferReference && <p className="text-xs text-gray-600">مرجع التحويل: {request.transferReference}</p>}
+          {request.canExecute && (
+            <button
+              type="button"
+              className="text-xs text-blue-700 underline"
+              onClick={() => {
+                setSelectedId(request.id);
+                const existing = getUnconfirmedIntent<any>("funding", request.id, user?.id, (user as any)?.companyId);
+                if (existing && (existing.status === "timed_out" || existing.status === "in_flight")) {
+                  setIntent(existing);
+                  setReference(existing.payload?.reference ?? "");
+                } else {
+                  setReference("");
+                  setProof(null);
+                  setIntent(null);
+                }
+              }}
+            >
+              تنفيذ وإرسال التغذية
+            </button>
+          )}
+          {selectedId === request.id && request.canExecute && (
+            <form
+              className="flex flex-wrap gap-2 items-center"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                const cleanRef = reference.trim();
+                if (!proof || cleanRef.length < 2) return;
+
+                // Reconciliation check before retry: if an unconfirmed attempt timed out,
+                // check server status first to prevent duplicate 422 errors or blind re-POSTs.
+                if (intent && (intent.attemptCount > 0 || intent.status === "timed_out" || execute.isError)) {
+                  setCheckingStatus(true);
+                  const capturedReconGen = financialAccessGeneration(queryClient);
+                  const capturedReconActorId = user?.id ?? null;
+                  const capturedReconCompanyId = (user as any)?.companyId;
+                  try {
+                    const { data: latest = [], isError: refetchErr } = await refetch();
+                    if (!isFinancialSessionActive(queryClient, capturedReconGen, capturedReconActorId, capturedReconCompanyId)) {
+                      return;
+                    }
+                    setCheckingStatus(false);
+                    if (refetchErr) {
+                      toast.error("فشل التحقق من حالة الخادم؛ لا يمكن إعادة المحاولة تلقائياً لحين استقرار الاتصال.");
+                      return;
+                    }
+                    const recon = reconcileExecutionStatus(request.id, latest);
+                    if (recon.alreadyExecuted) {
+                      toast.success("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير");
+                      removeUnconfirmedIntent("funding", request.id, user?.id, (user as any)?.companyId);
+                      setSelectedId(null);
+                      setProof(null);
+                      setReference("");
+                      setIntent(null);
+                      return;
+                    }
+                    if (!recon.canRetry) {
+                      toast.error(`تعذر التحقق من حالة الخادم: ${recon.reason}`);
+                      return;
+                    }
+                  } catch {
+                    if (!isFinancialSessionActive(queryClient, capturedReconGen, capturedReconActorId, capturedReconCompanyId)) {
+                      return;
+                    }
+                    setCheckingStatus(false);
+                    toast.error("فشل التحقق من حالة الخادم؛ تعذر التأكد من نتيجة العملية السابقة.");
+                    return;
+                  }
+                }
+
+                const proofHash = await computeFileHash(proof);
+
+                // Bind intent to form lifecycle: reuse on retry, create once per submission
+                const currentIntent =
+                  intent ??
+                  createFinancialIntent(
+                    {
+                      requestId: request.id,
+                      reference: cleanRef,
+                      proofName: proof.name,
+                      proofSize: proof.size,
+                      proofHash,
+                    },
+                    undefined,
+                    user?.id,
+                    (user as any)?.companyId,
+                  );
+
+                // Concurrency guard: reject duplicate click if already in flight or pending
+                if (currentIntent.status === "in_flight" || execute.isPending) {
+                  toast.warning("العملية قيد التنفيذ بالفعل؛ يرجى الانتظار.");
+                  return;
+                }
+                setIntent(currentIntent);
+
+                const capturedGen = financialAccessGeneration(queryClient);
+
+                execute.mutate(
+                  {
+                    id: request.id,
+                    reference: cleanRef,
+                    proof,
+                    proofHash,
+                    currentActorId: user?.id,
+                    companyId: (user as any)?.companyId,
+                    intent: currentIntent,
+                  },
+                  {
+                    onSuccess: () => {
+                      if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) {
+                        // Defunct session / switched user: fail closed, do not touch UI or storage
+                        return;
+                      }
+                      currentIntent.status = "resolved";
+                      const activeCompanyId = (user as any)?.companyId;
+                      removeUnconfirmedIntent("funding", request.id, user?.id, activeCompanyId);
+                      toast.success("تم توثيق الإرسال؛ بانتظار تأكيد المدير");
+                      setSelectedId(null);
+                      setProof(null);
+                      setReference("");
+                      setIntent(null);
+                    },
+                    onError: async (error) => {
+                      if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) {
+                        // Late error after session change: fail closed, do not save or display into foreign session
+                        return;
+                      }
+                      currentIntent.status = "timed_out";
+                      const activeCompanyId = (user as any)?.companyId;
+                      setUnconfirmedIntent("funding", request.id, currentIntent, user?.id, activeCompanyId);
+                      // Automatic server reconciliation upon timeout/error
+                      try {
+                        const { data: latest = [], isError: refetchErr } = await refetch();
+                        if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) return;
+                        if (!refetchErr) {
+                          const recon = reconcileExecutionStatus(request.id, latest);
+                          if (recon.alreadyExecuted) {
+                            currentIntent.status = "resolved";
+                            removeUnconfirmedIntent("funding", request.id, user?.id, (user as any)?.companyId);
+                            toast.success("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير");
+                            setSelectedId(null);
+                            setProof(null);
+                            setReference("");
+                            setIntent(null);
+                            return;
+                          }
+                          if (!recon.canRetry) {
+                            if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) return;
+                            toast.error(`تعذر التحقق من حالة الخادم: ${recon.reason}`);
+                            return;
+                          }
+                        }
+                      } catch {
+                        // network refetch failure: prohibit blind retry
+                      }
+                      if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) return;
+                      toast.error(getErrorMessage(error, "ar"));
+                    },
+                  },
+                );
+              }}
+            >
+              <input
+                aria-label="مرجع التحويل"
+                required
+                minLength={2}
+                maxLength={120}
+                disabled={execute.isPending || checkingStatus || (intent?.status === "timed_out")}
+                value={reference}
+                onChange={(event) => {
+                  const val = event.target.value;
+                  if (intent && intent.status === "timed_out") {
+                    toast.warning("توجد محاولة إرسال سابقة قيد التحقق. لا يمكن تغيير مرجع التحويل.");
+                    return;
+                  }
+                  setReference(val);
+                }}
+                placeholder="مرجع التحويل أو التسليم"
+                className="border rounded px-2 py-1 text-xs disabled:bg-gray-100"
+              />
+              <input
+                aria-label="إثبات التحويل"
+                required
+                type="file"
+                disabled={execute.isPending || checkingStatus || Boolean(proof && intent?.status === "timed_out")}
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  if (!file) {
+                    setProof(null);
+                    return;
+                  }
+                  if (intent && (intent.status === "timed_out" || (intent as any).attemptCount > 0)) {
+                    if (intent.payload?.proofHash) {
+                      const hash = await computeFileHash(file);
+                      if (hash !== intent.payload.proofHash) {
+                        toast.error("ملف الإثبات غير مطابق للبصمة السابقة؛ يرجى اختيار نفس الملف السابق.");
+                        event.target.value = "";
+                        setProof(null);
+                        return;
+                      }
+                      toast.info("تم التحقق من مطابقة ملف الإثبات للبصمة السابقة بنجاح.");
+                    }
+                  }
+                  setProof(file);
+                }}
+                className="text-xs"
+              />
+              <button
+                type="submit"
+                disabled={execute.isPending || checkingStatus || !proof || !reference.trim()}
+                className="rounded bg-blue-600 px-3 py-1 text-white text-xs disabled:opacity-50"
+              >
+                {checkingStatus
+                  ? "جارٍ التحقق من الخادم..."
+                  : execute.isPending
+                    ? "جارٍ الإرسال..."
+                    : intent && (execute.isError || intent.status === "timed_out" || (intent as any).attemptCount > 0)
+                      ? "التحقق وإعادة المحاولة (نفس المفتاح)"
+                      : "تسجيل الإرسال"}
+              </button>
+              {intent && (intent.status === "timed_out" || execute.isError || (intent as any).attemptCount > 0) && (
+                <button
+                  type="button"
+                  disabled={checkingStatus}
+                  onClick={async () => {
+                    setCheckingStatus(true);
+                    const capturedManualGen = financialAccessGeneration(queryClient);
+                    const capturedManualActorId = user?.id ?? null;
+                    const capturedManualCompanyId = (user as any)?.companyId;
+                    try {
+                      const { data: latest = [], isError: refetchErr } = await refetch();
+                      if (!isFinancialSessionActive(queryClient, capturedManualGen, capturedManualActorId, capturedManualCompanyId)) {
+                        return;
+                      }
+                      if (refetchErr) {
+                        toast.error("تعذر الاتصال بالخادم للتحقق من الحالة؛ يرجى المحاولة لاحقاً وعدم تكرار الإرسال.");
+                        return;
+                      }
+                      const recon = reconcileExecutionStatus(request.id, latest);
+                      if (recon.alreadyExecuted) {
+                        toast.success("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير");
+                        intent.status = "resolved";
+                        removeUnconfirmedIntent("funding", request.id, user?.id, (user as any)?.companyId);
+                        setSelectedId(null);
+                        setProof(null);
+                        setReference("");
+                        setIntent(null);
+                      } else if (recon.canRetry) {
+                        toast.info("الطلب ما زال غير منفذ في الخادم؛ يمكنك إعادة المحاولة.");
+                      } else {
+                        toast.warning(`حالة غير حاسمة: ${recon.reason}`);
+                      }
+                    } catch {
+                      if (!isFinancialSessionActive(queryClient, capturedManualGen, capturedManualActorId, capturedManualCompanyId)) {
+                        return;
+                      }
+                      toast.error("تعذر الاتصال بالخادم للتحقق من الحالة؛ يرجى المحاولة لاحقاً وعدم تكرار الإرسال.");
+                    } finally {
+                      if (isFinancialSessionActive(queryClient, capturedManualGen, capturedManualActorId, capturedManualCompanyId)) {
+                        setCheckingStatus(false);
+                      }
+                    }
+                  }}
+                  className="rounded border border-gray-300 px-2 py-1 text-gray-700 text-xs hover:bg-gray-50"
+                >
+                  التحقق من حالة الطلب
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  if (execute.isPending || intent?.status === "in_flight") {
+                    toast.warning("عملية التمويل قيد التنفيذ، يرجى الانتظار حتى اكتمال الاستجابة");
+                    return;
+                  }
+                  setSelectedId(null);
+                  setProof(null);
+                  setReference("");
+                  setIntent(null);
+                }}
+                className="rounded border border-gray-200 px-2 py-1 text-gray-500 text-xs hover:bg-gray-50"
+              >
+                إلغاء
+              </button>
+            </form>
+          )}
+        </div>
+      ))}
+    </section>
+  );
+}
+
+// Direct custody movements are limited to permitted disbursements (T09 §B3).
+export function AsabCashTxnModal({
+  custodyId,
+  custodianName,
+  remainingHalalas,
+  brandId,
+  onClose,
+}: {
+  custodyId: string;
+  custodianName: string;
+  remainingHalalas: number;
+  brandId?: string;
+  onClose: () => void;
+}) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const companyId = (user as any)?.companyId;
   const createMut = useCreateCashTransaction();
-  const [txnType, setTxnType] = useState<"credit" | "debit">("credit");
-  const [amount, setAmount] = useState("");
-  const [description, setDesc] = useState("");
-  const [fromTreasury, setFromTreasury] = useState(true);
+  const [intent] = useState<FinancialIntent<any>>(() => {
+    const existing = getUnconfirmedIntent<any>("custody_debit", custodyId, user?.id, companyId);
+    if (existing && (existing.status === "timed_out" || existing.status === "in_flight")) {
+      return existing;
+    }
+    const fresh = createFinancialIntent({ custodyId, txnType: "debit" }, undefined, user?.id, companyId);
+    setUnconfirmedIntent("custody_debit", custodyId, fresh, user?.id, companyId);
+    return fresh;
+  });
+
+  const [amount, setAmount] = useState(() =>
+    intent.payload?.amountHalalas ? (intent.payload.amountHalalas / 100).toString() : ""
+  );
+  const [description, setDesc] = useState(() => intent.payload?.description ?? "");
+
   const amountH = Math.round((parseFloat(amount) || 0) * 100);
-  const overdraw = txnType === "debit" && amountH > remainingHalalas;
+  const overdraw = amountH > remainingHalalas;
+  const actorRoles = user ? grantedRoleKeys(user as any) : [];
+  const isCustodyWriteAuthorized = checkCustodyWriteAuthorization(
+    { roles: actorRoles, brandIds: user?.brandIds, id: user?.id },
+    { brandId, id: custodyId },
+  );
+
+  const isLocked = createMut.isPending || intent.status === "in_flight" || intent.status === "timed_out";
+
+  const handleClose = () => {
+    if (createMut.isPending || intent.status === "in_flight") {
+      toast.warning("العملية قيد التنفيذ، يرجى الانتظار حتى اكتمال الاستجابة");
+      return;
+    }
+    onClose();
+  };
+
   const submit = () => {
-    if (amountH < 1 || overdraw) return;
-    createMut.mutate({ custodyId, payload: { txnType, amount: amountH, description: description.trim() || undefined, source: txnType === "credit" && fromTreasury ? "treasury" : "manual" } }, { onSuccess: () => onClose() });
+    if (amountH < 1 || overdraw || !isCustodyWriteAuthorized || createMut.isPending || intent.status === "in_flight") return;
+
+    const cleanDesc = description.trim() || undefined;
+
+    // Guard against payload modification under timed_out intent
+    if (
+      intent.status === "timed_out" &&
+      intent.payload &&
+      (intent.payload.amountHalalas !== amountH || intent.payload.description !== cleanDesc)
+    ) {
+      toast.error("لا يمكن تعديل المبلغ أو البيان أثناء وجود معاملة غير محسومة (IDEMPOTENCY_CONFLICT)");
+      return;
+    }
+
+    const context: DirectDebitSafetyContext = {
+      custody: { id: custodyId, brandId, remainingHalalas },
+      actor: {
+        id: user?.id,
+        roles: actorRoles,
+        brandIds: user?.brandIds,
+        isCustodyWriteAuthorized,
+      },
+    };
+
+    const capturedGen = financialAccessGeneration(queryClient);
+
+    createMut.mutate(
+      {
+        custodyId,
+        payload: { txnType: "debit", amount: amountH, description: cleanDesc, source: "manual" },
+        context,
+        intent,
+        companyId,
+      },
+      {
+        onSuccess: () => {
+          if (!isFinancialSessionActive(queryClient, capturedGen, intent.actorId, intent.companyId)) {
+            return;
+          }
+          intent.status = "resolved";
+          removeUnconfirmedIntent("custody_debit", custodyId, user?.id, companyId);
+          onClose();
+        },
+        onError: () => {
+          if (!isFinancialSessionActive(queryClient, capturedGen, intent.actorId, intent.companyId)) {
+            return;
+          }
+          intent.status = "timed_out";
+          setUnconfirmedIntent("custody_debit", custodyId, intent, user?.id, companyId);
+        },
+      },
+    );
   };
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={handleClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()} dir="rtl">
-        <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">حركة عهدة — {custodianName}</h3><button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button></div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-gray-800">صرف من العهدة — {custodianName}</h3>
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        </div>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => setTxnType("credit")} className={`px-3 py-2.5 rounded-xl border text-xs font-bold ${txnType === "credit" ? "bg-emerald-50 border-emerald-300 text-emerald-700" : "border-gray-200 text-gray-500"}`}>⬆ تعزيز عهدة</button>
-            <button onClick={() => setTxnType("debit")} className={`px-3 py-2.5 rounded-xl border text-xs font-bold ${txnType === "debit" ? "bg-red-50 border-red-300 text-red-700" : "border-gray-200 text-gray-500"}`}>⬇ صرف</button>
-          </div>
-          <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">المبلغ (ر.س)</label>
-            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono" />
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+            تعزيز العهدة يتم عبر طلب تغذية معتمد، ثم إرسال المحاسب وتأكيد استلام مدير الفرع. هذا المسار غير متاح من شاشة الحركات.
+          </p>
+          {intent.status === "timed_out" && (
+            <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg p-2 font-medium">
+              يوجد طلب صرف قيد المعالجة ولم يتم حسمه من الخادم بعد. تم قفل الحقول لمنع تكرار الصرف أو تضارب المعاملة.
+            </p>
+          )}
+          <div>
+            <label className="text-[11px] font-semibold text-gray-500 block mb-1">المبلغ (ر.س)</label>
+            <input
+              type="number"
+              disabled={isLocked}
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              placeholder="0.00"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono disabled:bg-gray-100"
+            />
             {overdraw && <p className="text-[10px] text-red-600 mt-1">المبلغ يتجاوز المتبقي ({fmtAmt(remainingHalalas / 100)} ر.س)</p>}
           </div>
-          <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">البيان (اختياري)</label>
-            <input value={description} onChange={e => setDesc(e.target.value)} placeholder={txnType === "credit" ? "تعزيز عهدة من الخزينة" : "بيان الصرف..."} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" /></div>
-          {txnType === "credit" && <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer"><input type="checkbox" checked={fromTreasury} onChange={e => setFromTreasury(e.target.checked)} /> تعزيز من الخزينة</label>}
+          <div>
+            <label className="text-[11px] font-semibold text-gray-500 block mb-1">البيان (اختياري)</label>
+            <input
+              disabled={isLocked}
+              value={description}
+              onChange={e => setDesc(e.target.value)}
+              placeholder="بيان الصرف..."
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 disabled:bg-gray-100"
+            />
+          </div>
+          {!isCustodyWriteAuthorized && (
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 font-medium">
+              صرف العهدة مقتصر على مالك/مدير العلامة المصرح له، ولا يجوز للمحاسب الصرف المباشر بدون تفويض.
+            </p>
+          )}
           <div className="flex justify-end gap-2 pt-1">
-            <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50">إلغاء</button>
-            <Btn variant="primary" onClick={submit} disabled={amountH < 1 || overdraw || createMut.isPending}><Check size={11} /> تسجيل</Btn>
+            <button
+              onClick={handleClose}
+              disabled={createMut.isPending || intent.status === "in_flight"}
+              className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50 disabled:opacity-50"
+            >
+              إلغاء
+            </button>
+            <Btn
+              variant="primary"
+              onClick={submit}
+              disabled={amountH < 1 || overdraw || !isCustodyWriteAuthorized || createMut.isPending || intent.status === "in_flight"}
+            >
+              <Check size={11} /> {intent.status === "timed_out" ? "إعادة المحاولة (بنفس المفتاح)" : "تسجيل"}
+            </Btn>
           </div>
         </div>
       </div>
@@ -110,7 +571,7 @@ export function AsabCustodyCard({ custody }: { custody: any }) {
             <span className={`text-xs font-bold font-mono ${isLow ? "text-red-600" : "text-emerald-600"}`}>{fmtAmt(custody.remainingHalalas / 100)} ر.س متبقٍ</span>
           </div>
         </div>
-        <button onClick={() => setShowTxn(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold hover:bg-purple-100 flex-shrink-0"><Plus size={10} /> حركة</button>
+        <button onClick={() => setShowTxn(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold hover:bg-purple-100 flex-shrink-0"><Plus size={10} /> صرف</button>
         <Btn size="sm" onClick={() => setOpen(!open)}>{open ? <ChevronUp size={12} /> : <ChevronDown size={12} />} المعاملات</Btn>
       </div>
       {open && (
@@ -198,6 +659,7 @@ export function AccCash({ }: PageProps) {
 
   return (
     <div className="space-y-5">
+      <FundingExecution />
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-800">إدارة العهد النقدية</h2>
         <button onClick={() => exportCashMut.mutate({ brandId: brandFilter || undefined, branchId: branchFilter || undefined })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><FileText size={12} /> ملخص العهد Excel</button>

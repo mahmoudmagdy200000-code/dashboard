@@ -1,9 +1,11 @@
-import "./_group.css";
+if (typeof window !== "undefined") {
+  import("./_group.css");
+}
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
-import { chooseGrantedRole, companyRoles, financialAccessFingerprint, financialAccessGeneration, grantedRoleKeys, hasRoleGrant, pageForRole, purgeFinancialQueries, registerFinancialRequest } from "../../../auth/roleAccess";
+import { chooseGrantedRole, companyRoles, financialAccessFingerprint, financialAccessGeneration, isFinancialSessionActive, grantedRoleKeys, hasRoleGrant, pageForRole, purgeFinancialQueries, registerFinancialRequest } from "../../../auth/roleAccess";
 import { historyBranchOptions, historyPageTarget } from "../../../api/queries/shifts";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRows, shfReviewPageTarget, type ShfReviewAction, type ShfReviewGroup } from "./shiftReviewQueue";
@@ -12,7 +14,14 @@ import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocation
 import { hasEmployeeDebitWarning } from "./_shared/formatters";
 import { api, generateCommandId } from "../../../api/client";
 import { toast } from "sonner";
-import { useState, useMemo, useEffect, useLayoutEffect, useRef, ReactNode, createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
+import { ErrorBoundary } from "../../ErrorBoundary.tsx";
+import { hasActiveSubscription } from "../../../api/responseContracts";
+import { useAccountantFundingRequests, useExecuteFundingRequest } from "../../../api/queries/fundingRequests";
+import { reconcileExecutionStatus, computeFileHash } from "../../../api/queries/fundingExecutionContract.ts";
+import { createFinancialIntent, type FinancialIntent } from "../../../api/idempotencyIntent.ts";
+import { checkCustodyWriteAuthorization, type DirectDebitSafetyContext } from "../../../api/queries/cashTransactionContract.ts";
+import { getUnconfirmedIntent, setUnconfirmedIntent, removeUnconfirmedIntent } from "../../../api/queries/financialIntentStore.ts";
+import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, ReactNode, createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
 import {
   useOperations, useApproveOperation, useRejectOperation, useBulkApprove, useFinalApprove, useBulkFinalApprove,
   useVerifyExpenseInvoice, useUnverifyExpenseInvoice, useReviewExpenseInvoice,
@@ -27,6 +36,7 @@ import {
   useBulkApproveWaste, useExportWaste,
   useShiftsLive, useShiftsHistory, useShiftConfigs, useSaveShiftConfig, useExportShifts, useShiftVarianceAllocations, useAccountantShiftReportCorrection,
   useEmployees, useEmployeeMovements, useCreateEmployeeMovement, useSettleEmployeeBalance,
+  useApproveEmployeeSettlement, useRejectEmployeeSettlement,
   useExportEmployeeStatement, useExportPayroll,
   useCashCustody, useCashTransactions, useCreateCashTransaction, useApproveCashTxn,
   useRejectCashTxn, useRequestCashSettlement, useSettleCash, useExportCash, useExportCashLedger,
@@ -111,7 +121,7 @@ import {
   LayoutDashboard, Building2, Users, Settings, Bell, LogOut, ChevronRight,
   CheckCircle2, XCircle, TrendingUp, Plus, X, Edit2, FileText,
   Shield, Search, CreditCard, Package, Wallet, ShoppingCart, Clock,
-  BarChart3, AlertTriangle, Star, RefreshCw, ArrowLeftRight,
+  BarChart3, AlertTriangle, AlertCircle, Star, RefreshCw, ArrowLeftRight,
   Send, Check, Download, Zap, Lock, ChevronDown, ChevronUp,
   Eye, Paperclip, ThumbsUp, ThumbsDown, Upload, Clipboard,
   Home, RotateCcw, Filter, GitMerge, ArrowRightToLine, CheckSquare, Edit3,
@@ -121,10 +131,10 @@ import {
 // ═══════════════════════════════════════════════════
 // BILINGUAL SUPPORT — Arabic / English
 // ═══════════════════════════════════════════════════
-type CLang = "ar"|"en";
-type CLangCtx = { lang:CLang; setLang:(l:CLang)=>void; t:(ar:string,en:string)=>string; dir:"rtl"|"ltr" };
-const CLangContext = createContext<CLangCtx>({ lang:"ar", setLang:()=>{}, t:(ar)=>ar, dir:"rtl" });
-const useCLang = () => useContext(CLangContext);
+export type CLang = "ar"|"en";
+export type CLangCtx = { lang:CLang; setLang:(l:CLang)=>void; t:(ar:string,en:string)=>string; dir:"rtl"|"ltr" };
+export const CLangContext = createContext<CLangCtx>({ lang:"ar", setLang:()=>{}, t:(ar)=>ar, dir:"rtl" });
+export const useCLang = () => useContext(CLangContext);
 
 const EN_C_NAV_LABELS:Record<string,string> = {
   "ca-dashboard":"Dashboard","ca-subscription":"Plan & Subscription","ca-users":"User Management",
@@ -171,10 +181,10 @@ const BG_CONTENT   = "#F0F4FA";
 // ═══════════════════════════════════════════════════
 // PRIMITIVES
 // ═══════════════════════════════════════════════════
-function Btn({ children, onClick, variant="ghost", size="md", disabled=false }:{
+function Btn({ children, onClick, variant="ghost", size="md", disabled=false, type }:{
   children:ReactNode; onClick?:(e:ReactMouseEvent<HTMLButtonElement>)=>void;
   variant?:"primary"|"success"|"danger"|"ghost"|"outline"|"amber"|"cyan";
-  size?:"sm"|"md"; disabled?:boolean;
+  size?:"sm"|"md"; disabled?:boolean; type?:"button"|"submit"|"reset";
 }) {
   const base  = "inline-flex items-center gap-1.5 font-semibold cursor-pointer border transition-all rounded-lg whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed";
   const sizes = { sm:"px-3 py-1.5 text-xs", md:"px-4 py-2 text-sm" };
@@ -187,7 +197,7 @@ function Btn({ children, onClick, variant="ghost", size="md", disabled=false }:{
     outline:"bg-white text-gray-700 border-gray-300 hover:bg-gray-50",
     cyan:"bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100",
   };
-  return <button disabled={disabled} onClick={onClick} className={`${base} ${sizes[size]} ${variants[variant]}`}>{children}</button>;
+  return <button type={type} disabled={disabled} onClick={onClick} className={`${base} ${sizes[size]} ${variants[variant]}`}>{children}</button>;
 }
 
 function Badge({ children, className="" }:{ children:ReactNode; className?:string }) {
@@ -309,7 +319,7 @@ function CAssetDraftProvider({ children }:{ children:ReactNode }) {
   );
 }
 
-function CLangProvider({ children }:{ children:ReactNode }) {
+export function CLangProvider({ children }:{ children:ReactNode }) {
   // Seed from the site-wide language chosen on the entry screen, and keep the two in sync.
   const [lang, setLangState] = useState<CLang>(() => getSiteLang());
   useDocumentLang(lang);
@@ -350,7 +360,7 @@ function ConvertToAssetModalCD({
   const [errorMsg,   setErrorMsg]   = useState<string|null>(null);
 
   // Draft value is the invoice's PRE-TAX amount (VAT is not capitalised).
-  const amtBeforeVat = preTaxHalalas != null ? Math.round(preTaxHalalas/100) : Math.round(amount/1.15);
+  const amtBeforeVat = preTaxHalalas != null ? (preTaxHalalas / 100) : (amount != null ? (amount / 100) : 0);
   const draftId = `cd-draft-${opId}-${invoiceIndex}`;
   const canConfirm = assetName.trim().length>0 && custodian.trim().length>0 && qty>=1 && Boolean(branchId) && !submitting;
 
@@ -646,123 +656,11 @@ function CPipelineOverview({ ops }: { ops: COp[] }) {
   );
 }
 
-const INITIAL_OPS:COp[] = [
-  // Sales
-  { id:"O-2401",branch:"فرع العليا",   brandName:"برغر التاج",      brandColor:"#E53E3E",module:"sales",   moduleLabel:"مبيعات",  amount:18340,timeAgo:"قبل ساعة",   status:"pending",       attachments:3,match:"exact",  submittedBy:"فاطمة السالم", date:"21 مارس",refNum:"SL-2401",
-    channels:[
-      { name:"كاشير (POS)",    icon:"🖥️", pos:4200,  actual:4200  },
-      { name:"نقل بنكي (Mada)",icon:"💳", pos:8500,  actual:8500  },
-      { name:"طلبات",          icon:"🔴", pos:980,   actual:980   },
-      { name:"هنقرستيشن",      icon:"🟠", pos:2800,  actual:2800  },
-      { name:"جاهز",           icon:"🟡", pos:1200,  actual:1200  },
-      { name:"نينجا",          icon:"⚫", pos:660,   actual:660   },
-    ]},
-  { id:"O-2400",branch:"فرع الحمراء", brandName:"برغر التاج",       brandColor:"#E53E3E",module:"sales",   moduleLabel:"مبيعات",  amount:22100,timeAgo:"قبل 2 ساعة",status:"pending",       attachments:2,match:"review", submittedBy:"خالد العتيبي",  date:"21 مارس",refNum:"SL-2400", diff:"فارق بسيط في الكاش",
-    channels:[
-      { name:"كاشير (POS)",    icon:"🖥️", pos:5200,  actual:4850  },
-      { name:"نقل بنكي (Mada)",icon:"💳", pos:9800,  actual:9800  },
-      { name:"طلبات",          icon:"🔴", pos:1400,  actual:1400  },
-      { name:"هنقرستيشن",      icon:"🟠", pos:3800,  actual:3800  },
-      { name:"جاهز",           icon:"🟡", pos:1650,  actual:1650  },
-      { name:"نينجا",          icon:"⚫", pos:600,   actual:600   },
-    ]},
-  { id:"O-2399",branch:"فرع الملقا",  brandName:"بيتزا التاج",      brandColor:"#2B6CB0",module:"sales",   moduleLabel:"مبيعات",  amount:15820,timeAgo:"قبل 4 ساعات",status:"pending",       attachments:1,match:"exact",  submittedBy:"أحمد الحربي",  date:"21 مارس",refNum:"SL-2399",
-    channels:[
-      { name:"كاشير (POS)",    icon:"🖥️", pos:3400,  actual:3400  },
-      { name:"نقل بنكي (Mada)",icon:"💳", pos:6200,  actual:6200  },
-      { name:"طلبات",          icon:"🔴", pos:1800,  actual:1800  },
-      { name:"هنقرستيشن",      icon:"🟠", pos:2420,  actual:2420  },
-      { name:"جاهز",           icon:"🟡", pos:1300,  actual:1300  },
-      { name:"نينجا",          icon:"⚫", pos:700,   actual:700   },
-    ]},
-  { id:"O-2398",branch:"فرع الورود",  brandName:"مطعم التاج الراقي",brandColor:"#805AD5",module:"sales",   moduleLabel:"مبيعات",  amount:31500,timeAgo:"قبل 5 ساعات",status:"pending",       attachments:3,match:"diff",   submittedBy:"منى الزهراني", date:"21 مارس",refNum:"SL-2398", diff:"الكاش يختلف بـ 350 ر.س",
-    channels:[
-      { name:"كاشير (POS)",    icon:"🖥️", pos:7500,  actual:7150  },
-      { name:"نقل بنكي (Mada)",icon:"💳", pos:12000, actual:12000 },
-      { name:"طلبات",          icon:"🔴", pos:3200,  actual:3200  },
-      { name:"هنقرستيشن",      icon:"🟠", pos:4800,  actual:4800  },
-      { name:"جاهز",           icon:"🟡", pos:2500,  actual:2500  },
-      { name:"نينجا",          icon:"⚫", pos:1500,  actual:1500  },
-    ]},
-  { id:"O-2397",branch:"فرع الكورنيش",brandName:"بيتزا التاج",      brandColor:"#2B6CB0",module:"sales",   moduleLabel:"مبيعات",  amount:12400,timeAgo:"أمس",         status:"approved",      attachments:2,match:"exact",  submittedBy:"عبدالله الدوسري",date:"20 مارس",refNum:"SL-2397",
-    channels:[
-      { name:"كاشير (POS)",    icon:"🖥️", pos:2800,  actual:2800  },
-      { name:"نقل بنكي (Mada)",icon:"💳", pos:5200,  actual:5200  },
-      { name:"طلبات",          icon:"🔴", pos:1100,  actual:1100  },
-      { name:"هنقرستيشن",      icon:"🟠", pos:1800,  actual:1800  },
-      { name:"جاهز",           icon:"🟡", pos:900,   actual:900   },
-      { name:"نينجا",          icon:"⚫", pos:600,   actual:600   },
-    ]},
-  { id:"O-2396",branch:"فرع الملك فهد",brandName:"مطعم التاج الراقي",brandColor:"#805AD5",module:"sales",  moduleLabel:"مبيعات",  amount:28900,timeAgo:"أمس",         status:"final-approved",attachments:3,match:"exact",  submittedBy:"وليد السبيعي", date:"20 مارس",refNum:"SL-2396",
-    channels:[
-      { name:"كاشير (POS)",    icon:"🖥️", pos:6500,  actual:6500  },
-      { name:"نقل بنكي (Mada)",icon:"💳", pos:11000, actual:11000 },
-      { name:"طلبات",          icon:"🔴", pos:2800,  actual:2800  },
-      { name:"هنقرستيشن",      icon:"🟠", pos:4800,  actual:4800  },
-      { name:"جاهز",           icon:"🟡", pos:2200,  actual:2200  },
-      { name:"نينجا",          icon:"⚫", pos:1600,  actual:1600  },
-    ]},
-  { id:"O-2395",branch:"فرع النزهة",  brandName:"برغر التاج",       brandColor:"#E53E3E",module:"sales",   moduleLabel:"مبيعات",  amount:9800, timeAgo:"قبل يومين", status:"rejected",       attachments:1,match:"diff",   submittedBy:"سامي الغامدي", date:"19 مارس",refNum:"SL-2395", diff:"فاتورة الكاشير مفقودة",
-    channels:[
-      { name:"كاشير (POS)",    icon:"🖥️", pos:0,     actual:0     },
-      { name:"نقل بنكي (Mada)",icon:"💳", pos:4200,  actual:4200  },
-      { name:"طلبات",          icon:"🔴", pos:1800,  actual:1800  },
-      { name:"هنقرستيشن",      icon:"🟠", pos:2200,  actual:2200  },
-      { name:"جاهز",           icon:"🟡", pos:1100,  actual:1100  },
-      { name:"نينجا",          icon:"⚫", pos:500,   actual:500   },
-    ]},
-  // Expenses
-  { id:"E-1201",branch:"فرع العليا",  brandName:"برغر التاج",       brandColor:"#E53E3E",module:"expenses",moduleLabel:"مصروفات", amount:4850, timeAgo:"قبل 3 ساعات",status:"pending",       attachments:3,match:"review", submittedBy:"فاطمة السالم", date:"21 مارس",refNum:"EX-1201",
-    invoices:[
-      { invNum:"INV-881",vendor:"شركة الخليج للمواد",  desc:"مواد تنظيف وصيانة", amount:1200,date:"21 مارس",verified:false },
-      { invNum:"INV-882",vendor:"مستلزمات المطبخ",     desc:"أدوات خدمة وتغليف", amount:850, date:"21 مارس",verified:false },
-      { invNum:"INV-883",vendor:"خدمات الصيانة السريعة",desc:"إصلاح ثلاجة",       amount:2800,date:"21 مارس",verified:false },
-    ]},
-  { id:"E-1200",branch:"فرع الحمراء", brandName:"برغر التاج",       brandColor:"#E53E3E",module:"expenses",moduleLabel:"مصروفات", amount:2100, timeAgo:"قبل 5 ساعات",status:"pending",       attachments:2,match:"exact",  submittedBy:"خالد العتيبي", date:"21 مارس",refNum:"EX-1200",
-    invoices:[
-      { invNum:"INV-871",vendor:"شركة الوقود",   desc:"وقود توصيل",  amount:900, date:"21 مارس",verified:false },
-      { invNum:"INV-872",vendor:"مكيفات المنطقة",desc:"صيانة مكيف",  amount:1200,date:"21 مارس",verified:false },
-    ]},
-  { id:"E-1199",branch:"فرع الورود",  brandName:"مطعم التاج الراقي",brandColor:"#805AD5",module:"expenses",moduleLabel:"مصروفات", amount:6200, timeAgo:"أمس",         status:"approved",      attachments:4,match:"exact",  submittedBy:"منى الزهراني", date:"20 مارس",refNum:"EX-1199",
-    invoices:[
-      { invNum:"INV-861",vendor:"شركة الديكور",  desc:"ديكور مطعم",  amount:3500,date:"20 مارس",verified:true  },
-      { invNum:"INV-862",vendor:"مكتب الخدمات", desc:"نظافة شهرية", amount:2700,date:"20 مارس",verified:true  },
-    ]},
-  { id:"E-1198",branch:"فرع الملقا",  brandName:"بيتزا التاج",      brandColor:"#2B6CB0",module:"expenses",moduleLabel:"مصروفات", amount:3400, timeAgo:"قبل يومين",status:"rejected",       attachments:2,match:"diff",   submittedBy:"أحمد الحربي",  date:"19 مارس",refNum:"EX-1198", diff:"فاتورة غير مختومة",
-    invoices:[
-      { invNum:"INV-851",vendor:"مستلزمات الطباعة",desc:"مطبوعات قوائم",amount:1400,date:"19 مارس",verified:false },
-      { invNum:"INV-852",vendor:"خدمات النظافة",   desc:"تنظيف أسبوعي", amount:2000,date:"19 مارس",verified:false },
-    ]},
-  // Purchases
-  { id:"P-0801",branch:"فرع الملقا",  brandName:"بيتزا التاج",      brandColor:"#2B6CB0",module:"purchases",moduleLabel:"مشتريات",amount:8200, timeAgo:"قبل 2 ساعة", status:"pending",       attachments:4,match:"diff",   submittedBy:"أحمد الحربي",  date:"21 مارس",refNum:"PO-0801", diff:"فرق كمية 5 كجم جبن",
-    purchaseItems:[
-      { item:"عجينة البيتزا",   unit:"كجم",  ordQty:60, rcvQty:60, unitPrice:28 },
-      { item:"جبنة موزاريلا",   unit:"كجم",  ordQty:30, rcvQty:25, unitPrice:85 },
-      { item:"صوص الطماطم",    unit:"كجم",  ordQty:20, rcvQty:20, unitPrice:32 },
-      { item:"دجاج مشوي",      unit:"كجم",  ordQty:40, rcvQty:40, unitPrice:48 },
-    ]},
-  { id:"P-0800",branch:"فرع الكورنيش",brandName:"بيتزا التاج",      brandColor:"#2B6CB0",module:"purchases",moduleLabel:"مشتريات",amount:5600, timeAgo:"قبل 6 ساعات",status:"pending",       attachments:2,match:"exact",  submittedBy:"عبدالله الدوسري",date:"21 مارس",refNum:"PO-0800",
-    purchaseItems:[
-      { item:"دجاج طازج",      unit:"كجم",  ordQty:80, rcvQty:80, unitPrice:38 },
-      { item:"بطاطس",          unit:"كجم",  ordQty:60, rcvQty:60, unitPrice:18 },
-      { item:"زيت قلي",        unit:"لتر",  ordQty:30, rcvQty:30, unitPrice:22 },
-    ]},
-  { id:"P-0799",branch:"فرع المحطة",  brandName:"مطعم التاج الراقي",brandColor:"#805AD5",module:"purchases",moduleLabel:"مشتريات",amount:3900, timeAgo:"أمس",         status:"approved",      attachments:3,match:"review", submittedBy:"سلطان العمري", date:"20 مارس",refNum:"PO-0799",
-    purchaseItems:[
-      { item:"أرز بسمتي",      unit:"كجم",  ordQty:50, rcvQty:45, unitPrice:32 },
-      { item:"لحم ضأن",        unit:"كجم",  ordQty:30, rcvQty:30, unitPrice:65 },
-      { item:"بهارات مشكلة",   unit:"كجم",  ordQty:10, rcvQty:10, unitPrice:90 },
-    ]},
-  // Inventory
-  { id:"I-0601",branch:"فرع العليا",  brandName:"برغر التاج",       brandColor:"#E53E3E",module:"inventory",moduleLabel:"مخزون",  amount:0,    timeAgo:"قبل ساعة",   status:"pending",       attachments:1,match:"review", submittedBy:"فاطمة السالم", date:"21 مارس",refNum:"INV-0601" },
-  { id:"I-0600",branch:"فرع الملقا",  brandName:"بيتزا التاج",      brandColor:"#2B6CB0",module:"inventory",moduleLabel:"مخزون",  amount:0,    timeAgo:"قبل 3 ساعات",status:"pending",       attachments:1,match:"diff",   submittedBy:"أحمد الحربي",  date:"21 مارس",refNum:"INV-0600", diff:"فرق 12 كجم لحم" },
-  { id:"I-0599",branch:"فرع الورود",  brandName:"مطعم التاج الراقي",brandColor:"#805AD5",module:"inventory",moduleLabel:"مخزون",  amount:0,    timeAgo:"أمس",         status:"approved",      attachments:1,match:"exact",  submittedBy:"منى الزهراني", date:"20 مارس",refNum:"INV-0599" },
-];
 
 // HA-F13: Inventory branch static mocks removed. Live payload or clear unavailable status is rendered.
 const INV_BRANCH_DATA: Record<string,{ name:string; unit:string; prev:number; curr:number; cat:string }[]> = {};
 
-type CRole = "company-admin"|"head"|"accountant"|"branch"|"procurement";
+export type CRole = "company-admin"|"head"|"accountant"|"branch"|"procurement";
 
 type NavEntry = { section:string }|{ id:string; label:string; icon:ReactNode; badge?:number };
 const isSection = (e:NavEntry): e is {section:string} => "section" in e;
@@ -930,7 +828,7 @@ function CompanyLoginScreen({ onSelect }:{ onSelect:(r:CRole)=>void }) {
 // ═══════════════════════════════════════════════════
 // Notifications come from the platform API; empty until the backend returns them (no static seed).
 const SHELL_NOTIFICATIONS: { id:number; title:string; body:string; time:string; icon:string; unread:boolean }[] = [];
-function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, allowedRoles, onSelectRole }:{
+export function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, allowedRoles, onSelectRole }:{
   role:CRole; page:string; navigate:(p:string)=>void; onLogout:()=>void; children:ReactNode; headPendingCount?:number;
   allowedRoles:CRole[]; onSelectRole:(role:CRole)=>void;
 }) {
@@ -1178,7 +1076,7 @@ function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, a
 // ═══════════════════════════════════════════════════
 // T03/T04 NET-NEW SHARED UI (colocated)
 // ═══════════════════════════════════════════════════
-const fmtH = (h:number|null|undefined) => h == null ? "—" : fmt(Math.round(h)/100); // halalas → SAR display
+const fmtH = (h:number|null|undefined) => h == null ? "—" : fmtSar2(h/100); // halalas → SAR display (DB-1: preserves exact fractions)
 
 // Branch/day state chips — GET /pipeline/daily-rollup (T03 §12).
 // The 7th chip (erp_imported) is a reserved future stage → always greyed out.
@@ -1338,7 +1236,7 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
     if (!recon) return;
     runSalesAction(salesContext, "edit", () => {
       const seed:Record<string,string> = {};
-      channels.forEach(c=>{ seed[c.key] = String(Math.round(c.actualAmountHalalas)/100); });
+      channels.forEach(c=>{ seed[c.key] = String(c.actualAmountHalalas / 100); });
       setDraft(seed);
       setVarReason(recon?.varianceReason ?? "");
       setEditMode(true);
@@ -2073,15 +1971,16 @@ function CADashboard({ navigate }:{ navigate:(p:string)=>void }) {
   const { t, dir, lang } = useCLang();
   const { data: apiDashboard } = useCompanyAdminDashboard();
   const { data: apiSub } = useCompanySubscription();
+  const hasActiveSub = hasActiveSubscription(apiSub);
   // All figures come from GET /company/me/dashboard + /subscription. No static fallback.
   const apiKpis = (apiDashboard?.kpis ?? {}) as Record<string, number | string>;
   const apiTotals = (apiDashboard?.totals ?? {}) as Record<string, number>;
   const apiBrands = Array.isArray(apiDashboard?.brands) ? apiDashboard!.brands! : [];
   const totalSalesM = (apiKpis.totalSalesHalalas as number | undefined) != null
-    ? Math.round(((apiKpis.totalSalesHalalas as number) / 100))
+    ? ((apiKpis.totalSalesHalalas as number) / 100)
     : 0;
   const totalExpM   = (apiKpis.totalExpensesHalalas as number | undefined) != null
-    ? Math.round(((apiKpis.totalExpensesHalalas as number) / 100))
+    ? ((apiKpis.totalExpensesHalalas as number) / 100)
     : 0;
   const brandsCount      = apiTotals.brandsCount      ?? apiBrands.length;
   const restaurantsCount = apiTotals.restaurantsCount ?? apiBrands.reduce((s,b)=>s+(b.restaurantsCount ?? 0),0);
@@ -2090,7 +1989,7 @@ function CADashboard({ navigate }:{ navigate:(p:string)=>void }) {
   const usage = (apiSub?.usage ?? {}) as Record<string, { used: number; max: number | null }>;
   const branchesMax = usage.branches?.max ?? 0;
   const usersMax    = usage.users?.max    ?? 0;
-  const planPrice   = Math.round((((apiSub as any)?.priceHalalas as number) ?? 0) / 100);
+  const planPrice   = (((apiSub as any)?.priceHalalas as number) ?? 0) / 100;
   const daysRemaining = apiSub?.daysRemaining ?? 0;
   const branchCompletionRate = (apiKpis.branchCompletionRate as number | undefined) ?? 0;
   const branchesAboveTarget  = (apiKpis.branchesAboveTarget  as number | undefined) ?? 0;
@@ -2105,29 +2004,68 @@ function CADashboard({ navigate }:{ navigate:(p:string)=>void }) {
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("مرحباً،","Welcome,")} {apiDashboard?.company?.name ?? COMPANY.name} 🏢</h2>
-          <p className="text-gray-400 text-sm mt-0.5">{t("خطة","Plan")} {t(PLAN_AR[(apiDashboard?.company?.plan ?? COMPANY.plan)]||(apiDashboard?.company?.plan ?? COMPANY.plan), (apiDashboard?.company?.plan ?? COMPANY.plan))} · {branchesCount} {t("فرع","branches")} · {brandsCount} {t("علامات تجارية","brands")}</p>
+          <p className="text-gray-400 text-sm mt-0.5">
+            {hasActiveSub ? (
+              <>{t("خطة","Plan")} {t(PLAN_AR[apiSub?.planName || (apiDashboard?.company?.plan ?? COMPANY.plan)] || (apiSub?.planName || (apiDashboard?.company?.plan ?? COMPANY.plan)), (apiSub?.planName || (apiDashboard?.company?.plan ?? COMPANY.plan)))} · </>
+            ) : (
+              <span className="text-amber-600 font-medium">{t("بدون اشتراك نشط", "No active plan")} · </span>
+            )}
+            {branchesCount} {t("فرع","branches")} · {brandsCount} {t("علامات تجارية","brands")}
+          </p>
         </div>
         <button onClick={()=>navigate("ca-subscription")} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-bold hover:bg-purple-700 shadow-sm">
           <CreditCard size={14}/> {t("إدارة الاشتراك","Manage Subscription")}
         </button>
       </div>
-      <div className="bg-gradient-to-l from-purple-600 to-blue-700 rounded-2xl p-5 text-white">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <p className="font-bold text-lg">{apiSub?.planName || (apiDashboard?.company?.plan ? t(PLAN_AR[apiDashboard.company.plan]||apiDashboard.company.plan, apiDashboard.company.plan) : t("الخطة الحالية","Current Plan"))} — {t("نشطة ✅","Active ✅")}</p>
-            <p className="text-white/70 text-sm mt-0.5">{((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd) ? t(`ينتهي في ${String((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd).slice(0,10)} · متبقي `, `Expires ${String((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd).slice(0,10)} · `) : t("متبقي ", "Remaining ")}<span className="text-cyan-300 font-bold">{daysRemaining}</span> {t("يوم","days remaining")}</p>
-            <div className="flex items-center gap-6 mt-3 flex-wrap">
-              {statItems.map(([l,v])=>(
-                <div key={l}><p className="text-white/50 text-xs">{l}</p><p className="font-bold">{v}</p></div>
-              ))}
+      {!hasActiveSub ? (
+        <div className="bg-gradient-to-l from-amber-600 to-amber-700 rounded-2xl p-5 text-white shadow-sm" role="status">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0 mt-0.5">
+                <AlertCircle size={22} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-lg">{t("لا يوجد اشتراك نشط للمنشأة", "No Active Subscription")}</p>
+                  <span className="bg-amber-900/40 text-amber-100 text-[10px] px-2 py-0.5 rounded-full font-bold">{t("غير مجهّز", "Not Provisioned")}</span>
+                </div>
+                <p className="text-amber-100/90 text-sm mt-1 max-w-xl">
+                  {t(
+                    "لم يتم تجهيز أو تفعيل باقة اشتراك لهذه الشركة بعد. يرجى اختيار خطة لتفعيل الوصول إلى ميزات النظام والفروع.",
+                    "No subscription has been provisioned or activated for this company yet. Please choose a plan to activate features and branches."
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className={dir==="ltr"?"text-left":"text-right"}>
+              <button
+                onClick={() => navigate("ca-subscription")}
+                className="px-4 py-2 rounded-xl bg-white text-amber-900 hover:bg-amber-50 text-xs font-bold shadow-sm transition-all"
+              >
+                {t("اختيار وتفعيل باقة الاشتراك ←", "Choose & Activate Plan →")}
+              </button>
             </div>
           </div>
-          <div className={dir==="ltr"?"text-left":"text-right"}>
-            <p className="text-3xl font-black">{fmt(planPrice)} <span className="text-base font-normal text-white/60">{t("ر.س/سنة","SAR/year")}</span></p>
-            <button onClick={()=>navigate("ca-subscription")} className="mt-2 px-4 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold border border-white/30">{t("ترقية الخطة ↑","Upgrade Plan ↑")}</button>
+        </div>
+      ) : (
+        <div className="bg-gradient-to-l from-purple-600 to-blue-700 rounded-2xl p-5 text-white">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <p className="font-bold text-lg">{apiSub?.planName || (apiDashboard?.company?.plan ? t(PLAN_AR[apiDashboard.company.plan]||apiDashboard.company.plan, apiDashboard.company.plan) : t("الخطة الحالية","Current Plan"))} — {t("نشطة ✅","Active ✅")}</p>
+              <p className="text-white/70 text-sm mt-0.5">{((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd) ? t(`ينتهي في ${String((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd).slice(0,10)} · متبقي `, `Expires ${String((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd).slice(0,10)} · `) : t("متبقي ", "Remaining ")}<span className="text-cyan-300 font-bold">{daysRemaining}</span> {t("يوم","days remaining")}</p>
+              <div className="flex items-center gap-6 mt-3 flex-wrap">
+                {statItems.map(([l,v])=>(
+                  <div key={l}><p className="text-white/50 text-xs">{l}</p><p className="font-bold">{v}</p></div>
+                ))}
+              </div>
+            </div>
+            <div className={dir==="ltr"?"text-left":"text-right"}>
+              <p className="text-3xl font-black">{fmt(planPrice)} <span className="text-base font-normal text-white/60">{t("ر.س/سنة","SAR/year")}</span></p>
+              <button onClick={()=>navigate("ca-subscription")} className="mt-2 px-4 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-bold border border-white/30">{t("ترقية الخطة ↑","Upgrade Plan ↑")}</button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label={t("إجمالي المبيعات الشهرية","Monthly Total Sales")} value={`${fmt(Math.round(totalSalesM/1000))}K`} sub={t("ر.س هذا الشهر","SAR this month")} icon={<TrendingUp size={18} className="text-emerald-600"/>} accent="emerald"/>
         <KpiCard label={t("إجمالي المصروفات","Total Expenses")}            value={`${fmt(Math.round(totalExpM/1000))}K`}   sub={t("ر.س هذا الشهر","SAR this month")} icon={<Wallet size={18} className="text-red-500"/>}      accent="red"/>
@@ -2139,8 +2077,8 @@ function CADashboard({ navigate }:{ navigate:(p:string)=>void }) {
           <div className="col-span-1 md:col-span-3 bg-white rounded-xl border border-gray-100 shadow-sm p-8 text-center text-gray-400 text-sm">{t("لا توجد بيانات علامات تجارية بعد","No brand data yet")}</div>
         )}
         {apiBrands.map(b=>{
-          const sales=Math.round((b.monthlySalesHalalas ?? 0)/100);
-          const target=Math.round((b.monthlyTargetHalalas ?? 0)/100);
+          const sales=(b.monthlySalesHalalas ?? 0)/100;
+          const target=(b.monthlyTargetHalalas ?? 0)/100;
           const pct=target>0?Math.round((sales/target)*100):0;
           const color=b.color ?? "#7C3AED";
           return (
@@ -2160,22 +2098,31 @@ function CADashboard({ navigate }:{ navigate:(p:string)=>void }) {
   );
 }
 
-function CASubscription() {
+export function CASubscription() {
   const { t, dir, lang } = useCLang();
   const upgradeMut = useUpgradeSubscription();
   const contactMut = useContactSales();
-  const { data: apiSub } = useCompanySubscription();
-  const { data: apiPlans = [] } = useCompanyPlans();
+  const { data: apiSub, isLoading: isSubLoading, isError: isSubError, error: subError, refetch: refetchSub } = useCompanySubscription();
+  const { data: apiPlans = [], isLoading: isPlansLoading, isError: isPlansError, error: plansError, refetch: refetchPlans } = useCompanyPlans();
   const [billing,setBilling]=useState<"annual"|"monthly">("annual");
-  // Driven by GET /company/plans. No static fallback.
-  const plans = apiPlans.map(p => ({
-    id: p.id,
-    plan: p.name,
-    price_m: p.priceMonthlyHalalas != null ? Math.round(p.priceMonthlyHalalas / 100) : null,
-    price_a: p.priceAnnualHalalas  != null ? Math.round(p.priceAnnualHalalas  / 100) : null,
-    features: p.features ?? [],
-    current: p.isCurrent ?? false,
-  }));
+  const plansList = (Array.isArray(apiPlans) ? apiPlans : []).filter(Boolean);
+  const hasActiveSub = hasActiveSubscription(apiSub);
+  // Driven by GET /plans. No static fallback.
+  const plans = plansList.map(p => {
+    const rawFeatures = Array.isArray(p.features) ? p.features : [];
+    const normalizedFeatures: string[] = rawFeatures.map((f: any) =>
+      typeof f === "string" ? f : (lang === "ar" ? (f?.labelAr || f?.labelEn || "") : (f?.labelEn || f?.labelAr || ""))
+    ).filter(Boolean);
+    const planName = lang === "ar" ? (p.nameAr || p.name || p.nameEn || p.code || "") : (p.nameEn || p.name || p.nameAr || p.code || "");
+    return {
+      id: p.id,
+      plan: planName,
+      price_m: p.priceMonthlyHalalas != null ? p.priceMonthlyHalalas / 100 : null,
+      price_a: p.priceAnnualHalalas  != null ? p.priceAnnualHalalas  / 100 : null,
+      features: normalizedFeatures,
+      current: hasActiveSub ? (p.isCurrent ?? false) : false,
+    };
+  });
   const usage = (apiSub?.usage ?? {}) as Record<string, { used: number; max: number | null }>;
   const branchesUsed = usage.branches?.used ?? 0;
   const branchesMax  = usage.branches?.max  ?? 0;
@@ -2183,17 +2130,47 @@ function CASubscription() {
   const usersMax     = usage.users?.max     ?? 0;
   // T14.4 — storage quota is now `usage.storage {used, max(GB)}` (max null = unlimited).
   // Fall back to the legacy `storageGB` key for older payloads.
-  const storageMeter = usage.storage ?? usage.storageGB;
+  const storageMeter = usage.storage ?? (usage as any).storageGB;
   const storageUsed  = storageMeter?.used ?? 0;
   const storageMax   = storageMeter?.max ?? null; // null → unlimited («∞»)
-  const currentPlanName = apiSub?.planName ?? "Professional";
-  const currentPlan = apiPlans.find(p => p.isCurrent);
+  const currentPlan = hasActiveSub ? plansList.find(p => p.isCurrent) : undefined;
+  const currentPlanName = apiSub?.planName || (currentPlan ? (lang === "ar" ? (currentPlan.nameAr || currentPlan.name) : (currentPlan.nameEn || currentPlan.name)) : "");
   const currentPriceAnnualObj = formatPlanPrice(currentPlan?.priceAnnualHalalas, lang);
   const currentPriceMonthlyObj = formatPlanPrice(currentPlan?.priceMonthlyHalalas, lang);
   const currentPlanPriceAnnual = currentPriceAnnualObj.formatted;
   const currentPlanPriceMonthly = currentPriceMonthlyObj.formatted;
   const SAR = t("ر.س","SAR");
   const perYear = t("سنة","year"); const perMonth = t("شهر","mo");
+
+  if (isPlansLoading || isSubLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center" role="status" dir={dir}>
+        <RefreshCw size={28} className="animate-spin text-purple-600 mb-3" />
+        <p className="text-sm font-semibold text-gray-700">{t("جارٍ تحميل بيانات الاشتراك والخطة…", "Loading subscription & plans…")}</p>
+      </div>
+    );
+  }
+
+  if (isPlansError) {
+    return (
+      <div role="alert" className="p-6 my-4 bg-rose-50/70 border border-rose-200 rounded-2xl shadow-sm text-right" dir={dir}>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+            <AlertTriangle size={20} />
+          </div>
+          <div>
+            <h3 className="font-bold text-rose-900 text-base">{t("فشل تحميل بيانات الخطط", "Failed to load plans")}</h3>
+            <p className="text-xs text-rose-600 mt-0.5">{t("حدث خطأ أثناء الاتصال بالخادم. لم يتم عرض أي بيانات مالية افتراضية.", "An error occurred fetching plans. No default financial figures are shown.")}</p>
+          </div>
+        </div>
+        <p className="bg-white/80 border border-rose-100 rounded-xl p-3 mb-4 text-xs font-mono text-rose-800 break-words" dir="ltr">{getErrorMessage(plansError, lang)}</p>
+        <button onClick={() => { refetchPlans(); refetchSub(); }} className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm">
+          <RefreshCw size={13} />
+          <span>{t("إعادة المحاولة", "Retry")}</span>
+        </button>
+      </div>
+    );
+  }
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -2206,72 +2183,134 @@ function CASubscription() {
           ))}
         </div>
       </div>
-      <div className="bg-white rounded-2xl border border-purple-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 bg-gradient-to-l from-purple-600 to-blue-700 text-white flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <div className="flex items-center gap-2"><span className="font-black text-xl">{t(PLAN_AR[currentPlanName]||currentPlanName, currentPlanName)}</span><Badge className="bg-white/20 text-white text-[10px]">{t("الخطة الحالية","Current Plan")}</Badge></div>
-            <p className="text-white/70 text-xs mt-0.5">{((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd) ? t(`ينتهي في ${String((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd).slice(0,10)}`, `Expires ${String((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd).slice(0,10)}`) : t("تجديد سنوي تلقائي","Annual auto-renew")}</p>
-          </div>
-          <p className="text-2xl font-black">
-            {billing==="annual"?currentPlanPriceAnnual:currentPlanPriceMonthly}
-            {(!currentPriceAnnualObj.isCustom && !currentPriceMonthlyObj.isCustom) && (
-              <span className="text-sm font-normal text-white/60"> {SAR}/{billing==="annual"?perYear:perMonth}</span>
-            )}
-          </p>
-        </div>
-        <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          {([[t("الفروع","Branches"),branchesUsed,branchesMax,"bg-blue-500"],[t("المستخدمون","Users"),usersUsed,usersMax,"bg-purple-500"],[t("التخزين (GB)","Storage (GB)"),storageUsed,storageMax,"bg-emerald-500"]] as [string,number,number|null,string][]).map(([l,u,m,c])=>{
-            const unlimited = m === null || m === undefined;   // T14.4 — unlimited plan → «/∞»
-            const pct = unlimited || Number(m) <= 0 ? 0 : Math.min(100, Math.round((Number(u)/Number(m))*100));
-            return (
-            <div key={String(l)}><div className="flex justify-between mb-1.5 text-xs font-semibold text-gray-600"><span>{l}</span><span>{u}/{unlimited?"∞":m}</span></div><div className="w-full h-2 bg-gray-100 rounded-full"><div className={`h-2 rounded-full ${c}`} style={{width:`${pct}%`}}/></div></div>
-          );})}
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-        {plans.map(p=>(
-          <div key={p.id} className={`bg-white rounded-2xl border-2 shadow-sm overflow-hidden ${p.current?"border-purple-400 shadow-purple-100":"border-gray-100"}`}>
-            {p.current&&<div className="px-4 py-1.5 text-center text-xs font-bold bg-purple-600 text-white">⭐ {t("خطتك الحالية","Your Current Plan")}</div>}
-            <div className="p-5">
-              <p className="font-black text-gray-900 text-lg">{t(PLAN_AR[p.plan]||p.plan, p.plan)}</p>
-              <div className="mt-2 mb-4">
-                {p.price_m === null || p.price_a === null ? (
-                  <p className="text-2xl font-black text-gray-800">{t("حسب الطلب","Custom")}</p>
-                ) : (
-                  <>
-                    <span className="text-2xl font-black text-gray-800">
-                      {billing === "annual" ? (p.price_a != null ? p.price_a.toLocaleString() : "—") : (p.price_m != null ? p.price_m.toLocaleString() : "—")}
-                    </span>
-                    <span className="text-gray-400 text-sm"> {SAR}/{billing==="annual"?perYear:perMonth}</span>
-                  </>
-                )}
+      {!hasActiveSub ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-amber-900 shadow-sm" role="status">
+          <div className="flex items-start justify-between flex-wrap gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+                <AlertCircle size={22} />
               </div>
-              <ul className="space-y-1.5 mb-5">{p.features.map(f=><li key={f} className="flex items-center gap-2 text-xs text-gray-600"><Check size={11} className="text-emerald-500 flex-shrink-0"/>{f}</li>)}</ul>
-              {p.current?<div className="w-full py-2 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold text-center">{t("خطتك الحالية ✓","Your Current Plan ✓")}</div>:p.price_m===null?<button onClick={()=>contactMut.mutate({ message: t("استفسار عن خطة المؤسسات","Enterprise plan inquiry") })} className="w-full py-2 rounded-lg border-2 border-purple-300 text-purple-700 text-xs font-bold hover:bg-purple-50">{t("تواصل مع المبيعات","Contact Sales")}</button>:<button onClick={()=>upgradeMut.mutate({ planId: p.id, billingCycle: billing })} className="w-full py-2 rounded-lg bg-purple-600 text-white text-xs font-bold hover:bg-purple-700">{t("ترقية ↑","Upgrade ↑")}</button>}
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-amber-900">{t("لا يوجد اشتراك نشط للمنشأة", "No Active Subscription")}</h3>
+                  <Badge className="bg-amber-200 text-amber-800 text-[10px] font-bold">{t("غير مجهّز", "Not Provisioned")}</Badge>
+                </div>
+                <p className="text-xs text-amber-700 mt-1 max-w-xl leading-relaxed">
+                  {t(
+                    "لم يتم تجهيز أو تفعيل باقة اشتراك لهذه الشركة بعد. يرجى اختيار إحدى الخطط المتاحة أدناه للبدء في تفعيل اشتراكك.",
+                    "No subscription has been provisioned or activated for this company yet. Please choose an available plan below to get started."
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  const el = document.getElementById("available-plans-grid");
+                  el?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition-all"
+              >
+                {t("عرض الخطط المتاحة ↓", "View Available Plans ↓")}
+              </button>
             </div>
           </div>
-        ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-purple-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 bg-gradient-to-l from-purple-600 to-blue-700 text-white flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <div className="flex items-center gap-2"><span className="font-black text-xl">{t(PLAN_AR[currentPlanName]||currentPlanName, currentPlanName)}</span><Badge className="bg-white/20 text-white text-[10px]">{t("الخطة الحالية","Current Plan")}</Badge></div>
+              <p className="text-white/70 text-xs mt-0.5">{((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd) ? t(`ينتهي في ${String((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd).slice(0,10)}`, `Expires ${String((apiSub as any)?.expiresAt || apiSub?.currentPeriodEnd).slice(0,10)}`) : t("تجديد سنوي تلقائي","Annual auto-renew")}</p>
+            </div>
+            <p className="text-2xl font-black">
+              {billing==="annual"?currentPlanPriceAnnual:currentPlanPriceMonthly}
+              {(!currentPriceAnnualObj.isCustom && !currentPriceMonthlyObj.isCustom) && (
+                <span className="text-sm font-normal text-white/60"> {SAR}/{billing==="annual"?perYear:perMonth}</span>
+              )}
+            </p>
+          </div>
+          <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            {([[t("الفروع","Branches"),branchesUsed,branchesMax,"bg-blue-500"],[t("المستخدمون","Users"),usersUsed,usersMax,"bg-purple-500"],[t("التخزين (GB)","Storage (GB)"),storageUsed,storageMax,"bg-emerald-500"]] as [string,number,number|null,string][]).map(([l,u,m,c])=>{
+              const unlimited = m === null || m === undefined;   // T14.4 — unlimited plan → «/∞»
+              const pct = unlimited || Number(m) <= 0 ? 0 : Math.min(100, Math.round((Number(u)/Number(m))*100));
+              return (
+              <div key={String(l)}><div className="flex justify-between mb-1.5 text-xs font-semibold text-gray-600"><span>{l}</span><span>{u}/{unlimited?"∞":m}</span></div><div className="w-full h-2 bg-gray-100 rounded-full"><div className={`h-2 rounded-full ${c}`} style={{width:`${pct}%`}}/></div></div>
+            );})}
+          </div>
+        </div>
+      )}
+      {isSubError && (
+        <div role="alert" className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={16} className="text-rose-600 shrink-0" />
+            <span>{t("تعذر جلب تفاصيل الاشتراك الحالية من الخادم.", "Unable to fetch current subscription details from server.")} {getErrorMessage(subError, lang)}</span>
+          </div>
+          <button onClick={() => refetchSub()} className="px-3 py-1 bg-rose-600 text-white rounded-lg text-xs font-bold hover:bg-rose-700 shrink-0">
+            {t("إعادة المحاولة", "Retry")}
+          </button>
+        </div>
+      )}
+      <div id="available-plans-grid" className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+        {plans.length === 0 ? (
+          <div className="col-span-full py-12 text-center text-gray-500 bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <p className="text-sm font-semibold">{t("لا توجد خطط اشتراك متاحة حالياً.", "No subscription plans available currently.")}</p>
+          </div>
+        ) : (
+          plans.map(p=>(
+            <div key={p.id} className={`bg-white rounded-2xl border-2 shadow-sm overflow-hidden ${p.current?"border-purple-400 shadow-purple-100":"border-gray-100"}`}>
+              {p.current&&<div className="px-4 py-1.5 text-center text-xs font-bold bg-purple-600 text-white">⭐ {t("خطتك الحالية","Your Current Plan")}</div>}
+              <div className="p-5">
+                <p className="font-black text-gray-900 text-lg">{t(PLAN_AR[p.plan]||p.plan, p.plan)}</p>
+                <div className="mt-2 mb-4">
+                  {p.price_m === null || p.price_a === null ? (
+                    <p className="text-2xl font-black text-gray-800">{t("حسب الطلب","Custom")}</p>
+                  ) : (
+                    <>
+                      <span className="text-2xl font-black text-gray-800">
+                        {billing === "annual" ? (p.price_a != null ? p.price_a.toLocaleString() : "—") : (p.price_m != null ? p.price_m.toLocaleString() : "—")}
+                      </span>
+                      <span className="text-gray-400 text-sm"> {SAR}/{billing==="annual"?perYear:perMonth}</span>
+                    </>
+                  )}
+                </div>
+                <ul className="space-y-1.5 mb-5">{p.features.map((f, fi)=><li key={fi} className="flex items-center gap-2 text-xs text-gray-600"><Check size={11} className="text-emerald-500 flex-shrink-0"/>{f}</li>)}</ul>
+                {p.current ? (
+                  <div className="w-full py-2 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold text-center">{t("خطتك الحالية ✓","Your Current Plan ✓")}</div>
+                ) : p.price_m === null ? (
+                  <button onClick={()=>contactMut.mutate({ message: t("استفسار عن خطة المؤسسات","Enterprise plan inquiry") })} className="w-full py-2 rounded-lg border-2 border-purple-300 text-purple-700 text-xs font-bold hover:bg-purple-50">{t("تواصل مع المبيعات","Contact Sales")}</button>
+                ) : (
+                  <button onClick={()=>upgradeMut.mutate({ planId: p.id, billingCycle: billing })} className="w-full py-2 rounded-lg bg-purple-600 text-white text-xs font-bold hover:bg-purple-700">
+                    {hasActiveSub ? t("ترقية ↑","Upgrade ↑") : t("اختيار الخطة","Select Plan")}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
 }
 
-function CAUsers() {
+export function CAUsers() {
   const { t, dir, lang } = useCLang();
   type U = { id:string;name:string;role:string;branch:string;email:string;status:"active"|"inactive";last:string };
-  const { data: apiUsers = [] } = useCompanyUsers();
-  const { data: apiInvites = [] } = useCompanyInvitations();
+  const { data: apiUsers = [], isLoading: isUsersLoading, isError: isUsersError, error: usersError, refetch: refetchUsers } = useCompanyUsers();
+  const { data: apiInvites = [], isLoading: isInvitesLoading, isError: isInvitesError, error: invitesError, refetch: refetchInvites } = useCompanyInvitations();
   const toggleMut = useToggleCompanyUserStatus();
   const inviteMut = useCreateCompanyInvitation();
   const updateUserMut = useUpdateCompanyUser();
   const resendInviteMut = useResendCompanyInvitation();  // T14.2 — re-email + extend expiry
   const revokeInviteMut = useRevokeCompanyInvitation();
   // T14.2 — pending invitations are email-only; no token is exposed by the API.
-  const pendingInvites = (apiInvites as any[]).filter(i=>i.status==="pending");
+  const rawInvites = Array.isArray(apiInvites) ? apiInvites : [];
+  const pendingInvites = rawInvites.filter(i=>i.status==="pending");
   const ROLE_AR: Record<string,string> = { head:"رئيس الحسابات", accountant:"محاسب", branch:"مدير فرع", procurement:"مدير مشتريات" };
   // Driven by GET /company/me/users. No static seed.
   const [localUsers,setLocalUsers]=useState<U[]>([]);
-  const users: U[] = apiUsers.map((u): U => ({
+  const rawUsers = Array.isArray(apiUsers) ? apiUsers : [];
+  const users: U[] = rawUsers.map((u): U => ({
     id: u.id,
     name: u.name,
     role: u.roleLabel || u.roleKey,
@@ -2282,20 +2321,54 @@ function CAUsers() {
   }));
   const { data: brandLookup = [] } = useLookup("brands");
   const { data: branchLookup = [] } = useLookup("branches");
-  const [showAdd,setShowAdd]=useState(false);
-  const [search,setSearch]=useState("");
-  const [inviteForm,setInviteForm]=useState<{
+  const brandOptions = Array.isArray(brandLookup) ? brandLookup : [];
+  const branchOptions = Array.isArray(branchLookup) ? branchLookup : [];
+
+  // Hooks moved above conditional returns to satisfy React Rules of Hooks (W1-B / R03)
+  const [showAdd, setShowAdd] = useState(false);
+  const [search, setSearch] = useState("");
+  const [inviteForm, setInviteForm] = useState<{
     name: string;
     email: string;
     roleKey: "company-admin" | "head" | "accountant" | "branch" | "procurement";
     brandId: string;
     branchId: string;
-  }>({ name:"", email:"", roleKey:"accountant", brandId:"", branchId:"" });
+  }>({ name: "", email: "", roleKey: "accountant", brandId: "", branchId: "" });
   // CA-F08 — Edit User controlled state & validation
   const [editingUser, setEditingUser] = useState<U | null>(null);
   const [editUserName, setEditUserName] = useState("");
   const [editUserPhone, setEditUserPhone] = useState("");
   const [editUserError, setEditUserError] = useState<string | null>(null);
+
+  if (isUsersLoading || isInvitesLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center" role="status" dir={dir}>
+        <RefreshCw size={28} className="animate-spin text-purple-600 mb-3" />
+        <p className="text-sm font-semibold text-gray-700">{t("جارٍ تحميل المستخدمين والدعوات…", "Loading users and invitations…")}</p>
+      </div>
+    );
+  }
+
+  if (isUsersError) {
+    return (
+      <div role="alert" className="p-6 my-4 bg-rose-50/70 border border-rose-200 rounded-2xl shadow-sm text-right" dir={dir}>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+            <AlertTriangle size={20} />
+          </div>
+          <div>
+            <h3 className="font-bold text-rose-900 text-base">{t("فشل تحميل قائمة المستخدمين", "Failed to load users list")}</h3>
+            <p className="text-xs text-rose-600 mt-0.5">{t("حدث خطأ أثناء جلب المستخدمين من الخادم.", "An error occurred fetching users from server.")}</p>
+          </div>
+        </div>
+        <p className="bg-white/80 border border-rose-100 rounded-xl p-3 mb-4 text-xs font-mono text-rose-800 break-words" dir="ltr">{getErrorMessage(usersError, lang)}</p>
+        <button onClick={() => { refetchUsers(); refetchInvites(); }} className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm">
+          <RefreshCw size={13} />
+          <span>{t("إعادة المحاولة", "Retry")}</span>
+        </button>
+      </div>
+    );
+  }
 
   const isInviteValid = Boolean(
     inviteForm.email.trim() &&
@@ -2491,7 +2564,7 @@ function CAUsers() {
                     className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"
                   >
                     <option value="">{t("اختر العلامة التجارية...","Select brand...")}</option>
-                    {(brandLookup as any[]).map((b: any)=>(
+                    {brandOptions.map((b: any)=>(
                       <option key={b.id} value={b.id}>{b.nameAr || b.name}</option>
                     ))}
                   </select>
@@ -2506,7 +2579,7 @@ function CAUsers() {
                     className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none"
                   >
                     <option value="">{t("اختر الفرع...","Select branch...")}</option>
-                    {(branchLookup as any[]).map((br: any)=>(
+                    {branchOptions.map((br: any)=>(
                       <option key={br.id} value={br.id}>{br.nameAr || br.name}</option>
                     ))}
                   </select>
@@ -2527,56 +2600,94 @@ function CAUsers() {
   );
 }
 
-function CABranches() {
+export function CABranches() {
   const { t, dir, lang } = useCLang();
-  const { data: apiBrandsTree = [] } = useCompanyBrands();
+  const { data: apiBrandsTree = [], isLoading: isBrandsLoading, isError: isBrandsError, error: brandsError, refetch: refetchBrands } = useCompanyBrands();
   const { data: members = [] } = useCompanyUsers();
   const createBranchMut = useCreateBranch();
   const transferMut = useTransferBranchManager();
+
+  // Hooks moved above conditional returns to satisfy React Rules of Hooks (W1-B / R03)
+  const [expandedBrand, setExpandedBrand] = useState<string>("");
+  const [showAddBranch, setShowAddBranch] = useState(false);
+  const [newBranchName, setNewBranchName] = useState("");
+  const [newBranchBrandId, setNewBranchBrandId] = useState("");
+  const [newBranchRestId, setNewBranchRestId] = useState("");
+  const [newBranchCity, setNewBranchCity] = useState("الرياض");
+  const [branchFormError, setBranchFormError] = useState<string | null>(null);
+
+  // T14.6 — transfer-manager modal state.
+  const [transferFor, setTransferFor] = useState<{ id: string; name: string } | null>(null);
+  const [newMgrUserId, setNewMgrUserId] = useState("");
+
   // Brand → restaurant → branch tree driven entirely by GET /company/me/brands.
-  type BTBranch = { id:string; name:string; city:string; mgr:string; mgrUserId?:string; salesM:number; target:number; reviewStatus?:string };
-  type BTRest = { id:string; name:string; branches:BTBranch[] };
-  type BTBrand = { id:string; name:string; abbr:string; color:string; restaurants:BTRest[] };
-  const brandsTree: BTBrand[] = (apiBrandsTree as any[]).map((b:any)=>({
-    id: b.id, name: b.name, abbr: b.abbr ?? (b.name ?? "؟").toString().slice(0,2), color: b.color ?? "#7C3AED",
-    restaurants: (b.restaurants ?? []).map((r:any):BTRest=>({
+  type BTBranch = { id: string; name: string; city: string; mgr: string; mgrUserId?: string; salesM: number; target: number; reviewStatus?: string };
+  type BTRest = { id: string; name: string; branches: BTBranch[] };
+  type BTBrand = { id: string; name: string; abbr: string; color: string; restaurants: BTRest[] };
+  const rawBrandsTree = Array.isArray(apiBrandsTree) ? apiBrandsTree : [];
+  const brandsTree: BTBrand[] = rawBrandsTree.map((b: any) => ({
+    id: b.id, name: b.name, abbr: b.abbr ?? (b.name ?? "؟").toString().slice(0, 2), color: b.color ?? "#7C3AED",
+    restaurants: (Array.isArray(b.restaurants) ? b.restaurants : []).map((r: any): BTRest => ({
       id: r.id, name: r.name,
-      branches: (r.branches ?? []).map((br:any):BTBranch=>({
+      branches: (Array.isArray(r.branches) ? r.branches : []).map((br: any): BTBranch => ({
         id: br.id, name: br.name, city: br.city ?? "", mgr: br.managerName ?? "—", mgrUserId: br.managerUserId,
-        salesM: Math.round((br.monthlySalesHalalas ?? 0)/100),
-        target: Math.round((br.monthlyTargetHalalas ?? 0)/100),
+        salesM: (br.monthlySalesHalalas ?? 0) / 100,
+        target: (br.monthlyTargetHalalas ?? 0) / 100,
         reviewStatus: br.reviewStatus, // T14.1 — pending_review | approved | rejected
       })),
     })),
   }));
-  const allBranchesTree: BTBranch[] = brandsTree.flatMap(b=>b.restaurants.flatMap(r=>r.branches));
-  const activeBranchesCount = allBranchesTree.filter(b=>b.reviewStatus!=="pending_review"&&b.reviewStatus!=="rejected").length;
-  const pendingCount = allBranchesTree.filter(b=>b.reviewStatus==="pending_review").length;
-  const [expandedBrand,setExpandedBrand]=useState<string>("");
-  const totalSales=allBranchesTree.reduce((s:number,b:any)=>s+b.salesM,0);
-  const [showAddBranch,setShowAddBranch]=useState(false);
-  const [newBranchName,setNewBranchName]=useState("");
-  const [newBranchBrandId,setNewBranchBrandId]=useState("");
-  const [newBranchRestId,setNewBranchRestId]=useState("");
-  const [newBranchCity,setNewBranchCity]=useState("الرياض");
-  const [branchFormError,setBranchFormError]=useState<string|null>(null);
 
-  const selectedBrand = brandsTree.find(b=>b.id===newBranchBrandId);
+  if (isBrandsLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center" role="status" dir={dir}>
+        <RefreshCw size={28} className="animate-spin text-purple-600 mb-3" />
+        <p className="text-sm font-semibold text-gray-700">{t("جارٍ تحميل العلامات والفروع…", "Loading brands and branches…")}</p>
+      </div>
+    );
+  }
+
+  if (isBrandsError) {
+    return (
+      <div role="alert" className="p-6 my-4 bg-rose-50/70 border border-rose-200 rounded-2xl shadow-sm text-right" dir={dir}>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+            <AlertTriangle size={20} />
+          </div>
+          <div>
+            <h3 className="font-bold text-rose-900 text-base">{t("فشل تحميل الفروع والعلامات", "Failed to load brands and branches")}</h3>
+            <p className="text-xs text-rose-600 mt-0.5">{t("حدث خطأ أثناء جلب الفروع من الخادم.", "An error occurred fetching branches from server.")}</p>
+          </div>
+        </div>
+        <p className="bg-white/80 border border-rose-100 rounded-xl p-3 mb-4 text-xs font-mono text-rose-800 break-words" dir="ltr">{getErrorMessage(brandsError, lang)}</p>
+        <button onClick={() => refetchBrands()} className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm">
+          <RefreshCw size={13} />
+          <span>{t("إعادة المحاولة", "Retry")}</span>
+        </button>
+      </div>
+    );
+  }
+
+  const allBranchesTree: BTBranch[] = brandsTree.flatMap(b => b.restaurants.flatMap(r => r.branches));
+  const allRestaurantsCount = brandsTree.reduce((sum, b) => sum + b.restaurants.length, 0);
+  const activeBranchesCount = allBranchesTree.filter(b => b.reviewStatus !== "pending_review" && b.reviewStatus !== "rejected").length;
+  const pendingCount = allBranchesTree.filter(b => b.reviewStatus === "pending_review").length;
+  const totalSales = allBranchesTree.reduce((s: number, b: any) => s + b.salesM, 0);
+
+  const selectedBrand = brandsTree.find(b => b.id === newBranchBrandId);
   const availableRestaurants = selectedBrand?.restaurants ?? [];
 
-  // T14.6 — transfer-manager modal state.
-  const [transferFor,setTransferFor]=useState<{id:string;name:string}|null>(null);
-  const [newMgrUserId,setNewMgrUserId]=useState("");
-  const submitTransfer=()=>{
-    if(!transferFor||!newMgrUserId)return;
+  const submitTransfer = () => {
+    if (!transferFor || !newMgrUserId) return;
     transferMut.mutate({ id: transferFor.id, newManagerUserId: newMgrUserId } as any,
-      { onSuccess: ()=>{ setTransferFor(null); setNewMgrUserId(""); } });
+      { onSuccess: () => { setTransferFor(null); setNewMgrUserId(""); } });
   };
+
   // T14.1 — per-branch review badge.
-  const reviewBadge=(rs?:string)=> rs==="pending_review"
-    ? <Badge className="bg-amber-50 text-amber-700 text-[9px]">{t("قيد المراجعة","Pending review")}</Badge>
-    : rs==="rejected"
-    ? <Badge className="bg-red-50 text-red-700 text-[9px]">{t("مرفوض","Rejected")}</Badge>
+  const reviewBadge = (rs?: string) => rs === "pending_review"
+    ? <Badge className="bg-amber-50 text-amber-700 text-[9px]">{t("قيد المراجعة", "Pending review")}</Badge>
+    : rs === "rejected"
+    ? <Badge className="bg-red-50 text-red-700 text-[9px]">{t("مرفوض", "Rejected")}</Badge>
     : null;
 
   const submitNewBranch = () => {
@@ -2596,7 +2707,7 @@ function CABranches() {
           setBranchFormError(null);
         },
         onError: (err) => {
-          setBranchFormError(getErrorMessage(err) || t("فشل إرسال طلب إنشاء الفرع", "Failed to submit branch request"));
+          setBranchFormError(getErrorMessage(err, lang) || t("فشل إرسال طلب إنشاء الفرع", "Failed to submit branch request"));
         },
       }
     );
@@ -2604,10 +2715,19 @@ function CABranches() {
 
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-gray-800">{t("العلامات التجارية والفروع","Brands & Branches")}</h2><p className="text-gray-400 text-sm">{brandsTree.length} {t("علامات","brands")} · {allBranchesTree.length} {t("فرع","branches")}{pendingCount>0&&<span className="text-amber-600"> · {pendingCount} {t("قيد المراجعة","pending review")}</span>}</p></div>
-        <Btn variant="primary" onClick={()=>{ setShowAddBranch(true); setBranchFormError(null); }}><Plus size={13}/> {t("إضافة فرع","Add Branch")}</Btn>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">{t("العلامات التجارية والفروع","Brands & Branches")}</h2>
+          <p className="text-gray-400 text-sm">{brandsTree.length} {t("علامات","brands")} · {allBranchesTree.length} {t("فرع","branches")}{pendingCount>0&&<span className="text-amber-600"> · {pendingCount} {t("قيد المراجعة","pending review")}</span>}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Btn variant="primary" onClick={() => { setShowAddBranch(true); setBranchFormError(null); }}>
+            <Plus size={13} /> {t("إضافة فرع", "Add Branch")}
+          </Btn>
+        </div>
       </div>
+
+      {/* Add Branch Modal */}
       {showAddBranch&&(
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>!createBranchMut.isPending&&setShowAddBranch(false)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e=>e.stopPropagation()} dir={dir} role="dialog" aria-modal="true" aria-label={t("إضافة فرع جديد","Add New Branch")}>
@@ -2622,6 +2742,15 @@ function CABranches() {
                   <span>{branchFormError}</span>
                 </div>
               )}
+              {brandsTree.length === 0 ? (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 space-y-2">
+                  <p>{t("لا توجد علامات تجارية مسجلة. يرجى التواصل مع إدارة المنصة لإنشاء العلامات التجارية والمطاعم قبل إنشاء الفرع.", "No brands registered. Please contact Platform Administration to create brands and restaurants before adding a branch.")}</p>
+                </div>
+              ) : selectedBrand && availableRestaurants.length === 0 ? (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center justify-between gap-2">
+                  <span>{t("لا توجد مطاعم لهذه العلامة. يرجى التواصل مع إدارة المنصة لإنشاء مطعم لهذه العلامة.", "No restaurants for this brand. Please contact Platform Administration to create a restaurant for this brand.")}</span>
+                </div>
+              ) : null}
               <div>
                 <label className="text-xs font-semibold text-gray-600 block mb-1">{t("العلامة التجارية","Brand")}</label>
                 <select
@@ -2704,7 +2833,9 @@ function CABranches() {
       </div>
       <div className="space-y-3">
         {brandsTree.length===0 && (
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8 text-center text-gray-400 text-sm">{t("لا توجد علامات تجارية بعد","No brands yet")}</div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8 text-center text-gray-400 text-sm space-y-3">
+            <p>{t("لا توجد علامات تجارية بعد. يرجى التواصل مع إدارة المنصة لإنشاء العلامات التجارية والمطاعم.", "No brands registered yet. Please contact Platform Administration to create brands and restaurants.")}</p>
+          </div>
         )}
         {brandsTree.map(brand=>(
           <div key={brand.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
@@ -2716,30 +2847,39 @@ function CABranches() {
             </button>
             {expandedBrand===brand.id&&(
               <div className="border-t border-gray-100">
-                {brand.restaurants.map(rest=>(
-                  <div key={rest.id} className="px-5 py-3 border-b border-gray-50">
-                    <p className="text-xs font-bold text-gray-500 mb-2">{rest.name}</p>
-                    <div className="space-y-2">
-                      {rest.branches.map(br=>{
-                        const pct=br.target>0?Math.round((br.salesM/br.target)*100):0;
-                        const pending=br.reviewStatus==="pending_review"||br.reviewStatus==="rejected";
-                        return (
-                          <div key={br.id} className={`flex items-center gap-4 px-3 py-2.5 rounded-lg ${pending?"bg-amber-50/40":"bg-gray-50"}`}>
-                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{background:pending?"#d1d5db":brand.color}}>{(br.city||br.name||"?")[0]}</div>
-                            <div className="flex-1 min-w-0"><div className="flex items-center gap-1.5"><p className="font-semibold text-gray-700 text-xs truncate">{br.name}</p>{reviewBadge(br.reviewStatus)}</div><p className="text-[10px] text-gray-400">{t("م.الفرع:","Mgr:")} {br.mgr} · {br.city}</p></div>
-                            {pending ? (
-                              <span className="text-[10px] text-amber-600 flex-shrink-0">{br.reviewStatus==="rejected"?t("لم يُعتمد","Not approved"):t("بانتظار اعتماد الإدارة","Awaiting admin approval")}</span>
-                            ) : (<>
-                              <div className="w-28 flex-shrink-0"><div className="flex justify-between text-[10px] text-gray-400 mb-1"><span>{pct}%</span></div><div className="w-full h-1.5 bg-gray-200 rounded-full"><div className={`h-1.5 rounded-full ${pct>=100?"bg-emerald-500":pct>=80?"bg-blue-500":"bg-amber-500"}`} style={{width:`${Math.min(100,pct)}%`}}/></div></div>
-                              <p className="font-mono font-bold text-gray-700 text-xs flex-shrink-0">{fmt(br.salesM)} {t("ر.س","SAR")}</p>
-                              <button onClick={()=>{ setTransferFor({id:br.id,name:br.name}); setNewMgrUserId(br.mgrUserId ?? ""); }} title={t("نقل مدير الفرع","Transfer manager")} className="p-1.5 rounded-lg text-gray-400 hover:bg-purple-50 hover:text-purple-600 flex-shrink-0"><ArrowLeftRight size={13}/></button>
-                            </>)}
-                          </div>
-                        );
-                      })}
-                    </div>
+                <div className="px-5 py-2.5 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between">
+                  <span className="text-xs font-bold text-gray-600">{t("المطاعم والفروع التابعة", "Associated Restaurants & Branches")}</span>
+                </div>
+                {brand.restaurants.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-gray-400 space-y-2">
+                    <p>{t("لا توجد مطاعم مسجلة تحت هذه العلامة التجارية. يرجى التواصل مع إدارة المنصة لإنشاء المطاعم.", "No restaurants registered under this brand yet. Please contact Platform Administration to create restaurants.")}</p>
                   </div>
-                ))}
+                ) : (
+                  brand.restaurants.map(rest=>(
+                    <div key={rest.id} className="px-5 py-3 border-b border-gray-50">
+                      <p className="text-xs font-bold text-gray-500 mb-2">{rest.name}</p>
+                      <div className="space-y-2">
+                        {rest.branches.map(br=>{
+                          const pct=br.target>0?Math.round((br.salesM/br.target)*100):0;
+                          const pending=br.reviewStatus==="pending_review"||br.reviewStatus==="rejected";
+                          return (
+                            <div key={br.id} className={`flex items-center gap-4 px-3 py-2.5 rounded-lg ${pending?"bg-amber-50/40":"bg-gray-50"}`}>
+                              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{background:pending?"#d1d5db":brand.color}}>{(br.city||br.name||"?")[0]}</div>
+                              <div className="flex-1 min-w-0"><div className="flex items-center gap-1.5"><p className="font-semibold text-gray-700 text-xs truncate">{br.name}</p>{reviewBadge(br.reviewStatus)}</div><p className="text-[10px] text-gray-400">{t("م.الفرع:","Mgr:")} {br.mgr} · {br.city}</p></div>
+                              {pending ? (
+                                <span className="text-[10px] text-amber-600 flex-shrink-0">{br.reviewStatus==="rejected"?t("لم يُعتمد","Not approved"):t("بانتظار اعتماد الإدارة","Awaiting admin approval")}</span>
+                              ) : (<>
+                                <div className="w-28 flex-shrink-0"><div className="flex justify-between text-[10px] text-gray-400 mb-1"><span>{pct}%</span></div><div className="w-full h-1.5 bg-gray-200 rounded-full"><div className={`h-1.5 rounded-full ${pct>=100?"bg-emerald-500":pct>=80?"bg-blue-500":"bg-amber-500"}`} style={{width:`${Math.min(100,pct)}%`}}/></div></div>
+                                <p className="font-mono font-bold text-gray-700 text-xs flex-shrink-0">{fmt(br.salesM)} {t("ر.س","SAR")}</p>
+                                <button onClick={()=>{ setTransferFor({id:br.id,name:br.name}); setNewMgrUserId(br.mgrUserId ?? ""); }} title={t("نقل مدير الفرع","Transfer manager")} className="p-1.5 rounded-lg text-gray-400 hover:bg-purple-50 hover:text-purple-600 flex-shrink-0"><ArrowLeftRight size={13}/></button>
+                              </>)}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
           </div>
@@ -2757,7 +2897,8 @@ function CAModules() {
   // Driven by GET /company/me/modules. No static seed.
   const [localMods,setLocalMods]=useState<Mod[]>([]);
   const ICONS:Record<string,string> = { sales:"💰", expenses:"💸", purchases:"🛒", inventory:"📦", assets:"🏢", shifts:"🕐", waste:"🗑", emp:"👥", cash:"💵" };
-  const mods: Mod[] = apiMods.map((m): Mod => ({
+  const rawMods = Array.isArray(apiMods) ? apiMods : [];
+  const mods: Mod[] = rawMods.map((m): Mod => ({
     id: m.moduleKey,
     nameAr: m.nameAr || m.moduleKey,
     nameEn: m.nameEn || m.moduleKey,
@@ -3454,8 +3595,8 @@ function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove, 
   const headBrands = (Array.isArray(rawBrands) ? rawBrands : []).map((b: any) => {
     const rawSales = (b.salesHalalas ?? b.monthlySalesHalalas ?? b.sales ?? 0) as number;
     const rawTarget = (b.target ?? 0) as number;
-    const sales = Math.round(rawSales / 100);
-    const target = rawTarget > 0 ? Math.round(rawTarget / 100) : 0;
+    const sales = rawSales / 100;
+    const target = rawTarget > 0 ? rawTarget / 100 : 0;
     const pct = b.pctOfTarget != null && b.pctOfTarget > 0 ? Math.round(b.pctOfTarget) : target > 0 ? Math.round((sales / target) * 100) : 0;
     return {
       id: b.brandId ?? b.id ?? b.name,
@@ -4105,9 +4246,8 @@ function HeadERP({ ops }:{ ops:COp[] }) {
 //
 // Backed by the live API: GET /api/v1/company/me/operations and the four
 // transition mutations from src/api/queries/operations.ts. While the API
-// query is loading or returns empty (e.g. backend not yet seeded), we fall
-// back to INITIAL_OPS so the UI stays explorable in development. Default
-// rejection reason is generic; a proper rejection-reason modal can be
+// query is loading or returns empty, empty state is displayed (no static mock fallback).
+// Default rejection reason is generic; a proper rejection-reason modal can be
 // added per spec §5.3 (`POST /operations/{id}/reject` body).
 // ═══════════════════════════════════════════════════
 const DEFAULT_REJECT_REASON = "تحتاج مراجعة";
@@ -6744,6 +6884,265 @@ function EmpAddMovementModal({ employeeId, employeeName, onClose }:{ employeeId:
   );
 }
 
+function EmpSettleModal({
+  employeeId,
+  employeeName,
+  standingBalanceHalalas,
+  onClose,
+}: {
+  employeeId: string;
+  employeeName: string;
+  standingBalanceHalalas: number;
+  onClose: () => void;
+}) {
+  const { t, dir } = useCLang();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const companyId = (user as any)?.companyId;
+  const settleMut = useSettleEmployeeBalance();
+
+  const [intent] = useState<FinancialIntent<any>>(() => {
+    const existing = getUnconfirmedIntent<any>("employee_settlement", employeeId, user?.id, companyId);
+    if (existing && (existing.status === "timed_out" || existing.status === "in_flight")) {
+      return existing;
+    }
+    const fresh = createFinancialIntent({ employeeId }, undefined, user?.id, companyId);
+    setUnconfirmedIntent("employee_settlement", employeeId, fresh, user?.id, companyId);
+    return fresh;
+  });
+
+  const [reason, setReason] = useState(() => intent.payload?.reason ?? "");
+
+  const isLocked = settleMut.isPending || intent.status === "in_flight" || intent.status === "timed_out";
+
+  const handleClose = () => {
+    if (settleMut.isPending || intent.status === "in_flight") {
+      toast.warning(t("العملية قيد التنفيذ، يرجى الانتظار", "Operation in flight, please wait"));
+      return;
+    }
+    onClose();
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanReason = reason.trim();
+    if (cleanReason.length < 3) {
+      toast.error(t("سبب التسوية إلزامي ولا يقل عن 3 أحرف", "Settlement reason is required and must be at least 3 characters"));
+      return;
+    }
+
+    if (intent.status === "in_flight" || settleMut.isPending) {
+      toast.warning(t("العملية قيد التنفيذ بالفعل", "Operation is already in flight"));
+      return;
+    }
+
+    if (intent.status === "timed_out" && intent.payload?.reason && intent.payload.reason !== cleanReason) {
+      toast.error(t("لا يمكن تعديل سبب التسوية أثناء وجود معاملة غير محسومة (IDEMPOTENCY_CONFLICT)", "Cannot modify settlement reason under unresolved intent"));
+      return;
+    }
+
+    const capturedGen = financialAccessGeneration(queryClient);
+
+    settleMut.mutate(
+      { employeeId, reason: cleanReason, intent, currentActorId: user?.id, companyId },
+      {
+        onSuccess: () => {
+          if (!isFinancialSessionActive(queryClient, capturedGen, intent.actorId, intent.companyId)) {
+            return;
+          }
+          intent.status = "resolved";
+          removeUnconfirmedIntent("employee_settlement", employeeId, user?.id, companyId);
+          onClose();
+        },
+        onError: (err) => {
+          if (!isFinancialSessionActive(queryClient, capturedGen, intent.actorId, intent.companyId)) {
+            return;
+          }
+          intent.status = "timed_out";
+          setUnconfirmedIntent("employee_settlement", employeeId, intent, user?.id, companyId);
+          toast.error(getErrorMessage(err, "ar"));
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir={dir}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+        <div className="flex items-center justify-between border-b pb-3">
+          <h3 className="font-bold text-gray-900 text-sm">{t("طلب تسوية رصيد الموظف", "Request Employee Balance Settlement")}</h3>
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+        </div>
+        <p className="text-xs text-gray-500">
+          {t("الموظف:", "Employee:")} <span className="font-semibold text-gray-800">{employeeName}</span> — {t("الرصيد القائم:", "Standing Balance:")}{" "}
+          <span className="font-mono font-bold text-gray-800">{fmtH(standingBalanceHalalas)} {t("ر.س", "SAR")}</span>
+        </p>
+        <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+          {t("إرسال هذا الطلب لا يغير الرصيد فورًا؛ يخضع لاعتماد المحاسب العام (Head Accountant).", "Submitting this request does not post changes immediately; it requires Head Accountant approval.")}
+        </p>
+        {intent.status === "timed_out" && (
+          <p className="text-xs text-amber-800 bg-amber-100/70 p-2 rounded-lg font-medium">
+            {t("يوجد طلب تسوية سابق قيد المعالجة ولم يتم حسمه. تم قفل حقل السبب لمنع التضارب، ويمكنك إعادة المحاولة بنفس المفتاح.", "Unresolved settlement intent in progress. Reason locked; retry with same intent.")}
+          </p>
+        )}
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-gray-700 block mb-1">{t("سبب التسوية (إلزامي):", "Settlement Reason (Required):")}</label>
+            <textarea
+              required
+              minLength={3}
+              rows={3}
+              disabled={isLocked}
+              value={reason}
+              onChange={(e) => {
+                setReason(e.target.value);
+              }}
+              placeholder={t("اكتب سبب تسوية الرصيد بالتفصيل...", "Describe the settlement reason in detail...")}
+              className="w-full text-xs border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Btn type="button" size="sm" onClick={handleClose} disabled={settleMut.isPending || intent.status === "in_flight"}>{t("إلغاء", "Cancel")}</Btn>
+            <Btn
+              type="submit"
+              size="sm"
+              variant="primary"
+              disabled={settleMut.isPending || reason.trim().length < 3 || intent.status === "in_flight"}
+            >
+              {settleMut.isPending
+                ? t("جارٍ الإرسال...", "Submitting...")
+                : intent.status === "timed_out"
+                  ? t("إعادة المحاولة (بنفس المفتاح)", "Retry (same key)")
+                  : t("تأكيد طلب التسوية", "Confirm Settlement Request")}
+            </Btn>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function HeadSettlementActionModal({
+  action,
+  employeeId,
+  employeeName,
+  initialSettlementId,
+  onClose,
+}: {
+  action: "approve" | "reject";
+  employeeId: string;
+  employeeName: string;
+  initialSettlementId?: string;
+  onClose: () => void;
+}) {
+  const { t, dir } = useCLang();
+  const { user } = useAuth();
+  const approveMut = useApproveEmployeeSettlement();
+  const rejectMut = useRejectEmployeeSettlement();
+  const [settlementId, setSettlementId] = useState(initialSettlementId ?? "");
+  const [rejectionReason, setRejectionReason] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const sid = settlementId.trim();
+    if (!sid) {
+      toast.error(t("رقم طلب التسوية إلزامي", "Settlement ID is required"));
+      return;
+    }
+    const actor = { roles: grantedRoleKeys(user as any), id: user?.id };
+    if (action === "approve") {
+      approveMut.mutate(
+        { settlementId: sid, employeeId, actor },
+        {
+          onSuccess: () => {
+            toast.success(t("تم اعتماد تسوية الموظف بنجاح", "Employee settlement approved"));
+            onClose();
+          },
+          onError: (err) => toast.error(getErrorMessage(err, "ar")),
+        }
+      );
+    } else {
+      rejectMut.mutate(
+        { settlementId: sid, employeeId, rejectionReason: rejectionReason.trim() || undefined, actor },
+        {
+          onSuccess: () => {
+            toast.success(t("تم رفض طلب التسوية", "Employee settlement rejected"));
+            onClose();
+          },
+          onError: (err) => toast.error(getErrorMessage(err, "ar")),
+        }
+      );
+    }
+  };
+
+  const isPending = approveMut.isPending || rejectMut.isPending;
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir={dir}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+        <div className="flex items-center justify-between border-b pb-3">
+          <h3 className="font-bold text-gray-900 text-sm">
+            {action === "approve"
+              ? t("اعتماد تسوية رصيد الموظف", "Approve Employee Settlement")
+              : t("رفض طلب تسوية رصيد الموظف", "Reject Employee Settlement")}
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+        </div>
+        <p className="text-xs text-gray-600">
+          {t("الموظف:", "Employee:")} <span className="font-semibold text-gray-800">{employeeName}</span>
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-gray-700 block mb-1">
+              {t("رقم طلب التسوية (Settlement ID):", "Settlement Request ID:")}
+            </label>
+            <input
+              type="text"
+              required
+              value={settlementId}
+              onChange={(e) => setSettlementId(e.target.value)}
+              placeholder="e.g. stl_123 or UUID"
+              className="w-full text-xs border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+            <p className="text-[10px] text-gray-400 mt-1">
+              {t("ملاحظة: يتطلب عقد الباك إند تمرير معرف التسوية المعتمد للمراجعة.", "Note: Backend contract requires the settlement ID for approval/rejection.")}
+            </p>
+          </div>
+          {action === "reject" && (
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
+                {t("سبب الرفض (اختياري):", "Rejection Reason (Optional):")}
+              </label>
+              <textarea
+                rows={2}
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder={t("سبب رفض التسوية...", "Reason for rejecting settlement...")}
+                className="w-full text-xs border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Btn type="button" size="sm" onClick={onClose}>{t("إلغاء", "Cancel")}</Btn>
+            <Btn
+              type="submit"
+              size="sm"
+              variant={action === "approve" ? "primary" : "danger"}
+              disabled={isPending || !settlementId.trim()}
+            >
+              {isPending
+                ? t("جارٍ المعالجة...", "Processing...")
+                : action === "approve"
+                  ? t("تأكيد الاعتماد", "Confirm Approval")
+                  : t("تأكيد الرفض", "Confirm Rejection")}
+            </Btn>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function AccCompanyEmployees() {
   const { t, dir } = useCLang();
   const [selectedEmp, setSelectedEmp] = useState<string|null>(null);
@@ -6751,10 +7150,16 @@ function AccCompanyEmployees() {
   const [branchFilter,setBranchFilter]= useState("");
   const [month,       setMonth]       = useState("");   // YYYY-MM, empty = all history
   const [showAdd,     setShowAdd]     = useState(false);
+  const [showSettle,  setShowSettle]  = useState(false);
+  const [headAction,  setHeadAction]  = useState<{ action: "approve" | "reject"; open: boolean } | null>(null);
 
   const { data: employeesPage } = useEmployees({ q: searchTerm || undefined, branchId: branchFilter || undefined });
   const { data: statement } = useEmployeeMovements(selectedEmp, month || undefined);
+  const { user, isRole } = useAuth();
+  const isHead = isRole("head");
   const settleMut         = useSettleEmployeeBalance();
+  const approveSettlementMut = useApproveEmployeeSettlement();
+  const rejectSettlementMut  = useRejectEmployeeSettlement();
   const exportStatementMut= useExportEmployeeStatement();
   const exportPayrollMut  = useExportPayroll();
 
@@ -6767,10 +7172,6 @@ function AccCompanyEmployees() {
   const owedToEmpH     = employees.reduce((s,e)=>s+(e.balanceHalalas>0? e.balanceHalalas:0),0);
   const activeCount    = employees.filter(e=>e.status==="active").length;
 
-  const doSettle = () => {
-    if(!selectedEmp) return;
-    settleMut.mutate({ employeeId: selectedEmp });
-  };
   const SAR = t("ر.س","SAR");
 
   const balColor = (h:number) => h<0 ? "text-red-600" : h>0 ? "text-emerald-600" : "text-gray-400";
@@ -6779,6 +7180,23 @@ function AccCompanyEmployees() {
     <div className="space-y-5" dir={dir}>
       {showAdd && selectedRow && (
         <EmpAddMovementModal employeeId={selectedRow.id} employeeName={selectedRow.name} onClose={()=>setShowAdd(false)}/>
+      )}
+      {showSettle && selectedRow && (
+        <EmpSettleModal
+          employeeId={selectedRow.id}
+          employeeName={selectedRow.name}
+          standingBalanceHalalas={statement?.balanceHalalas ?? selectedRow.balanceHalalas}
+          onClose={()=>setShowSettle(false)}
+        />
+      )}
+      {headAction?.open && selectedRow && (
+        <HeadSettlementActionModal
+          action={headAction.action}
+          employeeId={selectedRow.id}
+          employeeName={selectedRow.name}
+          initialSettlementId={(statement as any)?.settlementId ?? (selectedRow as any)?.settlementId}
+          onClose={()=>setHeadAction(null)}
+        />
       )}
       <div className="flex items-center justify-between">
         <div><h2 className="text-xl font-bold text-gray-800">{t("كشف حساب الموظفين","Employee Accounts")}</h2><p className="text-gray-400 text-sm mt-0.5">{t("الرواتب والحركات المالية للموظفين","Salaries and financial movements")}</p></div>
@@ -6847,10 +7265,39 @@ function AccCompanyEmployees() {
                     <p className="font-bold text-gray-900">{selectedRow.name}</p>
                     <p className="text-xs text-gray-500">{selectedRow.role} · {selectedRow.branchName} · {selectedRow.empNumber}</p>
                     <Badge className={`text-[10px] mt-1 ${(statement?.balanceCaption ?? selectedRow.balanceCaption)?.key==="creditor"?"bg-emerald-50 text-emerald-700 border border-emerald-200":(statement?.balanceHalalas ?? selectedRow.balanceHalalas)<0?"bg-red-50 text-red-700 border border-red-200":"bg-gray-50 text-gray-500 border border-gray-200"}`}>{(statement?.balanceCaption ?? selectedRow.balanceCaption)?.labelAr}</Badge>
+                    {selectedRow.settlementStatus === "under_review" && (
+                      <Badge className="text-[10px] mt-1 bg-amber-50 text-amber-700 border border-amber-200">
+                        {t("قيد المراجعة", "Under Review")}
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <button onClick={()=>setShowAdd(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold hover:bg-purple-100"><Plus size={10}/> {t("إضافة حركة","Add")}</button>
-                    <button onClick={doSettle} disabled={settleMut.isPending||(statement?.balanceHalalas ?? selectedRow.balanceHalalas)===0} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold hover:bg-emerald-100 disabled:opacity-40"><Check size={10}/> {t("تسوية الرصيد","Settle")}</button>
+                    <button
+                      onClick={() => setShowSettle(true)}
+                      disabled={settleMut.isPending || (statement?.balanceHalalas ?? selectedRow.balanceHalalas) === 0 || selectedRow.settlementStatus === "under_review"}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold hover:bg-emerald-100 disabled:opacity-40"
+                    >
+                      <Check size={10} /> {t("تسوية الرصيد", "Settle")}
+                    </button>
+                    {isHead && (selectedRow.settlementStatus === "under_review" || statement?.settlementStatus === "under_review") && (
+                      <div className="flex gap-1 mt-1">
+                        <button
+                          onClick={() => setHeadAction({ action: "approve", open: true })}
+                          disabled={approveSettlementMut.isPending}
+                          className="px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold hover:bg-emerald-700 disabled:opacity-50"
+                        >
+                          {t("اعتماد التسوية", "Approve")}
+                        </button>
+                        <button
+                          onClick={() => setHeadAction({ action: "reject", open: true })}
+                          disabled={rejectSettlementMut.isPending}
+                          className="px-2 py-1 rounded bg-red-600 text-white text-[10px] font-bold hover:bg-red-700 disabled:opacity-50"
+                        >
+                          {t("رفض", "Reject")}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-4 gap-2 mt-4">
@@ -6934,56 +7381,168 @@ function AccCompanyEmployees() {
 // ACCOUNTANT — CASH CUSTODY
 // ═══════════════════════════════════════════════════
 // «تعزيز / صرف» modal (T09 §B3) — POST /company/me/cash-custody/{id}/transactions.
-function CashTxnModal({ custodyId, custodianName, remainingHalalas, onClose }:{
-  custodyId:string; custodianName:string; remainingHalalas:number; onClose:()=>void;
+function CashTxnModal({ custodyId, custodianName, remainingHalalas, brandId, onClose }:{
+  custodyId:string; custodianName:string; remainingHalalas:number; brandId?:string; onClose:()=>void;
 }) {
   const { t, dir } = useCLang();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const companyId = (user as any)?.companyId;
   const createMut = useCreateCashTransaction();
-  const [txnType, setTxnType] = useState<"credit"|"debit">("credit");
-  const [amount,  setAmount]  = useState("");
-  const [description, setDesc]= useState("");
-  const [fromTreasury, setFromTreasury] = useState(true);
+  const [intent] = useState<FinancialIntent<any>>(() => {
+    const existing = getUnconfirmedIntent<any>("custody_debit", custodyId, user?.id, companyId);
+    if (existing && (existing.status === "timed_out" || existing.status === "in_flight")) {
+      return existing;
+    }
+    const fresh = createFinancialIntent({ custodyId, txnType: "debit" }, undefined, user?.id, companyId);
+    setUnconfirmedIntent("custody_debit", custodyId, fresh, user?.id, companyId);
+    return fresh;
+  });
+
+  const [txnType, setTxnType] = useState<"debit">("debit");
+  const [amount,  setAmount]  = useState(() =>
+    intent.payload?.amountHalalas ? (intent.payload.amountHalalas / 100).toString() : ""
+  );
+  const [description, setDesc]= useState(() => intent.payload?.description ?? "");
 
   const amountH = Math.round((parseFloat(amount)||0)*100);
-  const overdraw = txnType==="debit" && amountH>remainingHalalas;
+  const overdraw = amountH>remainingHalalas;
+  const actorRoles = grantedRoleKeys(user as any);
+  const isCustodyWriteAuthorized = checkCustodyWriteAuthorization(
+    { roles: actorRoles, brandIds: user?.brandIds, id: user?.id },
+    { brandId, id: custodyId }
+  );
+
+  const isLocked = createMut.isPending || intent.status === "in_flight" || intent.status === "timed_out";
+
+  const handleClose = () => {
+    if (createMut.isPending || intent.status === "in_flight") {
+      toast.warning(t("العملية قيد التنفيذ، يرجى الانتظار حتى اكتمال الاستجابة", "Operation in flight, please wait"));
+      return;
+    }
+    onClose();
+  };
+
   const submit = () => {
-    if(amountH<1 || overdraw) return;
-    createMut.mutate({ custodyId, payload:{
-      txnType, amount:amountH,
-      description: description.trim() || undefined,
-      source: txnType==="credit" && fromTreasury ? "treasury" : "manual",
-    } }, { onSuccess:()=>onClose() });
+    if(amountH<1 || overdraw || !isCustodyWriteAuthorized || createMut.isPending) return;
+
+    if (intent.status === "in_flight" || createMut.isPending) {
+      toast.warning(t("العملية قيد المعالجة بالفعل", "Operation is already in flight"));
+      return;
+    }
+
+    const cleanDesc = description.trim() || undefined;
+
+    if (
+      intent.status === "timed_out" &&
+      intent.payload &&
+      (intent.payload.amountHalalas !== amountH || intent.payload.description !== cleanDesc)
+    ) {
+      toast.error(t("لا يمكن تعديل المبلغ أو البيان أثناء وجود معاملة غير محسومة (IDEMPOTENCY_CONFLICT)", "Cannot modify debit amount or description under unresolved intent"));
+      return;
+    }
+
+    const context: DirectDebitSafetyContext = {
+      custody: { id: custodyId, brandId, remainingHalalas },
+      actor: {
+        id: user?.id,
+        roles: actorRoles,
+        brandIds: user?.brandIds,
+        isCustodyWriteAuthorized,
+      },
+    };
+    const capturedGen = financialAccessGeneration(queryClient);
+
+    createMut.mutate({
+      custodyId,
+      payload:{
+        txnType: "debit", amount:amountH,
+        description: cleanDesc,
+        source: "manual",
+      },
+      context,
+      intent,
+      companyId,
+    }, {
+      onSuccess: () => {
+        if (!isFinancialSessionActive(queryClient, capturedGen, intent.actorId, intent.companyId)) {
+          return;
+        }
+        intent.status = "resolved";
+        removeUnconfirmedIntent("custody_debit", custodyId, user?.id, companyId);
+        onClose();
+      },
+      onError: () => {
+        if (!isFinancialSessionActive(queryClient, capturedGen, intent.actorId, intent.companyId)) {
+          return;
+        }
+        intent.status = "timed_out";
+        setUnconfirmedIntent("custody_debit", custodyId, intent, user?.id, companyId);
+      },
+    });
   };
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={handleClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e=>e.stopPropagation()} dir={dir}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-gray-800">{t("حركة عهدة","Custody transaction")} — {custodianName}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18}/></button>
+          <h3 className="font-bold text-gray-800">{t("صرف من العهدة","Disburse from custody")} — {custodianName}</h3>
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600"><X size={18}/></button>
         </div>
         <div className="space-y-3">
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+            {t("تغذية العهدة غير مسموحة هنا وتتطلب مسار طلب التغذية المعتمد (طلب مدير الفرع ثم اعتماد المالك ثم إرسال المحاسب ثم استلام المدير).", "Custody replenishment not permitted here; requires approved funding flow.")}
+          </p>
+          {intent.status === "timed_out" && (
+            <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg p-2 font-medium">
+              {t("يوجد طلب صرف قيد المعالجة ولم يتم حسمه من الخادم بعد. تم قفل الحقول لمنع تكرار الصرف أو تضارب المعاملة.", "Unresolved debit intent in progress. Fields locked to prevent duplicate debit.")}
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={()=>setTxnType("credit")} className={`px-3 py-2.5 rounded-xl border text-xs font-bold ${txnType==="credit"?"bg-emerald-50 border-emerald-300 text-emerald-700":"border-gray-200 text-gray-500"}`}>⬆ {t("تعزيز عهدة","Replenish")}</button>
-            <button onClick={()=>setTxnType("debit")} className={`px-3 py-2.5 rounded-xl border text-xs font-bold ${txnType==="debit"?"bg-red-50 border-red-300 text-red-700":"border-gray-200 text-gray-500"}`}>⬇ {t("صرف","Disburse")}</button>
+            <button disabled title={t("التعزيز يتطلب مسار طلب التغذية", "Funding requires request flow")} className="px-3 py-2.5 rounded-xl border text-xs font-bold border-gray-200 text-gray-400 opacity-50 cursor-not-allowed">⬆ {t("تعزيز عهدة (معطل)","Replenish (Disabled)")}</button>
+            <button onClick={()=>setTxnType("debit")} className="px-3 py-2.5 rounded-xl border text-xs font-bold bg-red-50 border-red-300 text-red-700">⬇ {t("صرف","Disburse")}</button>
           </div>
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المبلغ (ر.س)","Amount")}</label>
-            <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.00" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono focus:outline-none focus:border-purple-400"/>
+            <input
+              type="number"
+              disabled={isLocked}
+              value={amount}
+              onChange={e=>setAmount(e.target.value)}
+              placeholder="0.00"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono focus:outline-none focus:border-purple-400 disabled:bg-gray-100"
+            />
             {overdraw && <p className="text-[10px] text-red-600 mt-1">{t("المبلغ يتجاوز المتبقي","Amount exceeds remaining")} ({fmtH(remainingHalalas)} {t("ر.س","SAR")})</p>}
           </div>
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("البيان (اختياري)","Description (optional)")}</label>
-            <input value={description} onChange={e=>setDesc(e.target.value)} placeholder={txnType==="credit"?t("تعزيز عهدة من الخزينة","Replenish from treasury"):t("بيان الصرف...","Disbursement...")} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-400"/>
+            <input
+              disabled={isLocked}
+              value={description}
+              onChange={e=>setDesc(e.target.value)}
+              placeholder={t("بيان الصرف...","Disbursement...")}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-400 disabled:bg-gray-100"
+            />
           </div>
-          {txnType==="credit" && (
-            <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-              <input type="checkbox" checked={fromTreasury} onChange={e=>setFromTreasury(e.target.checked)}/>
-              {t("تعزيز من الخزينة","From treasury")}
-            </label>
+          {!isCustodyWriteAuthorized && (
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 font-medium">
+              {t("صرف العهدة مقتصر على مالك/مدير العلامة المصرح له، ولا يجوز للمحاسب الصرف المباشر بدون تفويض.", "Custody debit restricted to authorized brand roles; accountant cannot directly debit.")}
+            </p>
           )}
           <div className="flex justify-end gap-2 pt-1">
-            <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50">{t("إلغاء","Cancel")}</button>
-            <Btn variant="primary" onClick={submit} disabled={amountH<1||overdraw||createMut.isPending}><Check size={11}/> {t("تسجيل","Submit")}</Btn>
+            <button
+              onClick={handleClose}
+              disabled={createMut.isPending || intent.status === "in_flight"}
+              className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50 disabled:opacity-50"
+            >
+              {t("إلغاء","Cancel")}
+            </button>
+            <Btn
+              variant="primary"
+              onClick={submit}
+              disabled={amountH<1||overdraw||!isCustodyWriteAuthorized||createMut.isPending||intent.status === "in_flight"}
+            >
+              <Check size={11}/> {intent.status === "timed_out" ? t("إعادة المحاولة (بنفس المفتاح)", "Retry (same key)") : t("تسجيل الصرف","Submit Disbursement")}
+            </Btn>
           </div>
         </div>
       </div>
@@ -7100,6 +7659,315 @@ function CashCustodyCard({ custody }:{ custody:CashCustodyRow }) {
   );
 }
 
+export function CompanyFundingExecution() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const companyId = (user as any)?.companyId;
+  const accountant = grantedRoleKeys(user as any).includes("accountant");
+  const { data: requests = [], isError, refetch } = useAccountantFundingRequests(accountant);
+  const execute = useExecuteFundingRequest();
+  const { t, dir } = useCLang();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [reference, setReference] = useState("");
+  const [proof, setProof] = useState<File | null>(null);
+  const [intent, setIntent] = useState<FinancialIntent<any> | null>(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+
+  if (!accountant) return null;
+  return (
+    <section className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3" dir={dir}>
+      <h3 className="font-bold text-gray-900 text-sm">{t("طلبات تغذية عهدة الفرع", "Branch Custody Funding Requests")}</h3>
+      <p className="text-xs text-gray-600">{t("إرسال المحاسب يوثق التحويل فقط. يزداد الرصيد بعد تأكيد مدير الفرع الاستلام.", "Accountant execution records transfer evidence only. Balance is credited after Branch Manager receipt confirmation.")}</p>
+      {isError && <p role="alert" className="text-xs text-red-700">{t("تعذر تحميل الطلبات المخولة. أعد المحاولة لاحقًا.", "Failed to load authorized requests. Please retry later.")}</p>}
+      {!isError && requests.length === 0 && <p className="text-xs text-gray-500">{t("لا توجد طلبات معتمدة ضمن صلاحياتك.", "No approved requests within your scope.")}</p>}
+      {requests.map((request) => (
+        <div key={request.id} className="border border-gray-200 rounded-lg p-3 space-y-2">
+          <div className="flex justify-between gap-3 text-sm">
+            <span>{request.branchName ?? t("الفرع", "Branch")} — {request.amount} {t("ر.س", "SAR")}</span>
+            <span className="text-xs font-semibold">
+              {request.receivedAt
+                ? t("استلم المدير واكتمل الترحيل", "Manager received — posted")
+                : request.executedAt
+                  ? t("أُرسل، بانتظار تأكيد المدير", "Executed, awaiting manager receipt")
+                  : t("معتمد، بانتظار إرسال المحاسب", "Approved, awaiting accountant send")}
+            </span>
+          </div>
+          {request.transferReference && <p className="text-xs text-gray-600">{t("مرجع التحويل:", "Transfer Reference:")} {request.transferReference}</p>}
+          {request.canExecute && (
+            <div className="space-y-2 pt-2 border-t border-gray-100">
+              {selectedId === request.id ? (
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    disabled={execute.isPending || checkingStatus || (intent?.status === "timed_out")}
+                    placeholder={t("مرجع التحويل البنكي (إلزامي)", "Bank transfer reference (required)")}
+                    value={reference}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (intent && intent.status === "timed_out") {
+                        toast.warning(t("توجد محاولة إرسال سابقة قيد التحقق. لا يمكن تغيير مرجع التحويل.", "Previous attempt pending. Cannot change reference."));
+                        return;
+                      }
+                      setReference(val);
+                    }}
+                    className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 disabled:bg-gray-100"
+                  />
+                  <input
+                    type="file"
+                    disabled={execute.isPending || checkingStatus || Boolean(proof && intent?.status === "timed_out")}
+                    aria-label={t("إشعار التحويل البنكي", "Bank transfer slip")}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      if (!file) {
+                        setProof(null);
+                        return;
+                      }
+                      if (intent && (intent.status === "timed_out" || (intent as any).attemptCount > 0)) {
+                        if (intent.payload?.proofHash) {
+                          const hash = await computeFileHash(file);
+                          if (hash !== intent.payload.proofHash) {
+                            toast.error(t("ملف الإثبات غير مطابق للبصمة السابقة؛ يرجى اختيار نفس الملف السابق.", "Selected file does not match previously recorded fingerprint."));
+                            e.target.value = "";
+                            setProof(null);
+                            return;
+                          }
+                          toast.info(t("تم التحقق من مطابقة ملف الإثبات للبصمة السابقة بنجاح.", "Proof file verified against stored fingerprint."));
+                        }
+                      }
+                      setProof(file);
+                    }}
+                    className="w-full text-xs"
+                  />
+                  <div className="flex gap-2 flex-wrap items-center">
+                    <Btn
+                      size="sm"
+                      variant="primary"
+                      disabled={execute.isPending || checkingStatus || !reference.trim() || !proof}
+                      onClick={async () => {
+                        if (!proof) return;
+                        const cleanRef = reference.trim();
+                        if (cleanRef.length < 2) return;
+
+                        // Check reconciliation before retry if an unconfirmed attempt timed out/errored
+                        if (intent && (intent.attemptCount > 0 || intent.status === "timed_out" || execute.isError)) {
+                          setCheckingStatus(true);
+                          const capturedReconGen = financialAccessGeneration(queryClient);
+                          const capturedReconActorId = user?.id ?? null;
+                          const capturedReconCompanyId = companyId;
+                          try {
+                            const { data: latest = [], isError: refetchErr } = await refetch();
+                            if (!isFinancialSessionActive(queryClient, capturedReconGen, capturedReconActorId, capturedReconCompanyId)) {
+                              return;
+                            }
+                            setCheckingStatus(false);
+                            if (refetchErr) {
+                              toast.error(t("فشل التحقق من حالة الخادم؛ لا يمكن إعادة المحاولة تلقائياً لحين استقرار الاتصال.", "Server check failed; automatic retry prohibited."));
+                              return;
+                            }
+                            const recon = reconcileExecutionStatus(request.id, latest);
+                            if (recon.alreadyExecuted) {
+                              toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير", "Transfer execution confirmed by server"));
+                              removeUnconfirmedIntent("funding", request.id, user?.id, companyId);
+                              setSelectedId(null);
+                              setProof(null);
+                              setReference("");
+                              setIntent(null);
+                              return;
+                            }
+                            if (!recon.canRetry) {
+                              toast.error(recon.reason);
+                              return;
+                            }
+                          } catch {
+                            if (!isFinancialSessionActive(queryClient, capturedReconGen, capturedReconActorId, capturedReconCompanyId)) {
+                              return;
+                            }
+                            setCheckingStatus(false);
+                            toast.error(t("فشل التحقق من حالة الخادم؛ تعذر التأكد من نتيجة العملية السابقة.", "Failed to check server status."));
+                            return;
+                          }
+                        }
+
+                        const proofHash = await computeFileHash(proof);
+
+                        const currentIntent =
+                          intent ??
+                          createFinancialIntent(
+                            {
+                              requestId: request.id,
+                              reference: cleanRef,
+                              proofName: proof.name,
+                              proofSize: proof.size,
+                              proofHash,
+                            },
+                            undefined,
+                            user?.id,
+                            companyId,
+                          );
+                        if (currentIntent.status === "in_flight" || execute.isPending) {
+                          toast.warning(t("العملية قيد التنفيذ بالفعل؛ يرجى الانتظار.", "Operation is already in flight"));
+                          return;
+                        }
+                        setIntent(currentIntent);
+
+                        const capturedGen = financialAccessGeneration(queryClient);
+
+                        execute.mutate(
+                          {
+                            id: request.id,
+                            reference: cleanRef,
+                            proof,
+                            proofHash,
+                            currentActorId: user?.id,
+                            companyId,
+                            intent: currentIntent,
+                          },
+                          {
+                            onSuccess: () => {
+                              if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) {
+                                return;
+                              }
+                              currentIntent.status = "resolved";
+                              removeUnconfirmedIntent("funding", request.id, user?.id, companyId);
+                              setSelectedId(null);
+                              setReference("");
+                              setProof(null);
+                              setIntent(null);
+                            },
+                            onError: async () => {
+                              if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) {
+                                return;
+                              }
+                              currentIntent.status = "timed_out";
+                              setUnconfirmedIntent("funding", request.id, currentIntent, user?.id, companyId);
+                              try {
+                                const { data: latest = [], isError: refetchErr } = await refetch();
+                                if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) return;
+                                if (!refetchErr) {
+                                  const recon = reconcileExecutionStatus(request.id, latest);
+                                  if (recon.alreadyExecuted) {
+                                    currentIntent.status = "resolved";
+                                    removeUnconfirmedIntent("funding", request.id, user?.id, companyId);
+                                    toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير", "Transfer execution confirmed by server"));
+                                    setSelectedId(null);
+                                    setProof(null);
+                                    setReference("");
+                                    setIntent(null);
+                                    return;
+                                  }
+                                  if (!recon.canRetry) {
+                                    if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) return;
+                                    toast.error(recon.reason);
+                                    return;
+                                  }
+                                }
+                              } catch {
+                                // network error on refetch: prohibit retry
+                              }
+                            },
+                          }
+                        );
+                      }}
+                    >
+                      {checkingStatus
+                        ? t("جارٍ التحقق...", "Checking...")
+                        : execute.isPending
+                          ? t("جارٍ الإرسال...", "Sending...")
+                          : intent && (execute.isError || intent.status === "timed_out" || (intent as any).attemptCount > 0)
+                            ? t("التحقق وإعادة المحاولة (بنفس المفتاح)", "Verify & Retry (same key)")
+                            : t("تأكيد إرسال الدفعة وتوثيق التحويل", "Confirm Send & Attach Proof")}
+                    </Btn>
+                    {intent && (intent.status === "timed_out" || execute.isError || (intent as any).attemptCount > 0) && (
+                      <Btn
+                        size="sm"
+                        variant="ghost"
+                        disabled={checkingStatus}
+                        onClick={async () => {
+                          setCheckingStatus(true);
+                          const capturedManualGen = financialAccessGeneration(queryClient);
+                          const capturedManualActorId = user?.id ?? null;
+                          const capturedManualCompanyId = companyId;
+                          try {
+                            const { data: latest = [], isError: refetchErr } = await refetch();
+                            if (!isFinancialSessionActive(queryClient, capturedManualGen, capturedManualActorId, capturedManualCompanyId)) {
+                              return;
+                            }
+                            if (refetchErr) {
+                              toast.error(t("تعذر الاتصال بالخادم للتحقق من الحالة؛ يرجى المحاولة لاحقاً.", "Could not reach server."));
+                              return;
+                            }
+                            const recon = reconcileExecutionStatus(request.id, latest);
+                            if (recon.alreadyExecuted) {
+                              toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل", "Transfer execution confirmed by server"));
+                              intent.status = "resolved";
+                              removeUnconfirmedIntent("funding", request.id, user?.id, companyId);
+                              setSelectedId(null);
+                              setProof(null);
+                              setReference("");
+                              setIntent(null);
+                            } else if (recon.canRetry) {
+                              toast.info(t("الطلب ما زال غير منفذ في الخادم؛ يمكنك إعادة المحاولة.", "Request is still unexecuted; safe to retry."));
+                            } else {
+                              toast.warning(recon.reason);
+                            }
+                          } catch {
+                            if (!isFinancialSessionActive(queryClient, capturedManualGen, capturedManualActorId, capturedManualCompanyId)) {
+                              return;
+                            }
+                            toast.error(t("تعذر الاتصال بالخادم للتحقق من الحالة؛ يرجى المحاولة لاحقاً.", "Could not reach server."));
+                          } finally {
+                            if (isFinancialSessionActive(queryClient, capturedManualGen, capturedManualActorId, capturedManualCompanyId)) {
+                              setCheckingStatus(false);
+                            }
+                          }
+                        }}
+                      >
+                        {checkingStatus ? t("جارٍ التحقق...", "Checking...") : t("التحقق من حالة الطلب", "Check Status")}
+                      </Btn>
+                    )}
+                    <Btn
+                      size="sm"
+                      onClick={() => {
+                        if (execute.isPending || intent?.status === "in_flight") {
+                          toast.warning(t("عملية التمويل قيد التنفيذ، يرجى الانتظار", "Operation in flight, please wait"));
+                          return;
+                        }
+                        setSelectedId(null);
+                        setIntent(null);
+                      }}
+                    >
+                      {t("إلغاء", "Cancel")}
+                    </Btn>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="text-xs text-blue-700 underline"
+                  onClick={() => {
+                    setSelectedId(request.id);
+                    const existing = getUnconfirmedIntent<any>("funding", request.id, user?.id, companyId);
+                    if (existing && (existing.status === "timed_out" || existing.status === "in_flight")) {
+                      setIntent(existing);
+                      setReference(existing.payload?.reference ?? "");
+                    } else {
+                      setReference("");
+                      setProof(null);
+                      setIntent(null);
+                    }
+                  }}
+                >
+                  {t("تنفيذ وإرسال التغذية", "Execute Funding Send")}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </section>
+  );
+}
+
 function AccCompanyCash() {
   const { t, dir } = useCLang();
   const [searchTerm,   setSearchTerm]   = useState("");
@@ -7118,6 +7986,7 @@ function AccCompanyCash() {
   });
   return (
     <div className="space-y-5" dir={dir}>
+      <CompanyFundingExecution />
       <div className="flex items-center justify-between">
         <div><h2 className="text-xl font-bold text-gray-800">{t("إدارة العهد النقدية","Petty Cash Management")}</h2><p className="text-gray-400 text-sm mt-0.5">{t("متابعة صناديق النقد للفروع","Track petty cash for branches")}</p></div>
       </div>
@@ -8061,8 +8930,6 @@ function ProcNew() {
   const parsedPrice = parseFloat(orderForm.unitPrice);
   const hasValidCalculation = !isNaN(parsedQty) && parsedQty > 0 && !isNaN(parsedPrice) && parsedPrice > 0;
   const subtotalSar = hasValidCalculation ? parsedQty * parsedPrice : 0;
-  const estimatedVatSar = hasValidCalculation ? subtotalSar * 0.15 : 0;
-  const estimatedTotalSar = subtotalSar + estimatedVatSar;
 
   return (
     <div className="space-y-5" dir={dir}>
@@ -8150,18 +9017,11 @@ function ProcNew() {
               </div>
               {hasValidCalculation && (
                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs space-y-1">
-                  <div className="flex justify-between text-gray-600">
-                    <span>{t("المجموع قبل الضريبة (ر.س)","Subtotal (SAR)")}:</span>
-                    <span className="font-mono font-bold">{subtotalSar.toFixed(2)}</span>
+                  <div className="flex justify-between text-gray-800 font-bold">
+                    <span>{t("إجمالي أمر الشراء (قبل الضريبة)","Purchase Order Total (Excl. VAT)")}:</span>
+                    <span className="font-mono">{subtotalSar.toFixed(2)} {SAR}</span>
                   </div>
-                  <div className="flex justify-between text-amber-700">
-                    <span>{t("ضريبة القيمة المضافة التقديرية (15% منفصلة وفق PUR-05)","Estimated VAT (15% separate per PUR-05)")}:</span>
-                    <span className="font-mono font-bold">{estimatedVatSar.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-gray-900 border-t border-gray-200 pt-1 font-bold">
-                    <span>{t("الإجمالي التقديري شامل الضريبة","Estimated Total Incl. VAT")}:</span>
-                    <span className="font-mono">{estimatedTotalSar.toFixed(2)} {SAR}</span>
-                  </div>
+                  <p className="text-[10px] text-gray-500">{t("يتم تحديد الضريبة رسمياً عند استلام فاتورة المورد وفق PUR-05", "VAT is officially determined upon receipt of supplier invoice per PUR-05")}</p>
                 </div>
               )}
               <div><label htmlFor="po-notes" className="text-xs font-semibold text-gray-600 block mb-1">{t("ملاحظات (اختياري)","Notes (optional)")}</label><textarea id="po-notes" rows={2} value={orderForm.notes} onChange={e=>setOrderForm(f=>({...f,notes:e.target.value}))} className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none resize-none"/></div>
@@ -8406,7 +9266,7 @@ function ProcSent() {
 // ═══════════════════════════════════════════════════
 // PAGE ROUTER
 // ═══════════════════════════════════════════════════
-function PageRouter({ role, page, navigate, ops, approve, reject, requestClarification, bulkApprove, finalApprove, bulkFinalApprove, actionsPending, shiftReviewPage, setShiftReviewPage }:{
+export function PageRouter({ role, page, navigate, ops, approve, reject, requestClarification, bulkApprove, finalApprove, bulkFinalApprove, actionsPending, shiftReviewPage, setShiftReviewPage }:{
   role:CRole; page:string; navigate:(p:string)=>void;
 } & SharedOpsProps) {
   const headProps:HeadProps = { navigate, ops, finalApprove, reject, bulkFinalApprove, actionsPending };
@@ -8483,27 +9343,47 @@ function CompanyDashboardInner() {
   const initRole = chooseGrantedRole(user,companyRoles,
     initSel?.slug === "asab/CompanyDashboard" ? initSel.role : null) as CRole | null;
   const [role, setRole] = useState<CRole|null>(initRole);
-  let initPage = initRole ? DEFAULT_PAGE[initRole] : "";
-  if (initRole && typeof window !== "undefined") {
+
+  const getUrlPage = () => {
     try {
-      const historyPage = (window.history?.state as { asabCoPage?: string } | null)?.asabCoPage;
-      if (typeof historyPage === "string" && pageForRole(initRole, historyPage, "") === historyPage) {
-        initPage = historyPage;
+      if (typeof window === "undefined" || !window.location) return null;
+      const sp = new URLSearchParams(window.location.search);
+      const p = sp.get("page");
+      if (p && /^[a-zA-Z0-9_-]{1,64}$/.test(p)) return p;
+      const hash = window.location.hash || "";
+      const q = hash.indexOf("?");
+      if (q !== -1) {
+        const hp = new URLSearchParams(hash.slice(q)).get("page");
+        if (hp && /^[a-zA-Z0-9_-]{1,64}$/.test(hp)) return hp;
       }
-    } catch {}
-  }
-  const [page, setPage] = useState<string>(initPage);
+    } catch { /* ignore */ }
+    return null;
+  };
+
+  const [page, setPage] = useState<string>(() => {
+    if (!initRole) return "";
+    const defaultP = DEFAULT_PAGE[initRole];
+    const urlP = getUrlPage();
+    return urlP ? pageForRole(initRole, urlP, defaultP) : defaultP;
+  });
   const allowedRoles = grantedRoleKeys(user).filter(r => companyRoles.includes(r)) as CRole[];
   const currentRole = role && allowedRoles.includes(role) ? role : allowedRoles[0] ?? null;
   const currentPage = currentRole ? pageForRole(currentRole,page,DEFAULT_PAGE[currentRole]) : "";
   const { ops, approve, reject, requestClarification, finalApprove, bulkApprove, bulkFinalApprove, actionsPending, shiftReviewPage, setShiftReviewPage, rejectModalProps, clarifyModalProps, clearDialogs } = useSharedOps(switchingRole ? null : currentRole, financialAccessFingerprint(user));
 
-  // Tag the current history entry with a page so Back/Forward can restore it.
+  // Tag the current history entry with a page so Back/Forward can restore it and refresh preserves it.
   const tagHistory = (p:string, replace=false) => {
     try {
+      if (typeof window === "undefined" || !window.history || !window.location) return;
       const st = { ...(window.history.state || {}), asabCoPage: p };
-      if (replace) window.history.replaceState(st, "");
-      else window.history.pushState(st, "");
+      const url = new URL(window.location.href);
+      if (url.hash.includes("?")) {
+        const qIndex = url.hash.indexOf("?");
+        url.hash = url.hash.slice(0, qIndex);
+      }
+      url.searchParams.set("page", p);
+      if (replace) window.history.replaceState(st, "", url.toString());
+      else window.history.pushState(st, "", url.toString());
     } catch { /* history unavailable */ }
   };
   const selectRole = async (r:CRole) => {
@@ -8532,7 +9412,8 @@ function CompanyDashboardInner() {
   // Browser Back/Forward → restore the previous internal page (URL stays on the preview hash).
   useEffect(() => {
     const onPop = (e:PopStateEvent) => {
-      const p = (e.state as { asabCoPage?: string } | null)?.asabCoPage;
+      const statePage = (e.state as { asabCoPage?: string } | null)?.asabCoPage;
+      const p = statePage || getUrlPage();
       if (typeof p === "string" && currentRole && pageForRole(currentRole,p,"") === p) setPage(p);
     };
     window.addEventListener("popstate", onPop);
@@ -8540,7 +9421,18 @@ function CompanyDashboardInner() {
   }, [currentRole]);
 
   useEffect(() => {
-    if (role !== currentRole) { setRole(currentRole); setPage(currentRole ? DEFAULT_PAGE[currentRole] : ""); }
+    if (currentPage) {
+      tagHistory(currentPage, true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (role !== currentRole) {
+      setRole(currentRole);
+      const nextP = currentRole ? DEFAULT_PAGE[currentRole] : "";
+      setPage(nextP);
+      if (nextP) tagHistory(nextP, true);
+    }
   }, [role,currentRole]);
 
   if(!currentRole) return <p role="alert">{t("ليس لديك صلاحية للوصول إلى بوابة الشركات","You cannot access the company dashboard")}</p>;
@@ -8551,9 +9443,11 @@ function CompanyDashboardInner() {
   const dashboard = (
     <Shell role={currentRole} page={currentPage} navigate={navigate} onLogout={logout} headPendingCount={headPendingCount}
       allowedRoles={allowedRoles} onSelectRole={selectRole}>
-      <PageRouter role={currentRole} page={currentPage} navigate={navigate}
-        ops={ops} approve={approve} reject={reject} requestClarification={requestClarification}
-        bulkApprove={bulkApprove} finalApprove={finalApprove} bulkFinalApprove={bulkFinalApprove} actionsPending={actionsPending} shiftReviewPage={shiftReviewPage} setShiftReviewPage={setShiftReviewPage}/>
+      <ErrorBoundary title={t("تعذر تحميل الصفحة المطلوبة", "Unable to load the requested page")}>
+        <PageRouter role={currentRole} page={currentPage} navigate={navigate}
+          ops={ops} approve={approve} reject={reject} requestClarification={requestClarification}
+          bulkApprove={bulkApprove} finalApprove={finalApprove} bulkFinalApprove={bulkFinalApprove} actionsPending={actionsPending} shiftReviewPage={shiftReviewPage} setShiftReviewPage={setShiftReviewPage}/>
+      </ErrorBoundary>
       {(currentRole==="accountant" || currentRole==="head") && <RejectModal {...rejectModalProps} t={t}/>}
       {(currentRole==="accountant" || currentRole==="head") && <ClarifyModal {...clarifyModalProps} t={t}/>}
       {/* Floating live-support chat — available to every company role. */}

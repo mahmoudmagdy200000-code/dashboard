@@ -1,6 +1,7 @@
 import type { RoleKey } from "../api/types";
 import type { QueryClient } from "@tanstack/react-query";
-import { SUPPLIER_PORTAL_ENABLED } from "../featureFlags";
+import { SUPPLIER_PORTAL_ENABLED } from "../featureFlags.ts";
+import { clearAllFinancialIntents } from "../api/queries/financialIntentStore.ts";
 
 type Identity = { roles?: unknown; id?: unknown; companyId?: unknown } | null | undefined;
 
@@ -110,12 +111,45 @@ const sensitivePrefixes: readonly (readonly string[])[] = [
   ["company"], ["modules"], ["exceptions"], ["exports"],
 ];
 
+let activeFinancialSession: { actorId: string | null; companyId: string | null } | null = null;
+
+export function setActiveFinancialSession(actorId: string | null, companyId: string | null): void {
+  activeFinancialSession = actorId ? { actorId, companyId: companyId ?? null } : null;
+}
+
+export function getActiveFinancialSession(): { actorId: string | null; companyId: string | null } | null {
+  return activeFinancialSession;
+}
+
+export function isFinancialSessionActive(
+  queryClient: QueryClient,
+  startGeneration: number,
+  expectedActorId?: string | null,
+  expectedCompanyId?: string | null,
+): boolean {
+  if (financialAccessGeneration(queryClient) !== startGeneration) {
+    return false;
+  }
+  if (!activeFinancialSession) {
+    return false;
+  }
+  if (expectedActorId && activeFinancialSession.actorId !== expectedActorId) {
+    return false;
+  }
+  if (expectedCompanyId && activeFinancialSession.companyId !== expectedCompanyId) {
+    return false;
+  }
+  return true;
+}
+
 /** Cancel before removal so a prior role's late response cannot restore financial cache. */
 export async function purgeFinancialQueries(
   queryClient: QueryClient,
   isCurrent: () => boolean = () => true,
 ): Promise<boolean> {
   invalidateFinancialAccess(queryClient);
+  clearAllFinancialIntents();
+  setActiveFinancialSession(null, null);
   const predicate = (query: {queryKey: readonly unknown[]}) => sensitivePrefixes.some(prefix =>
     prefix.every((part,index) => query.queryKey[index] === part));
   await queryClient.cancelQueries({predicate});
@@ -130,6 +164,8 @@ export async function clearRetiredQueryClient(
   isCurrent: () => boolean = () => true,
 ): Promise<boolean> {
   invalidateFinancialAccess(queryClient);
+  clearAllFinancialIntents();
+  setActiveFinancialSession(null, null);
   await queryClient.cancelQueries();
   if (!isCurrent()) return false;
   queryClient.clear();

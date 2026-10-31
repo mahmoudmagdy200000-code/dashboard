@@ -75,6 +75,7 @@
     "@vitejs/plugin-react": "catalog:",
     "chokidar": "^4.0.3",
     "fast-glob": "^3.3.3",
+    "happy-dom": "^21.0.4",
     "tailwindcss": "catalog:",
     "vite": "catalog:"
   }

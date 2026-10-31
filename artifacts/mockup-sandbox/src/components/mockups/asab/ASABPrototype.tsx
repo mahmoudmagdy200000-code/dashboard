@@ -1909,16 +1909,26 @@ export function ASABPrototype() {
     const sel = readEntrySelection();
     const role = chooseGrantedRole(user, prototypeRoles,
       sel?.slug === "asab/ASABPrototype" ? sel.role : null) as RoleId | null;
-    let initialPage = role ? ROLE_PROFILES[role].defaultPage : "";
-    if (role && typeof window !== "undefined") {
-      try {
-        const historyPage = (window.history?.state as { asabPage?: string } | null)?.asabPage;
-        if (typeof historyPage === "string" && pageForRole(role, historyPage, "") === historyPage) {
-          initialPage = historyPage as PageId;
+    let initPage = role ? ROLE_PROFILES[role].defaultPage : "";
+    try {
+      if (typeof window !== "undefined" && window.location) {
+        const sp = new URLSearchParams(window.location.search);
+        const p = sp.get("page");
+        if (p && /^[a-zA-Z0-9_-]{1,64}$/.test(p) && role) {
+          initPage = pageForRole(role, p, initPage);
+        } else {
+          const hash = window.location.hash || "";
+          const q = hash.indexOf("?");
+          if (q !== -1) {
+            const hp = new URLSearchParams(hash.slice(q)).get("page");
+            if (hp && /^[a-zA-Z0-9_-]{1,64}$/.test(hp) && role) {
+              initPage = pageForRole(role, hp, initPage);
+            }
+          }
         }
-      } catch {}
-    }
-    return { role, page: initialPage, detailId: null, modal: null };
+      }
+    } catch { /* ignore */ }
+    return { role, page: initPage, detailId: null, modal: null };
   });
   const allowedRoles = grantedRoleKeys(user).filter(r => prototypeRoles.includes(r) && (r !== "supplier" || SUPPLIER_PORTAL_ENABLED)) as RoleId[];
   const currentRole = appState.role && allowedRoles.includes(appState.role) ? appState.role : allowedRoles[0] ?? null;
@@ -1991,12 +2001,19 @@ export function ASABPrototype() {
       detailId: null, modal: null,
     });
   }, [appState.role, currentRole]);
-  // Tag the current history entry with a page so Back/Forward can restore it.
+  // Tag the current history entry with a page so Back/Forward can restore it and refresh preserves it.
   const tagShiftHistory = (p: string, replace = false) => {
     try {
+      if (typeof window === "undefined" || !window.history || !window.location) return;
       const st = { ...(window.history.state || {}), asabPage: p };
-      if (replace) window.history.replaceState(st, "");
-      else window.history.pushState(st, "");
+      const url = new URL(window.location.href);
+      if (url.hash.includes("?")) {
+        const qIndex = url.hash.indexOf("?");
+        url.hash = url.hash.slice(0, qIndex);
+      }
+      url.searchParams.set("page", p);
+      if (replace) window.history.replaceState(st, "", url.toString());
+      else window.history.pushState(st, "", url.toString());
     } catch { /* history unavailable */ }
   };
   const login = async (role: RoleId) => {
@@ -2033,7 +2050,16 @@ export function ASABPrototype() {
   // Browser Back/Forward → restore the previous internal page (URL stays on the preview hash).
   useEffect(() => {
     const onPop = (e: PopStateEvent) => {
-      const p = (e.state as { asabPage?: string } | null)?.asabPage;
+      let p: string | null | undefined = (e.state as { asabPage?: string } | null)?.asabPage;
+      if (!p) {
+        try {
+          if (typeof window !== "undefined" && window.location) {
+            const sp = new URLSearchParams(window.location.search);
+            const urlP = sp.get("page");
+            if (urlP && /^[a-zA-Z0-9_-]{1,64}$/.test(urlP)) p = urlP;
+          }
+        } catch { /* ignore */ }
+      }
       if (typeof p === "string" && currentRole && pageForRole(currentRole, p, "") === p)
         setAppState(s => ({ ...s, page: p as PageId, modal: null }));
     };

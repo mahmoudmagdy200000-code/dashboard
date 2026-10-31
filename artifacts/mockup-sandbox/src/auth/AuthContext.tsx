@@ -30,7 +30,7 @@ import {
   getTokens,
 } from "../api/tokens";
 import { clearEntrySelection } from "./entrySelection";
-import { clearRetiredQueryClient, financialAccessFingerprint, hasRoleGrant, purgeFinancialQueries } from "./roleAccess";
+import { clearRetiredQueryClient, financialAccessFingerprint, hasRoleGrant, purgeFinancialQueries, setActiveFinancialSession } from "./roleAccess";
 import { createQueryClient } from "../lib/queryClient";
 import { disconnectEcho, getEcho } from "../api/echo";
 import { setProcurementPlatformScope } from "../api/queries/platform/procurement";
@@ -77,7 +77,7 @@ interface AuthContextValue {
   isRole: (...roles: RoleKey[]) => boolean;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<MeResponse | null>(null);
@@ -130,6 +130,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isCurrent()) return false;
     userRef.current = nextUser;
     setUser(nextUser);
+    if (typeof setActiveFinancialSession === "function") {
+      try {
+        setActiveFinancialSession(nextUser?.id ?? null, (nextUser as any)?.companyId ?? null);
+      } catch {}
+    }
     return true;
   }, [resetQueryClient]);
 
@@ -150,6 +155,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled && bootstrapSession === sessionEpoch.current && bootstrapRequest === refreshRequest.current) {
           userRef.current = me;
           setUser(me);
+          if (typeof setActiveFinancialSession === "function") {
+            try {
+              setActiveFinancialSession(me?.id ?? null, (me as any)?.companyId ?? null);
+            } catch {}
+          }
         }
       } catch (err: unknown) {
         if (bootstrapSession === sessionEpoch.current && bootstrapRequest === refreshRequest.current) {
@@ -192,6 +202,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       invalidateSessionRequests();
       userRef.current = null;
       setUser(null);
+      if (typeof setActiveFinancialSession === "function") {
+        try {
+          setActiveFinancialSession(null, null);
+        } catch {}
+      }
       setInitializing(false);
       setLoggingIn(false);
       setFinancialTransition(false);
@@ -491,6 +506,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const operationEpoch = sessionEpoch.current;
     userRef.current = null;
     setUser(null);
+    if (typeof setActiveFinancialSession === "function") {
+      try {
+        setActiveFinancialSession(null, null);
+      } catch {}
+    }
     setDefaultPage(null);
     setInitializing(false);
     setLoggingIn(false);
