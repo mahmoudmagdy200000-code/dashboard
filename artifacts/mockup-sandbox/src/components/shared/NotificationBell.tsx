@@ -1,6 +1,6 @@
 import type { RoleKey } from "../../api/types";
 import { hasCompanySharedApi, sharedNotificationPage } from "./sharedNavigation";
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Bell, Check } from "lucide-react";
 import {
   useNotifications,

@@ -57,6 +57,7 @@ Thumbs.db
 # logs
 *.log
 !ASSAB_PR10_TEST_EVIDENCE.log
+!artifacts/mockup-sandbox/ASSAB_PR10_FULL_TEST_EVIDENCE.log
 
 # local tooling / agent state (not part of the project)
 .claude/

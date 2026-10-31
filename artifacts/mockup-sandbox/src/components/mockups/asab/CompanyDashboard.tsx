@@ -828,7 +828,7 @@ function CompanyLoginScreen({ onSelect }:{ onSelect:(r:CRole)=>void }) {
 // ═══════════════════════════════════════════════════
 // Notifications come from the platform API; empty until the backend returns them (no static seed).
 const SHELL_NOTIFICATIONS: { id:number; title:string; body:string; time:string; icon:string; unread:boolean }[] = [];
-function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, allowedRoles, onSelectRole }:{
+export function Shell({ role, page, navigate, onLogout, children, headPendingCount=0, allowedRoles, onSelectRole }:{
   role:CRole; page:string; navigate:(p:string)=>void; onLogout:()=>void; children:ReactNode; headPendingCount?:number;
   allowedRoles:CRole[]; onSelectRole:(role:CRole)=>void;
 }) {
