@@ -1,3 +1,5 @@
+import { assertIntentNotConcurrent, assertIntentSessionValid } from "../idempotencyIntent.ts";
+
 export function settlementRequestPayload(reason: string, amountHalalas?: number) {
   const trimmedReason = reason.trim();
   if (trimmedReason.length < 3) {
@@ -69,4 +71,134 @@ export async function executeSettlementRejectionFlow(
     rejectionReason: validatedReason,
     reason: validatedReason,
   });
+}
+
+export function executeEmployeeSettlementFlow(
+  params: {
+    employeeId: string;
+    reason: string;
+    amountHalalas?: number;
+    currentActorId?: string;
+    intent?: {
+      idempotencyKey: string;
+      actorId?: string;
+      status?: string;
+      payload?: {
+        employeeId?: string;
+        reason?: string;
+        amountHalalas?: number;
+        actorId?: string;
+      };
+    };
+    idempotencyKey?: string;
+  },
+  apiDispatcher?: (url: string, body: any, headers?: Record<string, string>) => any,
+) {
+  // Step 1: Concurrency guard
+  assertIntentNotConcurrent(params.intent);
+
+  // Step 2: Session guard
+  assertIntentSessionValid(params.intent, params.currentActorId);
+
+  // Step 3: Validate settlement payload (reason >= 3 chars, etc.)
+  const payload = settlementRequestPayload(params.reason, params.amountHalalas);
+
+  // Step 4: Payload alteration guard under active intent
+  if (params.intent?.payload) {
+    const p = params.intent.payload;
+    const isEmployeeModified = p.employeeId !== undefined && p.employeeId !== params.employeeId;
+    const isReasonModified = p.reason !== undefined && p.reason !== payload.reason;
+    const isAmountModified = p.amountHalalas !== undefined && p.amountHalalas !== params.amountHalalas;
+    const isActorModified =
+      p.actorId !== undefined &&
+      params.currentActorId !== undefined &&
+      p.actorId !== params.currentActorId;
+
+    if (isEmployeeModified || isReasonModified || isAmountModified || isActorModified) {
+      const conflictError: any = new Error(
+        "IDEMPOTENCY_CONFLICT_PAYLOAD_ALTERATION: Modifying employee, reason, amount, or actor under an active intent is forbidden",
+      );
+      conflictError.response = {
+        status: 409,
+        data: {
+          error: {
+            code: "IDEMPOTENCY_CONFLICT",
+            message: "Employee settlement payload altered under active idempotency intent",
+            messageAr: "لا يمكن تعديل سبب التسوية أو تبديل الموظف أثناء وجود معاملة غير محسومة",
+          },
+        },
+      };
+      throw conflictError;
+    }
+    if (p.reason === undefined) {
+      p.reason = payload.reason;
+    }
+    if (p.amountHalalas === undefined && params.amountHalalas !== undefined) {
+      p.amountHalalas = params.amountHalalas;
+    }
+    if (p.actorId === undefined && params.currentActorId) {
+      p.actorId = params.currentActorId;
+    }
+  } else if (params.intent) {
+    params.intent.payload = {
+      employeeId: params.employeeId,
+      reason: payload.reason,
+      amountHalalas: params.amountHalalas,
+      actorId: params.currentActorId,
+    };
+  }
+
+  if (params.intent && !params.intent.actorId && params.currentActorId) {
+    params.intent.actorId = params.currentActorId;
+  }
+
+  // Step 5: Transition intent to in_flight
+  if (params.intent) {
+    params.intent.status = "in_flight";
+  }
+
+  // Step 6: Bind stable idempotency key
+  const effectiveKey = params.intent?.idempotencyKey ?? params.idempotencyKey;
+  const headers: Record<string, string> = {};
+  if (effectiveKey) {
+    headers["Idempotency-Key"] = effectiveKey;
+  }
+
+  // Step 7: Dispatch
+  if (apiDispatcher) {
+    const dispatchResult = apiDispatcher(
+      `/company/me/employees/${encodeURIComponent(params.employeeId)}/settle-balance`,
+      payload,
+      headers,
+    );
+    if (dispatchResult && typeof dispatchResult.then === "function") {
+      return dispatchResult.then(
+        (res: any) => {
+          if (params.intent) {
+            params.intent.status = "resolved";
+          }
+          return requirePendingSettlement(res);
+        },
+        (err: any) => {
+          if (params.intent) {
+            params.intent.status = "timed_out";
+          }
+          throw err;
+        },
+      );
+    }
+    if (params.intent) {
+      params.intent.status = "resolved";
+    }
+    return requirePendingSettlement(dispatchResult);
+  }
+
+  if (params.intent) {
+    params.intent.status = "resolved";
+  }
+  return requirePendingSettlement({
+    status: "pending",
+    balanceModified: false,
+    employeeId: params.employeeId,
+  } as any);
 }

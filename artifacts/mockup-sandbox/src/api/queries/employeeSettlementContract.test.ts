@@ -7,7 +7,9 @@ import {
   validateSettlementRejectionReason,
   executeSettlementApprovalFlow,
   executeSettlementRejectionFlow,
+  executeEmployeeSettlementFlow,
 } from "./employeeSettlementContract.ts";
+import { createFinancialIntent } from "../idempotencyIntent.ts";
 
 test("D07: settlement request sends a required reason and optional amount", () => {
   assert.deepEqual(settlementRequestPayload("  Reconcile balance  "), { reason: "Reconcile balance" });
@@ -72,4 +74,213 @@ test("D09: execute settlement approval and rejection flows dispatch canonical en
 
   await executeSettlementRejectionFlow("settle-99", head, "Discrepancy in receipt", fakeApi);
   assert.strictEqual(calls[1], "/company/me/employee-settlements/settle-99/reject");
+});
+
+test("D07 / D17: executeEmployeeSettlementFlow binds full payload and transitions intent to resolved on pending response", async () => {
+  const intent = createFinancialIntent<{ employeeId: string; reason: string }>(
+    { employeeId: "emp-101", reason: "Annual balance settlement" },
+    undefined,
+    "user-1",
+  );
+
+  let capturedUrl = "";
+  let capturedBody: any = null;
+  let capturedHeaders: Record<string, string> | undefined = undefined;
+
+  const result = await executeEmployeeSettlementFlow(
+    {
+      employeeId: "emp-101",
+      reason: "Annual balance settlement",
+      amountHalalas: 25000,
+      currentActorId: "user-1",
+      intent,
+    },
+    async (url, body, headers) => {
+      capturedUrl = url;
+      capturedBody = body;
+      capturedHeaders = headers;
+      return {
+        settlementId: "settle-55",
+        status: "pending",
+        balanceModified: false,
+        employeeId: "emp-101",
+      };
+    },
+  );
+
+  assert.equal(capturedUrl, "/company/me/employees/emp-101/settle-balance");
+  assert.equal(capturedBody.reason, "Annual balance settlement");
+  assert.equal(capturedBody.amountHalalas, 25000);
+  assert.equal(capturedHeaders?.["Idempotency-Key"], intent.idempotencyKey);
+  assert.equal(intent.status, "resolved");
+  assert.equal(result.status, "pending");
+  assert.equal(result.balanceModified, false);
+});
+
+test("D07 / D17: empty reason throws validation error without mutating balance (422 equivalent)", () => {
+  assert.throws(
+    () => {
+      executeEmployeeSettlementFlow(
+        {
+          employeeId: "emp-101",
+          reason: "   ",
+          currentActorId: "user-1",
+        },
+        () => ({ ok: true }),
+      );
+    },
+    /at least three characters/,
+  );
+});
+
+test("D07 / D17: modifying reason under active intent triggers HTTP 409 IDEMPOTENCY_CONFLICT", async () => {
+  const intent = createFinancialIntent(
+    { employeeId: "emp-101", reason: "Advance reconciliation", actorId: "user-1" },
+    undefined,
+    "user-1",
+  );
+
+  await assert.rejects(
+    async () => {
+      await executeEmployeeSettlementFlow(
+        {
+          employeeId: "emp-101",
+          reason: "Modified reason for loan",
+          currentActorId: "user-1",
+          intent,
+        },
+        async () => ({ ok: true }),
+      );
+    },
+    (err: any) => {
+      assert.equal(err?.response?.status, 409);
+      assert.equal(err?.response?.data?.error?.code, "IDEMPOTENCY_CONFLICT");
+      return true;
+    },
+  );
+});
+
+test("D07 / D17: switching employeeId under active intent triggers HTTP 409 IDEMPOTENCY_CONFLICT", async () => {
+  const intent = createFinancialIntent(
+    { employeeId: "emp-101", reason: "Advance reconciliation", actorId: "user-1" },
+    undefined,
+    "user-1",
+  );
+
+  await assert.rejects(
+    async () => {
+      await executeEmployeeSettlementFlow(
+        {
+          employeeId: "emp-999",
+          reason: "Advance reconciliation",
+          currentActorId: "user-1",
+          intent,
+        },
+        async () => ({ ok: true }),
+      );
+    },
+    (err: any) => {
+      assert.equal(err?.response?.status, 409);
+      assert.equal(err?.response?.data?.error?.code, "IDEMPOTENCY_CONFLICT");
+      return true;
+    },
+  );
+});
+
+test("D07 / D17: rapid duplicate dispatch while intent is in_flight is blocked by concurrency guard", () => {
+  const intent = createFinancialIntent(
+    { employeeId: "emp-101", reason: "Advance reconciliation", actorId: "user-1" },
+    undefined,
+    "user-1",
+  );
+  intent.status = "in_flight";
+
+  assert.throws(
+    () => {
+      executeEmployeeSettlementFlow(
+        {
+          employeeId: "emp-101",
+          reason: "Advance reconciliation",
+          currentActorId: "user-1",
+          intent,
+        },
+        () => ({ ok: true }),
+      );
+    },
+    /IDEMPOTENCY_CONCURRENT_DISPATCH/,
+  );
+});
+
+test("D07 / D17: session mismatch rejects reusing intent originating from another actor", () => {
+  const intent = createFinancialIntent(
+    { employeeId: "emp-101", reason: "Advance reconciliation", actorId: "user-1" },
+    undefined,
+    "user-1",
+  );
+
+  assert.throws(
+    () => {
+      executeEmployeeSettlementFlow(
+        {
+          employeeId: "emp-101",
+          reason: "Advance reconciliation",
+          currentActorId: "user-2",
+          intent,
+        },
+        () => ({ ok: true }),
+      );
+    },
+    /IDEMPOTENCY_SESSION_MISMATCH/,
+  );
+});
+
+test("D07 / D17: transport retry reuses exact same intent key and payload without dropping intent or double-settling", async () => {
+  const intent = createFinancialIntent(
+    { employeeId: "emp-101", reason: "Advance reconciliation", actorId: "user-1" },
+    undefined,
+    "user-1",
+  );
+
+  let attempts = 0;
+  const dispatcher = async () => {
+    attempts++;
+    if (attempts === 1) {
+      throw new Error("Connection reset by peer");
+    }
+    return {
+      settlementId: "settle-101",
+      status: "pending",
+      balanceModified: false,
+    };
+  };
+
+  // Attempt 1: Fails with network reset
+  await assert.rejects(async () => {
+    await executeEmployeeSettlementFlow(
+      {
+        employeeId: "emp-101",
+        reason: "Advance reconciliation",
+        currentActorId: "user-1",
+        intent,
+      },
+      dispatcher,
+    );
+  });
+  assert.equal(intent.status, "timed_out");
+
+  // Attempt 2: Retry with exact same intent and reason
+  const result = await executeEmployeeSettlementFlow(
+    {
+      employeeId: "emp-101",
+      reason: "Advance reconciliation",
+      currentActorId: "user-1",
+      intent,
+    },
+    dispatcher,
+  );
+
+  assert.equal(intent.status, "resolved");
+  assert.equal(result.status, "pending");
+  assert.equal(result.balanceModified, false);
+  assert.equal(attempts, 2);
 });

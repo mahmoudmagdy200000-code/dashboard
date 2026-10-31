@@ -19,6 +19,7 @@ import {
   settlementRequestPayload,
   assertCanReviewSettlement,
   validateSettlementRejectionReason,
+  executeEmployeeSettlementFlow,
 } from "./employeeSettlementContract.ts";
 import type { FinancialIntent } from "../idempotencyIntent.ts";
 
@@ -99,20 +100,31 @@ export function useSettleEmployeeBalance() {
       amountHalalas,
       intent,
       idempotencyKey,
+      currentActorId,
     }: {
       employeeId: string;
       reason: string;
       amountHalalas?: number;
       intent?: FinancialIntent<any>;
       idempotencyKey?: string;
+      currentActorId?: string;
     }) => {
-      const effectiveKey = intent?.idempotencyKey ?? idempotencyKey;
-      const res = await api.post<SettleBalanceResult>(
-        `/company/me/employees/${employeeId}/settle-balance`,
-        settlementRequestPayload(reason, amountHalalas),
-        effectiveKey ? withIdempotencyKey(effectiveKey) : undefined,
+      return executeEmployeeSettlementFlow(
+        {
+          employeeId,
+          reason,
+          amountHalalas,
+          intent,
+          idempotencyKey,
+          currentActorId,
+        },
+        async (url, body, headers) => {
+          const res = await api.post<SettleBalanceResult>(url, body, {
+            headers: headers ? { ...headers } : undefined,
+          });
+          return res.data;
+        },
       );
-      return requirePendingSettlement(res.data);
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ["employees", vars.employeeId] });

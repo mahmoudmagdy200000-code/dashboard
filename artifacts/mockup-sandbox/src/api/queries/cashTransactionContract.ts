@@ -1,3 +1,5 @@
+import { assertIntentNotConcurrent, assertIntentSessionValid } from "../idempotencyIntent.ts";
+
 /**
  * Direct Cash Transaction Safety Contract (FUND-04, D05, D06, D17)
  * Enforces:
@@ -131,33 +133,143 @@ export function assertDirectCashTransaction<T extends { txnType: string; amount?
   return assertDirectDebitSafety(payload, context);
 }
 
+export interface DirectDebitPayload {
+  txnType: string;
+  amount: number;
+  description?: string;
+  source?: string;
+}
+
 export function executeCashDisbursementFlow(
   params: {
     custodyId: string;
-    payload: { txnType: string; amount: number; description?: string; source?: string };
+    payload: DirectDebitPayload;
     context?: DirectDebitSafetyContext;
-    intent?: { idempotencyKey: string };
+    intent?: {
+      idempotencyKey: string;
+      actorId?: string;
+      status?: string;
+      payload?: {
+        custodyId?: string;
+        amountHalalas?: number;
+        description?: string;
+        source?: string;
+        actorId?: string;
+      };
+    };
     idempotencyKey?: string;
   },
   apiDispatcher?: (url: string, body: any, headers?: Record<string, string>) => any,
 ) {
-  // Step 1: Enforce debit safety and mandatory context
+  // Step 1: Concurrency guard
+  assertIntentNotConcurrent(params.intent);
+
+  // Step 2: Session guard
+  assertIntentSessionValid(params.intent, params.context?.actor?.id);
+
+  // Step 3: Enforce debit safety and mandatory context
   assertDirectCashTransaction(params.payload, params.context);
 
-  // Step 2: Bind stable idempotency key from intent
+  const cleanDesc = params.payload.description?.trim() || undefined;
+  const cleanSource = params.payload.source || "manual";
+
+  // Step 4: Payload alteration guard under active intent
+  if (params.intent?.payload) {
+    const p = params.intent.payload;
+    const isCustodyModified = p.custodyId !== undefined && p.custodyId !== params.custodyId;
+    const isAmountModified = p.amountHalalas !== undefined && p.amountHalalas !== params.payload.amount;
+    const isDescModified = p.description !== undefined && p.description !== cleanDesc;
+    const isSourceModified = p.source !== undefined && p.source !== cleanSource;
+    const isActorModified =
+      p.actorId !== undefined &&
+      params.context?.actor?.id !== undefined &&
+      p.actorId !== params.context.actor.id;
+
+    if (isCustodyModified || isAmountModified || isDescModified || isSourceModified || isActorModified) {
+      const conflictError: any = new Error(
+        "IDEMPOTENCY_CONFLICT_PAYLOAD_ALTERATION: Modifying custody, amount, description, source, or actor under an active intent is forbidden",
+      );
+      conflictError.response = {
+        status: 409,
+        data: {
+          error: {
+            code: "IDEMPOTENCY_CONFLICT",
+            message: "Direct debit payload altered under active idempotency intent",
+            messageAr: "لا يمكن تعديل بيانات الصرف المباشر أثناء وجود معاملة غير محسومة",
+          },
+        },
+      };
+      throw conflictError;
+    }
+    // Bind concrete fields if initial intent only carried custodyId/txnType
+    if (p.amountHalalas === undefined) {
+      p.amountHalalas = params.payload.amount;
+    }
+    if (p.description === undefined && cleanDesc !== undefined) {
+      p.description = cleanDesc;
+    }
+    if (p.source === undefined) {
+      p.source = cleanSource;
+    }
+    if (p.actorId === undefined && params.context?.actor?.id) {
+      p.actorId = params.context.actor.id;
+    }
+  } else if (params.intent) {
+    params.intent.payload = {
+      custodyId: params.custodyId,
+      amountHalalas: params.payload.amount,
+      description: cleanDesc,
+      source: cleanSource,
+      actorId: params.context?.actor?.id,
+    };
+  }
+
+  if (params.intent && !params.intent.actorId && params.context?.actor?.id) {
+    params.intent.actorId = params.context.actor.id;
+  }
+
+  // Step 5: Transition intent to in_flight
+  if (params.intent) {
+    params.intent.status = "in_flight";
+  }
+
+  // Step 6: Bind stable idempotency key from intent
   const effectiveKey = params.intent?.idempotencyKey ?? params.idempotencyKey;
   const headers: Record<string, string> = {};
   if (effectiveKey) {
     headers["Idempotency-Key"] = effectiveKey;
   }
 
-  // Step 3: Dispatch through API
+  // Step 7: Dispatch through API
   if (apiDispatcher) {
-    return apiDispatcher(
+    const dispatchResult = apiDispatcher(
       `/company/me/cash-custody/${params.custodyId}/transactions`,
       params.payload,
       headers,
     );
+    if (dispatchResult && typeof dispatchResult.then === "function") {
+      return dispatchResult.then(
+        (res: any) => {
+          if (params.intent) {
+            params.intent.status = "resolved";
+          }
+          return res;
+        },
+        (err: any) => {
+          if (params.intent) {
+            params.intent.status = "timed_out";
+          }
+          throw err;
+        },
+      );
+    }
+    if (params.intent) {
+      params.intent.status = "resolved";
+    }
+    return dispatchResult;
+  }
+  if (params.intent) {
+    params.intent.status = "resolved";
   }
   return { status: 200, payload: params.payload, idempotencyKey: effectiveKey };
 }

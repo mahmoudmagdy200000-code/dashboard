@@ -44,6 +44,9 @@ test("DB-R03 RED: hasActiveSubscription returns false when subscription is null,
   assert.equal(hasActiveSubscription({ id: "", status: "active" }), false);
   assert.equal(hasActiveSubscription({ id: "sub-1", status: "cancelled" }), false);
   assert.equal(hasActiveSubscription({ id: "sub-1", status: "inactive" }), false);
+  assert.equal(hasActiveSubscription({ id: "sub-1", status: "unknown", planName: "Pro" }), false);
+  assert.equal(hasActiveSubscription({ id: "sub-1", status: "pending", planName: "Starter" }), false);
+  assert.equal(hasActiveSubscription({ id: "sub-1", status: "expired", planName: "Pro" }), false);
 
   assert.equal(hasActiveSubscription({ id: "sub-1", status: "active", planName: "Starter" }), true);
   assert.equal(hasActiveSubscription({ id: "sub-1", status: "trialing", planName: "Pro" }), true);

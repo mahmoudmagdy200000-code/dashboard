@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { toast } from "sonner";
 import {
   AlertTriangle,
   Download,
@@ -261,13 +262,25 @@ export function AccEmployees({ setModal }: PageProps) {
     if (!selectedId) return;
 
     let intent = activeSettlementIntentRef.current;
-    if (!intent || intent.payload.employeeId !== selectedId || intent.payload.reason !== cleanReason) {
-      intent = createFinancialIntent({ employeeId: selectedId, reason: cleanReason });
+    if (!intent || intent.status === "resolved") {
+      intent = createFinancialIntent({ employeeId: selectedId, reason: cleanReason }, undefined, user?.id);
       activeSettlementIntentRef.current = intent;
+    } else if (intent.status === "in_flight") {
+      setSettleError("طلب التسوية قيد المعالجة بالفعل");
+      return;
+    } else if (intent.status === "timed_out") {
+      if (intent.payload && intent.payload.reason !== cleanReason) {
+        setSettleError("لا يمكن تعديل سبب التسوية لمعاملة قيد المعالجة (IDEMPOTENCY_CONFLICT)");
+        return;
+      }
+      if (intent.payload && intent.payload.employeeId !== selectedId) {
+        setSettleError("لا يمكن تبديل الموظف لمعاملة قيد المعالجة (IDEMPOTENCY_CONFLICT)");
+        return;
+      }
     }
 
     settleMut.mutate(
-      { employeeId: selectedId, reason: cleanReason, intent },
+      { employeeId: selectedId, reason: cleanReason, intent, currentActorId: user?.id },
       {
         onSuccess: (data: any) => {
           activeSettlementIntentRef.current = null;
@@ -288,6 +301,14 @@ export function AccEmployees({ setModal }: PageProps) {
         },
       },
     );
+  };
+
+  const handleCloseSettleModal = () => {
+    if (settleMut.isPending || activeSettlementIntentRef.current?.status === "in_flight") {
+      toast.warning("طلب التسوية قيد المعالجة، يرجى الانتظار");
+      return;
+    }
+    setShowSettleModal(false);
   };
 
   const handleApproveSettlement = (sid: string) => {
@@ -584,7 +605,7 @@ export function AccEmployees({ setModal }: PageProps) {
                       <h4 className="text-xs font-bold text-emerald-900">إنشاء طلب تسوية رصيد الموظف</h4>
                       <button
                         type="button"
-                        onClick={() => setShowSettleModal(false)}
+                        onClick={handleCloseSettleModal}
                         className="text-gray-400 hover:text-gray-600"
                       >
                         <X size={14} />
@@ -593,29 +614,36 @@ export function AccEmployees({ setModal }: PageProps) {
                     <p className="text-xs text-gray-600">
                       رصيد الموظف القائم: <span className="font-semibold">{fmtAmt(bal)} ر.س</span>. لا يتم ترحيل أي أثر مالي إلا بعد اعتماد رئيس الحسابات.
                     </p>
+                    {activeSettlementIntentRef.current?.status === "timed_out" && (
+                      <p className="text-xs text-amber-700 bg-amber-100/70 p-2 rounded-lg font-medium">
+                        يوجد طلب تسوية سابق قيد المعالجة. تم قفل سبب التسوية لتجنب تضارب المعاملة، ويمكنك إعادة المحاولة بنفس المفتاح.
+                      </p>
+                    )}
                     <input
                       type="text"
                       required
                       minLength={3}
+                      disabled={settleMut.isPending || activeSettlementIntentRef.current?.status === "timed_out"}
                       value={settleReason}
                       onChange={(e) => setSettleReason(e.target.value)}
                       placeholder="سبب طلب التسوية ومبرر الإجراء (إلزامي)"
-                      className="w-full text-xs p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+                      className="w-full text-xs p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white disabled:bg-gray-100"
                     />
                     {settleError && <p className="text-xs text-red-600">{settleError}</p>}
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={handleInitiateSettle}
-                        disabled={settleMut.isPending || settleReason.trim().length < 3}
+                        disabled={settleMut.isPending || settleReason.trim().length < 3 || activeSettlementIntentRef.current?.status === "in_flight"}
                         className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50"
                       >
-                        {settleMut.isPending ? "جاري الإرسال..." : activeSettlementIntentRef.current ? "إعادة المحاولة (نفس المفتاح)" : "تأكيد طلب التسوية"}
+                        {settleMut.isPending ? "جاري الإرسال..." : activeSettlementIntentRef.current?.status === "timed_out" ? "إعادة المحاولة (نفس المفتاح)" : "تأكيد طلب التسوية"}
                       </button>
                       <button
                         type="button"
-                        onClick={() => setShowSettleModal(false)}
-                        className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-200"
+                        onClick={handleCloseSettleModal}
+                        disabled={settleMut.isPending}
+                        className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-200 disabled:opacity-50"
                       >
                         إلغاء
                       </button>

@@ -6875,6 +6875,8 @@ function EmpAddMovementModal({ employeeId, employeeName, onClose }:{ employeeId:
   );
 }
 
+const unconfirmedSettlementIntents = new Map<string, FinancialIntent<any>>();
+
 function EmpSettleModal({
   employeeId,
   employeeName,
@@ -6887,9 +6889,30 @@ function EmpSettleModal({
   onClose: () => void;
 }) {
   const { t, dir } = useCLang();
+  const { user } = useAuth();
   const settleMut = useSettleEmployeeBalance();
-  const [reason, setReason] = useState("");
-  const [intent, setIntent] = useState<FinancialIntent<any> | null>(null);
+
+  const [intent] = useState<FinancialIntent<any>>(() => {
+    const existing = unconfirmedSettlementIntents.get(employeeId);
+    if (existing && (existing.status === "timed_out" || existing.status === "in_flight")) {
+      return existing;
+    }
+    const fresh = createFinancialIntent({ employeeId }, undefined, user?.id);
+    unconfirmedSettlementIntents.set(employeeId, fresh);
+    return fresh;
+  });
+
+  const [reason, setReason] = useState(() => intent.payload?.reason ?? "");
+
+  const isLocked = settleMut.isPending || intent.status === "in_flight" || intent.status === "timed_out";
+
+  const handleClose = () => {
+    if (settleMut.isPending || intent.status === "in_flight") {
+      toast.warning(t("العملية قيد التنفيذ، يرجى الانتظار", "Operation in flight, please wait"));
+      return;
+    }
+    onClose();
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -6899,17 +6922,21 @@ function EmpSettleModal({
       return;
     }
 
-    const currentIntent =
-      intent && intent.payload?.reason === cleanReason && intent.payload?.employeeId === employeeId
-        ? intent
-        : createFinancialIntent({ employeeId, reason: cleanReason });
+    if (intent.status === "in_flight") {
+      toast.warning(t("العملية قيد التنفيذ بالفعل", "Operation is already in flight"));
+      return;
+    }
 
-    setIntent(currentIntent);
+    if (intent.status === "timed_out" && intent.payload?.reason && intent.payload.reason !== cleanReason) {
+      toast.error(t("لا يمكن تعديل سبب التسوية أثناء وجود معاملة غير محسومة (IDEMPOTENCY_CONFLICT)", "Cannot modify settlement reason under unresolved intent"));
+      return;
+    }
 
     settleMut.mutate(
-      { employeeId, reason: cleanReason, intent: currentIntent },
+      { employeeId, reason: cleanReason, intent, currentActorId: user?.id },
       {
         onSuccess: () => {
+          unconfirmedSettlementIntents.delete(employeeId);
           onClose();
         },
         onError: (err) => {
@@ -6924,7 +6951,7 @@ function EmpSettleModal({
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
         <div className="flex items-center justify-between border-b pb-3">
           <h3 className="font-bold text-gray-900 text-sm">{t("طلب تسوية رصيد الموظف", "Request Employee Balance Settlement")}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
         </div>
         <p className="text-xs text-gray-500">
           {t("الموظف:", "Employee:")} <span className="font-semibold text-gray-800">{employeeName}</span> — {t("الرصيد القائم:", "Standing Balance:")}{" "}
@@ -6933,6 +6960,11 @@ function EmpSettleModal({
         <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
           {t("إرسال هذا الطلب لا يغير الرصيد فورًا؛ يخضع لاعتماد المحاسب العام (Head Accountant).", "Submitting this request does not post changes immediately; it requires Head Accountant approval.")}
         </p>
+        {intent.status === "timed_out" && (
+          <p className="text-xs text-amber-800 bg-amber-100/70 p-2 rounded-lg font-medium">
+            {t("يوجد طلب تسوية سابق قيد المعالجة ولم يتم حسمه. تم قفل حقل السبب لمنع التضارب، ويمكنك إعادة المحاولة بنفس المفتاح.", "Unresolved settlement intent in progress. Reason locked; retry with same intent.")}
+          </p>
+        )}
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="text-xs font-semibold text-gray-700 block mb-1">{t("سبب التسوية (إلزامي):", "Settlement Reason (Required):")}</label>
@@ -6940,26 +6972,26 @@ function EmpSettleModal({
               required
               minLength={3}
               rows={3}
+              disabled={isLocked}
               value={reason}
               onChange={(e) => {
                 setReason(e.target.value);
-                if (intent) setIntent(null);
               }}
               placeholder={t("اكتب سبب تسوية الرصيد بالتفصيل...", "Describe the settlement reason in detail...")}
-              className="w-full text-xs border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full text-xs border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100"
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Btn type="button" size="sm" onClick={onClose}>{t("إلغاء", "Cancel")}</Btn>
+            <Btn type="button" size="sm" onClick={handleClose} disabled={settleMut.isPending || intent.status === "in_flight"}>{t("إلغاء", "Cancel")}</Btn>
             <Btn
               type="submit"
               size="sm"
               variant="primary"
-              disabled={settleMut.isPending || reason.trim().length < 3}
+              disabled={settleMut.isPending || reason.trim().length < 3 || intent.status === "in_flight"}
             >
               {settleMut.isPending
                 ? t("جارٍ الإرسال...", "Submitting...")
-                : intent && settleMut.isError
+                : intent.status === "timed_out"
                   ? t("إعادة المحاولة (بنفس المفتاح)", "Retry (same key)")
                   : t("تأكيد طلب التسوية", "Confirm Settlement Request")}
             </Btn>
@@ -7327,6 +7359,8 @@ function AccCompanyEmployees() {
 }
 
 // ACCOUNTANT — CASH CUSTODY
+const unconfirmedDashboardCustodyDebitIntents = new Map<string, FinancialIntent<any>>();
+
 // ═══════════════════════════════════════════════════
 // «تعزيز / صرف» modal (T09 §B3) — POST /company/me/cash-custody/{id}/transactions.
 function CashTxnModal({ custodyId, custodianName, remainingHalalas, brandId, onClose }:{
@@ -7335,10 +7369,21 @@ function CashTxnModal({ custodyId, custodianName, remainingHalalas, brandId, onC
   const { t, dir } = useCLang();
   const { user } = useAuth();
   const createMut = useCreateCashTransaction();
-  const [intent] = useState(() => createFinancialIntent({ custodyId, txnType: "debit" }));
+  const [intent] = useState<FinancialIntent<any>>(() => {
+    const existing = unconfirmedDashboardCustodyDebitIntents.get(custodyId);
+    if (existing && (existing.status === "timed_out" || existing.status === "in_flight")) {
+      return existing;
+    }
+    const fresh = createFinancialIntent({ custodyId, txnType: "debit" }, undefined, user?.id);
+    unconfirmedDashboardCustodyDebitIntents.set(custodyId, fresh);
+    return fresh;
+  });
+
   const [txnType, setTxnType] = useState<"debit">("debit");
-  const [amount,  setAmount]  = useState("");
-  const [description, setDesc]= useState("");
+  const [amount,  setAmount]  = useState(() =>
+    intent.payload?.amountHalalas ? (intent.payload.amountHalalas / 100).toString() : ""
+  );
+  const [description, setDesc]= useState(() => intent.payload?.description ?? "");
 
   const amountH = Math.round((parseFloat(amount)||0)*100);
   const overdraw = amountH>remainingHalalas;
@@ -7347,11 +7392,40 @@ function CashTxnModal({ custodyId, custodianName, remainingHalalas, brandId, onC
     { roles: actorRoles, brandIds: user?.brandIds, id: user?.id },
     { brandId, id: custodyId }
   );
+
+  const isLocked = createMut.isPending || intent.status === "in_flight" || intent.status === "timed_out";
+
+  const handleClose = () => {
+    if (createMut.isPending || intent.status === "in_flight") {
+      toast.warning(t("العملية قيد التنفيذ، يرجى الانتظار حتى اكتمال الاستجابة", "Operation in flight, please wait"));
+      return;
+    }
+    onClose();
+  };
+
   const submit = () => {
-    if(amountH<1 || overdraw || !isCustodyWriteAuthorized) return;
+    if(amountH<1 || overdraw || !isCustodyWriteAuthorized || createMut.isPending) return;
+
+    if (intent.status === "in_flight") {
+      toast.warning(t("العملية قيد المعالجة بالفعل", "Operation is already in flight"));
+      return;
+    }
+
+    const cleanDesc = description.trim() || undefined;
+
+    if (
+      intent.status === "timed_out" &&
+      intent.payload &&
+      (intent.payload.amountHalalas !== amountH || intent.payload.description !== cleanDesc)
+    ) {
+      toast.error(t("لا يمكن تعديل المبلغ أو البيان أثناء وجود معاملة غير محسومة (IDEMPOTENCY_CONFLICT)", "Cannot modify debit amount or description under unresolved intent"));
+      return;
+    }
+
     const context: DirectDebitSafetyContext = {
       custody: { id: custodyId, brandId, remainingHalalas },
       actor: {
+        id: user?.id,
         roles: actorRoles,
         brandIds: user?.brandIds,
         isCustodyWriteAuthorized,
@@ -7361,36 +7435,59 @@ function CashTxnModal({ custodyId, custodianName, remainingHalalas, brandId, onC
       custodyId,
       payload:{
         txnType: "debit", amount:amountH,
-        description: description.trim() || undefined,
+        description: cleanDesc,
         source: "manual",
       },
       context,
       intent,
-    }, { onSuccess:()=>onClose() });
+    }, {
+      onSuccess: () => {
+        unconfirmedDashboardCustodyDebitIntents.delete(custodyId);
+        onClose();
+      },
+    });
   };
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={handleClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e=>e.stopPropagation()} dir={dir}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-gray-800">{t("صرف من العهدة","Disburse from custody")} — {custodianName}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18}/></button>
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600"><X size={18}/></button>
         </div>
         <div className="space-y-3">
           <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
             {t("تغذية العهدة غير مسموحة هنا وتتطلب مسار طلب التغذية المعتمد (طلب مدير الفرع ثم اعتماد المالك ثم إرسال المحاسب ثم استلام المدير).", "Custody replenishment not permitted here; requires approved funding flow.")}
           </p>
+          {intent.status === "timed_out" && (
+            <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg p-2 font-medium">
+              {t("يوجد طلب صرف قيد المعالجة ولم يتم حسمه من الخادم بعد. تم قفل الحقول لمنع تكرار الصرف أو تضارب المعاملة.", "Unresolved debit intent in progress. Fields locked to prevent duplicate debit.")}
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <button disabled title={t("التعزيز يتطلب مسار طلب التغذية", "Funding requires request flow")} className="px-3 py-2.5 rounded-xl border text-xs font-bold border-gray-200 text-gray-400 opacity-50 cursor-not-allowed">⬆ {t("تعزيز عهدة (معطل)","Replenish (Disabled)")}</button>
             <button onClick={()=>setTxnType("debit")} className="px-3 py-2.5 rounded-xl border text-xs font-bold bg-red-50 border-red-300 text-red-700">⬇ {t("صرف","Disburse")}</button>
           </div>
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المبلغ (ر.س)","Amount")}</label>
-            <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.00" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono focus:outline-none focus:border-purple-400"/>
+            <input
+              type="number"
+              disabled={isLocked}
+              value={amount}
+              onChange={e=>setAmount(e.target.value)}
+              placeholder="0.00"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono focus:outline-none focus:border-purple-400 disabled:bg-gray-100"
+            />
             {overdraw && <p className="text-[10px] text-red-600 mt-1">{t("المبلغ يتجاوز المتبقي","Amount exceeds remaining")} ({fmtH(remainingHalalas)} {t("ر.س","SAR")})</p>}
           </div>
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("البيان (اختياري)","Description (optional)")}</label>
-            <input value={description} onChange={e=>setDesc(e.target.value)} placeholder={t("بيان الصرف...","Disbursement...")} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-400"/>
+            <input
+              disabled={isLocked}
+              value={description}
+              onChange={e=>setDesc(e.target.value)}
+              placeholder={t("بيان الصرف...","Disbursement...")}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-400 disabled:bg-gray-100"
+            />
           </div>
           {!isCustodyWriteAuthorized && (
             <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 font-medium">
@@ -7398,8 +7495,20 @@ function CashTxnModal({ custodyId, custodianName, remainingHalalas, brandId, onC
             </p>
           )}
           <div className="flex justify-end gap-2 pt-1">
-            <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50">{t("إلغاء","Cancel")}</button>
-            <Btn variant="primary" onClick={submit} disabled={amountH<1||overdraw||!isCustodyWriteAuthorized||createMut.isPending}><Check size={11}/> {t("تسجيل الصرف","Submit Disbursement")}</Btn>
+            <button
+              onClick={handleClose}
+              disabled={createMut.isPending || intent.status === "in_flight"}
+              className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50 disabled:opacity-50"
+            >
+              {t("إلغاء","Cancel")}
+            </button>
+            <Btn
+              variant="primary"
+              onClick={submit}
+              disabled={amountH<1||overdraw||!isCustodyWriteAuthorized||createMut.isPending||intent.status === "in_flight"}
+            >
+              <Check size={11}/> {intent.status === "timed_out" ? t("إعادة المحاولة (بنفس المفتاح)", "Retry (same key)") : t("تسجيل الصرف","Submit Disbursement")}
+            </Btn>
           </div>
         </div>
       </div>
@@ -7516,6 +7625,8 @@ function CashCustodyCard({ custody }:{ custody:CashCustodyRow }) {
   );
 }
 
+const unconfirmedCompanyFundingIntents = new Map<string, FinancialIntent<any>>();
+
 function CompanyFundingExecution() {
   const { user } = useAuth();
   const accountant = grantedRoleKeys(user as any).includes("accountant");
@@ -7554,30 +7665,30 @@ function CompanyFundingExecution() {
                 <div className="space-y-2">
                   <input
                     type="text"
+                    disabled={execute.isPending || checkingStatus || (intent?.status === "timed_out")}
                     placeholder={t("مرجع التحويل البنكي (إلزامي)", "Bank transfer reference (required)")}
                     value={reference}
                     onChange={(e) => {
                       const val = e.target.value;
-                      if (intent && intent.attemptCount > 0 && val !== intent.payload?.reference) {
-                        toast.warning(t("توجد محاولة إرسال سابقة قيد التحقق. يرجى التحقق من حالة الخادم أولاً.", "Previous attempt pending. Check server status first."));
+                      if (intent && intent.status === "timed_out") {
+                        toast.warning(t("توجد محاولة إرسال سابقة قيد التحقق. لا يمكن تغيير مرجع التحويل.", "Previous attempt pending. Cannot change reference."));
                         return;
                       }
                       setReference(val);
-                      if (!intent || intent.attemptCount === 0) setIntent(null);
                     }}
-                    className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5"
+                    className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 disabled:bg-gray-100"
                   />
                   <input
                     type="file"
+                    disabled={execute.isPending || checkingStatus || (intent?.status === "timed_out")}
                     aria-label={t("إشعار التحويل البنكي", "Bank transfer slip")}
                     onChange={(e) => {
                       const file = e.target.files?.[0] ?? null;
-                      if (intent && intent.attemptCount > 0 && file && (file.name !== intent.payload?.proofName || file.size !== intent.payload?.proofSize)) {
-                        toast.warning(t("توجد محاولة إرسال سابقة قيد التحقق. يرجى التحقق من حالة الخادم أولاً.", "Previous attempt pending. Check server status first."));
+                      if (intent && intent.status === "timed_out") {
+                        toast.warning(t("توجد محاولة إرسال سابقة قيد التحقق. لا يمكن تغيير ملف الإثبات.", "Previous attempt pending. Cannot change proof."));
                         return;
                       }
                       setProof(file);
-                      if (!intent || intent.attemptCount === 0) setIntent(null);
                     }}
                     className="w-full text-xs"
                   />
@@ -7599,6 +7710,7 @@ function CompanyFundingExecution() {
                           const recon = reconcileExecutionStatus(request.id, latest);
                           if (recon.alreadyExecuted) {
                             toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير", "Transfer execution confirmed by server"));
+                            unconfirmedCompanyFundingIntents.delete(request.id);
                             setSelectedId(null);
                             setProof(null);
                             setReference("");
@@ -7610,27 +7722,23 @@ function CompanyFundingExecution() {
                         const proofHash = await computeFileHash(proof);
 
                         const currentIntent =
-                          intent &&
-                          intent.payload?.reference === cleanRef &&
-                          intent.payload?.proofName === proof.name &&
-                          intent.payload?.proofSize === proof.size &&
-                          intent.payload?.proofHash === proofHash
-                            ? intent
-                            : createFinancialIntent(
-                                {
-                                  requestId: request.id,
-                                  reference: cleanRef,
-                                  proofName: proof.name,
-                                  proofSize: proof.size,
-                                  proofHash,
-                                },
-                                undefined,
-                                user?.id,
-                              );
+                          intent ??
+                          createFinancialIntent(
+                            {
+                              requestId: request.id,
+                              reference: cleanRef,
+                              proofName: proof.name,
+                              proofSize: proof.size,
+                              proofHash,
+                            },
+                            undefined,
+                            user?.id,
+                          );
                         if (currentIntent.status === "in_flight") {
                           toast.warning(t("العملية قيد التنفيذ بالفعل؛ يرجى الانتظار.", "Operation is already in flight"));
                           return;
                         }
+                        unconfirmedCompanyFundingIntents.set(request.id, currentIntent);
                         setIntent(currentIntent);
 
                         execute.mutate(
@@ -7645,6 +7753,7 @@ function CompanyFundingExecution() {
                           {
                             onSuccess: () => {
                               currentIntent.status = "resolved";
+                              unconfirmedCompanyFundingIntents.delete(request.id);
                               setSelectedId(null);
                               setReference("");
                               setProof(null);
@@ -7657,6 +7766,7 @@ function CompanyFundingExecution() {
                                 const recon = reconcileExecutionStatus(request.id, latest);
                                 if (recon.alreadyExecuted) {
                                   currentIntent.status = "resolved";
+                                  unconfirmedCompanyFundingIntents.delete(request.id);
                                   toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير", "Transfer execution confirmed by server"));
                                   setSelectedId(null);
                                   setProof(null);
@@ -7696,6 +7806,7 @@ function CompanyFundingExecution() {
                             const recon = reconcileExecutionStatus(request.id, latest);
                             if (recon.alreadyExecuted) {
                               toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل", "Transfer execution confirmed by server"));
+                              unconfirmedCompanyFundingIntents.delete(request.id);
                               setSelectedId(null);
                               setProof(null);
                               setReference("");
@@ -7713,7 +7824,19 @@ function CompanyFundingExecution() {
                         {checkingStatus ? t("جارٍ التحقق...", "Checking...") : t("التحقق من حالة الطلب", "Check Status")}
                       </Btn>
                     )}
-                    <Btn size="sm" onClick={() => { setSelectedId(null); setIntent(null); }}>{t("إلغاء", "Cancel")}</Btn>
+                    <Btn
+                      size="sm"
+                      onClick={() => {
+                        if (execute.isPending || intent?.status === "in_flight") {
+                          toast.warning(t("عملية التمويل قيد التنفيذ، يرجى الانتظار", "Operation in flight, please wait"));
+                          return;
+                        }
+                        setSelectedId(null);
+                        setIntent(null);
+                      }}
+                    >
+                      {t("إلغاء", "Cancel")}
+                    </Btn>
                   </div>
                 </div>
               ) : (
@@ -7722,9 +7845,15 @@ function CompanyFundingExecution() {
                   className="text-xs text-blue-700 underline"
                   onClick={() => {
                     setSelectedId(request.id);
-                    setReference("");
-                    setProof(null);
-                    setIntent(null);
+                    const existing = unconfirmedCompanyFundingIntents.get(request.id);
+                    if (existing && (existing.status === "timed_out" || existing.status === "in_flight")) {
+                      setIntent(existing);
+                      setReference(existing.payload?.reference ?? "");
+                    } else {
+                      setReference("");
+                      setProof(null);
+                      setIntent(null);
+                    }
                   }}
                 >
                   {t("تنفيذ وإرسال التغذية", "Execute Funding Send")}

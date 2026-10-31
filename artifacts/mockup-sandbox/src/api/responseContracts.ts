@@ -146,10 +146,9 @@ export function parseSubscriptionResponse(payload: unknown): (Subscription & Rec
 export function hasActiveSubscription(sub: unknown): boolean {
   if (!sub || typeof sub !== "object") return false;
   const s = sub as Record<string, any>;
-  if (!s.id || s.id === "") return false;
-  if (s.status === "cancelled" || s.status === "inactive" || s.status === "not_found") return false;
-  if (s.status === "active" || s.status === "trialing") return true;
-  return Boolean(s.planName || s.planId);
+  if (!s.id || typeof s.id !== "string" || s.id.trim() === "") return false;
+  const status = typeof s.status === "string" ? s.status.toLowerCase().trim() : "";
+  return status === "active" || status === "trialing";
 }
 
 /**
