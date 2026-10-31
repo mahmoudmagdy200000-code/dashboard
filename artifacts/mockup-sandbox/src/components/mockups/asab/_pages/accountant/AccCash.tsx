@@ -148,13 +148,11 @@ function FundingExecution() {
                     user?.id,
                   );
 
-                // Check if operation is already in flight before dispatching
-                if (currentIntent.status === "in_flight") {
+                // Concurrency guard: reject duplicate click if already in flight or pending
+                if (currentIntent.status === "in_flight" || execute.isPending) {
                   toast.warning("العملية قيد التنفيذ بالفعل؛ يرجى الانتظار.");
                   return;
                 }
-                currentIntent.status = "in_flight";
-                setUnconfirmedIntent("funding", request.id, currentIntent, user?.id, (user as any)?.companyId);
                 setIntent(currentIntent);
 
                 execute.mutate(
@@ -230,13 +228,25 @@ function FundingExecution() {
                 aria-label="إثبات التحويل"
                 required
                 type="file"
-                disabled={execute.isPending || checkingStatus || (intent?.status === "timed_out")}
+                disabled={execute.isPending || checkingStatus || Boolean(proof && intent?.status === "timed_out")}
                 accept=".pdf,.jpg,.jpeg,.png"
-                onChange={(event) => {
+                onChange={async (event) => {
                   const file = event.target.files?.[0] ?? null;
-                  if (intent && intent.status === "timed_out") {
-                    toast.warning("توجد محاولة إرسال سابقة قيد التحقق. لا يمكن تغيير ملف الإثبات تحت المعاملة غير المحسومة.");
+                  if (!file) {
+                    setProof(null);
                     return;
+                  }
+                  if (intent && (intent.status === "timed_out" || (intent as any).attemptCount > 0)) {
+                    if (intent.payload?.proofHash) {
+                      const hash = await computeFileHash(file);
+                      if (hash !== intent.payload.proofHash) {
+                        toast.error("ملف الإثبات غير مطابق للبصمة السابقة؛ يرجى اختيار نفس الملف السابق.");
+                        event.target.value = "";
+                        setProof(null);
+                        return;
+                      }
+                      toast.info("تم التحقق من مطابقة ملف الإثبات للبصمة السابقة بنجاح.");
+                    }
                   }
                   setProof(file);
                 }}
@@ -244,28 +254,33 @@ function FundingExecution() {
               />
               <button
                 type="submit"
-                disabled={execute.isPending || checkingStatus || !proof}
+                disabled={execute.isPending || checkingStatus || !proof || !reference.trim()}
                 className="rounded bg-blue-600 px-3 py-1 text-white text-xs disabled:opacity-50"
               >
                 {checkingStatus
                   ? "جارٍ التحقق من الخادم..."
                   : execute.isPending
                     ? "جارٍ الإرسال..."
-                    : intent && execute.isError
+                    : intent && (execute.isError || intent.status === "timed_out" || (intent as any).attemptCount > 0)
                       ? "التحقق وإعادة المحاولة (نفس المفتاح)"
                       : "تسجيل الإرسال"}
               </button>
-              {intent && execute.isError && (
+              {intent && (intent.status === "timed_out" || execute.isError || (intent as any).attemptCount > 0) && (
                 <button
                   type="button"
                   disabled={checkingStatus}
                   onClick={async () => {
                     setCheckingStatus(true);
                     try {
-                      const { data: latest = [] } = await refetch();
+                      const { data: latest = [], isError: refetchErr } = await refetch();
+                      if (refetchErr) {
+                        toast.error("تعذر الاتصال بالخادم للتحقق من الحالة؛ يرجى المحاولة لاحقاً وعدم تكرار الإرسال.");
+                        return;
+                      }
                       const recon = reconcileExecutionStatus(request.id, latest);
                       if (recon.alreadyExecuted) {
-                        toast.success("تم تأكيد تسجيل التحويل في الخادم بالفعل");
+                        toast.success("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير");
+                        intent.status = "resolved";
                         removeUnconfirmedIntent("funding", request.id, user?.id, (user as any)?.companyId);
                         setSelectedId(null);
                         setProof(null);
@@ -276,6 +291,8 @@ function FundingExecution() {
                       } else {
                         toast.warning(`حالة غير حاسمة: ${recon.reason}`);
                       }
+                    } catch {
+                      toast.error("تعذر الاتصال بالخادم للتحقق من الحالة؛ يرجى المحاولة لاحقاً وعدم تكرار الإرسال.");
                     } finally {
                       setCheckingStatus(false);
                     }
@@ -360,12 +377,7 @@ export function AsabCashTxnModal({
   };
 
   const submit = () => {
-    if (amountH < 1 || overdraw || !isCustodyWriteAuthorized || createMut.isPending) return;
-
-    if (intent.status === "in_flight") {
-      toast.warning("العملية قيد المعالجة بالفعل");
-      return;
-    }
+    if (amountH < 1 || overdraw || !isCustodyWriteAuthorized || createMut.isPending || intent.status === "in_flight") return;
 
     const cleanDesc = description.trim() || undefined;
 
@@ -378,9 +390,6 @@ export function AsabCashTxnModal({
       toast.error("لا يمكن تعديل المبلغ أو البيان أثناء وجود معاملة غير محسومة (IDEMPOTENCY_CONFLICT)");
       return;
     }
-
-    intent.status = "in_flight";
-    setUnconfirmedIntent("custody_debit", custodyId, intent, user?.id, companyId);
 
     const context: DirectDebitSafetyContext = {
       custody: { id: custodyId, brandId, remainingHalalas },

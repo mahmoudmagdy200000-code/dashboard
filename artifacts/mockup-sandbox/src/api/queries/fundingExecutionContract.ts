@@ -1,4 +1,5 @@
 import { assertIntentNotConcurrent, assertIntentSessionValid } from "../idempotencyIntent.ts";
+import { setUnconfirmedIntent } from "./financialIntentStore.ts";
 
 /**
  * Computes a real SHA-256 hexadecimal hash from raw byte content.
@@ -166,6 +167,10 @@ export function executeFundingTransferFlow(
     params.intent.status = "in_flight";
     if (typeof (params.intent as any).attemptCount === "number") {
       (params.intent as any).attemptCount += 1;
+    }
+    const actorId = params.currentActorId ?? params.intent.actorId;
+    if (actorId) {
+      setUnconfirmedIntent("funding", params.id, params.intent as any, actorId, (params.intent.payload as any)?.companyId);
     }
   }
 

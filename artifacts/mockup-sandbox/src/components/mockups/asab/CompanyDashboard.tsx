@@ -6922,7 +6922,7 @@ function EmpSettleModal({
       return;
     }
 
-    if (intent.status === "in_flight") {
+    if (intent.status === "in_flight" || settleMut.isPending) {
       toast.warning(t("العملية قيد التنفيذ بالفعل", "Operation is already in flight"));
       return;
     }
@@ -6931,9 +6931,6 @@ function EmpSettleModal({
       toast.error(t("لا يمكن تعديل سبب التسوية أثناء وجود معاملة غير محسومة (IDEMPOTENCY_CONFLICT)", "Cannot modify settlement reason under unresolved intent"));
       return;
     }
-
-    intent.status = "in_flight";
-    setUnconfirmedIntent("employee_settlement", employeeId, intent, user?.id, companyId);
 
     settleMut.mutate(
       { employeeId, reason: cleanReason, intent, currentActorId: user?.id },
@@ -7411,7 +7408,7 @@ function CashTxnModal({ custodyId, custodianName, remainingHalalas, brandId, onC
   const submit = () => {
     if(amountH<1 || overdraw || !isCustodyWriteAuthorized || createMut.isPending) return;
 
-    if (intent.status === "in_flight") {
+    if (intent.status === "in_flight" || createMut.isPending) {
       toast.warning(t("العملية قيد المعالجة بالفعل", "Operation is already in flight"));
       return;
     }
@@ -7426,9 +7423,6 @@ function CashTxnModal({ custodyId, custodianName, remainingHalalas, brandId, onC
       toast.error(t("لا يمكن تعديل المبلغ أو البيان أثناء وجود معاملة غير محسومة (IDEMPOTENCY_CONFLICT)", "Cannot modify debit amount or description under unresolved intent"));
       return;
     }
-
-    intent.status = "in_flight";
-    setUnconfirmedIntent("custody_debit", custodyId, intent, user?.id, companyId);
 
     const context: DirectDebitSafetyContext = {
       custody: { id: custodyId, brandId, remainingHalalas },
@@ -7692,13 +7686,25 @@ function CompanyFundingExecution() {
                   />
                   <input
                     type="file"
-                    disabled={execute.isPending || checkingStatus || (intent?.status === "timed_out")}
+                    disabled={execute.isPending || checkingStatus || Boolean(proof && intent?.status === "timed_out")}
                     aria-label={t("إشعار التحويل البنكي", "Bank transfer slip")}
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files?.[0] ?? null;
-                      if (intent && intent.status === "timed_out") {
-                        toast.warning(t("توجد محاولة إرسال سابقة قيد التحقق. لا يمكن تغيير ملف الإثبات.", "Previous attempt pending. Cannot change proof."));
+                      if (!file) {
+                        setProof(null);
                         return;
+                      }
+                      if (intent && (intent.status === "timed_out" || (intent as any).attemptCount > 0)) {
+                        if (intent.payload?.proofHash) {
+                          const hash = await computeFileHash(file);
+                          if (hash !== intent.payload.proofHash) {
+                            toast.error(t("ملف الإثبات غير مطابق للبصمة السابقة؛ يرجى اختيار نفس الملف السابق.", "Selected file does not match previously recorded fingerprint."));
+                            e.target.value = "";
+                            setProof(null);
+                            return;
+                          }
+                          toast.info(t("تم التحقق من مطابقة ملف الإثبات للبصمة السابقة بنجاح.", "Proof file verified against stored fingerprint."));
+                        }
                       }
                       setProof(file);
                     }}
@@ -7760,12 +7766,10 @@ function CompanyFundingExecution() {
                             undefined,
                             user?.id,
                           );
-                        if (currentIntent.status === "in_flight") {
+                        if (currentIntent.status === "in_flight" || execute.isPending) {
                           toast.warning(t("العملية قيد التنفيذ بالفعل؛ يرجى الانتظار.", "Operation is already in flight"));
                           return;
                         }
-                        currentIntent.status = "in_flight";
-                        setUnconfirmedIntent("funding", request.id, currentIntent, user?.id, companyId);
                         setIntent(currentIntent);
 
                         execute.mutate(
@@ -7820,11 +7824,11 @@ function CompanyFundingExecution() {
                         ? t("جارٍ التحقق...", "Checking...")
                         : execute.isPending
                           ? t("جارٍ الإرسال...", "Sending...")
-                          : intent && execute.isError
+                          : intent && (execute.isError || intent.status === "timed_out" || (intent as any).attemptCount > 0)
                             ? t("التحقق وإعادة المحاولة (بنفس المفتاح)", "Verify & Retry (same key)")
                             : t("تأكيد إرسال الدفعة وتوثيق التحويل", "Confirm Send & Attach Proof")}
                     </Btn>
-                    {intent && execute.isError && (
+                    {intent && (intent.status === "timed_out" || execute.isError || (intent as any).attemptCount > 0) && (
                       <Btn
                         size="sm"
                         variant="ghost"
@@ -7832,10 +7836,15 @@ function CompanyFundingExecution() {
                         onClick={async () => {
                           setCheckingStatus(true);
                           try {
-                            const { data: latest = [] } = await refetch();
+                            const { data: latest = [], isError: refetchErr } = await refetch();
+                            if (refetchErr) {
+                              toast.error(t("تعذر الاتصال بالخادم للتحقق من الحالة؛ يرجى المحاولة لاحقاً.", "Could not reach server."));
+                              return;
+                            }
                             const recon = reconcileExecutionStatus(request.id, latest);
                             if (recon.alreadyExecuted) {
                               toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل", "Transfer execution confirmed by server"));
+                              intent.status = "resolved";
                               removeUnconfirmedIntent("funding", request.id, user?.id, companyId);
                               setSelectedId(null);
                               setProof(null);
@@ -7846,6 +7855,8 @@ function CompanyFundingExecution() {
                             } else {
                               toast.warning(recon.reason);
                             }
+                          } catch {
+                            toast.error(t("تعذر الاتصال بالخادم للتحقق من الحالة؛ يرجى المحاولة لاحقاً.", "Could not reach server."));
                           } finally {
                             setCheckingStatus(false);
                           }

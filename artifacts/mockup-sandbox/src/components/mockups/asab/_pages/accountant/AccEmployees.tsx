@@ -270,7 +270,7 @@ export function AccEmployees({ setModal }: PageProps) {
       : null;
     if (!intent || intent.status === "resolved") {
       intent = createFinancialIntent({ employeeId: selectedId, reason: cleanReason }, undefined, user?.id);
-    } else if (intent.status === "in_flight") {
+    } else if (intent.status === "in_flight" || settleMut.isPending) {
       setSettleError("طلب التسوية قيد المعالجة بالفعل");
       return;
     } else if (intent.status === "timed_out") {
@@ -283,9 +283,6 @@ export function AccEmployees({ setModal }: PageProps) {
         return;
       }
     }
-
-    intent.status = "in_flight";
-    setUnconfirmedIntent("employee_settlement", selectedId, intent, user?.id, (user as any)?.companyId);
 
     settleMut.mutate(
       { employeeId: selectedId, reason: cleanReason, intent, currentActorId: user?.id },

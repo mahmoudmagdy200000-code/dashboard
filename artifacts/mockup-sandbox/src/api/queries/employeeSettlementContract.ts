@@ -1,4 +1,5 @@
 import { assertIntentNotConcurrent, assertIntentSessionValid } from "../idempotencyIntent.ts";
+import { setUnconfirmedIntent } from "./financialIntentStore.ts";
 
 export function settlementRequestPayload(reason: string, amountHalalas?: number) {
   const trimmedReason = reason.trim();
@@ -155,6 +156,13 @@ export function executeEmployeeSettlementFlow(
   // Step 5: Transition intent to in_flight
   if (params.intent) {
     params.intent.status = "in_flight";
+    if (typeof (params.intent as any).attemptCount === "number") {
+      (params.intent as any).attemptCount += 1;
+    }
+    const actorId = params.currentActorId ?? params.intent.actorId;
+    if (actorId) {
+      setUnconfirmedIntent("employee_settlement", params.employeeId, params.intent as any, actorId, (params.intent.payload as any)?.companyId);
+    }
   }
 
   // Step 6: Bind stable idempotency key

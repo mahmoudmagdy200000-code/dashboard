@@ -1,4 +1,5 @@
 import { assertIntentNotConcurrent, assertIntentSessionValid } from "../idempotencyIntent.ts";
+import { setUnconfirmedIntent } from "./financialIntentStore.ts";
 
 /**
  * Direct Cash Transaction Safety Contract (FUND-04, D05, D06, D17)
@@ -231,6 +232,13 @@ export function executeCashDisbursementFlow(
   // Step 5: Transition intent to in_flight
   if (params.intent) {
     params.intent.status = "in_flight";
+    if (typeof (params.intent as any).attemptCount === "number") {
+      (params.intent as any).attemptCount += 1;
+    }
+    const actorId = params.context?.actor?.id ?? params.intent.actorId;
+    if (actorId) {
+      setUnconfirmedIntent("custody_debit", params.custodyId, params.intent as any, actorId, (params.intent.payload as any)?.companyId);
+    }
   }
 
   // Step 6: Bind stable idempotency key from intent
