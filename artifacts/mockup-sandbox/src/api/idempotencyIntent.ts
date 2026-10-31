@@ -55,12 +55,18 @@ export function createFinancialIntent<TPayload>(
 }
 
 export function assertIntentSessionValid(
-  intent: { actorId?: string } | null | undefined,
+  intent: { actorId?: string; companyId?: string } | null | undefined,
   currentActorId?: string | null,
+  currentCompanyId?: string | null,
 ): void {
   if (intent?.actorId && currentActorId && intent.actorId !== currentActorId) {
     throw new Error(
       "IDEMPOTENCY_SESSION_MISMATCH: Stale intent originating from another user session cannot be reused.",
+    );
+  }
+  if (intent?.companyId && currentCompanyId && intent.companyId !== currentCompanyId) {
+    throw new Error(
+      "IDEMPOTENCY_COMPANY_MISMATCH: Stale intent originating from another company context cannot be reused.",
     );
   }
 }

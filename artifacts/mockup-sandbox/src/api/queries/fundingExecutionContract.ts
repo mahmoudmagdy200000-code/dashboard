@@ -66,7 +66,10 @@ export function reconcileExecutionStatus(
     };
   }
 
-  if (matching.executedAt || matching.status === "completed" || matching.status === "Completed") {
+  const normalizedStatus = matching.status?.toLowerCase().trim() || "";
+
+  // 1. Confirmed executed
+  if (matching.executedAt || normalizedStatus === "completed" || normalizedStatus === "executed" || normalizedStatus === "received") {
     return {
       reconciled: true,
       alreadyExecuted: true,
@@ -78,12 +81,46 @@ export function reconcileExecutionStatus(
     };
   }
 
+  // 2. Terminal rejected or cancelled status
+  if (normalizedStatus === "rejected" || normalizedStatus === "cancelled") {
+    return {
+      reconciled: true,
+      alreadyExecuted: false,
+      status: matching.status,
+      canRetry: false,
+      reason: "REQUEST_TERMINAL_STATE: Request was rejected or cancelled on the server. Re-dispatch is prohibited.",
+    };
+  }
+
+  // 3. Unapproved status (e.g. pending branch manager creation or brand owner review)
+  if (normalizedStatus === "pending" || normalizedStatus === "pending_approval" || normalizedStatus === "draft") {
+    return {
+      reconciled: true,
+      alreadyExecuted: false,
+      status: matching.status,
+      canRetry: false,
+      reason: "REQUEST_NOT_APPROVED: Custody request requires Brand Owner approval before accountant execution.",
+    };
+  }
+
+  // 4. Eligible for accountant execution: ONLY approved status
+  if (normalizedStatus === "approved") {
+    return {
+      reconciled: true,
+      alreadyExecuted: false,
+      status: matching.status,
+      canRetry: true,
+      reason: "CONFIRMED_APPROVED_PENDING_EXECUTION: Server confirms custody request is approved and unexecuted. Safe to retry with same intent key.",
+    };
+  }
+
+  // 5. Unknown or unhandled state: fail-closed
   return {
-    reconciled: true,
+    reconciled: false,
     alreadyExecuted: false,
     status: matching.status,
-    canRetry: true,
-    reason: "CONFIRMED_PENDING: Server confirms custody request has not been executed yet. Safe to retry with same intent key.",
+    canRetry: false,
+    reason: `INVALID_EXECUTION_STATE: Request status (${matching.status}) is not eligible for execution.`,
   };
 }
 
@@ -132,8 +169,8 @@ export function executeFundingTransferFlow(
   // Concurrency guard: rapid duplicate clicks while in-flight are blocked
   assertIntentNotConcurrent(params.intent);
 
-  // Session guard: intent from a different user session is rejected
-  assertIntentSessionValid(params.intent, params.currentActorId);
+  // Session and company guard: intent from a different user session or company is rejected
+  assertIntentSessionValid(params.intent, params.currentActorId, params.companyId ?? params.intent?.companyId);
 
   const cleanReference = params.reference.trim();
   const form = fundingExecutionPayload(cleanReference, params.proof);

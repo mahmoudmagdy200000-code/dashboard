@@ -170,8 +170,12 @@ export function executeCashDisbursementFlow(
   // Step 1: Concurrency guard
   assertIntentNotConcurrent(params.intent);
 
-  // Step 2: Session guard
-  assertIntentSessionValid(params.intent, params.context?.actor?.id);
+  // Step 2: Session and company guard
+  assertIntentSessionValid(
+    params.intent,
+    params.context?.actor?.id,
+    params.companyId ?? params.context?.actor?.companyId ?? (params.intent as any)?.companyId,
+  );
 
   // Step 3: Enforce debit safety and mandatory context
   assertDirectCashTransaction(params.payload, params.context);

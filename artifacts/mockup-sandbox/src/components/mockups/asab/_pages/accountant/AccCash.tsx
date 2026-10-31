@@ -169,16 +169,27 @@ function FundingExecution() {
                   {
                     onSuccess: () => {
                       currentIntent.status = "resolved";
-                      removeUnconfirmedIntent("funding", request.id, user?.id, (user as any)?.companyId);
-                      toast.success("تم توثيق الإرسال؛ بانتظار تأكيد المدير");
-                      setSelectedId(null);
-                      setProof(null);
-                      setReference("");
-                      setIntent(null);
+                      const activeCompanyId = (user as any)?.companyId;
+                      if (user?.id && user.id === currentIntent.actorId && activeCompanyId === currentIntent.companyId) {
+                        removeUnconfirmedIntent("funding", request.id, user.id, activeCompanyId);
+                        toast.success("تم توثيق الإرسال؛ بانتظار تأكيد المدير");
+                        setSelectedId(null);
+                        setProof(null);
+                        setReference("");
+                        setIntent(null);
+                      } else {
+                        // Late response after logout or session change: safely purge without polluting foreign session
+                        removeUnconfirmedIntent("funding", request.id, currentIntent.actorId, currentIntent.companyId);
+                      }
                     },
                     onError: async (error) => {
                       currentIntent.status = "timed_out";
-                      setUnconfirmedIntent("funding", request.id, currentIntent, user?.id, (user as any)?.companyId);
+                      const activeCompanyId = (user as any)?.companyId;
+                      if (!user?.id || user.id !== currentIntent.actorId || activeCompanyId !== currentIntent.companyId) {
+                        // Late error after session change: fail closed, do not save or display into foreign session
+                        return;
+                      }
+                      setUnconfirmedIntent("funding", request.id, currentIntent, user.id, activeCompanyId);
                       // Automatic server reconciliation upon timeout/error
                       try {
                         const { data: latest = [], isError: refetchErr } = await refetch();
@@ -414,12 +425,18 @@ export function AsabCashTxnModal({
       {
         onSuccess: () => {
           intent.status = "resolved";
-          removeUnconfirmedIntent("custody_debit", custodyId, user?.id, companyId);
-          onClose();
+          if (user?.id && user.id === intent.actorId && companyId === intent.companyId) {
+            removeUnconfirmedIntent("custody_debit", custodyId, user.id, companyId);
+            onClose();
+          } else {
+            removeUnconfirmedIntent("custody_debit", custodyId, intent.actorId, intent.companyId);
+          }
         },
         onError: () => {
           intent.status = "timed_out";
-          setUnconfirmedIntent("custody_debit", custodyId, intent, user?.id, companyId);
+          if (user?.id && user.id === intent.actorId && companyId === intent.companyId) {
+            setUnconfirmedIntent("custody_debit", custodyId, intent, user.id, companyId);
+          }
         },
       },
     );

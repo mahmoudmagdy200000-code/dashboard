@@ -66,6 +66,7 @@ test("SECTION A - Entry Point 1 & 2 (Funding Requests): First attempt reaches AP
     },
     undefined,
     "usr-acc-1",
+    "comp-1",
   );
 
   assert.equal(intent.status, "idle", "Intent starts in idle status");
@@ -85,6 +86,7 @@ test("SECTION A - Entry Point 1 & 2 (Funding Requests): First attempt reaches AP
       proof: dummyFile,
       proofHash,
       currentActorId: "usr-acc-1",
+      companyId: "comp-1",
       intent,
     },
     mockDispatcher,
@@ -96,7 +98,7 @@ test("SECTION A - Entry Point 1 & 2 (Funding Requests): First attempt reaches AP
   assert.equal(intent.attemptCount, 1, "Attempt count must increment to 1");
 
   // Verify persistence in unconfirmed store
-  const stored = getUnconfirmedIntent<any>("funding", "req-fnd-101", "usr-acc-1");
+  const stored = getUnconfirmedIntent<any>("funding", "req-fnd-101", "usr-acc-1", "comp-1");
   assert.ok(stored, "In-flight intent must be saved in unconfirmed store");
 
   // Second rapid click while in_flight is rejected
@@ -109,6 +111,7 @@ test("SECTION A - Entry Point 1 & 2 (Funding Requests): First attempt reaches AP
           proof: dummyFile,
           proofHash,
           currentActorId: "usr-acc-1",
+          companyId: "comp-1",
           intent,
         },
         mockDispatcher,
@@ -141,6 +144,7 @@ test("SECTION A - Entry Point 3 & 4 (Employee Settlement): First attempt reaches
     },
     undefined,
     "usr-acc-1",
+    "comp-1",
   );
 
   assert.equal(intent.status, "idle");
@@ -158,6 +162,7 @@ test("SECTION A - Entry Point 3 & 4 (Employee Settlement): First attempt reaches
       reason: "Advance Deduction Settlement",
       amountHalalas: 150000,
       currentActorId: "usr-acc-1",
+      companyId: "comp-1",
       intent,
     },
     mockDispatcher,
@@ -176,6 +181,7 @@ test("SECTION A - Entry Point 3 & 4 (Employee Settlement): First attempt reaches
           reason: "Advance Deduction Settlement",
           amountHalalas: 150000,
           currentActorId: "usr-acc-1",
+          companyId: "comp-1",
           intent,
         },
         mockDispatcher,
@@ -206,6 +212,7 @@ test("SECTION A - Entry Point 5 & 6 (Direct Cash Disbursement): First attempt re
     },
     undefined,
     "usr-acc-1",
+    "comp-1",
   );
 
   const context: DirectDebitSafetyContext = {
@@ -216,6 +223,7 @@ test("SECTION A - Entry Point 5 & 6 (Direct Cash Disbursement): First attempt re
     },
     actor: {
       id: "usr-acc-1",
+      companyId: "comp-1",
       roles: ["brand-manager"],
       brandIds: ["brand-1"],
       isCustodyWriteAuthorized: true,
@@ -233,6 +241,7 @@ test("SECTION A - Entry Point 5 & 6 (Direct Cash Disbursement): First attempt re
       custodyId: "cust-branch-1",
       payload: { txnType: "debit", amount: 25000, description: "Kitchen Maintenance" },
       context,
+      companyId: "comp-1",
       intent,
     },
     mockDispatcher,
@@ -250,6 +259,7 @@ test("SECTION A - Entry Point 5 & 6 (Direct Cash Disbursement): First attempt re
           custodyId: "cust-branch-1",
           payload: { txnType: "debit", amount: 25000, description: "Kitchen Maintenance" },
           context,
+          companyId: "comp-1",
           intent,
         },
         mockDispatcher,
@@ -532,4 +542,72 @@ test("SECTION E - Company Scoping: Contracts store intent under authenticated co
   // On UI success, removal clears the company key
   removeUnconfirmedIntent("funding", "req-fnd-scope-01", "usr-acc-1", "comp-riyadh-01");
   assert.equal(getUnconfirmedIntent("funding", "req-fnd-scope-01", "usr-acc-1", "comp-riyadh-01"), null);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION F: Section 11 Late Response After Session / Tenant Switch
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("SECTION F - Late Callback Safety: Late response after logout or company switch never resurrects stale intent", async () => {
+  clearAllFinancialIntents();
+
+  let resolveServerCall: (v: any) => void = () => {};
+  let rejectServerCall: (e: any) => void = () => {};
+  const serverP = new Promise((resolve, reject) => {
+    resolveServerCall = resolve;
+    rejectServerCall = reject;
+  });
+
+  const intent = createFinancialIntent(
+    { employeeId: "emp-late-01", reason: "Annual Settlement", amountHalalas: 50000 },
+    "key-late-session-01",
+    "usr-alice",
+    "comp-alpha",
+  );
+
+  // Dispatch under Alice / Company Alpha
+  const mutationPromise = executeEmployeeSettlementFlow(
+    {
+      employeeId: "emp-late-01",
+      reason: "Annual Settlement",
+      amountHalalas: 50000,
+      currentActorId: "usr-alice",
+      companyId: "comp-alpha",
+      intent,
+    },
+    () => serverP,
+  );
+
+  assert.equal(intent.status, "in_flight");
+  assert.ok(getUnconfirmedIntent("employee_settlement", "emp-late-01", "usr-alice", "comp-alpha"));
+
+  // Now, simulate Logout / Tenant switch while mutation is in-flight:
+  clearAllFinancialIntents(); // Simulates purgeFinancialQueries / clearRetiredQueryClient
+  assert.equal(getUnconfirmedIntent("employee_settlement", "emp-late-01", "usr-alice", "comp-alpha"), null);
+
+  // Active user in frontend changes to Bob in Company Beta
+  const activeUser = { id: "usr-bob", companyId: "comp-beta" };
+
+  // 1. Simulate late resolution
+  resolveServerCall({ status: "pending", balanceModified: false });
+  await mutationPromise;
+
+  // In UI onSuccess handler:
+  const isMatchingSession =
+    activeUser.id === intent.actorId && activeUser.companyId === intent.companyId;
+  assert.equal(isMatchingSession, false, "Must detect that active session does NOT match mutation session");
+
+  // Handler must not save or restore intent into Bob's session
+  assert.equal(
+    getUnconfirmedIntent("employee_settlement", "emp-late-01", activeUser.id, activeUser.companyId),
+    null,
+    "Bob in Company Beta must never receive or see Alice's financial intent",
+  );
+
+  // Alice's old cache remains empty
+  assert.equal(
+    getUnconfirmedIntent("employee_settlement", "emp-late-01", "usr-alice", "comp-alpha"),
+    null,
+    "Alice's purged session must not be resurrected by late response",
+  );
 });

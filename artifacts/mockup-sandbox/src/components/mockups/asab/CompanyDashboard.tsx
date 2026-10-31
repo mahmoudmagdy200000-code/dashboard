@@ -6937,13 +6937,19 @@ function EmpSettleModal({
       {
         onSuccess: () => {
           intent.status = "resolved";
-          removeUnconfirmedIntent("employee_settlement", employeeId, user?.id, companyId);
-          onClose();
+          if (user?.id && user.id === intent.actorId && companyId === intent.companyId) {
+            removeUnconfirmedIntent("employee_settlement", employeeId, user.id, companyId);
+            onClose();
+          } else {
+            removeUnconfirmedIntent("employee_settlement", employeeId, intent.actorId, intent.companyId);
+          }
         },
         onError: (err) => {
           intent.status = "timed_out";
-          setUnconfirmedIntent("employee_settlement", employeeId, intent, user?.id, companyId);
-          toast.error(getErrorMessage(err, "ar"));
+          if (user?.id && user.id === intent.actorId && companyId === intent.companyId) {
+            setUnconfirmedIntent("employee_settlement", employeeId, intent, user.id, companyId);
+            toast.error(getErrorMessage(err, "ar"));
+          }
         },
       }
     );
@@ -7446,12 +7452,18 @@ function CashTxnModal({ custodyId, custodianName, remainingHalalas, brandId, onC
     }, {
       onSuccess: () => {
         intent.status = "resolved";
-        removeUnconfirmedIntent("custody_debit", custodyId, user?.id, companyId);
-        onClose();
+        if (user?.id && user.id === intent.actorId && companyId === intent.companyId) {
+          removeUnconfirmedIntent("custody_debit", custodyId, user.id, companyId);
+          onClose();
+        } else {
+          removeUnconfirmedIntent("custody_debit", custodyId, intent.actorId, intent.companyId);
+        }
       },
       onError: () => {
         intent.status = "timed_out";
-        setUnconfirmedIntent("custody_debit", custodyId, intent, user?.id, companyId);
+        if (user?.id && user.id === intent.actorId && companyId === intent.companyId) {
+          setUnconfirmedIntent("custody_debit", custodyId, intent, user.id, companyId);
+        }
       },
     });
   };
@@ -7787,15 +7799,22 @@ function CompanyFundingExecution() {
                           {
                             onSuccess: () => {
                               currentIntent.status = "resolved";
-                              removeUnconfirmedIntent("funding", request.id, user?.id, companyId);
-                              setSelectedId(null);
-                              setReference("");
-                              setProof(null);
-                              setIntent(null);
+                              if (user?.id && user.id === currentIntent.actorId && companyId === currentIntent.companyId) {
+                                removeUnconfirmedIntent("funding", request.id, user.id, companyId);
+                                setSelectedId(null);
+                                setReference("");
+                                setProof(null);
+                                setIntent(null);
+                              } else {
+                                removeUnconfirmedIntent("funding", request.id, currentIntent.actorId, currentIntent.companyId);
+                              }
                             },
                             onError: async () => {
                               currentIntent.status = "timed_out";
-                              setUnconfirmedIntent("funding", request.id, currentIntent, user?.id, companyId);
+                              if (!user?.id || user.id !== currentIntent.actorId || companyId !== currentIntent.companyId) {
+                                return;
+                              }
+                              setUnconfirmedIntent("funding", request.id, currentIntent, user.id, companyId);
                               try {
                                 const { data: latest = [], isError: refetchErr } = await refetch();
                                 if (!refetchErr) {

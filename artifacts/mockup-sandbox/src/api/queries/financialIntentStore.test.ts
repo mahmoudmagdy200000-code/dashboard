@@ -150,3 +150,70 @@ test("financialIntentStore: Section 4.A company scoping and zero default_company
   removeUnconfirmedIntent("funding", "req-scoping-01", "usr-acc-1", "comp-riyadh-01");
   assert.equal(getUnconfirmedIntent("funding", "req-scoping-01", "usr-acc-1", "comp-riyadh-01"), null);
 });
+
+test("financialIntentStore: Fail-closed legacy isolation (never auto-migrate unknown-tenant records)", () => {
+  clearAllFinancialIntents();
+
+  // Simulate an old unproven legacy record existing under default_company
+  const legacyIntent = createFinancialIntent(
+    { custodyId: "cust-legacy-1", amountHalalas: 5000 },
+    "key-legacy-999",
+    "usr-acc-1",
+  );
+  // Bypass setUnconfirmedIntent's authenticated check to simulate raw legacy storage
+  const mockStorage = new Map<string, string>();
+  mockStorage.set(
+    "asab_financial_intent:default_company:usr-acc-1:custody_debit:cust-legacy-1",
+    JSON.stringify({
+      idempotencyKey: "key-legacy-999",
+      actorId: "usr-acc-1",
+      companyId: undefined,
+      scope: "custody_debit",
+      id: "cust-legacy-1",
+      payload: { custodyId: "cust-legacy-1", amountHalalas: 5000 },
+      status: "timed_out",
+      attemptCount: 1,
+      savedAt: Date.now(),
+    }),
+  );
+
+  (globalThis as any).window = {
+    sessionStorage: {
+      getItem: (k: string) => mockStorage.get(k) ?? null,
+      setItem: (k: string, v: string) => mockStorage.set(k, v),
+      removeItem: (k: string) => mockStorage.delete(k),
+      clear: () => mockStorage.clear(),
+      get length() { return mockStorage.size; },
+      key: (i: number) => Array.from(mockStorage.keys())[i] ?? null,
+    },
+  };
+
+  try {
+    // When looked up with an authenticated companyId, it MUST NOT auto-migrate or restore!
+    const result = getUnconfirmedIntent("custody_debit", "cust-legacy-1", "usr-acc-1", "comp-brand-new-99");
+    assert.equal(result, null, "Legacy record without proven companyId must FAIL CLOSED and return null");
+
+    // The legacy record must have been purged from storage
+    assert.equal(mockStorage.has("asab_financial_intent:default_company:usr-acc-1:custody_debit:cust-legacy-1"), false, "Legacy entry must be purged");
+  } finally {
+    delete (globalThis as any).window;
+    clearAllFinancialIntents();
+  }
+});
+
+test("financialIntentStore: Fail-closed on missing companyId for authenticated financial writes", () => {
+  clearAllFinancialIntents();
+
+  const intent = createFinancialIntent(
+    { custodyId: "c-1", amount: 100 },
+    "key-fail-closed-1",
+    "usr-authenticated-1",
+  );
+
+  // Attempting to set without companyId for authenticated user
+  setUnconfirmedIntent("custody_debit", "c-1", intent, "usr-authenticated-1", undefined);
+
+  // Storage should have refused saving it under default_company
+  assert.equal(getUnconfirmedIntent("custody_debit", "c-1", "usr-authenticated-1", "default_company"), null);
+  assert.equal(getUnconfirmedIntent("custody_debit", "c-1", "usr-authenticated-1", "comp-any"), null);
+});

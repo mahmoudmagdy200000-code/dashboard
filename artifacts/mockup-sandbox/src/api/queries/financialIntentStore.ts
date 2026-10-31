@@ -112,39 +112,15 @@ export function getUnconfirmedIntent<T>(
     }
   }
 
-  // 3. Fallback recovery / migration from default_company:
-  // If requested with a concrete companyId but not found under that key, check if an unconfirmed
-  // intent exists under default_company for the same scope/id/actor and migrate it over.
+  // 3. Strict Fail-Closed Tenant Isolation:
+  // Legacy or unproven records under default_company MUST NOT be auto-migrated or resurrected
+  // into the current companyId. Purge them silently to prevent storage leaks and cross-tenant pollution.
   if (effectiveCompany !== "default_company") {
     const fallbackKey = buildStoreKey(scope, id, actorId, "default_company");
-    const fallbackCached = memoryStore.get(fallbackKey);
-    if (fallbackCached && (!actorId || !fallbackCached.actorId || fallbackCached.actorId === actorId)) {
-      memoryStore.delete(fallbackKey);
-      fallbackCached.companyId = effectiveCompany;
-      setUnconfirmedIntent(scope, id, fallbackCached, actorId, effectiveCompany);
-      return fallbackCached as FinancialIntent<T>;
-    }
-
+    memoryStore.delete(fallbackKey);
     if (storage) {
       try {
-        const rawFallback = storage.getItem(fallbackKey);
-        if (rawFallback) {
-          const envelope: StoredIntentEnvelope<T> = JSON.parse(rawFallback);
-          storage.removeItem(fallbackKey);
-          if (envelope.status !== "resolved" && (!actorId || !envelope.actorId || envelope.actorId === actorId)) {
-            const migrated: FinancialIntent<T> = {
-              idempotencyKey: envelope.idempotencyKey,
-              actorId: envelope.actorId,
-              companyId: effectiveCompany,
-              payload: envelope.payload,
-              serializedPayload: JSON.stringify(envelope.payload),
-              status: envelope.status === "in_flight" ? "timed_out" : envelope.status,
-              attemptCount: Math.max(1, envelope.attemptCount),
-            };
-            setUnconfirmedIntent(scope, id, migrated, actorId, effectiveCompany);
-            return migrated;
-          }
-        }
+        storage.removeItem(fallbackKey);
       } catch {}
     }
   }
@@ -160,14 +136,22 @@ export function setUnconfirmedIntent<T>(
   companyId?: string,
 ): void {
   const effectiveActor = actorId?.trim() || intent.actorId?.trim() || "anonymous_actor";
-  const effectiveCompany = companyId?.trim() || intent.companyId?.trim() || "default_company";
+  const effectiveCompany = companyId?.trim() || intent.companyId?.trim();
 
-  // Bind resolved companyId onto the intent object
-  if (effectiveCompany !== "default_company") {
-    intent.companyId = effectiveCompany;
+  // Fail-Closed: Authenticated financial operations MUST have a confirmed, proven companyId.
+  // Storing under default_company is strictly refused to prevent cross-tenant contamination.
+  if (!effectiveCompany || effectiveCompany === "default_company") {
+    if (effectiveActor !== "anonymous_actor") {
+      return;
+    }
   }
 
-  const key = buildStoreKey(scope, id, effectiveActor, effectiveCompany);
+  const safeCompany = effectiveCompany || "default_company";
+  if (safeCompany !== "default_company") {
+    intent.companyId = safeCompany;
+  }
+
+  const key = buildStoreKey(scope, id, effectiveActor, safeCompany);
   memoryStore.set(key, intent);
 
   const storage = getSessionStorage();
@@ -176,7 +160,7 @@ export function setUnconfirmedIntent<T>(
       const envelope: StoredIntentEnvelope<T> = {
         idempotencyKey: intent.idempotencyKey,
         actorId: effectiveActor !== "anonymous_actor" ? effectiveActor : undefined,
-        companyId: effectiveCompany !== "default_company" ? effectiveCompany : undefined,
+        companyId: safeCompany !== "default_company" ? safeCompany : undefined,
         scope,
         id,
         payload: intent.payload,
@@ -191,7 +175,7 @@ export function setUnconfirmedIntent<T>(
   }
 
   // Prevent duplicate/orphaned records: if concrete companyId exists, purge any fallback entry in default_company
-  if (effectiveCompany !== "default_company") {
+  if (safeCompany !== "default_company") {
     const orphanKey = buildStoreKey(scope, id, effectiveActor, "default_company");
     memoryStore.delete(orphanKey);
     if (storage) {

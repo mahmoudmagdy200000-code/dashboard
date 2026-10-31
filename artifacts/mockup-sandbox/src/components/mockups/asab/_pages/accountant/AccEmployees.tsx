@@ -300,17 +300,26 @@ export function AccEmployees({ setModal }: PageProps) {
       {
         onSuccess: (data: any) => {
           intent.status = "resolved";
-          removeUnconfirmedIntent("employee_settlement", selectedId, user?.id, (user as any)?.companyId);
-          setShowSettleModal(false);
-          setSettleReason("");
-          setSettleError("");
-          if (data?.settlementId || data?.id) {
-            setReviewSettlementId(data?.settlementId ?? data?.id);
+          const activeCompanyId = (user as any)?.companyId;
+          if (user?.id && user.id === intent.actorId && activeCompanyId === intent.companyId) {
+            removeUnconfirmedIntent("employee_settlement", selectedId, user.id, activeCompanyId);
+            setShowSettleModal(false);
+            setSettleReason("");
+            setSettleError("");
+            if (data?.settlementId || data?.id) {
+              setReviewSettlementId(data?.settlementId ?? data?.id);
+            }
+          } else {
+            removeUnconfirmedIntent("employee_settlement", selectedId, intent.actorId, intent.companyId);
           }
         },
         onError: (err: any) => {
           intent.status = "timed_out";
-          setUnconfirmedIntent("employee_settlement", selectedId, intent, user?.id, (user as any)?.companyId);
+          const activeCompanyId = (user as any)?.companyId;
+          if (!user?.id || user.id !== intent.actorId || activeCompanyId !== intent.companyId) {
+            return;
+          }
+          setUnconfirmedIntent("employee_settlement", selectedId, intent, user.id, activeCompanyId);
           const msg =
             err?.response?.data?.messageAr ||
             err?.response?.data?.message ||

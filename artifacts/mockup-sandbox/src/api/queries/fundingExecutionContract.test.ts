@@ -335,7 +335,7 @@ test("D17 Prod Path 8: Session switch blocks reusing intent created by another u
   );
 });
 
-test("D17 Prod Path 9: Failed or inconclusive status reconciliation strictly refuses re-dispatch", () => {
+test("D17 Prod Path 9: Failed, inconclusive, rejected, or unapproved status reconciliation strictly refuses re-dispatch", () => {
   // Scenario A: Network failure returning null
   const nullRecon = reconcileExecutionStatus("req-inconclusive-001", null as any);
   assert.equal(nullRecon.reconciled, false);
@@ -347,6 +347,50 @@ test("D17 Prod Path 9: Failed or inconclusive status reconciliation strictly ref
   assert.equal(notFoundRecon.reconciled, false);
   assert.equal(notFoundRecon.canRetry, false);
   assert.equal(notFoundRecon.alreadyExecuted, false);
+
+  // Scenario C: Request is rejected on server
+  const rejectedRecon = reconcileExecutionStatus("req-rej-001", [
+    { id: "req-rej-001", status: "rejected", executedAt: null },
+  ]);
+  assert.equal(rejectedRecon.canRetry, false, "Rejected request must not be retried");
+  assert.equal(rejectedRecon.alreadyExecuted, false);
+
+  // Scenario D: Request is pending approval (not yet approved by brand owner)
+  const pendingRecon = reconcileExecutionStatus("req-pend-001", [
+    { id: "req-pend-001", status: "pending", executedAt: null },
+  ]);
+  assert.equal(pendingRecon.canRetry, false, "Unapproved request must not be retried by accountant");
+  assert.equal(pendingRecon.alreadyExecuted, false);
+
+  // Scenario E: Request is in unknown state
+  const unknownRecon = reconcileExecutionStatus("req-unk-001", [
+    { id: "req-unk-001", status: "some_unexpected_state", executedAt: null },
+  ]);
+  assert.equal(unknownRecon.canRetry, false, "Unknown status must fail closed");
+});
+
+test("D17 Prod Path 9B: Cross-company intent reuse triggers IDEMPOTENCY_COMPANY_MISMATCH", () => {
+  const dummyFile = new File(["test"], "test.pdf", { type: "application/pdf" });
+  const companyAIntent = createFinancialIntent(
+    { requestId: "req-1", reference: "REF-1" },
+    "key-shared-company",
+    "usr-acc-1",
+    "company-alpha",
+  );
+
+  assert.throws(
+    () =>
+      executeFundingTransferFlow({
+        id: "req-1",
+        reference: "REF-1",
+        proof: dummyFile,
+        currentActorId: "usr-acc-1",
+        companyId: "company-beta", // Trying to execute under Company Beta
+        intent: companyAIntent,
+      }),
+    /IDEMPOTENCY_COMPANY_MISMATCH/,
+    "Reusing intent originating from Company Alpha under Company Beta must be rejected",
+  );
 });
 
 test("D17 Prod Path 10: No duplicate financial operation across retries and reconciliations", async () => {

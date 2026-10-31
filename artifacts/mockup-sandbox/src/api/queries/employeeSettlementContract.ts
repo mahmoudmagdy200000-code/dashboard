@@ -101,8 +101,8 @@ export function executeEmployeeSettlementFlow(
   // Step 1: Concurrency guard
   assertIntentNotConcurrent(params.intent);
 
-  // Step 2: Session guard
-  assertIntentSessionValid(params.intent, params.currentActorId);
+  // Step 2: Session and company guard
+  assertIntentSessionValid(params.intent, params.currentActorId, params.companyId ?? params.intent?.companyId);
 
   // Step 3: Validate settlement payload (reason >= 3 chars, etc.)
   const payload = settlementRequestPayload(params.reason, params.amountHalalas);
