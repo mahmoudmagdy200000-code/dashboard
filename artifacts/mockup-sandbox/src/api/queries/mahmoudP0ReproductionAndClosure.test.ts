@@ -64,6 +64,23 @@ if (!globalThis.window) {
   (globalThis as any).CustomEvent = win.CustomEvent;
 }
 
+// Helper to set input value in React client DOM
+function setReactInputValue(input: HTMLInputElement, value: string) {
+  const propKey = Object.keys(input).find((k) => k.startsWith("__reactProps"));
+  if (propKey && (input as any)[propKey]?.onChange) {
+    (input as any)[propKey].onChange({
+      target: { value },
+      currentTarget: { value },
+      preventDefault: () => {},
+      stopPropagation: () => {},
+    });
+    return;
+  }
+  input.value = value;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
 // Helper to spy on toast calls
 function createToastSpy() {
   const successes: string[] = [];
@@ -891,14 +908,19 @@ test("P0-DA-02 [Client-Mounted UI Handler 11]: AccCash FundingExecution real for
     Object.defineProperty(fileInput, "files", { value: [dummyFile] });
     await act(async () => {
       fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 20));
     });
 
-    // Intercept api.get for the pre-retry refetch() with a deferred promise
+    // Intercept api.get for the pre-retry refetch() with a deferred promise and track invocation
+    let refetchCallCount = 0;
     let resolveRefetch: (val: any) => void = () => {};
     const deferredRefetch = new Promise((res) => {
       resolveRefetch = res;
     });
-    api.get = (() => deferredRefetch) as any;
+    api.get = (() => {
+      refetchCallCount++;
+      return deferredRefetch;
+    }) as any;
 
     let mutationPostCalled = false;
     api.post = (() => {
@@ -913,7 +935,11 @@ test("P0-DA-02 [Client-Mounted UI Handler 11]: AccCash FundingExecution real for
     // Real form submit handler triggers pre-retry refetch
     await act(async () => {
       submitBtn.click();
+      await new Promise((r) => setTimeout(r, 100));
     });
+
+    // Explicit assertion: pre-retry refetch MUST have been initiated before session retirement
+    assert.equal(refetchCallCount, 1, "Pre-retry refetch MUST have been initiated before session retirement");
 
     // User logs out while refetch is pending in network
     clearRetiredQueryClient(qc);
@@ -932,6 +958,7 @@ test("P0-DA-02 [Client-Mounted UI Handler 11]: AccCash FundingExecution real for
     });
 
     // Assert session fence suppressed all callbacks in real UI handler
+    assert.equal(refetchCallCount, 1, "Refetch was executed exactly once");
     assert.equal(spy.successes.length, 0, "No success toast must fire post-logout");
     assert.equal(spy.errors.length, 0, "No error toast must fire post-logout");
     assert.equal(mutationPostCalled, false, "ZERO mutation POST retried when session is defunct");
@@ -975,9 +1002,9 @@ test("P0-DA-02 [Client-Mounted UI Handler 12]: AccCash FundingExecution real for
     // Fill reference input
     const refInput = container.querySelector('input[aria-label="مرجع التحويل"]') as HTMLInputElement;
     assert.ok(refInput, "Reference input must be present");
-    refInput.value = "REF-POST-ERR";
     await act(async () => {
-      refInput.dispatchEvent(new Event("change", { bubbles: true }));
+      setReactInputValue(refInput, "REF-POST-ERR");
+      await new Promise((r) => setTimeout(r, 20));
     });
 
     // Provide file
@@ -986,27 +1013,44 @@ test("P0-DA-02 [Client-Mounted UI Handler 12]: AccCash FundingExecution real for
     Object.defineProperty(fileInput, "files", { value: [dummyFile] });
     await act(async () => {
       fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 20));
     });
 
     // Intercept api.post to fail, and intercept subsequent refetch() with deferred promise
+    let mutationPostAttempted = 0;
     api.post = (() => {
+      mutationPostAttempted++;
       const p = Promise.reject(new Error("Initial mutation failure"));
       p.catch(() => {});
       return p;
     }) as any;
 
+    let automaticRefetchCallCount = 0;
     let rejectRefetch: (err: any) => void = () => {};
     const deferredRefetch = new Promise((_, rej) => {
       rejectRefetch = rej;
     });
     deferredRefetch.catch(() => {});
-    api.get = (() => deferredRefetch) as any;
+    api.get = (() => {
+      automaticRefetchCallCount++;
+      return deferredRefetch;
+    }) as any;
 
     // Click submit button in the real DOM
     const submitBtn = container.querySelector('button[type="submit"]') as HTMLButtonElement;
+    assert.ok(submitBtn, "Submit button must be present in form");
+    const form = container.querySelector("form") as HTMLFormElement;
+    assert.ok(form, "Form must be present in DOM");
+
     await act(async () => {
       submitBtn.click();
+      form.dispatchEvent(new (globalThis as any).window.Event("submit", { bubbles: true, cancelable: true }));
+      await new Promise((r) => setTimeout(r, 100));
     });
+
+    // Explicit assertions: Prove mutation POST was attempted and its failure led to automatic refetch before logout
+    assert.equal(mutationPostAttempted, 1, "Mutation POST was attempted and failed as expected");
+    assert.equal(automaticRefetchCallCount, 1, "Automatic refetch was triggered by POST failure before session retirement");
 
     // Logout occurs while automatic post-error refetch() is in flight
     clearRetiredQueryClient(qc);
@@ -1016,6 +1060,8 @@ test("P0-DA-02 [Client-Mounted UI Handler 12]: AccCash FundingExecution real for
       rejectRefetch(new Error("Network drop during automatic refetch"));
     });
 
+    assert.equal(mutationPostAttempted, 1, "No further mutation POST attempts were made");
+    assert.equal(automaticRefetchCallCount, 1, "No further refetch calls were made");
     assert.equal(spy.errors.length, 0, "No error toast must fire into defunct session post-logout");
     assert.equal(spy.successes.length, 0);
 
@@ -1069,16 +1115,23 @@ test("P0-DA-02 [Client-Mounted UI Handler 13]: AccCash FundingExecution real che
     );
     assert.ok(checkBtn, "Manual check button ('التحقق من حالة الطلب') must be present in DOM");
 
+    let manualRefetchCallCount = 0;
     let resolveRefetch: (val: any) => void = () => {};
     const deferredRefetch = new Promise((res) => {
       resolveRefetch = res;
     });
-    api.get = (() => deferredRefetch) as any;
+    api.get = (() => {
+      manualRefetchCallCount++;
+      return deferredRefetch;
+    }) as any;
 
     // Trigger real click on manual check button
     await act(async () => {
       checkBtn.click();
     });
+
+    // Explicit assertion: Manual check button MUST have invoked refetch before logout
+    assert.equal(manualRefetchCallCount, 1, "Manual check button MUST have invoked refetch before logout");
 
     // Logout occurs while manual check refetch is pending
     clearRetiredQueryClient(qc);
@@ -1096,9 +1149,7 @@ test("P0-DA-02 [Client-Mounted UI Handler 13]: AccCash FundingExecution real che
       });
     });
 
-    if (spy.errors.length > 0) {
-      console.log('TEST 11 ERROR TOASTS:', spy.errors);
-    }
+    assert.equal(manualRefetchCallCount, 1, "Refetch was executed exactly once");
     assert.equal(spy.successes.length, 0, "No success toast must fire post-logout");
     assert.equal(spy.errors.length, 0, "No error toast must fire post-logout");
 
@@ -1151,16 +1202,23 @@ test("P0-DA-02 [Client-Mounted UI Handler 14]: CompanyFundingExecution real chec
     );
     assert.ok(checkBtn, "Manual check button must be present in DOM");
 
+    let companyRefetchCallCount = 0;
     let resolveRefetch: (val: any) => void = () => {};
     const deferredRefetch = new Promise((res) => {
       resolveRefetch = res;
     });
-    api.get = (() => deferredRefetch) as any;
+    api.get = (() => {
+      companyRefetchCallCount++;
+      return deferredRefetch;
+    }) as any;
 
     // Trigger real click on check button
     await act(async () => {
       checkBtn.click();
     });
+
+    // Explicit assertion: CompanyFundingExecution check button MUST have invoked refetch before company switch
+    assert.equal(companyRefetchCallCount, 1, "Company check button MUST have invoked refetch before company switch");
 
     // User switches company from Alpha to Beta while check is pending
     setActiveFinancialSession(actorId, "comp-beta");
@@ -1178,6 +1236,7 @@ test("P0-DA-02 [Client-Mounted UI Handler 14]: CompanyFundingExecution real chec
       });
     });
 
+    assert.equal(companyRefetchCallCount, 1, "Refetch was executed exactly once");
     assert.equal(spy.successes.length, 0, "No success toast must cross tenant boundary into Company Beta");
     assert.equal(spy.errors.length, 0);
 
@@ -1230,9 +1289,11 @@ test("P0-DA-02 [Client-Mounted UI Handler 15]: Same-session reconciliation in ac
     );
     assert.ok(checkBtn, "Manual check button must be present in DOM");
 
+    let successRefetchCallCount = 0;
     // Return completed execution on refetch
-    api.get = (() =>
-      Promise.resolve({
+    api.get = (() => {
+      successRefetchCallCount++;
+      return Promise.resolve({
         data: {
           data: {
             requests: [
@@ -1240,14 +1301,15 @@ test("P0-DA-02 [Client-Mounted UI Handler 15]: Same-session reconciliation in ac
             ],
           },
         },
-      })) as any;
+      });
+    }) as any;
 
     // Trigger real click on check button in active session
     await act(async () => {
       checkBtn.click();
     });
 
-    // Assert real UI handler fired success toast and removed intent
+    assert.equal(successRefetchCallCount, 1, "Refetch was executed in active session");
     assert.equal(spy.successes.length, 1, "Success toast must fire in active session");
     assert.match(spy.successes[0], /تم تأكيد تسجيل التحويل في الخادم بالفعل/);
 
