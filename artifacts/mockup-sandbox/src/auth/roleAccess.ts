@@ -1,6 +1,7 @@
 import type { RoleKey } from "../api/types";
 import type { QueryClient } from "@tanstack/react-query";
 import { SUPPLIER_PORTAL_ENABLED } from "../featureFlags.ts";
+import { clearAllFinancialIntents } from "../api/queries/financialIntentStore.ts";
 
 type Identity = { roles?: unknown; id?: unknown; companyId?: unknown } | null | undefined;
 
@@ -116,6 +117,7 @@ export async function purgeFinancialQueries(
   isCurrent: () => boolean = () => true,
 ): Promise<boolean> {
   invalidateFinancialAccess(queryClient);
+  clearAllFinancialIntents();
   const predicate = (query: {queryKey: readonly unknown[]}) => sensitivePrefixes.some(prefix =>
     prefix.every((part,index) => query.queryKey[index] === part));
   await queryClient.cancelQueries({predicate});
@@ -130,6 +132,7 @@ export async function clearRetiredQueryClient(
   isCurrent: () => boolean = () => true,
 ): Promise<boolean> {
   invalidateFinancialAccess(queryClient);
+  clearAllFinancialIntents();
   await queryClient.cancelQueries();
   if (!isCurrent()) return false;
   queryClient.clear();

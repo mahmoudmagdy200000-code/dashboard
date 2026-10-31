@@ -26,6 +26,7 @@ import {
 import { useAuth } from "../../../../../auth/AuthContext";
 import { grantedRoleKeys } from "../../../../../auth/roleAccess";
 import { createFinancialIntent } from "../../../../../api/idempotencyIntent.ts";
+import { getUnconfirmedIntent, setUnconfirmedIntent, removeUnconfirmedIntent } from "../../../../../api/queries/financialIntentStore.ts";
 import { Card } from "../../components/Card";
 import { Btn } from "../../components/Btn";
 import { Badge } from "../../components/Badge";
@@ -244,7 +245,10 @@ export function AccEmployees({ setModal }: PageProps) {
   const [showSettleModal, setShowSettleModal] = useState(false);
   const [settleReason, setSettleReason] = useState("");
   const [settleError, setSettleError] = useState("");
-  const activeSettlementIntentRef = useRef<ReturnType<typeof createFinancialIntent<{ employeeId: string; reason: string }>> | null>(null);
+
+  const activeSettlementIntent = selectedId
+    ? getUnconfirmedIntent<any>("employee_settlement", selectedId, user?.id, (user as any)?.companyId)
+    : null;
 
   const [reviewSettlementId, setReviewSettlementId] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
@@ -261,10 +265,11 @@ export function AccEmployees({ setModal }: PageProps) {
     }
     if (!selectedId) return;
 
-    let intent = activeSettlementIntentRef.current;
+    let intent = selectedId
+      ? getUnconfirmedIntent<any>("employee_settlement", selectedId, user?.id, (user as any)?.companyId)
+      : null;
     if (!intent || intent.status === "resolved") {
       intent = createFinancialIntent({ employeeId: selectedId, reason: cleanReason }, undefined, user?.id);
-      activeSettlementIntentRef.current = intent;
     } else if (intent.status === "in_flight") {
       setSettleError("طلب التسوية قيد المعالجة بالفعل");
       return;
@@ -279,11 +284,15 @@ export function AccEmployees({ setModal }: PageProps) {
       }
     }
 
+    intent.status = "in_flight";
+    setUnconfirmedIntent("employee_settlement", selectedId, intent, user?.id, (user as any)?.companyId);
+
     settleMut.mutate(
       { employeeId: selectedId, reason: cleanReason, intent, currentActorId: user?.id },
       {
         onSuccess: (data: any) => {
-          activeSettlementIntentRef.current = null;
+          intent.status = "resolved";
+          removeUnconfirmedIntent("employee_settlement", selectedId, user?.id, (user as any)?.companyId);
           setShowSettleModal(false);
           setSettleReason("");
           setSettleError("");
@@ -292,6 +301,8 @@ export function AccEmployees({ setModal }: PageProps) {
           }
         },
         onError: (err: any) => {
+          intent.status = "timed_out";
+          setUnconfirmedIntent("employee_settlement", selectedId, intent, user?.id, (user as any)?.companyId);
           const msg =
             err?.response?.data?.messageAr ||
             err?.response?.data?.message ||
@@ -304,7 +315,10 @@ export function AccEmployees({ setModal }: PageProps) {
   };
 
   const handleCloseSettleModal = () => {
-    if (settleMut.isPending || activeSettlementIntentRef.current?.status === "in_flight") {
+    const existing = selectedId
+      ? getUnconfirmedIntent<any>("employee_settlement", selectedId, user?.id, (user as any)?.companyId)
+      : null;
+    if (settleMut.isPending || existing?.status === "in_flight") {
       toast.warning("طلب التسوية قيد المعالجة، يرجى الانتظار");
       return;
     }
@@ -555,6 +569,11 @@ export function AccEmployees({ setModal }: PageProps) {
                     onClick={() => {
                       setShowSettleModal(true);
                       setSettleError("");
+                      if (activeSettlementIntent?.payload?.reason) {
+                        setSettleReason(activeSettlementIntent.payload.reason);
+                      } else {
+                        setSettleReason("");
+                      }
                     }}
                     disabled={settleMut.isPending || bal === 0 || statement?.settlementStatus === "under_review"}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 disabled:opacity-40"
@@ -614,7 +633,7 @@ export function AccEmployees({ setModal }: PageProps) {
                     <p className="text-xs text-gray-600">
                       رصيد الموظف القائم: <span className="font-semibold">{fmtAmt(bal)} ر.س</span>. لا يتم ترحيل أي أثر مالي إلا بعد اعتماد رئيس الحسابات.
                     </p>
-                    {activeSettlementIntentRef.current?.status === "timed_out" && (
+                    {activeSettlementIntent?.status === "timed_out" && (
                       <p className="text-xs text-amber-700 bg-amber-100/70 p-2 rounded-lg font-medium">
                         يوجد طلب تسوية سابق قيد المعالجة. تم قفل سبب التسوية لتجنب تضارب المعاملة، ويمكنك إعادة المحاولة بنفس المفتاح.
                       </p>
@@ -623,7 +642,7 @@ export function AccEmployees({ setModal }: PageProps) {
                       type="text"
                       required
                       minLength={3}
-                      disabled={settleMut.isPending || activeSettlementIntentRef.current?.status === "timed_out"}
+                      disabled={settleMut.isPending || activeSettlementIntent?.status === "timed_out"}
                       value={settleReason}
                       onChange={(e) => setSettleReason(e.target.value)}
                       placeholder="سبب طلب التسوية ومبرر الإجراء (إلزامي)"
@@ -634,10 +653,10 @@ export function AccEmployees({ setModal }: PageProps) {
                       <button
                         type="button"
                         onClick={handleInitiateSettle}
-                        disabled={settleMut.isPending || settleReason.trim().length < 3 || activeSettlementIntentRef.current?.status === "in_flight"}
+                        disabled={settleMut.isPending || settleReason.trim().length < 3 || activeSettlementIntent?.status === "in_flight"}
                         className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50"
                       >
-                        {settleMut.isPending ? "جاري الإرسال..." : activeSettlementIntentRef.current?.status === "timed_out" ? "إعادة المحاولة (نفس المفتاح)" : "تأكيد طلب التسوية"}
+                        {settleMut.isPending ? "جاري الإرسال..." : activeSettlementIntent?.status === "timed_out" ? "إعادة المحاولة (نفس المفتاح)" : "تأكيد طلب التسوية"}
                       </button>
                       <button
                         type="button"

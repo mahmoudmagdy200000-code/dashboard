@@ -18,6 +18,7 @@ import { useAccountantFundingRequests, useExecuteFundingRequest } from "../../..
 import { reconcileExecutionStatus, computeFileHash } from "../../../api/queries/fundingExecutionContract.ts";
 import { createFinancialIntent, type FinancialIntent } from "../../../api/idempotencyIntent.ts";
 import { checkCustodyWriteAuthorization, type DirectDebitSafetyContext } from "../../../api/queries/cashTransactionContract.ts";
+import { getUnconfirmedIntent, setUnconfirmedIntent, removeUnconfirmedIntent } from "../../../api/queries/financialIntentStore.ts";
 import { useState, useMemo, useEffect, useLayoutEffect, useRef, ReactNode, createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
 import {
   useOperations, useApproveOperation, useRejectOperation, useBulkApprove, useFinalApprove, useBulkFinalApprove,
@@ -6875,8 +6876,6 @@ function EmpAddMovementModal({ employeeId, employeeName, onClose }:{ employeeId:
   );
 }
 
-const unconfirmedSettlementIntents = new Map<string, FinancialIntent<any>>();
-
 function EmpSettleModal({
   employeeId,
   employeeName,
@@ -6890,15 +6889,16 @@ function EmpSettleModal({
 }) {
   const { t, dir } = useCLang();
   const { user } = useAuth();
+  const companyId = (user as any)?.companyId;
   const settleMut = useSettleEmployeeBalance();
 
   const [intent] = useState<FinancialIntent<any>>(() => {
-    const existing = unconfirmedSettlementIntents.get(employeeId);
+    const existing = getUnconfirmedIntent<any>("employee_settlement", employeeId, user?.id, companyId);
     if (existing && (existing.status === "timed_out" || existing.status === "in_flight")) {
       return existing;
     }
     const fresh = createFinancialIntent({ employeeId }, undefined, user?.id);
-    unconfirmedSettlementIntents.set(employeeId, fresh);
+    setUnconfirmedIntent("employee_settlement", employeeId, fresh, user?.id, companyId);
     return fresh;
   });
 
@@ -6932,14 +6932,20 @@ function EmpSettleModal({
       return;
     }
 
+    intent.status = "in_flight";
+    setUnconfirmedIntent("employee_settlement", employeeId, intent, user?.id, companyId);
+
     settleMut.mutate(
       { employeeId, reason: cleanReason, intent, currentActorId: user?.id },
       {
         onSuccess: () => {
-          unconfirmedSettlementIntents.delete(employeeId);
+          intent.status = "resolved";
+          removeUnconfirmedIntent("employee_settlement", employeeId, user?.id, companyId);
           onClose();
         },
         onError: (err) => {
+          intent.status = "timed_out";
+          setUnconfirmedIntent("employee_settlement", employeeId, intent, user?.id, companyId);
           toast.error(getErrorMessage(err, "ar"));
         },
       }
@@ -7359,8 +7365,6 @@ function AccCompanyEmployees() {
 }
 
 // ACCOUNTANT — CASH CUSTODY
-const unconfirmedDashboardCustodyDebitIntents = new Map<string, FinancialIntent<any>>();
-
 // ═══════════════════════════════════════════════════
 // «تعزيز / صرف» modal (T09 §B3) — POST /company/me/cash-custody/{id}/transactions.
 function CashTxnModal({ custodyId, custodianName, remainingHalalas, brandId, onClose }:{
@@ -7368,14 +7372,15 @@ function CashTxnModal({ custodyId, custodianName, remainingHalalas, brandId, onC
 }) {
   const { t, dir } = useCLang();
   const { user } = useAuth();
+  const companyId = (user as any)?.companyId;
   const createMut = useCreateCashTransaction();
   const [intent] = useState<FinancialIntent<any>>(() => {
-    const existing = unconfirmedDashboardCustodyDebitIntents.get(custodyId);
+    const existing = getUnconfirmedIntent<any>("custody_debit", custodyId, user?.id, companyId);
     if (existing && (existing.status === "timed_out" || existing.status === "in_flight")) {
       return existing;
     }
     const fresh = createFinancialIntent({ custodyId, txnType: "debit" }, undefined, user?.id);
-    unconfirmedDashboardCustodyDebitIntents.set(custodyId, fresh);
+    setUnconfirmedIntent("custody_debit", custodyId, fresh, user?.id, companyId);
     return fresh;
   });
 
@@ -7422,6 +7427,9 @@ function CashTxnModal({ custodyId, custodianName, remainingHalalas, brandId, onC
       return;
     }
 
+    intent.status = "in_flight";
+    setUnconfirmedIntent("custody_debit", custodyId, intent, user?.id, companyId);
+
     const context: DirectDebitSafetyContext = {
       custody: { id: custodyId, brandId, remainingHalalas },
       actor: {
@@ -7442,8 +7450,13 @@ function CashTxnModal({ custodyId, custodianName, remainingHalalas, brandId, onC
       intent,
     }, {
       onSuccess: () => {
-        unconfirmedDashboardCustodyDebitIntents.delete(custodyId);
+        intent.status = "resolved";
+        removeUnconfirmedIntent("custody_debit", custodyId, user?.id, companyId);
         onClose();
+      },
+      onError: () => {
+        intent.status = "timed_out";
+        setUnconfirmedIntent("custody_debit", custodyId, intent, user?.id, companyId);
       },
     });
   };
@@ -7625,10 +7638,9 @@ function CashCustodyCard({ custody }:{ custody:CashCustodyRow }) {
   );
 }
 
-const unconfirmedCompanyFundingIntents = new Map<string, FinancialIntent<any>>();
-
 function CompanyFundingExecution() {
   const { user } = useAuth();
+  const companyId = (user as any)?.companyId;
   const accountant = grantedRoleKeys(user as any).includes("accountant");
   const { data: requests = [], isError, refetch } = useAccountantFundingRequests(accountant);
   const execute = useExecuteFundingRequest();
@@ -7703,18 +7715,32 @@ function CompanyFundingExecution() {
                         if (cleanRef.length < 2) return;
 
                         // Check reconciliation before retry if an unconfirmed attempt timed out/errored
-                        if (intent && intent.attemptCount > 0 && execute.isError) {
+                        if (intent && (intent.attemptCount > 0 || intent.status === "timed_out" || execute.isError)) {
                           setCheckingStatus(true);
-                          const { data: latest = [] } = await refetch();
-                          setCheckingStatus(false);
-                          const recon = reconcileExecutionStatus(request.id, latest);
-                          if (recon.alreadyExecuted) {
-                            toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير", "Transfer execution confirmed by server"));
-                            unconfirmedCompanyFundingIntents.delete(request.id);
-                            setSelectedId(null);
-                            setProof(null);
-                            setReference("");
-                            setIntent(null);
+                          try {
+                            const { data: latest = [], isError: refetchErr } = await refetch();
+                            setCheckingStatus(false);
+                            if (refetchErr) {
+                              toast.error(t("فشل التحقق من حالة الخادم؛ لا يمكن إعادة المحاولة تلقائياً لحين استقرار الاتصال.", "Server check failed; automatic retry prohibited."));
+                              return;
+                            }
+                            const recon = reconcileExecutionStatus(request.id, latest);
+                            if (recon.alreadyExecuted) {
+                              toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير", "Transfer execution confirmed by server"));
+                              removeUnconfirmedIntent("funding", request.id, user?.id, companyId);
+                              setSelectedId(null);
+                              setProof(null);
+                              setReference("");
+                              setIntent(null);
+                              return;
+                            }
+                            if (!recon.canRetry) {
+                              toast.error(recon.reason);
+                              return;
+                            }
+                          } catch {
+                            setCheckingStatus(false);
+                            toast.error(t("فشل التحقق من حالة الخادم؛ تعذر التأكد من نتيجة العملية السابقة.", "Failed to check server status."));
                             return;
                           }
                         }
@@ -7738,7 +7764,8 @@ function CompanyFundingExecution() {
                           toast.warning(t("العملية قيد التنفيذ بالفعل؛ يرجى الانتظار.", "Operation is already in flight"));
                           return;
                         }
-                        unconfirmedCompanyFundingIntents.set(request.id, currentIntent);
+                        currentIntent.status = "in_flight";
+                        setUnconfirmedIntent("funding", request.id, currentIntent, user?.id, companyId);
                         setIntent(currentIntent);
 
                         execute.mutate(
@@ -7753,7 +7780,7 @@ function CompanyFundingExecution() {
                           {
                             onSuccess: () => {
                               currentIntent.status = "resolved";
-                              unconfirmedCompanyFundingIntents.delete(request.id);
+                              removeUnconfirmedIntent("funding", request.id, user?.id, companyId);
                               setSelectedId(null);
                               setReference("");
                               setProof(null);
@@ -7761,22 +7788,25 @@ function CompanyFundingExecution() {
                             },
                             onError: async () => {
                               currentIntent.status = "timed_out";
+                              setUnconfirmedIntent("funding", request.id, currentIntent, user?.id, companyId);
                               try {
-                                const { data: latest = [] } = await refetch();
-                                const recon = reconcileExecutionStatus(request.id, latest);
-                                if (recon.alreadyExecuted) {
-                                  currentIntent.status = "resolved";
-                                  unconfirmedCompanyFundingIntents.delete(request.id);
-                                  toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير", "Transfer execution confirmed by server"));
-                                  setSelectedId(null);
-                                  setProof(null);
-                                  setReference("");
-                                  setIntent(null);
-                                  return;
-                                }
-                                if (!recon.canRetry) {
-                                  toast.error(recon.reason);
-                                  return;
+                                const { data: latest = [], isError: refetchErr } = await refetch();
+                                if (!refetchErr) {
+                                  const recon = reconcileExecutionStatus(request.id, latest);
+                                  if (recon.alreadyExecuted) {
+                                    currentIntent.status = "resolved";
+                                    removeUnconfirmedIntent("funding", request.id, user?.id, companyId);
+                                    toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير", "Transfer execution confirmed by server"));
+                                    setSelectedId(null);
+                                    setProof(null);
+                                    setReference("");
+                                    setIntent(null);
+                                    return;
+                                  }
+                                  if (!recon.canRetry) {
+                                    toast.error(recon.reason);
+                                    return;
+                                  }
                                 }
                               } catch {
                                 // network error on refetch: prohibit retry
@@ -7806,7 +7836,7 @@ function CompanyFundingExecution() {
                             const recon = reconcileExecutionStatus(request.id, latest);
                             if (recon.alreadyExecuted) {
                               toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل", "Transfer execution confirmed by server"));
-                              unconfirmedCompanyFundingIntents.delete(request.id);
+                              removeUnconfirmedIntent("funding", request.id, user?.id, companyId);
                               setSelectedId(null);
                               setProof(null);
                               setReference("");
@@ -7845,7 +7875,7 @@ function CompanyFundingExecution() {
                   className="text-xs text-blue-700 underline"
                   onClick={() => {
                     setSelectedId(request.id);
-                    const existing = unconfirmedCompanyFundingIntents.get(request.id);
+                    const existing = getUnconfirmedIntent<any>("funding", request.id, user?.id, companyId);
                     if (existing && (existing.status === "timed_out" || existing.status === "in_flight")) {
                       setIntent(existing);
                       setReference(existing.payload?.reference ?? "");

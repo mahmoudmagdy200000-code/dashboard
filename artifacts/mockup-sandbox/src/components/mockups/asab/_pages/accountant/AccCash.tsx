@@ -42,8 +42,7 @@ import { useAccountantFundingRequests, useExecuteFundingRequest } from "../../..
 import { createFinancialIntent, type FinancialIntent } from "../../../../../api/idempotencyIntent.ts";
 import { checkCustodyWriteAuthorization, type DirectDebitSafetyContext } from "../../../../../api/queries/cashTransactionContract.ts";
 import { reconcileExecutionStatus, computeFileHash } from "../../../../../api/queries/fundingExecutionContract.ts";
-
-const unconfirmedFundingIntents = new Map<string, FinancialIntent<any>>();
+import { getUnconfirmedIntent, setUnconfirmedIntent, removeUnconfirmedIntent } from "../../../../../api/queries/financialIntentStore.ts";
 
 function FundingExecution() {
   const { isRole, user } = useAuth();
@@ -78,7 +77,7 @@ function FundingExecution() {
               className="text-xs text-blue-700 underline"
               onClick={() => {
                 setSelectedId(request.id);
-                const existing = unconfirmedFundingIntents.get(request.id);
+                const existing = getUnconfirmedIntent<any>("funding", request.id, user?.id, (user as any)?.companyId);
                 if (existing && (existing.status === "timed_out" || existing.status === "in_flight")) {
                   setIntent(existing);
                   setReference(existing.payload?.reference ?? "");
@@ -101,19 +100,33 @@ function FundingExecution() {
                 if (!proof || cleanRef.length < 2) return;
 
                 // Reconciliation check before retry: if an unconfirmed attempt timed out,
-                // check server status first to prevent duplicate 422 errors.
-                if (intent && intent.attemptCount > 0 && execute.isError) {
+                // check server status first to prevent duplicate 422 errors or blind re-POSTs.
+                if (intent && (intent.attemptCount > 0 || intent.status === "timed_out" || execute.isError)) {
                   setCheckingStatus(true);
-                  const { data: latest = [] } = await refetch();
-                  setCheckingStatus(false);
-                  const recon = reconcileExecutionStatus(request.id, latest);
-                  if (recon.alreadyExecuted) {
-                    toast.success("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير");
-                    unconfirmedFundingIntents.delete(request.id);
-                    setSelectedId(null);
-                    setProof(null);
-                    setReference("");
-                    setIntent(null);
+                  try {
+                    const { data: latest = [], isError: refetchErr } = await refetch();
+                    setCheckingStatus(false);
+                    if (refetchErr) {
+                      toast.error("فشل التحقق من حالة الخادم؛ لا يمكن إعادة المحاولة تلقائياً لحين استقرار الاتصال.");
+                      return;
+                    }
+                    const recon = reconcileExecutionStatus(request.id, latest);
+                    if (recon.alreadyExecuted) {
+                      toast.success("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير");
+                      removeUnconfirmedIntent("funding", request.id, user?.id, (user as any)?.companyId);
+                      setSelectedId(null);
+                      setProof(null);
+                      setReference("");
+                      setIntent(null);
+                      return;
+                    }
+                    if (!recon.canRetry) {
+                      toast.error(`تعذر التحقق من حالة الخادم: ${recon.reason}`);
+                      return;
+                    }
+                  } catch {
+                    setCheckingStatus(false);
+                    toast.error("فشل التحقق من حالة الخادم؛ تعذر التأكد من نتيجة العملية السابقة.");
                     return;
                   }
                 }
@@ -140,7 +153,8 @@ function FundingExecution() {
                   toast.warning("العملية قيد التنفيذ بالفعل؛ يرجى الانتظار.");
                   return;
                 }
-                unconfirmedFundingIntents.set(request.id, currentIntent);
+                currentIntent.status = "in_flight";
+                setUnconfirmedIntent("funding", request.id, currentIntent, user?.id, (user as any)?.companyId);
                 setIntent(currentIntent);
 
                 execute.mutate(
@@ -155,7 +169,7 @@ function FundingExecution() {
                   {
                     onSuccess: () => {
                       currentIntent.status = "resolved";
-                      unconfirmedFundingIntents.delete(request.id);
+                      removeUnconfirmedIntent("funding", request.id, user?.id, (user as any)?.companyId);
                       toast.success("تم توثيق الإرسال؛ بانتظار تأكيد المدير");
                       setSelectedId(null);
                       setProof(null);
@@ -164,23 +178,26 @@ function FundingExecution() {
                     },
                     onError: async (error) => {
                       currentIntent.status = "timed_out";
+                      setUnconfirmedIntent("funding", request.id, currentIntent, user?.id, (user as any)?.companyId);
                       // Automatic server reconciliation upon timeout/error
                       try {
-                        const { data: latest = [] } = await refetch();
-                        const recon = reconcileExecutionStatus(request.id, latest);
-                        if (recon.alreadyExecuted) {
-                          currentIntent.status = "resolved";
-                          unconfirmedFundingIntents.delete(request.id);
-                          toast.success("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير");
-                          setSelectedId(null);
-                          setProof(null);
-                          setReference("");
-                          setIntent(null);
-                          return;
-                        }
-                        if (!recon.canRetry) {
-                          toast.error(`تعذر التحقق من حالة الخادم: ${recon.reason}`);
-                          return;
+                        const { data: latest = [], isError: refetchErr } = await refetch();
+                        if (!refetchErr) {
+                          const recon = reconcileExecutionStatus(request.id, latest);
+                          if (recon.alreadyExecuted) {
+                            currentIntent.status = "resolved";
+                            removeUnconfirmedIntent("funding", request.id, user?.id, (user as any)?.companyId);
+                            toast.success("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير");
+                            setSelectedId(null);
+                            setProof(null);
+                            setReference("");
+                            setIntent(null);
+                            return;
+                          }
+                          if (!recon.canRetry) {
+                            toast.error(`تعذر التحقق من حالة الخادم: ${recon.reason}`);
+                            return;
+                          }
                         }
                       } catch {
                         // network refetch failure: prohibit blind retry
@@ -249,7 +266,7 @@ function FundingExecution() {
                       const recon = reconcileExecutionStatus(request.id, latest);
                       if (recon.alreadyExecuted) {
                         toast.success("تم تأكيد تسجيل التحويل في الخادم بالفعل");
-                        unconfirmedFundingIntents.delete(request.id);
+                        removeUnconfirmedIntent("funding", request.id, user?.id, (user as any)?.companyId);
                         setSelectedId(null);
                         setProof(null);
                         setReference("");
@@ -292,8 +309,6 @@ function FundingExecution() {
   );
 }
 
-const unconfirmedCustodyDebitIntents = new Map<string, FinancialIntent<any>>();
-
 // Direct custody movements are limited to permitted disbursements (T09 §B3).
 export function AsabCashTxnModal({
   custodyId,
@@ -309,14 +324,15 @@ export function AsabCashTxnModal({
   onClose: () => void;
 }) {
   const { user } = useAuth();
+  const companyId = (user as any)?.companyId;
   const createMut = useCreateCashTransaction();
   const [intent] = useState<FinancialIntent<any>>(() => {
-    const existing = unconfirmedCustodyDebitIntents.get(custodyId);
+    const existing = getUnconfirmedIntent<any>("custody_debit", custodyId, user?.id, companyId);
     if (existing && (existing.status === "timed_out" || existing.status === "in_flight")) {
       return existing;
     }
     const fresh = createFinancialIntent({ custodyId, txnType: "debit" }, undefined, user?.id);
-    unconfirmedCustodyDebitIntents.set(custodyId, fresh);
+    setUnconfirmedIntent("custody_debit", custodyId, fresh, user?.id, companyId);
     return fresh;
   });
 
@@ -363,6 +379,9 @@ export function AsabCashTxnModal({
       return;
     }
 
+    intent.status = "in_flight";
+    setUnconfirmedIntent("custody_debit", custodyId, intent, user?.id, companyId);
+
     const context: DirectDebitSafetyContext = {
       custody: { id: custodyId, brandId, remainingHalalas },
       actor: {
@@ -382,8 +401,13 @@ export function AsabCashTxnModal({
       },
       {
         onSuccess: () => {
-          unconfirmedCustodyDebitIntents.delete(custodyId);
+          intent.status = "resolved";
+          removeUnconfirmedIntent("custody_debit", custodyId, user?.id, companyId);
           onClose();
+        },
+        onError: () => {
+          intent.status = "timed_out";
+          setUnconfirmedIntent("custody_debit", custodyId, intent, user?.id, companyId);
         },
       },
     );
