@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { ErrorBoundary } from "../../ErrorBoundary.tsx";
 import { hasActiveSubscription } from "../../../api/responseContracts";
 import { useAccountantFundingRequests, useExecuteFundingRequest } from "../../../api/queries/fundingRequests";
+import { reconcileExecutionStatus, computeFileHash } from "../../../api/queries/fundingExecutionContract.ts";
 import { createFinancialIntent, type FinancialIntent } from "../../../api/idempotencyIntent.ts";
 import { checkCustodyWriteAuthorization, type DirectDebitSafetyContext } from "../../../api/queries/cashTransactionContract.ts";
 import { useState, useMemo, useEffect, useLayoutEffect, useRef, ReactNode, createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
@@ -7518,13 +7519,14 @@ function CashCustodyCard({ custody }:{ custody:CashCustodyRow }) {
 function CompanyFundingExecution() {
   const { user } = useAuth();
   const accountant = grantedRoleKeys(user as any).includes("accountant");
-  const { data: requests = [], isError } = useAccountantFundingRequests(accountant);
+  const { data: requests = [], isError, refetch } = useAccountantFundingRequests(accountant);
   const execute = useExecuteFundingRequest();
   const { t, dir } = useCLang();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reference, setReference] = useState("");
   const [proof, setProof] = useState<File | null>(null);
   const [intent, setIntent] = useState<FinancialIntent<any> | null>(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
 
   if (!accountant) return null;
   return (
@@ -7555,8 +7557,13 @@ function CompanyFundingExecution() {
                     placeholder={t("مرجع التحويل البنكي (إلزامي)", "Bank transfer reference (required)")}
                     value={reference}
                     onChange={(e) => {
-                      setReference(e.target.value);
-                      if (intent) setIntent(null);
+                      const val = e.target.value;
+                      if (intent && intent.attemptCount > 0 && val !== intent.payload?.reference) {
+                        toast.warning(t("توجد محاولة إرسال سابقة قيد التحقق. يرجى التحقق من حالة الخادم أولاً.", "Previous attempt pending. Check server status first."));
+                        return;
+                      }
+                      setReference(val);
+                      if (!intent || intent.attemptCount === 0) setIntent(null);
                     }}
                     className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5"
                   />
@@ -7564,54 +7571,125 @@ function CompanyFundingExecution() {
                     type="file"
                     aria-label={t("إشعار التحويل البنكي", "Bank transfer slip")}
                     onChange={(e) => {
-                      setProof(e.target.files?.[0] ?? null);
-                      if (intent) setIntent(null);
+                      const file = e.target.files?.[0] ?? null;
+                      if (intent && intent.attemptCount > 0 && file && (file.name !== intent.payload?.proofName || file.size !== intent.payload?.proofSize)) {
+                        toast.warning(t("توجد محاولة إرسال سابقة قيد التحقق. يرجى التحقق من حالة الخادم أولاً.", "Previous attempt pending. Check server status first."));
+                        return;
+                      }
+                      setProof(file);
+                      if (!intent || intent.attemptCount === 0) setIntent(null);
                     }}
                     className="w-full text-xs"
                   />
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap items-center">
                     <Btn
                       size="sm"
                       variant="primary"
-                      disabled={execute.isPending || !reference.trim() || !proof}
-                      onClick={() => {
+                      disabled={execute.isPending || checkingStatus || !reference.trim() || !proof}
+                      onClick={async () => {
                         if (!proof) return;
                         const cleanRef = reference.trim();
                         if (cleanRef.length < 2) return;
+
+                        // Check reconciliation before retry if an unconfirmed attempt timed out/errored
+                        if (intent && intent.attemptCount > 0 && execute.isError) {
+                          setCheckingStatus(true);
+                          const { data: latest = [] } = await refetch();
+                          setCheckingStatus(false);
+                          const recon = reconcileExecutionStatus(request.id, latest);
+                          if (recon.alreadyExecuted) {
+                            toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير", "Transfer execution confirmed by server"));
+                            setSelectedId(null);
+                            setProof(null);
+                            setReference("");
+                            setIntent(null);
+                            return;
+                          }
+                        }
+
+                        const proofHash = await computeFileHash(proof);
 
                         const currentIntent =
                           intent &&
                           intent.payload?.reference === cleanRef &&
                           intent.payload?.proofName === proof.name &&
-                          intent.payload?.proofSize === proof.size
+                          intent.payload?.proofSize === proof.size &&
+                          intent.payload?.proofHash === proofHash
                             ? intent
-                            : createFinancialIntent({
-                                requestId: request.id,
-                                reference: cleanRef,
-                                proofName: proof.name,
-                                proofSize: proof.size,
-                              });
+                            : createFinancialIntent(
+                                {
+                                  requestId: request.id,
+                                  reference: cleanRef,
+                                  proofName: proof.name,
+                                  proofSize: proof.size,
+                                  proofHash,
+                                },
+                                undefined,
+                                user?.id,
+                              );
+                        currentIntent.status = "in_flight";
+                        currentIntent.attemptCount += 1;
                         setIntent(currentIntent);
 
                         execute.mutate(
                           { id: request.id, reference: cleanRef, proof, intent: currentIntent },
                           {
                             onSuccess: () => {
+                              currentIntent.status = "resolved";
                               setSelectedId(null);
                               setReference("");
                               setProof(null);
                               setIntent(null);
                             },
+                            onError: async () => {
+                              currentIntent.status = "timed_out";
+                              const { data: latest = [] } = await refetch();
+                              const recon = reconcileExecutionStatus(request.id, latest);
+                              if (recon.alreadyExecuted) {
+                                currentIntent.status = "resolved";
+                                toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير", "Transfer execution confirmed by server"));
+                                setSelectedId(null);
+                                setProof(null);
+                                setReference("");
+                                setIntent(null);
+                              }
+                            },
                           }
                         );
                       }}
                     >
-                      {execute.isPending
-                        ? t("جارٍ الإرسال...", "Sending...")
-                        : intent && execute.isError
-                          ? t("إعادة المحاولة (بنفس المفتاح)", "Retry (same key)")
-                          : t("تأكيد إرسال الدفعة وتوثيق التحويل", "Confirm Send & Attach Proof")}
+                      {checkingStatus
+                        ? t("جارٍ التحقق...", "Checking...")
+                        : execute.isPending
+                          ? t("جارٍ الإرسال...", "Sending...")
+                          : intent && execute.isError
+                            ? t("التحقق وإعادة المحاولة (بنفس المفتاح)", "Verify & Retry (same key)")
+                            : t("تأكيد إرسال الدفعة وتوثيق التحويل", "Confirm Send & Attach Proof")}
                     </Btn>
+                    {intent && execute.isError && (
+                      <Btn
+                        size="sm"
+                        variant="ghost"
+                        disabled={checkingStatus}
+                        onClick={async () => {
+                          setCheckingStatus(true);
+                          const { data: latest = [] } = await refetch();
+                          setCheckingStatus(false);
+                          const recon = reconcileExecutionStatus(request.id, latest);
+                          if (recon.alreadyExecuted) {
+                            toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل", "Transfer execution confirmed by server"));
+                            setSelectedId(null);
+                            setProof(null);
+                            setReference("");
+                            setIntent(null);
+                          } else {
+                            toast.info(t("الطلب ما زال غير منفذ في الخادم؛ يمكنك إعادة المحاولة.", "Request is still unexecuted; safe to retry."));
+                          }
+                        }}
+                      >
+                        {checkingStatus ? t("جارٍ التحقق...", "Checking...") : t("التحقق من حالة الطلب", "Check Status")}
+                      </Btn>
+                    )}
                     <Btn size="sm" onClick={() => { setSelectedId(null); setIntent(null); }}>{t("إلغاء", "Cancel")}</Btn>
                   </div>
                 </div>

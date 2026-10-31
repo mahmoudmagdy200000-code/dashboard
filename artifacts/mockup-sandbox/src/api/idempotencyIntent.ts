@@ -27,6 +27,7 @@ export type IntentStatus = "idle" | "in_flight" | "timed_out" | "resolved" | "co
 
 export interface FinancialIntent<TPayload> {
   idempotencyKey: string;
+  actorId?: string;
   payload: TPayload;
   serializedPayload: string;
   status: IntentStatus;
@@ -34,15 +35,39 @@ export interface FinancialIntent<TPayload> {
   lastError?: Error;
 }
 
-export function createFinancialIntent<TPayload>(payload: TPayload, explicitKey?: string): FinancialIntent<TPayload> {
+export function createFinancialIntent<TPayload>(
+  payload: TPayload,
+  explicitKey?: string,
+  actorId?: string,
+): FinancialIntent<TPayload> {
   const idempotencyKey = explicitKey || generateCommandId();
   return {
     idempotencyKey,
+    actorId,
     payload,
     serializedPayload: JSON.stringify(payload),
     status: "idle",
     attemptCount: 0,
   };
+}
+
+export function assertIntentSessionValid(
+  intent: { actorId?: string } | null | undefined,
+  currentActorId?: string | null,
+): void {
+  if (intent?.actorId && currentActorId && intent.actorId !== currentActorId) {
+    throw new Error(
+      "IDEMPOTENCY_SESSION_MISMATCH: Stale intent originating from another user session cannot be reused.",
+    );
+  }
+}
+
+export function assertIntentNotConcurrent(intent: { status?: string } | null | undefined): void {
+  if (intent?.status === "in_flight") {
+    throw new Error(
+      "IDEMPOTENCY_CONCURRENT_DISPATCH: Operation is already in flight. Rapid duplicate submission is blocked.",
+    );
+  }
 }
 
 export function prepareRetryIntent<TPayload>(intent: FinancialIntent<TPayload>, updatedPayload?: TPayload): {
