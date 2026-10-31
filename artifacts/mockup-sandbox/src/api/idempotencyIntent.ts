@@ -28,6 +28,7 @@ export type IntentStatus = "idle" | "in_flight" | "timed_out" | "resolved" | "co
 export interface FinancialIntent<TPayload> {
   idempotencyKey: string;
   actorId?: string;
+  companyId?: string;
   payload: TPayload;
   serializedPayload: string;
   status: IntentStatus;
@@ -39,11 +40,13 @@ export function createFinancialIntent<TPayload>(
   payload: TPayload,
   explicitKey?: string,
   actorId?: string,
+  companyId?: string,
 ): FinancialIntent<TPayload> {
   const idempotencyKey = explicitKey || generateCommandId();
   return {
     idempotencyKey,
     actorId,
+    companyId,
     payload,
     serializedPayload: JSON.stringify(payload),
     status: "idle",

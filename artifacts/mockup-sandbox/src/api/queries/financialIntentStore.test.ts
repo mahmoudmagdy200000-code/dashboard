@@ -119,3 +119,34 @@ test("financialIntentStore: clearAllFinancialIntents purges all scopes", () => {
   assert.equal(getUnconfirmedIntent("funding", "f-1", "usr-1", "comp-1"), null);
   assert.equal(getUnconfirmedIntent("custody_debit", "c-1", "usr-1", "comp-1"), null);
 });
+
+test("financialIntentStore: Section 4.A company scoping and zero default_company orphans", () => {
+  clearAllFinancialIntents();
+
+  const intent = createFinancialIntent(
+    { requestId: "req-scoping-01", reference: "REF-SCOPE" },
+    "key-scope-01",
+    "usr-acc-1",
+    "comp-riyadh-01",
+  );
+
+  // Set with concrete companyId
+  setUnconfirmedIntent("funding", "req-scoping-01", intent, "usr-acc-1", "comp-riyadh-01");
+
+  // Verify stored strictly under comp-riyadh-01
+  const retrieved = getUnconfirmedIntent<any>("funding", "req-scoping-01", "usr-acc-1", "comp-riyadh-01");
+  assert.ok(retrieved, "Intent must be retrievable with authorized companyId");
+  assert.equal(retrieved.companyId, "comp-riyadh-01");
+
+  // Verify that looking under default_company directly yields null
+  const defaultCompanyLookup = getUnconfirmedIntent<any>("funding", "req-scoping-01", "usr-acc-1", "default_company");
+  assert.equal(defaultCompanyLookup, null, "No duplicate or orphaned record in default_company");
+
+  // Verify cross-tenant isolation: another company cannot access it
+  const otherCompanyLookup = getUnconfirmedIntent<any>("funding", "req-scoping-01", "usr-acc-1", "comp-jeddah-02");
+  assert.equal(otherCompanyLookup, null, "Cross-tenant isolation must reject unauthorized companyId");
+
+  // Verify removal cleans up both the scoped key and any potential fallback
+  removeUnconfirmedIntent("funding", "req-scoping-01", "usr-acc-1", "comp-riyadh-01");
+  assert.equal(getUnconfirmedIntent("funding", "req-scoping-01", "usr-acc-1", "comp-riyadh-01"), null);
+});

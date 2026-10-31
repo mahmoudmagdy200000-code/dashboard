@@ -146,6 +146,7 @@ function FundingExecution() {
                     },
                     undefined,
                     user?.id,
+                    (user as any)?.companyId,
                   );
 
                 // Concurrency guard: reject duplicate click if already in flight or pending
@@ -162,6 +163,7 @@ function FundingExecution() {
                     proof,
                     proofHash,
                     currentActorId: user?.id,
+                    companyId: (user as any)?.companyId,
                     intent: currentIntent,
                   },
                   {
@@ -348,7 +350,7 @@ export function AsabCashTxnModal({
     if (existing && (existing.status === "timed_out" || existing.status === "in_flight")) {
       return existing;
     }
-    const fresh = createFinancialIntent({ custodyId, txnType: "debit" }, undefined, user?.id);
+    const fresh = createFinancialIntent({ custodyId, txnType: "debit" }, undefined, user?.id, companyId);
     setUnconfirmedIntent("custody_debit", custodyId, fresh, user?.id, companyId);
     return fresh;
   });
@@ -407,6 +409,7 @@ export function AsabCashTxnModal({
         payload: { txnType: "debit", amount: amountH, description: cleanDesc, source: "manual" },
         context,
         intent,
+        companyId,
       },
       {
         onSuccess: () => {

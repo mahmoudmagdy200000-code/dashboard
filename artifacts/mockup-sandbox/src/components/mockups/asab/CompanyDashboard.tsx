@@ -6897,7 +6897,7 @@ function EmpSettleModal({
     if (existing && (existing.status === "timed_out" || existing.status === "in_flight")) {
       return existing;
     }
-    const fresh = createFinancialIntent({ employeeId }, undefined, user?.id);
+    const fresh = createFinancialIntent({ employeeId }, undefined, user?.id, companyId);
     setUnconfirmedIntent("employee_settlement", employeeId, fresh, user?.id, companyId);
     return fresh;
   });
@@ -6933,7 +6933,7 @@ function EmpSettleModal({
     }
 
     settleMut.mutate(
-      { employeeId, reason: cleanReason, intent, currentActorId: user?.id },
+      { employeeId, reason: cleanReason, intent, currentActorId: user?.id, companyId },
       {
         onSuccess: () => {
           intent.status = "resolved";
@@ -7376,7 +7376,7 @@ function CashTxnModal({ custodyId, custodianName, remainingHalalas, brandId, onC
     if (existing && (existing.status === "timed_out" || existing.status === "in_flight")) {
       return existing;
     }
-    const fresh = createFinancialIntent({ custodyId, txnType: "debit" }, undefined, user?.id);
+    const fresh = createFinancialIntent({ custodyId, txnType: "debit" }, undefined, user?.id, companyId);
     setUnconfirmedIntent("custody_debit", custodyId, fresh, user?.id, companyId);
     return fresh;
   });
@@ -7442,6 +7442,7 @@ function CashTxnModal({ custodyId, custodianName, remainingHalalas, brandId, onC
       },
       context,
       intent,
+      companyId,
     }, {
       onSuccess: () => {
         intent.status = "resolved";
@@ -7765,6 +7766,7 @@ function CompanyFundingExecution() {
                             },
                             undefined,
                             user?.id,
+                            companyId,
                           );
                         if (currentIntent.status === "in_flight" || execute.isPending) {
                           toast.warning(t("العملية قيد التنفيذ بالفعل؛ يرجى الانتظار.", "Operation is already in flight"));
@@ -7779,6 +7781,7 @@ function CompanyFundingExecution() {
                             proof,
                             proofHash,
                             currentActorId: user?.id,
+                            companyId,
                             intent: currentIntent,
                           },
                           {

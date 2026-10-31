@@ -54,7 +54,8 @@ export function getUnconfirmedIntent<T>(
   actorId?: string,
   companyId?: string,
 ): FinancialIntent<T> | null {
-  const key = buildStoreKey(scope, id, actorId, companyId);
+  const effectiveCompany = companyId?.trim() || "default_company";
+  const key = buildStoreKey(scope, id, actorId, effectiveCompany);
 
   // 1. Check memory cache first
   const cached = memoryStore.get(key);
@@ -93,6 +94,7 @@ export function getUnconfirmedIntent<T>(
         const restored: FinancialIntent<T> = {
           idempotencyKey: envelope.idempotencyKey,
           actorId: envelope.actorId,
+          companyId: envelope.companyId,
           payload: envelope.payload,
           serializedPayload: JSON.stringify(envelope.payload),
           status: envelope.status === "in_flight" ? "timed_out" : envelope.status, // in-flight recovered from reload is timed_out until reconciled
@@ -110,6 +112,43 @@ export function getUnconfirmedIntent<T>(
     }
   }
 
+  // 3. Fallback recovery / migration from default_company:
+  // If requested with a concrete companyId but not found under that key, check if an unconfirmed
+  // intent exists under default_company for the same scope/id/actor and migrate it over.
+  if (effectiveCompany !== "default_company") {
+    const fallbackKey = buildStoreKey(scope, id, actorId, "default_company");
+    const fallbackCached = memoryStore.get(fallbackKey);
+    if (fallbackCached && (!actorId || !fallbackCached.actorId || fallbackCached.actorId === actorId)) {
+      memoryStore.delete(fallbackKey);
+      fallbackCached.companyId = effectiveCompany;
+      setUnconfirmedIntent(scope, id, fallbackCached, actorId, effectiveCompany);
+      return fallbackCached as FinancialIntent<T>;
+    }
+
+    if (storage) {
+      try {
+        const rawFallback = storage.getItem(fallbackKey);
+        if (rawFallback) {
+          const envelope: StoredIntentEnvelope<T> = JSON.parse(rawFallback);
+          storage.removeItem(fallbackKey);
+          if (envelope.status !== "resolved" && (!actorId || !envelope.actorId || envelope.actorId === actorId)) {
+            const migrated: FinancialIntent<T> = {
+              idempotencyKey: envelope.idempotencyKey,
+              actorId: envelope.actorId,
+              companyId: effectiveCompany,
+              payload: envelope.payload,
+              serializedPayload: JSON.stringify(envelope.payload),
+              status: envelope.status === "in_flight" ? "timed_out" : envelope.status,
+              attemptCount: Math.max(1, envelope.attemptCount),
+            };
+            setUnconfirmedIntent(scope, id, migrated, actorId, effectiveCompany);
+            return migrated;
+          }
+        }
+      } catch {}
+    }
+  }
+
   return null;
 }
 
@@ -120,7 +159,15 @@ export function setUnconfirmedIntent<T>(
   actorId?: string,
   companyId?: string,
 ): void {
-  const key = buildStoreKey(scope, id, actorId ?? intent.actorId, companyId);
+  const effectiveActor = actorId?.trim() || intent.actorId?.trim() || "anonymous_actor";
+  const effectiveCompany = companyId?.trim() || intent.companyId?.trim() || "default_company";
+
+  // Bind resolved companyId onto the intent object
+  if (effectiveCompany !== "default_company") {
+    intent.companyId = effectiveCompany;
+  }
+
+  const key = buildStoreKey(scope, id, effectiveActor, effectiveCompany);
   memoryStore.set(key, intent);
 
   const storage = getSessionStorage();
@@ -128,8 +175,8 @@ export function setUnconfirmedIntent<T>(
     try {
       const envelope: StoredIntentEnvelope<T> = {
         idempotencyKey: intent.idempotencyKey,
-        actorId: actorId ?? intent.actorId,
-        companyId,
+        actorId: effectiveActor !== "anonymous_actor" ? effectiveActor : undefined,
+        companyId: effectiveCompany !== "default_company" ? effectiveCompany : undefined,
         scope,
         id,
         payload: intent.payload,
@@ -142,6 +189,17 @@ export function setUnconfirmedIntent<T>(
       // Ignore quota errors gracefully
     }
   }
+
+  // Prevent duplicate/orphaned records: if concrete companyId exists, purge any fallback entry in default_company
+  if (effectiveCompany !== "default_company") {
+    const orphanKey = buildStoreKey(scope, id, effectiveActor, "default_company");
+    memoryStore.delete(orphanKey);
+    if (storage) {
+      try {
+        storage.removeItem(orphanKey);
+      } catch {}
+    }
+  }
 }
 
 export function removeUnconfirmedIntent(
@@ -150,7 +208,9 @@ export function removeUnconfirmedIntent(
   actorId?: string,
   companyId?: string,
 ): void {
-  const key = buildStoreKey(scope, id, actorId, companyId);
+  const effectiveActor = actorId?.trim() || "anonymous_actor";
+  const effectiveCompany = companyId?.trim() || "default_company";
+  const key = buildStoreKey(scope, id, effectiveActor, effectiveCompany);
   memoryStore.delete(key);
 
   const storage = getSessionStorage();
@@ -158,6 +218,17 @@ export function removeUnconfirmedIntent(
     try {
       storage.removeItem(key);
     } catch {}
+  }
+
+  // Also purge any orphaned key under default_company for the same scope/id/actor
+  if (effectiveCompany !== "default_company") {
+    const orphanKey = buildStoreKey(scope, id, effectiveActor, "default_company");
+    memoryStore.delete(orphanKey);
+    if (storage) {
+      try {
+        storage.removeItem(orphanKey);
+      } catch {}
+    }
   }
 }
 

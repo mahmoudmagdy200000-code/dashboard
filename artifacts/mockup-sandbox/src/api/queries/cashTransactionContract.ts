@@ -15,6 +15,7 @@ import { setUnconfirmedIntent } from "./financialIntentStore.ts";
 
 export interface CustodyActor {
   id?: string;
+  companyId?: string;
   roles?: string[];
   isCustodyWriteAuthorized?: boolean;
   brandIds?: string[];
@@ -22,6 +23,7 @@ export interface CustodyActor {
 
 export interface CustodyContext {
   id: string;
+  companyId?: string;
   brandId?: string;
   remainingHalalas: number;
 }
@@ -146,9 +148,11 @@ export function executeCashDisbursementFlow(
     custodyId: string;
     payload: DirectDebitPayload;
     context?: DirectDebitSafetyContext;
+    companyId?: string;
     intent?: {
       idempotencyKey: string;
       actorId?: string;
+      companyId?: string;
       status?: string;
       payload?: {
         custodyId?: string;
@@ -156,6 +160,7 @@ export function executeCashDisbursementFlow(
         description?: string;
         source?: string;
         actorId?: string;
+        companyId?: string;
       };
     };
     idempotencyKey?: string;
@@ -236,8 +241,14 @@ export function executeCashDisbursementFlow(
       (params.intent as any).attemptCount += 1;
     }
     const actorId = params.context?.actor?.id ?? params.intent.actorId;
+    const effectiveCompanyId =
+      params.companyId ??
+      params.context?.actor?.companyId ??
+      params.context?.custody?.companyId ??
+      params.intent.companyId ??
+      (params.intent.payload as any)?.companyId;
     if (actorId) {
-      setUnconfirmedIntent("custody_debit", params.custodyId, params.intent as any, actorId, (params.intent.payload as any)?.companyId);
+      setUnconfirmedIntent("custody_debit", params.custodyId, params.intent as any, actorId, effectiveCompanyId);
     }
   }
 

@@ -269,7 +269,12 @@ export function AccEmployees({ setModal }: PageProps) {
       ? getUnconfirmedIntent<any>("employee_settlement", selectedId, user?.id, (user as any)?.companyId)
       : null;
     if (!intent || intent.status === "resolved") {
-      intent = createFinancialIntent({ employeeId: selectedId, reason: cleanReason }, undefined, user?.id);
+      intent = createFinancialIntent(
+        { employeeId: selectedId, reason: cleanReason },
+        undefined,
+        user?.id,
+        (user as any)?.companyId,
+      );
     } else if (intent.status === "in_flight" || settleMut.isPending) {
       setSettleError("طلب التسوية قيد المعالجة بالفعل");
       return;
@@ -285,7 +290,13 @@ export function AccEmployees({ setModal }: PageProps) {
     }
 
     settleMut.mutate(
-      { employeeId: selectedId, reason: cleanReason, intent, currentActorId: user?.id },
+      {
+        employeeId: selectedId,
+        reason: cleanReason,
+        intent,
+        currentActorId: user?.id,
+        companyId: (user as any)?.companyId,
+      },
       {
         onSuccess: (data: any) => {
           intent.status = "resolved";

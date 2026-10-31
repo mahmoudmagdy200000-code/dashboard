@@ -101,6 +101,7 @@ export function useSettleEmployeeBalance() {
       intent,
       idempotencyKey,
       currentActorId,
+      companyId,
     }: {
       employeeId: string;
       reason: string;
@@ -108,6 +109,7 @@ export function useSettleEmployeeBalance() {
       intent?: FinancialIntent<any>;
       idempotencyKey?: string;
       currentActorId?: string;
+      companyId?: string;
     }) => {
       return executeEmployeeSettlementFlow(
         {
@@ -117,6 +119,7 @@ export function useSettleEmployeeBalance() {
           intent,
           idempotencyKey,
           currentActorId,
+          companyId,
         },
         async (url, body, headers) => {
           const res = await api.post<SettleBalanceResult>(url, body, {

@@ -36,6 +36,7 @@ export async function executeFundingRequest({
   idempotencyKey,
   proofHash,
   currentActorId,
+  companyId,
 }: {
   id: string;
   reference: string;
@@ -44,9 +45,10 @@ export async function executeFundingRequest({
   idempotencyKey?: string;
   proofHash?: string;
   currentActorId?: string;
+  companyId?: string;
 }) {
   return executeFundingTransferFlow(
-    { id, reference, proof, intent, idempotencyKey, proofHash, currentActorId },
+    { id, reference, proof, intent, idempotencyKey, proofHash, currentActorId, companyId },
     async (url, form, headers) => {
       const response = await api.post<{ data: { financiallyPosted: false; executedAt: string } }>(
         url,

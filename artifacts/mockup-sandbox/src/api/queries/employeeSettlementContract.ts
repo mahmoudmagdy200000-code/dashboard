@@ -80,15 +80,18 @@ export function executeEmployeeSettlementFlow(
     reason: string;
     amountHalalas?: number;
     currentActorId?: string;
+    companyId?: string;
     intent?: {
       idempotencyKey: string;
       actorId?: string;
+      companyId?: string;
       status?: string;
       payload?: {
         employeeId?: string;
         reason?: string;
         amountHalalas?: number;
         actorId?: string;
+        companyId?: string;
       };
     };
     idempotencyKey?: string;
@@ -160,8 +163,9 @@ export function executeEmployeeSettlementFlow(
       (params.intent as any).attemptCount += 1;
     }
     const actorId = params.currentActorId ?? params.intent.actorId;
+    const effectiveCompanyId = params.companyId ?? params.intent.companyId ?? (params.intent.payload as any)?.companyId;
     if (actorId) {
-      setUnconfirmedIntent("employee_settlement", params.employeeId, params.intent as any, actorId, (params.intent.payload as any)?.companyId);
+      setUnconfirmedIntent("employee_settlement", params.employeeId, params.intent as any, actorId, effectiveCompanyId);
     }
   }
 

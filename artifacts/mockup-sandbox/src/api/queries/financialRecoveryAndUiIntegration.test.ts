@@ -478,3 +478,58 @@ test("SECTION D - D14: Expense custody separation from sales drawer & single rev
     /FORBIDDEN_EXPENSE_SOURCE/,
   );
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION E: Section 4.A Company Scoping & Tenant Isolation in Execution Flows
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("SECTION E - Company Scoping: Contracts store intent under authenticated companyId, never default_company", async () => {
+  clearAllFinancialIntents();
+
+  const dummyFile = new File(["test-proof"], "proof.pdf", { type: "application/pdf" });
+  const hash = await computeFileHash(dummyFile);
+
+  const fundingIntent = createFinancialIntent(
+    { requestId: "req-fnd-scope-01", reference: "REF-SCOPE-01", proofHash: hash },
+    "key-fnd-scope-01",
+    "usr-acc-1",
+    "comp-riyadh-01",
+  );
+
+  // Execute funding transfer with companyId
+  let serverPromiseResolve: (v: any) => void = () => {};
+  const serverP = new Promise((res) => { serverPromiseResolve = res; });
+
+  const fundingCall = executeFundingTransferFlow(
+    {
+      id: "req-fnd-scope-01",
+      reference: "REF-SCOPE-01",
+      proof: dummyFile,
+      proofHash: hash,
+      currentActorId: "usr-acc-1",
+      companyId: "comp-riyadh-01",
+      intent: fundingIntent,
+    },
+    () => serverP,
+  );
+
+  // Must be saved in unconfirmed store strictly under comp-riyadh-01
+  const savedInCompany = getUnconfirmedIntent("funding", "req-fnd-scope-01", "usr-acc-1", "comp-riyadh-01");
+  assert.ok(savedInCompany, "Must be saved under authenticated companyId");
+
+  // Must NOT be in default_company
+  const savedInDefault = getUnconfirmedIntent("funding", "req-fnd-scope-01", "usr-acc-1", "default_company");
+  assert.equal(savedInDefault, null, "Must NOT leave orphan in default_company");
+
+  // Another company cannot access it
+  const savedInOther = getUnconfirmedIntent("funding", "req-fnd-scope-01", "usr-acc-1", "comp-other-02");
+  assert.equal(savedInOther, null, "Other company cannot access intent");
+
+  // Resolve
+  serverPromiseResolve({ status: 200, data: { executedAt: "2026-10-31T07:00:00Z" } });
+  await fundingCall;
+
+  // On UI success, removal clears the company key
+  removeUnconfirmedIntent("funding", "req-fnd-scope-01", "usr-acc-1", "comp-riyadh-01");
+  assert.equal(getUnconfirmedIntent("funding", "req-fnd-scope-01", "usr-acc-1", "comp-riyadh-01"), null);
+});

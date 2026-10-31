@@ -67,6 +67,7 @@ export interface CreateCashTransactionParams {
   context?: DirectDebitSafetyContext;
   intent?: FinancialIntent<any>;
   idempotencyKey?: string;
+  companyId?: string;
 }
 
 export async function executeCashTransaction({
@@ -75,9 +76,10 @@ export async function executeCashTransaction({
   context,
   intent,
   idempotencyKey,
+  companyId,
 }: CreateCashTransactionParams): Promise<CashTransaction> {
   return executeCashDisbursementFlow(
-    { custodyId, payload, context, intent, idempotencyKey },
+    { custodyId, payload, context, intent, idempotencyKey, companyId },
     async (url, body, headers) => {
       const res = await api.post<CashTransaction>(url, body, {
         headers: headers ? { ...headers } : undefined,
