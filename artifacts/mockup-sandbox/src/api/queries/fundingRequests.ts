@@ -34,15 +34,19 @@ export async function executeFundingRequest({
   proof,
   intent,
   idempotencyKey,
+  proofHash,
+  currentActorId,
 }: {
   id: string;
   reference: string;
   proof: File;
   intent?: FinancialIntent<any>;
   idempotencyKey?: string;
+  proofHash?: string;
+  currentActorId?: string;
 }) {
   return executeFundingTransferFlow(
-    { id, reference, proof, intent, idempotencyKey },
+    { id, reference, proof, intent, idempotencyKey, proofHash, currentActorId },
     async (url, form, headers) => {
       const response = await api.post<{ data: { financiallyPosted: false; executedAt: string } }>(
         url,

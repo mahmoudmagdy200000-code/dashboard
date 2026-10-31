@@ -7627,12 +7627,21 @@ function CompanyFundingExecution() {
                                 undefined,
                                 user?.id,
                               );
-                        currentIntent.status = "in_flight";
-                        currentIntent.attemptCount += 1;
+                        if (currentIntent.status === "in_flight") {
+                          toast.warning(t("العملية قيد التنفيذ بالفعل؛ يرجى الانتظار.", "Operation is already in flight"));
+                          return;
+                        }
                         setIntent(currentIntent);
 
                         execute.mutate(
-                          { id: request.id, reference: cleanRef, proof, intent: currentIntent },
+                          {
+                            id: request.id,
+                            reference: cleanRef,
+                            proof,
+                            proofHash,
+                            currentActorId: user?.id,
+                            intent: currentIntent,
+                          },
                           {
                             onSuccess: () => {
                               currentIntent.status = "resolved";
@@ -7643,15 +7652,24 @@ function CompanyFundingExecution() {
                             },
                             onError: async () => {
                               currentIntent.status = "timed_out";
-                              const { data: latest = [] } = await refetch();
-                              const recon = reconcileExecutionStatus(request.id, latest);
-                              if (recon.alreadyExecuted) {
-                                currentIntent.status = "resolved";
-                                toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير", "Transfer execution confirmed by server"));
-                                setSelectedId(null);
-                                setProof(null);
-                                setReference("");
-                                setIntent(null);
+                              try {
+                                const { data: latest = [] } = await refetch();
+                                const recon = reconcileExecutionStatus(request.id, latest);
+                                if (recon.alreadyExecuted) {
+                                  currentIntent.status = "resolved";
+                                  toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير", "Transfer execution confirmed by server"));
+                                  setSelectedId(null);
+                                  setProof(null);
+                                  setReference("");
+                                  setIntent(null);
+                                  return;
+                                }
+                                if (!recon.canRetry) {
+                                  toast.error(recon.reason);
+                                  return;
+                                }
+                              } catch {
+                                // network error on refetch: prohibit retry
                               }
                             },
                           }
@@ -7673,17 +7691,22 @@ function CompanyFundingExecution() {
                         disabled={checkingStatus}
                         onClick={async () => {
                           setCheckingStatus(true);
-                          const { data: latest = [] } = await refetch();
-                          setCheckingStatus(false);
-                          const recon = reconcileExecutionStatus(request.id, latest);
-                          if (recon.alreadyExecuted) {
-                            toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل", "Transfer execution confirmed by server"));
-                            setSelectedId(null);
-                            setProof(null);
-                            setReference("");
-                            setIntent(null);
-                          } else {
-                            toast.info(t("الطلب ما زال غير منفذ في الخادم؛ يمكنك إعادة المحاولة.", "Request is still unexecuted; safe to retry."));
+                          try {
+                            const { data: latest = [] } = await refetch();
+                            const recon = reconcileExecutionStatus(request.id, latest);
+                            if (recon.alreadyExecuted) {
+                              toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل", "Transfer execution confirmed by server"));
+                              setSelectedId(null);
+                              setProof(null);
+                              setReference("");
+                              setIntent(null);
+                            } else if (recon.canRetry) {
+                              toast.info(t("الطلب ما زال غير منفذ في الخادم؛ يمكنك إعادة المحاولة.", "Request is still unexecuted; safe to retry."));
+                            } else {
+                              toast.warning(recon.reason);
+                            }
+                          } finally {
+                            setCheckingStatus(false);
                           }
                         }}
                       >

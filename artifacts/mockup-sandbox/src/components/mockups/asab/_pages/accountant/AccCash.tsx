@@ -131,12 +131,22 @@ function FundingExecution() {
                         user?.id,
                       );
 
-                currentIntent.status = "in_flight";
-                currentIntent.attemptCount += 1;
+                // Check if operation is already in flight before dispatching
+                if (currentIntent.status === "in_flight") {
+                  toast.warning("العملية قيد التنفيذ بالفعل؛ يرجى الانتظار.");
+                  return;
+                }
                 setIntent(currentIntent);
 
                 execute.mutate(
-                  { id: request.id, reference: cleanRef, proof, intent: currentIntent },
+                  {
+                    id: request.id,
+                    reference: cleanRef,
+                    proof,
+                    proofHash,
+                    currentActorId: user?.id,
+                    intent: currentIntent,
+                  },
                   {
                     onSuccess: () => {
                       currentIntent.status = "resolved";
@@ -149,16 +159,24 @@ function FundingExecution() {
                     onError: async (error) => {
                       currentIntent.status = "timed_out";
                       // Automatic server reconciliation upon timeout/error
-                      const { data: latest = [] } = await refetch();
-                      const recon = reconcileExecutionStatus(request.id, latest);
-                      if (recon.alreadyExecuted) {
-                        currentIntent.status = "resolved";
-                        toast.success("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير");
-                        setSelectedId(null);
-                        setProof(null);
-                        setReference("");
-                        setIntent(null);
-                        return;
+                      try {
+                        const { data: latest = [] } = await refetch();
+                        const recon = reconcileExecutionStatus(request.id, latest);
+                        if (recon.alreadyExecuted) {
+                          currentIntent.status = "resolved";
+                          toast.success("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير");
+                          setSelectedId(null);
+                          setProof(null);
+                          setReference("");
+                          setIntent(null);
+                          return;
+                        }
+                        if (!recon.canRetry) {
+                          toast.error(`تعذر التحقق من حالة الخادم: ${recon.reason}`);
+                          return;
+                        }
+                      } catch {
+                        // network refetch failure: prohibit blind retry
                       }
                       toast.error(getErrorMessage(error, "ar"));
                     },
@@ -220,17 +238,22 @@ function FundingExecution() {
                   disabled={checkingStatus}
                   onClick={async () => {
                     setCheckingStatus(true);
-                    const { data: latest = [] } = await refetch();
-                    setCheckingStatus(false);
-                    const recon = reconcileExecutionStatus(request.id, latest);
-                    if (recon.alreadyExecuted) {
-                      toast.success("تم تأكيد تسجيل التحويل في الخادم بالفعل");
-                      setSelectedId(null);
-                      setProof(null);
-                      setReference("");
-                      setIntent(null);
-                    } else {
-                      toast.info("الطلب ما زال غير منفذ في الخادم؛ يمكنك إعادة المحاولة.");
+                    try {
+                      const { data: latest = [] } = await refetch();
+                      const recon = reconcileExecutionStatus(request.id, latest);
+                      if (recon.alreadyExecuted) {
+                        toast.success("تم تأكيد تسجيل التحويل في الخادم بالفعل");
+                        setSelectedId(null);
+                        setProof(null);
+                        setReference("");
+                        setIntent(null);
+                      } else if (recon.canRetry) {
+                        toast.info("الطلب ما زال غير منفذ في الخادم؛ يمكنك إعادة المحاولة.");
+                      } else {
+                        toast.warning(`حالة غير حاسمة: ${recon.reason}`);
+                      }
+                    } finally {
+                      setCheckingStatus(false);
                     }
                   }}
                   className="rounded border border-gray-300 px-2 py-1 text-gray-700 text-xs hover:bg-gray-50"
