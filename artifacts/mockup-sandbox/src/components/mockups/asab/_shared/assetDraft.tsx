@@ -26,6 +26,7 @@ export interface AssetDraft {
   notes: string;
   convertedAt: string;
   status: "draft" | "confirmed" | "discarded";
+  invoiceIndex?: number;
 }
 
 export interface AssetDraftCtxType {
@@ -91,12 +92,13 @@ export function AssetDraftProvider({ children }: { children: ReactNode }) {
     notes: "",
     convertedAt: d.createdAt,
     status: d.status,
+    invoiceIndex: (d as any).invoiceIndex ?? 0,
   }));
 
   const addDraft = (d: AssetDraft) => {
     convertMut.mutate({
       invoiceId: d.expenseOpId,
-      invoiceIndex: 0,
+      invoiceIndex: d.invoiceIndex ?? 0,
       assetName: d.assetName,
       category: ASSET_CAT_LABEL_TO_KEY[d.cat] ?? "other",
       usefulLifeMonths: d.usefulLife,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   AlertTriangle,
   Download,
@@ -17,9 +17,14 @@ import {
   useAccountantInventoryBrands,
   useEmployeeMovements,
   useSettleEmployeeBalance,
+  useApproveEmployeeSettlement,
+  useRejectEmployeeSettlement,
   useExportEmployeeStatement,
   useExportPayroll,
 } from "../../../../../api/queries";
+import { useAuth } from "../../../../../auth/AuthContext";
+import { grantedRoleKeys } from "../../../../../auth/roleAccess";
+import { createFinancialIntent } from "../../../../../api/idempotencyIntent.ts";
 import { Card } from "../../components/Card";
 import { Btn } from "../../components/Btn";
 import { Badge } from "../../components/Badge";
@@ -219,7 +224,11 @@ export function AccEmployees({ setModal }: PageProps) {
     selectedId,
     month || undefined,
   );
+  const { user, isRole } = useAuth();
+  const isHead = isRole("head");
   const settleMut = useSettleEmployeeBalance();
+  const approveSettlementMut = useApproveEmployeeSettlement();
+  const rejectSettlementMut = useRejectEmployeeSettlement();
   const exportStatementMut = useExportEmployeeStatement();
   const exportPayrollMut = useExportPayroll();
 
@@ -231,8 +240,129 @@ export function AccEmployees({ setModal }: PageProps) {
     h < 0 ? "text-red-600" : h > 0 ? "text-emerald-600" : "text-gray-400";
   const bal = statement?.balanceHalalas ?? emp?.balanceHalalas ?? 0;
 
-  const doSettle = () => {
-    if (selectedId) settleMut.mutate({ employeeId: selectedId });
+  const [showSettleModal, setShowSettleModal] = useState(false);
+  const [settleReason, setSettleReason] = useState("");
+  const [settleError, setSettleError] = useState("");
+  const activeSettlementIntentRef = useRef<ReturnType<typeof createFinancialIntent<{ employeeId: string; reason: string }>> | null>(null);
+
+  const [reviewSettlementId, setReviewSettlementId] = useState("");
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [reviewError, setReviewError] = useState("");
+  const [reviewSuccess, setReviewSuccess] = useState("");
+
+  const handleInitiateSettle = () => {
+    setSettleError("");
+    const cleanReason = settleReason.trim();
+    if (cleanReason.length < 3) {
+      setSettleError("سبب التسوية إلزامي ويجب ألا يقل عن 3 أحرف");
+      return;
+    }
+    if (!selectedId) return;
+
+    let intent = activeSettlementIntentRef.current;
+    if (!intent || intent.payload.employeeId !== selectedId || intent.payload.reason !== cleanReason) {
+      intent = createFinancialIntent({ employeeId: selectedId, reason: cleanReason });
+      activeSettlementIntentRef.current = intent;
+    }
+
+    settleMut.mutate(
+      { employeeId: selectedId, reason: cleanReason, intent },
+      {
+        onSuccess: (data: any) => {
+          activeSettlementIntentRef.current = null;
+          setShowSettleModal(false);
+          setSettleReason("");
+          setSettleError("");
+          if (data?.settlementId || data?.id) {
+            setReviewSettlementId(data?.settlementId ?? data?.id);
+          }
+        },
+        onError: (err: any) => {
+          const msg =
+            err?.response?.data?.messageAr ||
+            err?.response?.data?.message ||
+            err?.message ||
+            "فشل إرسال طلب التسوية";
+          setSettleError(msg);
+        },
+      },
+    );
+  };
+
+  const handleApproveSettlement = (sid: string) => {
+    setReviewError("");
+    setReviewSuccess("");
+    if (!sid) {
+      setReviewError("معرف طلب التسوية مطلوب للاعتماد");
+      return;
+    }
+    if (emp?.id === user?.id || (statement as any)?.createdByUserId === user?.id) {
+      setReviewError("لا يجوز لرئيس الحسابات اعتماد تسوية أنشأها بنفسه أو تخص حسابه الشخصي");
+      return;
+    }
+    approveSettlementMut.mutate(
+      {
+        settlementId: sid,
+        employeeId: selectedId ?? undefined,
+        actor: { roles: user ? grantedRoleKeys(user as any) : [], id: user?.id },
+      },
+      {
+        onSuccess: () => {
+          setReviewSuccess("تم اعتماد التسوية وترحيل القيد المحاسبي بنجاح");
+          setReviewError("");
+          setReviewSettlementId("");
+          setShowRejectForm(false);
+        },
+        onError: (err: any) => {
+          setReviewError(
+            err?.response?.data?.messageAr ||
+            err?.response?.data?.message ||
+            err?.message ||
+            "فشل اعتماد التسوية",
+          );
+        },
+      },
+    );
+  };
+
+  const handleRejectSettlement = (sid: string) => {
+    setReviewError("");
+    setReviewSuccess("");
+    if (!sid) {
+      setReviewError("معرف طلب التسوية مطلوب للرفض");
+      return;
+    }
+    const cleanRejection = rejectionReason.trim();
+    if (cleanRejection.length < 3) {
+      setReviewError("سبب رفض التسوية إلزامي ويجب ألا يقل عن 3 أحرف");
+      return;
+    }
+    rejectSettlementMut.mutate(
+      {
+        settlementId: sid,
+        employeeId: selectedId ?? undefined,
+        rejectionReason: cleanRejection,
+        actor: { roles: user ? grantedRoleKeys(user as any) : [], id: user?.id },
+      },
+      {
+        onSuccess: () => {
+          setReviewSuccess("تم رفض طلب التسوية دون إنشاء أي حركة مالية");
+          setReviewError("");
+          setReviewSettlementId("");
+          setRejectionReason("");
+          setShowRejectForm(false);
+        },
+        onError: (err: any) => {
+          setReviewError(
+            err?.response?.data?.messageAr ||
+            err?.response?.data?.message ||
+            err?.message ||
+            "فشل رفض التسوية",
+          );
+        },
+      },
+    );
   };
 
   return (
@@ -401,12 +531,18 @@ export function AccEmployees({ setModal }: PageProps) {
                     <Plus size={11} /> إضافة حركة
                   </button>
                   <button
-                    onClick={doSettle}
-                    disabled={settleMut.isPending || bal === 0}
+                    onClick={() => {
+                      setShowSettleModal(true);
+                      setSettleError("");
+                    }}
+                    disabled={settleMut.isPending || bal === 0 || statement?.settlementStatus === "under_review"}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 disabled:opacity-40"
                   >
-                    <Check size={11} /> تسوية الرصيد
+                    <Check size={11} /> طلب تسوية
                   </button>
+                  {statement?.settlementStatus === "under_review" && (
+                    <span className="text-xs font-semibold text-amber-700">طلب التسوية قيد مراجعة رئيس الحسابات</span>
+                  )}
                   <button
                     onClick={() =>
                       selectedId &&
@@ -442,6 +578,111 @@ export function AccEmployees({ setModal }: PageProps) {
               }
             >
               <div className="p-4">
+                {showSettleModal && (
+                  <div className="mb-4 p-4 rounded-xl border border-emerald-200 bg-emerald-50/50 space-y-3" dir="rtl">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-xs font-bold text-emerald-900">إنشاء طلب تسوية رصيد الموظف</h4>
+                      <button
+                        type="button"
+                        onClick={() => setShowSettleModal(false)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-600">
+                      رصيد الموظف القائم: <span className="font-semibold">{fmtAmt(bal)} ر.س</span>. لا يتم ترحيل أي أثر مالي إلا بعد اعتماد رئيس الحسابات.
+                    </p>
+                    <input
+                      type="text"
+                      required
+                      minLength={3}
+                      value={settleReason}
+                      onChange={(e) => setSettleReason(e.target.value)}
+                      placeholder="سبب طلب التسوية ومبرر الإجراء (إلزامي)"
+                      className="w-full text-xs p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white"
+                    />
+                    {settleError && <p className="text-xs text-red-600">{settleError}</p>}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleInitiateSettle}
+                        disabled={settleMut.isPending || settleReason.trim().length < 3}
+                        className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        {settleMut.isPending ? "جاري الإرسال..." : activeSettlementIntentRef.current ? "إعادة المحاولة (نفس المفتاح)" : "تأكيد طلب التسوية"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowSettleModal(false)}
+                        className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-200"
+                      >
+                        إلغاء
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {isHead && statement?.settlementStatus === "under_review" && (
+                  <div className="mb-4 p-4 rounded-xl border border-amber-200 bg-amber-50/60 space-y-3" dir="rtl">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-xs font-bold text-amber-900">
+                        لوحة مراجعة واعتماد طلب التسوية (رئيس الحسابات)
+                      </h4>
+                    </div>
+                    <p className="text-xs text-gray-600">
+                      يوجد طلب تسوية معلق لهذا الموظف. يتطلب الاعتماد صلاحية رئيس الحسابات ولن يقبل النظام الاعتماد الذاتي.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        type="text"
+                        value={reviewSettlementId || (statement as any)?.settlementId || ""}
+                        onChange={(e) => setReviewSettlementId(e.target.value)}
+                        placeholder="معرف طلب التسوية (Settlement ID)"
+                        className="text-xs p-2 rounded-lg border border-amber-300 bg-white w-64 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleApproveSettlement(reviewSettlementId || (statement as any)?.settlementId)}
+                        disabled={approveSettlementMut.isPending || !(reviewSettlementId || (statement as any)?.settlementId)}
+                        className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        {approveSettlementMut.isPending ? "جاري الاعتماد..." : "اعتماد التسوية وترحيل القيد"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowRejectForm(!showRejectForm)}
+                        className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700"
+                      >
+                        رفض التسوية...
+                      </button>
+                    </div>
+                    {showRejectForm && (
+                      <div className="p-3 bg-white rounded-lg border border-red-200 space-y-2 mt-2">
+                        <input
+                          type="text"
+                          value={rejectionReason}
+                          onChange={(e) => setRejectionReason(e.target.value)}
+                          placeholder="سبب رفض التسوية (إلزامي)"
+                          className="w-full text-xs p-2 rounded border border-gray-300 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRejectSettlement(reviewSettlementId || (statement as any)?.settlementId)}
+                          disabled={rejectSettlementMut.isPending || rejectionReason.trim().length < 3}
+                          className="px-3 py-1 bg-red-700 text-white rounded text-xs font-semibold hover:bg-red-800 disabled:opacity-50"
+                        >
+                          {rejectSettlementMut.isPending ? "جاري الرفض..." : "تأكيد الرفض (دون أثر مالي)"}
+                        </button>
+                      </div>
+                    )}
+                    {reviewError && <p className="text-xs text-red-600">{reviewError}</p>}
+                    {reviewSuccess && <p className="text-xs text-emerald-700">{reviewSuccess}</p>}
+                    <p className="text-[10px] text-amber-800">
+                      ملاحظة فنية: مسار Backend 1c484bd0 لا يوفر قائمة لطلبات التسوية ويحجب المعرف من كشف الحساب. أدخل المعرف لتنفيذ الاعتماد أو الرفض عبر POST /company/me/employee-settlements/{'{id}'}/approve.
+                    </p>
+                  </div>
+                )}
                 <div className="bg-gray-50 rounded-xl p-3 mb-3 grid grid-cols-4 gap-2 text-center">
                   <div>
                     <p className="text-[10px] text-gray-400">الراتب</p>

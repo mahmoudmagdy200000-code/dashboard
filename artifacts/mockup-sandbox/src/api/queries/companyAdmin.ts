@@ -7,6 +7,13 @@ import { toast } from "sonner";
 import { api } from "../client";
 import { getErrorMessage } from "../errors";
 import { queryKeys, type CompanyUsersFilter } from "./keys";
+import {
+  parsePlansResponse,
+  parseSubscriptionResponse,
+  parseUsersResponse,
+  parseInvitationsResponse,
+  safeArray,
+} from "../responseContracts";
 
 // ─── Types (sensible defaults — backend may add more fields) ─────────────────
 export interface CompanyAdminDashboard {
@@ -32,14 +39,20 @@ export interface CompanyAdminDashboard {
 
 export interface Plan {
   id: string;
+  code?: string;
   name: string;
   nameAr?: string;
+  nameEn?: string;
   priceMonthlyHalalas: number | null;
   priceAnnualHalalas: number | null;
+  annualDiscountPct?: number;
   features?: string[];
   featuresAr?: string[];
+  featureObjects?: Array<{ labelAr?: string; labelEn?: string; isHighlighted?: boolean }>;
   maxBranches?: number | null;
   maxUsers?: number | null;
+  maxBrands?: number | null;
+  storageGb?: number | null;
   isCurrent?: boolean;
 }
 
@@ -47,12 +60,28 @@ export interface Subscription {
   id: string;
   companyId: string;
   planId: string;
+  planCode?: string;
   planName?: string;
+  planNameAr?: string;
+  planNameEn?: string;
   status: string;
   billingCycle: "monthly" | "annual";
+  currentPeriodStart?: string;
   currentPeriodEnd: string;
+  trialEndsAt?: string | null;
   daysRemaining?: number;
+  cancelAtPeriodEnd?: boolean;
+  cancelledAt?: string | null;
+  autoRenew?: boolean;
+  contractNumber?: string;
   usage?: Record<string, { used: number; max: number | null }>;
+  nextInvoice?: {
+    issueDate?: string;
+    amountHalalas?: number;
+    currency?: string;
+  };
+  subscription?: Record<string, any>;
+  plan?: Record<string, any>;
 }
 
 export interface CompanyUser {
@@ -147,8 +176,25 @@ export function useCompanySubscription() {
   return useQuery({
     queryKey: queryKeys.subscription,
     queryFn: async () => {
-      const res = await api.get<Subscription>("/company/me/subscription");
-      return res.data;
+      try {
+        const res = await api.get<unknown>("/company/me/subscription");
+        return parseSubscriptionResponse(res.data);
+      } catch (err: any) {
+        if (
+          err?.response?.status === 404 ||
+          err?.status === 404 ||
+          err?.code === "NOT_FOUND" ||
+          err?.response?.data?.code === "NOT_FOUND"
+        ) {
+          // Company has no active subscription provisioned (NOT_FOUND)
+          return null;
+        }
+        throw err;
+      }
+    },
+    retry: (failureCount, error: any) => {
+      if (error?.response?.status === 404 || error?.status === 404) return false;
+      return failureCount < 2;
     },
   });
 }
@@ -157,8 +203,8 @@ export function useCompanyPlans() {
   return useQuery({
     queryKey: queryKeys.plans,
     queryFn: async () => {
-      const res = await api.get<Plan[]>("/plans");
-      return res.data;
+      const res = await api.get<unknown>("/plans");
+      return parsePlansResponse(res.data);
     },
     staleTime: 60_000,
   });
@@ -283,12 +329,8 @@ export function useCompanyUsers(filter: CompanyUsersFilter = {}) {
   return useQuery({
     queryKey: queryKeys.companyUsers(filter),
     queryFn: async () => {
-      const res = await api.get<{ data: CompanyUser[] } | CompanyUser[]>(
-        "/company/me/users",
-        { params: filter },
-      );
-      const d = res.data as { data?: CompanyUser[] } | CompanyUser[];
-      return Array.isArray(d) ? d : (d.data ?? []);
+      const res = await api.get<unknown>("/company/me/users", { params: filter });
+      return parseUsersResponse(res.data);
     },
   });
 }
@@ -389,13 +431,8 @@ export function useCompanyInvitations() {
   return useQuery({
     queryKey: queryKeys.companyInvitations,
     queryFn: async () => {
-      const res = await api.get<
-        { data: CompanyInvitation[] } | CompanyInvitation[]
-      >("/company/invitations");
-      const d = res.data as
-        | { data?: CompanyInvitation[] }
-        | CompanyInvitation[];
-      return Array.isArray(d) ? d : (d.data ?? []);
+      const res = await api.get<unknown>("/company/invitations");
+      return parseInvitationsResponse(res.data);
     },
   });
 }
@@ -514,27 +551,9 @@ export function useCompanyBrands() {
   return useQuery({
     queryKey: queryKeys.companyBrands,
     queryFn: async () => {
-      const res = await api.get<{ data: Brand[] } | Brand[]>(
-        "/company/me/brands",
-      );
-      const d = res.data as { data?: Brand[] } | Brand[];
-      return Array.isArray(d) ? d : (d.data ?? []);
+      const res = await api.get<unknown>("/company/me/brands");
+      return safeArray<Brand>(res.data, "GET /company/me/brands");
     },
-  });
-}
-
-export function useCreateBrand() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: { name: string; color?: string; abbr?: string }) => {
-      const res = await api.post<Brand>("/company/me/brands", body);
-      return res.data;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.companyBrands });
-      toast.success("تم إضافة العلامة التجارية");
-    },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
   });
 }
 
@@ -562,24 +581,6 @@ export function useDeleteBrand() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.companyBrands });
       toast.success("تم حذف العلامة");
-    },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
-  });
-}
-
-export function useCreateRestaurant() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: { brandId: string; name: string }) => {
-      const res = await api.post<Restaurant>(
-        "/company/me/restaurants",
-        body,
-      );
-      return res.data;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.companyBrands });
-      toast.success("تم إضافة المطعم");
     },
     onError: (e) => toast.error(getErrorMessage(e, "ar")),
   });
@@ -703,11 +704,8 @@ export function useCompanyModules() {
   return useQuery({
     queryKey: queryKeys.companyModules,
     queryFn: async () => {
-      const res = await api.get<{ data: CompanyModule[] } | CompanyModule[]>(
-        "/company/me/modules",
-      );
-      const d = res.data as { data?: CompanyModule[] } | CompanyModule[];
-      return Array.isArray(d) ? d : (d.data ?? []);
+      const res = await api.get<unknown>("/company/me/modules");
+      return safeArray<CompanyModule>(res.data, "GET /company/me/modules");
     },
   });
 }

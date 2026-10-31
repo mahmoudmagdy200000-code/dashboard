@@ -36,6 +36,85 @@ export function validateBranchCreate(
   return { valid: true };
 }
 
+// ─── DB-R04: Brand & Restaurant Creation Validation & Role Guard ─────────────
+/**
+ * DB-R04 / W1-C: Role permission check for Brand and Restaurant creation.
+ * Only Platform Admin is permitted to create Brands and Restaurants.
+ * Company Admin is explicitly denied creation functionality.
+ */
+export function canRoleCreateBrandOrRestaurant(roleKey: string): boolean {
+  return roleKey === "admin" || roleKey === "platform-admin" || roleKey === "super-admin";
+}
+
+export interface BrandCreateDraft {
+  name: string;
+  color?: string;
+  abbr?: string;
+}
+
+export function validateBrandCreate(
+  draft: BrandCreateDraft,
+  lang: "ar" | "en" = "ar"
+): { valid: boolean; error?: string; payload?: { name: string; color?: string; abbr?: string } } {
+  const trimmedName = draft.name ? draft.name.trim() : "";
+  if (!trimmedName || trimmedName.length < 2) {
+    return {
+      valid: false,
+      error: lang === "ar" ? "اسم العلامة التجارية يجب أن يحتوي على حرفين على الأقل" : "Brand name must be at least 2 characters",
+    };
+  }
+
+  let color = draft.color?.trim();
+  if (color && !/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(color)) {
+    return {
+      valid: false,
+      error: lang === "ar" ? "رمز اللون غير صالح، يرجى استخدام صيغة Hex (مثل #7C3AED)" : "Invalid color code, please use Hex format (e.g. #7C3AED)",
+    };
+  }
+
+  const abbr = draft.abbr?.trim() || trimmedName.slice(0, 2);
+
+  return {
+    valid: true,
+    payload: {
+      name: trimmedName,
+      color: color || "#7C3AED",
+      abbr,
+    },
+  };
+}
+
+export interface RestaurantCreateDraft {
+  brandId: string;
+  name: string;
+}
+
+export function validateRestaurantCreate(
+  draft: RestaurantCreateDraft,
+  lang: "ar" | "en" = "ar"
+): { valid: boolean; error?: string; payload?: { brandId: string; name: string } } {
+  if (!draft.brandId || !draft.brandId.trim()) {
+    return {
+      valid: false,
+      error: lang === "ar" ? "يرجى تحديد العلامة التجارية التابع لها المطعم" : "Please select the parent brand for the restaurant",
+    };
+  }
+  const trimmedName = draft.name ? draft.name.trim() : "";
+  if (!trimmedName || trimmedName.length < 2) {
+    return {
+      valid: false,
+      error: lang === "ar" ? "اسم المطعم يجب أن يحتوي على حرفين على الأقل" : "Restaurant name must be at least 2 characters",
+    };
+  }
+  return {
+    valid: true,
+    payload: {
+      brandId: draft.brandId.trim(),
+      name: trimmedName,
+    },
+  };
+}
+
 // ─── CA-F08: User Edit Validation ─────────────────────────────────────────────
 export interface UserEditDraft {
   id: string;
@@ -172,7 +251,7 @@ export function calculateBillingKpis(
 
   // Prioritize company-wide totals from GET /company/me/billing/summary over single-page sum
   const totalPaid = summary?.totalPaidHalalas != null
-    ? Math.round(summary.totalPaidHalalas / 100)
+    ? summary.totalPaidHalalas / 100
     : paid.reduce((sum, i) => sum + i.amount, 0);
 
   const isSummaryBasedPaid = summary?.totalPaidHalalas != null;
@@ -185,7 +264,7 @@ export function calculateBillingKpis(
 
   // If backend ever provides company-wide outstandingHalalas in summary, use it:
   const companyTotalDue = summary?.outstandingHalalas != null
-    ? Math.round(summary.outstandingHalalas / 100)
+    ? summary.outstandingHalalas / 100
     : null;
 
   const hasPaginationTotal = totalCountMeta != null;
@@ -270,9 +349,12 @@ export function formatPlanPrice(
       isCustom: true,
     };
   }
-  const sar = Math.round(priceHalalas / 100);
+  const sar = priceHalalas / 100;
   return {
-    formatted: sar.toLocaleString("en-US"),
+    formatted: sar.toLocaleString("en-US", {
+      minimumFractionDigits: sar % 1 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
+    }),
     isCustom: false,
   };
 }

@@ -39,3 +39,16 @@ export function formatSAR(
   const fmt = lang === "ar" ? arFormatter : enFormatter;
   return fmt.format(sar);
 }
+
+/** Formats halalas to SAR with exact 2 decimal places without improper rounding truncation. */
+export function formatHalalasAmount(
+  halalas: number | null | undefined,
+  lang: "ar" | "en" = "en",
+): string {
+  if (halalas == null || isNaN(halalas)) return "—";
+  const sar = halalas / 100;
+  return sar.toLocaleString(lang === "ar" ? "ar-SA" : "en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}

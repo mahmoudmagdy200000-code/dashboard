@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   AlertTriangle,
   X,
@@ -34,39 +35,190 @@ import { EmptyState } from "../../components/EmptyState";
 import { fmtAmt } from "../../_shared/formatters";
 import { BRANCHES } from "../../_shared/filterOps";
 import type { PageProps } from "../../_shared/types";
+import { useAuth } from "../../../../../auth/AuthContext";
+import { grantedRoleKeys } from "../../../../../auth/roleAccess.ts";
+import { getErrorMessage } from "../../../../../api/errors";
+import { useAccountantFundingRequests, useExecuteFundingRequest } from "../../../../../api/queries/fundingRequests";
+import { createFinancialIntent, type FinancialIntent } from "../../../../../api/idempotencyIntent.ts";
+import { checkCustodyWriteAuthorization, type DirectDebitSafetyContext } from "../../../../../api/queries/cashTransactionContract.ts";
 
-// «تعزيز / صرف» modal (T09 §B3).
-export function AsabCashTxnModal({ custodyId, custodianName, remainingHalalas, onClose }: { custodyId: string; custodianName: string; remainingHalalas: number; onClose: () => void }) {
+function FundingExecution() {
+  const { isRole } = useAuth();
+  const accountant = isRole("accountant");
+  const { data: requests = [], isError } = useAccountantFundingRequests(accountant);
+  const execute = useExecuteFundingRequest();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [reference, setReference] = useState("");
+  const [proof, setProof] = useState<File | null>(null);
+  const [intent, setIntent] = useState<FinancialIntent<any> | null>(null);
+
+  if (!accountant) return null;
+  return (
+    <section className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3" dir="rtl">
+      <h3 className="font-bold text-gray-900 text-sm">طلبات تغذية عهدة الفرع</h3>
+      <p className="text-xs text-gray-600">إرسال المحاسب يوثق التحويل فقط. يزداد الرصيد بعد تأكيد مدير الفرع الاستلام.</p>
+      {isError && <p role="alert" className="text-xs text-red-700">تعذر تحميل الطلبات المخولة. أعد المحاولة لاحقًا.</p>}
+      {!isError && requests.length === 0 && <p className="text-xs text-gray-500">لا توجد طلبات معتمدة ضمن صلاحياتك.</p>}
+      {requests.map((request) => (
+        <div key={request.id} className="border border-gray-200 rounded-lg p-3 space-y-2">
+          <div className="flex justify-between gap-3 text-sm">
+            <span>{request.branchName ?? "الفرع"} — {request.amount} ر.س</span>
+            <span className="text-xs font-semibold">
+              {request.receivedAt ? "استلم المدير واكتمل الترحيل" : request.executedAt ? "أُرسل، بانتظار تأكيد المدير" : "معتمد، بانتظار إرسال المحاسب"}
+            </span>
+          </div>
+          {request.transferReference && <p className="text-xs text-gray-600">مرجع التحويل: {request.transferReference}</p>}
+          {request.canExecute && (
+            <button
+              type="button"
+              className="text-xs text-blue-700 underline"
+              onClick={() => {
+                setSelectedId(request.id);
+                setReference("");
+                setProof(null);
+                setIntent(null);
+              }}
+            >
+              تنفيذ وإرسال التغذية
+            </button>
+          )}
+          {selectedId === request.id && request.canExecute && (
+            <form
+              className="flex flex-wrap gap-2 items-center"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const cleanRef = reference.trim();
+                if (!proof || cleanRef.length < 2) return;
+
+                // Bind intent to form lifecycle: reuse on retry, create once per submission
+                const currentIntent =
+                  intent && intent.payload?.reference === cleanRef
+                    ? intent
+                    : createFinancialIntent({ requestId: request.id, reference: cleanRef });
+                setIntent(currentIntent);
+
+                execute.mutate(
+                  { id: request.id, reference: cleanRef, proof, intent: currentIntent },
+                  {
+                    onSuccess: () => {
+                      toast.success("تم توثيق الإرسال؛ بانتظار تأكيد المدير");
+                      setSelectedId(null);
+                      setProof(null);
+                      setReference("");
+                      setIntent(null);
+                    },
+                    onError: (error) => toast.error(getErrorMessage(error, "ar")),
+                  },
+                );
+              }}
+            >
+              <input
+                aria-label="مرجع التحويل"
+                required
+                minLength={2}
+                maxLength={120}
+                value={reference}
+                onChange={(event) => {
+                  setReference(event.target.value);
+                  // Payload modification resets intent to prevent key collision
+                  if (intent) setIntent(null);
+                }}
+                placeholder="مرجع التحويل أو التسليم"
+                className="border rounded px-2 py-1 text-xs"
+              />
+              <input
+                aria-label="إثبات التحويل"
+                required
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={(event) => {
+                  setProof(event.target.files?.[0] ?? null);
+                  // Changing proof resets intent
+                  if (intent) setIntent(null);
+                }}
+                className="text-xs"
+              />
+              <button
+                type="submit"
+                disabled={execute.isPending || !proof}
+                className="rounded bg-blue-600 px-3 py-1 text-white text-xs disabled:opacity-50"
+              >
+                {intent && execute.isError ? "إعادة المحاولة (نفس المفتاح)" : "تسجيل الإرسال"}
+              </button>
+            </form>
+          )}
+        </div>
+      ))}
+    </section>
+  );
+}
+
+// Direct custody movements are limited to permitted disbursements (T09 §B3).
+export function AsabCashTxnModal({
+  custodyId,
+  custodianName,
+  remainingHalalas,
+  brandId,
+  onClose,
+}: {
+  custodyId: string;
+  custodianName: string;
+  remainingHalalas: number;
+  brandId?: string;
+  onClose: () => void;
+}) {
+  const { user, isRole } = useAuth();
   const createMut = useCreateCashTransaction();
-  const [txnType, setTxnType] = useState<"credit" | "debit">("credit");
+  const [intent] = useState(() => createFinancialIntent({ custodyId, txnType: "debit" }));
   const [amount, setAmount] = useState("");
   const [description, setDesc] = useState("");
-  const [fromTreasury, setFromTreasury] = useState(true);
   const amountH = Math.round((parseFloat(amount) || 0) * 100);
-  const overdraw = txnType === "debit" && amountH > remainingHalalas;
+  const overdraw = amountH > remainingHalalas;
+  const actorRoles = user ? grantedRoleKeys(user as any) : [];
+  const isCustodyWriteAuthorized = checkCustodyWriteAuthorization(
+    { roles: actorRoles, brandIds: user?.brandIds, id: user?.id },
+    { brandId, id: custodyId },
+  );
   const submit = () => {
-    if (amountH < 1 || overdraw) return;
-    createMut.mutate({ custodyId, payload: { txnType, amount: amountH, description: description.trim() || undefined, source: txnType === "credit" && fromTreasury ? "treasury" : "manual" } }, { onSuccess: () => onClose() });
+    if (amountH < 1 || overdraw || !isCustodyWriteAuthorized) return;
+    const context: DirectDebitSafetyContext = {
+      custody: { id: custodyId, brandId, remainingHalalas },
+      actor: {
+        roles: actorRoles,
+        brandIds: user?.brandIds,
+        isCustodyWriteAuthorized,
+      },
+    };
+    createMut.mutate(
+      {
+        custodyId,
+        payload: { txnType: "debit", amount: amountH, description: description.trim() || undefined, source: "manual" },
+        context,
+        intent,
+      },
+      { onSuccess: () => onClose() },
+    );
   };
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()} dir="rtl">
-        <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">حركة عهدة — {custodianName}</h3><button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button></div>
+        <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">صرف من العهدة — {custodianName}</h3><button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button></div>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => setTxnType("credit")} className={`px-3 py-2.5 rounded-xl border text-xs font-bold ${txnType === "credit" ? "bg-emerald-50 border-emerald-300 text-emerald-700" : "border-gray-200 text-gray-500"}`}>⬆ تعزيز عهدة</button>
-            <button onClick={() => setTxnType("debit")} className={`px-3 py-2.5 rounded-xl border text-xs font-bold ${txnType === "debit" ? "bg-red-50 border-red-300 text-red-700" : "border-gray-200 text-gray-500"}`}>⬇ صرف</button>
-          </div>
+          <p className="text-xs text-amber-700">تعزيز العهدة يتم عبر طلب تغذية معتمد، ثم إرسال المحاسب وتأكيد استلام مدير الفرع. هذا المسار غير متاح من شاشة الحركات.</p>
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">المبلغ (ر.س)</label>
             <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono" />
             {overdraw && <p className="text-[10px] text-red-600 mt-1">المبلغ يتجاوز المتبقي ({fmtAmt(remainingHalalas / 100)} ر.س)</p>}
           </div>
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">البيان (اختياري)</label>
-            <input value={description} onChange={e => setDesc(e.target.value)} placeholder={txnType === "credit" ? "تعزيز عهدة من الخزينة" : "بيان الصرف..."} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" /></div>
-          {txnType === "credit" && <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer"><input type="checkbox" checked={fromTreasury} onChange={e => setFromTreasury(e.target.checked)} /> تعزيز من الخزينة</label>}
+            <input value={description} onChange={e => setDesc(e.target.value)} placeholder="بيان الصرف..." className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" /></div>
+          {!isCustodyWriteAuthorized && (
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 font-medium">
+              صرف العهدة مقتصر على مالك/مدير العلامة المصرح له، ولا يجوز للمحاسب الصرف المباشر بدون تفويض.
+            </p>
+          )}
           <div className="flex justify-end gap-2 pt-1">
             <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-xs font-semibold hover:bg-gray-50">إلغاء</button>
-            <Btn variant="primary" onClick={submit} disabled={amountH < 1 || overdraw || createMut.isPending}><Check size={11} /> تسجيل</Btn>
+            <Btn variant="primary" onClick={submit} disabled={amountH < 1 || overdraw || !isCustodyWriteAuthorized || createMut.isPending}><Check size={11} /> تسجيل</Btn>
           </div>
         </div>
       </div>
@@ -110,7 +262,7 @@ export function AsabCustodyCard({ custody }: { custody: any }) {
             <span className={`text-xs font-bold font-mono ${isLow ? "text-red-600" : "text-emerald-600"}`}>{fmtAmt(custody.remainingHalalas / 100)} ر.س متبقٍ</span>
           </div>
         </div>
-        <button onClick={() => setShowTxn(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold hover:bg-purple-100 flex-shrink-0"><Plus size={10} /> حركة</button>
+        <button onClick={() => setShowTxn(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold hover:bg-purple-100 flex-shrink-0"><Plus size={10} /> صرف</button>
         <Btn size="sm" onClick={() => setOpen(!open)}>{open ? <ChevronUp size={12} /> : <ChevronDown size={12} />} المعاملات</Btn>
       </div>
       {open && (
@@ -198,6 +350,7 @@ export function AccCash({ }: PageProps) {
 
   return (
     <div className="space-y-5">
+      <FundingExecution />
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-800">إدارة العهد النقدية</h2>
         <button onClick={() => exportCashMut.mutate({ brandId: brandFilter || undefined, branchId: branchFilter || undefined })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><FileText size={12} /> ملخص العهد Excel</button>

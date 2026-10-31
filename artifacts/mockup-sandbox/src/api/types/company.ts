@@ -907,6 +907,7 @@ export interface Employee {
   status: "active" | "inactive" | string;
   balanceHalalas: number;
   balanceCaption: LabelCaption;
+  settlementStatus?: "none" | "under_review" | "approved" | "rejected" | string | null;
 }
 
 /** Manual movement categories (postable via A3); system keys are read-only. */
@@ -949,6 +950,7 @@ export interface EmployeeStatement {
   balanceCaption: LabelCaption;
   /** Primary flag from backend v3.5 */
   hasDebitBalance?: boolean;
+  settlementStatus?: "under_review" | "approved" | null;
   /** Standing balance < 0 → render the salary-deduction banner (fallback). */
   autoDeductFromSalary?: boolean;
   totalCredit: number;
@@ -968,17 +970,21 @@ export interface EmployeeMovementInput {
   date?: string;
 }
 
-/** A4 — settle-balance response. */
+/** A4 — pending settlement request; financial posting follows Head Accountant approval. */
 export interface SettleBalanceResult {
-  id: string;
-  employeeId: string;
-  settledHalalas: number;
-  movementType: "credit" | "debit";
-  category: "settlement";
-  categoryLabelAr: string;
-  ref: string;
-  balanceHalalas: number;
-  balanceCaption: LabelCaption;
+  id?: string;
+  settlementId?: string;
+  employeeId?: string;
+  settledHalalas?: number;
+  amountHalalas?: number;
+  movementType?: "credit" | "debit";
+  category?: "settlement";
+  categoryLabelAr?: string;
+  ref?: string;
+  status: "pending" | "approved" | "rejected";
+  balanceModified: boolean;
+  balanceHalalas?: number;
+  balanceCaption?: LabelCaption;
 }
 
 // ─── Cash Custody (T09-B) ──────────────────────────────────────────────────────

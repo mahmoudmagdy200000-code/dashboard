@@ -73,13 +73,13 @@ export function OpRow({ op, onView, onApprove, onReject }: OpRowProps) {
         {op.moduleKey === "sales" && (
           <div className="flex items-center gap-2 mt-1.5 flex-wrap text-[11px]">
             {op.salesBreakdown ? (<>
-              <span className="text-gray-500">💵 {t("نقدي", "Cash")}: <span className="font-mono text-gray-700">{fmtAmt(Math.round(op.salesBreakdown.cashHalalas / 100))}</span></span>
-              <span className="text-gray-500">🏦 {t("كارت", "Card")}: <span className="font-mono text-gray-700">{fmtAmt(Math.round(op.salesBreakdown.cardHalalas / 100))}</span></span>
-              <span className="text-gray-500">🛵 {t("تطبيقات", "Apps")}: <span className="font-mono text-gray-700">{fmtAmt(Math.round(op.salesBreakdown.appsHalalas / 100))}</span></span>
+              <span className="text-gray-500">💵 {t("نقدي", "Cash")}: <span className="font-mono text-gray-700">{fmtAmt(op.salesBreakdown.cashHalalas / 100)}</span></span>
+              <span className="text-gray-500">🏦 {t("كارت", "Card")}: <span className="font-mono text-gray-700">{fmtAmt(op.salesBreakdown.cardHalalas / 100)}</span></span>
+              <span className="text-gray-500">🛵 {t("تطبيقات", "Apps")}: <span className="font-mono text-gray-700">{fmtAmt(op.salesBreakdown.appsHalalas / 100)}</span></span>
               <span className="text-gray-300">·</span>
-              <span className="text-gray-500">{t("محصّل", "Collected")}: <span className="font-mono text-gray-700">{fmtAmt(Math.round(op.salesBreakdown.collectedHalalas / 100))}</span></span>
+              <span className="text-gray-500">{t("محصّل", "Collected")}: <span className="font-mono text-gray-700">{fmtAmt(op.salesBreakdown.collectedHalalas / 100)}</span></span>
               <span className={`font-mono font-bold ${op.salesBreakdown.varianceHalalas === 0 ? "text-emerald-600" : "text-red-600"}`}>
-                {op.salesBreakdown.varianceHalalas === 0 ? "✓ 0" : `${op.salesBreakdown.varianceHalalas > 0 ? "+" : ""}${fmtAmt(Math.round(op.salesBreakdown.varianceHalalas / 100))}`}
+                {op.salesBreakdown.varianceHalalas === 0 ? "✓ 0" : `${op.salesBreakdown.varianceHalalas > 0 ? "+" : ""}${fmtAmt(op.salesBreakdown.varianceHalalas / 100)}`}
               </span>
             </>) : (
               <span className="text-gray-300">{t("لم تتم التسوية بعد — «—»", "Not reconciled — «—»")}</span>

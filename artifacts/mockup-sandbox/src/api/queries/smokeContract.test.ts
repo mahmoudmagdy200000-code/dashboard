@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { runStagingSmoke, validStringArray } from "../../../../../scripts/smoke-test-staging";
+import { runStagingSmoke, validStringArray } from "../../../../../scripts/smoke-test-staging.ts";
 
 test("T028: Contract Test - smoke-test-staging.ts matches actual Dashboard hooks and endpoints", () => {
   const smokePath = new URL("../../../../../scripts/smoke-test-staging.ts", import.meta.url);

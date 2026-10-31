@@ -1,6 +1,6 @@
 import type { RoleKey } from "../api/types";
 import type { QueryClient } from "@tanstack/react-query";
-import { SUPPLIER_PORTAL_ENABLED } from "../featureFlags";
+import { SUPPLIER_PORTAL_ENABLED } from "../featureFlags.ts";
 
 type Identity = { roles?: unknown; id?: unknown; companyId?: unknown } | null | undefined;
 
