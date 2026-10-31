@@ -92,9 +92,17 @@ function FundingExecution() {
 
                 // Bind intent to form lifecycle: reuse on retry, create once per submission
                 const currentIntent =
-                  intent && intent.payload?.reference === cleanRef
+                  intent &&
+                  intent.payload?.reference === cleanRef &&
+                  intent.payload?.proofName === proof.name &&
+                  intent.payload?.proofSize === proof.size
                     ? intent
-                    : createFinancialIntent({ requestId: request.id, reference: cleanRef });
+                    : createFinancialIntent({
+                        requestId: request.id,
+                        reference: cleanRef,
+                        proofName: proof.name,
+                        proofSize: proof.size,
+                      });
                 setIntent(currentIntent);
 
                 execute.mutate(

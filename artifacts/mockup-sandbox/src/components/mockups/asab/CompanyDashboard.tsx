@@ -177,10 +177,10 @@ const BG_CONTENT   = "#F0F4FA";
 // ═══════════════════════════════════════════════════
 // PRIMITIVES
 // ═══════════════════════════════════════════════════
-function Btn({ children, onClick, variant="ghost", size="md", disabled=false }:{
+function Btn({ children, onClick, variant="ghost", size="md", disabled=false, type }:{
   children:ReactNode; onClick?:(e:ReactMouseEvent<HTMLButtonElement>)=>void;
   variant?:"primary"|"success"|"danger"|"ghost"|"outline"|"amber"|"cyan";
-  size?:"sm"|"md"; disabled?:boolean;
+  size?:"sm"|"md"; disabled?:boolean; type?:"button"|"submit"|"reset";
 }) {
   const base  = "inline-flex items-center gap-1.5 font-semibold cursor-pointer border transition-all rounded-lg whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed";
   const sizes = { sm:"px-3 py-1.5 text-xs", md:"px-4 py-2 text-sm" };
@@ -193,7 +193,7 @@ function Btn({ children, onClick, variant="ghost", size="md", disabled=false }:{
     outline:"bg-white text-gray-700 border-gray-300 hover:bg-gray-50",
     cyan:"bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100",
   };
-  return <button disabled={disabled} onClick={onClick} className={`${base} ${sizes[size]} ${variants[variant]}`}>{children}</button>;
+  return <button type={type} disabled={disabled} onClick={onClick} className={`${base} ${sizes[size]} ${variants[variant]}`}>{children}</button>;
 }
 
 function Badge({ children, className="" }:{ children:ReactNode; className?:string }) {
@@ -6874,6 +6874,222 @@ function EmpAddMovementModal({ employeeId, employeeName, onClose }:{ employeeId:
   );
 }
 
+function EmpSettleModal({
+  employeeId,
+  employeeName,
+  standingBalanceHalalas,
+  onClose,
+}: {
+  employeeId: string;
+  employeeName: string;
+  standingBalanceHalalas: number;
+  onClose: () => void;
+}) {
+  const { t, dir } = useCLang();
+  const settleMut = useSettleEmployeeBalance();
+  const [reason, setReason] = useState("");
+  const [intent, setIntent] = useState<FinancialIntent<any> | null>(null);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanReason = reason.trim();
+    if (cleanReason.length < 3) {
+      toast.error(t("سبب التسوية إلزامي ولا يقل عن 3 أحرف", "Settlement reason is required and must be at least 3 characters"));
+      return;
+    }
+
+    const currentIntent =
+      intent && intent.payload?.reason === cleanReason && intent.payload?.employeeId === employeeId
+        ? intent
+        : createFinancialIntent({ employeeId, reason: cleanReason });
+
+    setIntent(currentIntent);
+
+    settleMut.mutate(
+      { employeeId, reason: cleanReason, intent: currentIntent },
+      {
+        onSuccess: () => {
+          onClose();
+        },
+        onError: (err) => {
+          toast.error(getErrorMessage(err, "ar"));
+        },
+      }
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir={dir}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+        <div className="flex items-center justify-between border-b pb-3">
+          <h3 className="font-bold text-gray-900 text-sm">{t("طلب تسوية رصيد الموظف", "Request Employee Balance Settlement")}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+        </div>
+        <p className="text-xs text-gray-500">
+          {t("الموظف:", "Employee:")} <span className="font-semibold text-gray-800">{employeeName}</span> — {t("الرصيد القائم:", "Standing Balance:")}{" "}
+          <span className="font-mono font-bold text-gray-800">{fmtH(standingBalanceHalalas)} {t("ر.س", "SAR")}</span>
+        </p>
+        <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+          {t("إرسال هذا الطلب لا يغير الرصيد فورًا؛ يخضع لاعتماد المحاسب العام (Head Accountant).", "Submitting this request does not post changes immediately; it requires Head Accountant approval.")}
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-gray-700 block mb-1">{t("سبب التسوية (إلزامي):", "Settlement Reason (Required):")}</label>
+            <textarea
+              required
+              minLength={3}
+              rows={3}
+              value={reason}
+              onChange={(e) => {
+                setReason(e.target.value);
+                if (intent) setIntent(null);
+              }}
+              placeholder={t("اكتب سبب تسوية الرصيد بالتفصيل...", "Describe the settlement reason in detail...")}
+              className="w-full text-xs border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Btn type="button" size="sm" onClick={onClose}>{t("إلغاء", "Cancel")}</Btn>
+            <Btn
+              type="submit"
+              size="sm"
+              variant="primary"
+              disabled={settleMut.isPending || reason.trim().length < 3}
+            >
+              {settleMut.isPending
+                ? t("جارٍ الإرسال...", "Submitting...")
+                : intent && settleMut.isError
+                  ? t("إعادة المحاولة (بنفس المفتاح)", "Retry (same key)")
+                  : t("تأكيد طلب التسوية", "Confirm Settlement Request")}
+            </Btn>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function HeadSettlementActionModal({
+  action,
+  employeeId,
+  employeeName,
+  initialSettlementId,
+  onClose,
+}: {
+  action: "approve" | "reject";
+  employeeId: string;
+  employeeName: string;
+  initialSettlementId?: string;
+  onClose: () => void;
+}) {
+  const { t, dir } = useCLang();
+  const { user } = useAuth();
+  const approveMut = useApproveEmployeeSettlement();
+  const rejectMut = useRejectEmployeeSettlement();
+  const [settlementId, setSettlementId] = useState(initialSettlementId ?? "");
+  const [rejectionReason, setRejectionReason] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const sid = settlementId.trim();
+    if (!sid) {
+      toast.error(t("رقم طلب التسوية إلزامي", "Settlement ID is required"));
+      return;
+    }
+    const actor = { roles: grantedRoleKeys(user as any), id: user?.id };
+    if (action === "approve") {
+      approveMut.mutate(
+        { settlementId: sid, employeeId, actor },
+        {
+          onSuccess: () => {
+            toast.success(t("تم اعتماد تسوية الموظف بنجاح", "Employee settlement approved"));
+            onClose();
+          },
+          onError: (err) => toast.error(getErrorMessage(err, "ar")),
+        }
+      );
+    } else {
+      rejectMut.mutate(
+        { settlementId: sid, employeeId, rejectionReason: rejectionReason.trim() || undefined, actor },
+        {
+          onSuccess: () => {
+            toast.success(t("تم رفض طلب التسوية", "Employee settlement rejected"));
+            onClose();
+          },
+          onError: (err) => toast.error(getErrorMessage(err, "ar")),
+        }
+      );
+    }
+  };
+
+  const isPending = approveMut.isPending || rejectMut.isPending;
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir={dir}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+        <div className="flex items-center justify-between border-b pb-3">
+          <h3 className="font-bold text-gray-900 text-sm">
+            {action === "approve"
+              ? t("اعتماد تسوية رصيد الموظف", "Approve Employee Settlement")
+              : t("رفض طلب تسوية رصيد الموظف", "Reject Employee Settlement")}
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+        </div>
+        <p className="text-xs text-gray-600">
+          {t("الموظف:", "Employee:")} <span className="font-semibold text-gray-800">{employeeName}</span>
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-gray-700 block mb-1">
+              {t("رقم طلب التسوية (Settlement ID):", "Settlement Request ID:")}
+            </label>
+            <input
+              type="text"
+              required
+              value={settlementId}
+              onChange={(e) => setSettlementId(e.target.value)}
+              placeholder="e.g. stl_123 or UUID"
+              className="w-full text-xs border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+            <p className="text-[10px] text-gray-400 mt-1">
+              {t("ملاحظة: يتطلب عقد الباك إند تمرير معرف التسوية المعتمد للمراجعة.", "Note: Backend contract requires the settlement ID for approval/rejection.")}
+            </p>
+          </div>
+          {action === "reject" && (
+            <div>
+              <label className="text-xs font-semibold text-gray-700 block mb-1">
+                {t("سبب الرفض (اختياري):", "Rejection Reason (Optional):")}
+              </label>
+              <textarea
+                rows={2}
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder={t("سبب رفض التسوية...", "Reason for rejecting settlement...")}
+                className="w-full text-xs border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Btn type="button" size="sm" onClick={onClose}>{t("إلغاء", "Cancel")}</Btn>
+            <Btn
+              type="submit"
+              size="sm"
+              variant={action === "approve" ? "primary" : "danger"}
+              disabled={isPending || !settlementId.trim()}
+            >
+              {isPending
+                ? t("جارٍ المعالجة...", "Processing...")
+                : action === "approve"
+                  ? t("تأكيد الاعتماد", "Confirm Approval")
+                  : t("تأكيد الرفض", "Confirm Rejection")}
+            </Btn>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function AccCompanyEmployees() {
   const { t, dir } = useCLang();
   const [selectedEmp, setSelectedEmp] = useState<string|null>(null);
@@ -6881,6 +7097,8 @@ function AccCompanyEmployees() {
   const [branchFilter,setBranchFilter]= useState("");
   const [month,       setMonth]       = useState("");   // YYYY-MM, empty = all history
   const [showAdd,     setShowAdd]     = useState(false);
+  const [showSettle,  setShowSettle]  = useState(false);
+  const [headAction,  setHeadAction]  = useState<{ action: "approve" | "reject"; open: boolean } | null>(null);
 
   const { data: employeesPage } = useEmployees({ q: searchTerm || undefined, branchId: branchFilter || undefined });
   const { data: statement } = useEmployeeMovements(selectedEmp, month || undefined);
@@ -6901,16 +7119,6 @@ function AccCompanyEmployees() {
   const owedToEmpH     = employees.reduce((s,e)=>s+(e.balanceHalalas>0? e.balanceHalalas:0),0);
   const activeCount    = employees.filter(e=>e.status==="active").length;
 
-  const doSettle = () => {
-    if(!selectedEmp) return;
-    const reason = window.prompt("سبب تسوية رصيد الموظف (إلزامي للمراجعة):")?.trim() ?? "";
-    if (reason.length < 3) {
-      toast.error("سبب التسوية إلزامي ولا يقل عن 3 أحرف");
-      return;
-    }
-    const intent = createFinancialIntent({ employeeId: selectedEmp, reason });
-    settleMut.mutate({ employeeId: selectedEmp, reason, intent });
-  };
   const SAR = t("ر.س","SAR");
 
   const balColor = (h:number) => h<0 ? "text-red-600" : h>0 ? "text-emerald-600" : "text-gray-400";
@@ -6919,6 +7127,23 @@ function AccCompanyEmployees() {
     <div className="space-y-5" dir={dir}>
       {showAdd && selectedRow && (
         <EmpAddMovementModal employeeId={selectedRow.id} employeeName={selectedRow.name} onClose={()=>setShowAdd(false)}/>
+      )}
+      {showSettle && selectedRow && (
+        <EmpSettleModal
+          employeeId={selectedRow.id}
+          employeeName={selectedRow.name}
+          standingBalanceHalalas={statement?.balanceHalalas ?? selectedRow.balanceHalalas}
+          onClose={()=>setShowSettle(false)}
+        />
+      )}
+      {headAction?.open && selectedRow && (
+        <HeadSettlementActionModal
+          action={headAction.action}
+          employeeId={selectedRow.id}
+          employeeName={selectedRow.name}
+          initialSettlementId={(statement as any)?.settlementId ?? (selectedRow as any)?.settlementId}
+          onClose={()=>setHeadAction(null)}
+        />
       )}
       <div className="flex items-center justify-between">
         <div><h2 className="text-xl font-bold text-gray-800">{t("كشف حساب الموظفين","Employee Accounts")}</h2><p className="text-gray-400 text-sm mt-0.5">{t("الرواتب والحركات المالية للموظفين","Salaries and financial movements")}</p></div>
@@ -6995,27 +7220,24 @@ function AccCompanyEmployees() {
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <button onClick={()=>setShowAdd(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold hover:bg-purple-100"><Plus size={10}/> {t("إضافة حركة","Add")}</button>
-                    <button onClick={doSettle} disabled={settleMut.isPending||(statement?.balanceHalalas ?? selectedRow.balanceHalalas)===0||selectedRow.settlementStatus==="under_review"} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold hover:bg-emerald-100 disabled:opacity-40"><Check size={10}/> {t("تسوية الرصيد","Settle")}</button>
+                    <button
+                      onClick={() => setShowSettle(true)}
+                      disabled={settleMut.isPending || (statement?.balanceHalalas ?? selectedRow.balanceHalalas) === 0 || selectedRow.settlementStatus === "under_review"}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold hover:bg-emerald-100 disabled:opacity-40"
+                    >
+                      <Check size={10} /> {t("تسوية الرصيد", "Settle")}
+                    </button>
                     {isHead && (selectedRow.settlementStatus === "under_review" || statement?.settlementStatus === "under_review") && (
                       <div className="flex gap-1 mt-1">
                         <button
-                          onClick={() => {
-                            const sid = (statement as any)?.settlementId ?? (selectedRow as any)?.settlementId ?? window.prompt(t("أدخل رقم طلب التسوية للاعتماد:", "Enter Settlement ID to approve:"))?.trim();
-                            if (!sid) return;
-                            approveSettlementMut.mutate({ settlementId: sid, employeeId: selectedRow.id, actor: { roles: grantedRoleKeys(user as any), id: user?.id } });
-                          }}
+                          onClick={() => setHeadAction({ action: "approve", open: true })}
                           disabled={approveSettlementMut.isPending}
                           className="px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold hover:bg-emerald-700 disabled:opacity-50"
                         >
                           {t("اعتماد التسوية", "Approve")}
                         </button>
                         <button
-                          onClick={() => {
-                            const sid = (statement as any)?.settlementId ?? (selectedRow as any)?.settlementId ?? window.prompt(t("أدخل رقم طلب التسوية للرفض:", "Enter Settlement ID to reject:"))?.trim();
-                            if (!sid) return;
-                            const r = window.prompt(t("سبب الرفض (اختياري):", "Rejection reason:"))?.trim();
-                            rejectSettlementMut.mutate({ settlementId: sid, employeeId: selectedRow.id, rejectionReason: r, actor: { roles: grantedRoleKeys(user as any), id: user?.id } });
-                          }}
+                          onClick={() => setHeadAction({ action: "reject", open: true })}
                           disabled={rejectSettlementMut.isPending}
                           className="px-2 py-1 rounded bg-red-600 text-white text-[10px] font-bold hover:bg-red-700 disabled:opacity-50"
                         >
@@ -7332,13 +7554,19 @@ function CompanyFundingExecution() {
                     type="text"
                     placeholder={t("مرجع التحويل البنكي (إلزامي)", "Bank transfer reference (required)")}
                     value={reference}
-                    onChange={(e) => setReference(e.target.value)}
+                    onChange={(e) => {
+                      setReference(e.target.value);
+                      if (intent) setIntent(null);
+                    }}
                     className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5"
                   />
                   <input
                     type="file"
                     aria-label={t("إشعار التحويل البنكي", "Bank transfer slip")}
-                    onChange={(e) => setProof(e.target.files?.[0] ?? null)}
+                    onChange={(e) => {
+                      setProof(e.target.files?.[0] ?? null);
+                      if (intent) setIntent(null);
+                    }}
                     className="w-full text-xs"
                   />
                   <div className="flex gap-2">
@@ -7348,8 +7576,25 @@ function CompanyFundingExecution() {
                       disabled={execute.isPending || !reference.trim() || !proof}
                       onClick={() => {
                         if (!proof) return;
+                        const cleanRef = reference.trim();
+                        if (cleanRef.length < 2) return;
+
+                        const currentIntent =
+                          intent &&
+                          intent.payload?.reference === cleanRef &&
+                          intent.payload?.proofName === proof.name &&
+                          intent.payload?.proofSize === proof.size
+                            ? intent
+                            : createFinancialIntent({
+                                requestId: request.id,
+                                reference: cleanRef,
+                                proofName: proof.name,
+                                proofSize: proof.size,
+                              });
+                        setIntent(currentIntent);
+
                         execute.mutate(
-                          { id: request.id, reference: reference.trim(), proof, intent: intent ?? undefined },
+                          { id: request.id, reference: cleanRef, proof, intent: currentIntent },
                           {
                             onSuccess: () => {
                               setSelectedId(null);
@@ -7361,7 +7606,11 @@ function CompanyFundingExecution() {
                         );
                       }}
                     >
-                      {execute.isPending ? t("جارٍ الإرسال...", "Sending...") : t("تأكيد إرسال الدفعة وتوثيق التحويل", "Confirm Send & Attach Proof")}
+                      {execute.isPending
+                        ? t("جارٍ الإرسال...", "Sending...")
+                        : intent && execute.isError
+                          ? t("إعادة المحاولة (بنفس المفتاح)", "Retry (same key)")
+                          : t("تأكيد إرسال الدفعة وتوثيق التحويل", "Confirm Send & Attach Proof")}
                     </Btn>
                     <Btn size="sm" onClick={() => { setSelectedId(null); setIntent(null); }}>{t("إلغاء", "Cancel")}</Btn>
                   </div>
@@ -7374,7 +7623,7 @@ function CompanyFundingExecution() {
                     setSelectedId(request.id);
                     setReference("");
                     setProof(null);
-                    setIntent(createFinancialIntent({ requestId: request.id, reference: "" }));
+                    setIntent(null);
                   }}
                 >
                   {t("تنفيذ وإرسال التغذية", "Execute Funding Send")}

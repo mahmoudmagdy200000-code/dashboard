@@ -19,7 +19,15 @@ export function executeFundingTransferFlow(
     id: string;
     reference: string;
     proof: File;
-    intent?: { idempotencyKey: string; payload?: { requestId?: string; reference?: string } };
+    intent?: {
+      idempotencyKey: string;
+      payload?: {
+        requestId?: string;
+        reference?: string;
+        proofName?: string;
+        proofSize?: number;
+      };
+    };
     idempotencyKey?: string;
   },
   apiDispatcher?: (url: string, form: FormData, headers?: Record<string, string>) => any,
@@ -28,14 +36,17 @@ export function executeFundingTransferFlow(
   const form = fundingExecutionPayload(cleanReference, params.proof);
 
   // Payload alteration guard under active intent:
-  // Prevents tampering with reference or request ID while reusing an old intent key
+  // Prevents tampering with reference, proof file, or target request ID while reusing an active intent key
   if (params.intent?.payload) {
-    if (
-      (params.intent.payload.requestId && params.intent.payload.requestId !== params.id) ||
-      (params.intent.payload.reference && params.intent.payload.reference !== cleanReference)
-    ) {
+    const p = params.intent.payload;
+    const isRequestIdModified = p.requestId !== undefined && p.requestId !== params.id;
+    const isReferenceModified = p.reference !== undefined && p.reference !== cleanReference;
+    const isProofNameModified = p.proofName !== undefined && p.proofName !== params.proof.name;
+    const isProofSizeModified = p.proofSize !== undefined && p.proofSize !== params.proof.size;
+
+    if (isRequestIdModified || isReferenceModified || isProofNameModified || isProofSizeModified) {
       const conflictError: any = new Error(
-        "IDEMPOTENCY_CONFLICT_PAYLOAD_ALTERATION: Modifying transfer reference or target request under an active intent is forbidden",
+        "IDEMPOTENCY_CONFLICT_PAYLOAD_ALTERATION: Modifying transfer reference, target request, or proof attachment under an active intent is forbidden",
       );
       conflictError.response = {
         status: 409,
