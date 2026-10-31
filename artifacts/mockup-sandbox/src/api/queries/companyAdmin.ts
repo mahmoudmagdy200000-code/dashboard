@@ -203,8 +203,21 @@ export function useCompanyPlans() {
   return useQuery({
     queryKey: queryKeys.plans,
     queryFn: async () => {
-      const res = await api.get<unknown>("/plans");
-      return parsePlansResponse(res.data);
+      try {
+        const res = await api.get<unknown>("/plans");
+        return parsePlansResponse(res.data);
+      } catch (err: any) {
+        if (
+          err?.response?.status === 404 ||
+          err?.status === 404 ||
+          err?.code === "NOT_FOUND" ||
+          err?.response?.data?.code === "NOT_FOUND"
+        ) {
+          // If platform has not provisioned /plans endpoint (404), return empty list gracefully
+          return [];
+        }
+        throw err;
+      }
     },
     staleTime: 60_000,
   });

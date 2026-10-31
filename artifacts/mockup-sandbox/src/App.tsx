@@ -12,6 +12,7 @@ import type { MeResponse } from "./api/types";
 import { OnboardingWizard } from "./auth/OnboardingWizard";
 import { InvitationAcceptPage } from "./auth/InvitationAcceptPage";
 import { SubscriptionExpiredBanner } from "./components/shared/SubscriptionExpiredBanner";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 
@@ -81,7 +82,11 @@ function PreviewRenderer({
     );
   }
   if (!Component) return null;
-  return <Component />;
+  return (
+    <ErrorBoundary title="فشل تحميل المعاينة / Failed to render preview">
+      <Component />
+    </ErrorBoundary>
+  );
 }
 
 // ─── Routing helpers ──────────────────────────────────────────────────────────

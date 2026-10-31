@@ -22,13 +22,20 @@ export function safeArray<T>(payload: unknown, context = "response"): T[] {
   if (Array.isArray(payload)) {
     return payload as T[];
   }
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "data" in payload &&
-    Array.isArray((payload as { data: unknown }).data)
-  ) {
-    return (payload as { data: T[] }).data;
+  if (typeof payload === "object" && payload !== null) {
+    const obj = payload as Record<string, unknown>;
+    if ("data" in obj && Array.isArray(obj.data)) {
+      return obj.data as T[];
+    }
+    if ("plans" in obj && Array.isArray(obj.plans)) {
+      return obj.plans as T[];
+    }
+    if ("items" in obj && Array.isArray(obj.items)) {
+      return obj.items as T[];
+    }
+    if ("results" in obj && Array.isArray(obj.results)) {
+      return obj.results as T[];
+    }
   }
   throw new ContractMismatchError(
     `Contract mismatch in ${context}: expected array or { data: Array }, received ${typeof payload}`,
@@ -84,7 +91,8 @@ export function parseSubscriptionResponse(payload: unknown): (Subscription & Rec
     throw new ContractMismatchError("Expected object for subscription response", payload);
   }
 
-  const obj = payload as Record<string, any>;
+  const rawObj = payload as Record<string, any>;
+  const obj = (rawObj.data && typeof rawObj.data === "object" && !Array.isArray(rawObj.data)) ? (rawObj.data as Record<string, any>) : rawObj;
 
   // Handle explicit NOT_FOUND / error envelope payloads
   if (

@@ -22,6 +22,11 @@ import {
   executeEmployeeSettlementFlow,
 } from "./employeeSettlementContract.ts";
 import type { FinancialIntent } from "../idempotencyIntent.ts";
+import {
+  financialAccessGeneration,
+  getActiveFinancialSession,
+  isFinancialSessionActive,
+} from "../../auth/roleAccess.ts";
 
 // ─── A1. List — GET /company/me/employees (paginated, +balance chip) ──────────
 export function useEmployees(filter: EmployeeFilter = {}) {
@@ -80,12 +85,29 @@ export function useCreateEmployeeMovement() {
       );
       return res.data;
     },
-    onSuccess: (_d, vars) => {
+    onMutate: () => {
+      const startGen = financialAccessGeneration(qc);
+      const session = getActiveFinancialSession();
+      return {
+        startGen,
+        actorId: session?.actorId ?? null,
+        companyId: session?.companyId ?? null,
+      };
+    },
+    onSuccess: (_d, vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
       qc.invalidateQueries({ queryKey: ["employees", vars.employeeId] });
       qc.invalidateQueries({ queryKey: ["employees"] });
       toast.success("تم تسجيل الحركة");
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e, _vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
+      toast.error(getErrorMessage(e, "ar"));
+    },
   });
 }
 
@@ -129,12 +151,29 @@ export function useSettleEmployeeBalance() {
         },
       );
     },
-    onSuccess: (_d, vars) => {
+    onMutate: (vars) => {
+      const startGen = financialAccessGeneration(qc);
+      const session = getActiveFinancialSession();
+      return {
+        startGen,
+        actorId: vars?.currentActorId ?? session?.actorId ?? null,
+        companyId: vars?.companyId ?? session?.companyId ?? null,
+      };
+    },
+    onSuccess: (_d, vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
       qc.invalidateQueries({ queryKey: ["employees", vars.employeeId] });
       qc.invalidateQueries({ queryKey: ["employees"] });
       toast.success("تم إرسال طلب التسوية للمراجعة، ولم يتغير الرصيد بعد");
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e, _vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
+      toast.error(getErrorMessage(e, "ar"));
+    },
   });
 }
 
@@ -157,14 +196,31 @@ export function useApproveEmployeeSettlement() {
       const res = await api.post(`/company/me/employee-settlements/${encodeURIComponent(settlementId)}/approve`);
       return res.data;
     },
-    onSuccess: (_d, vars) => {
+    onMutate: (vars) => {
+      const startGen = financialAccessGeneration(qc);
+      const session = getActiveFinancialSession();
+      return {
+        startGen,
+        actorId: vars?.actor?.id ?? session?.actorId ?? null,
+        companyId: session?.companyId ?? null,
+      };
+    },
+    onSuccess: (_d, vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
       if (vars.employeeId) {
         qc.invalidateQueries({ queryKey: ["employees", vars.employeeId] });
       }
       qc.invalidateQueries({ queryKey: ["employees"] });
       toast.success("تم اعتماد تسوية الرصيد بنجاح");
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e, _vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
+      toast.error(getErrorMessage(e, "ar"));
+    },
   });
 }
 
@@ -192,14 +248,31 @@ export function useRejectEmployeeSettlement() {
       });
       return res.data;
     },
-    onSuccess: (_d, vars) => {
+    onMutate: (vars) => {
+      const startGen = financialAccessGeneration(qc);
+      const session = getActiveFinancialSession();
+      return {
+        startGen,
+        actorId: vars?.actor?.id ?? session?.actorId ?? null,
+        companyId: session?.companyId ?? null,
+      };
+    },
+    onSuccess: (_d, vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
       if (vars.employeeId) {
         qc.invalidateQueries({ queryKey: ["employees", vars.employeeId] });
       }
       qc.invalidateQueries({ queryKey: ["employees"] });
       toast.success("تم رفض طلب التسوية دون تعديل الرصيد");
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e, _vars, context) => {
+      if (!context || !isFinancialSessionActive(qc, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
+      toast.error(getErrorMessage(e, "ar"));
+    },
   });
 }
 

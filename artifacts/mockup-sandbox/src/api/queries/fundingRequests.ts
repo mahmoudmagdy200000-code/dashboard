@@ -6,6 +6,11 @@ import {
   executeFundingTransferFlow,
 } from "./fundingExecutionContract.ts";
 import type { FinancialIntent } from "../idempotencyIntent.ts";
+import {
+  financialAccessGeneration,
+  getActiveFinancialSession,
+  isFinancialSessionActive,
+} from "../../auth/roleAccess.ts";
 
 export type FundingRequest = {
   id: string;
@@ -77,6 +82,19 @@ export function useExecuteFundingRequest() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: executeFundingRequest,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+    onMutate: () => {
+      const activeSession = getActiveFinancialSession();
+      return {
+        startGen: financialAccessGeneration(queryClient),
+        actorId: activeSession?.actorId ?? null,
+        companyId: activeSession?.companyId ?? null,
+      };
+    },
+    onSuccess: (_data, _vars, context) => {
+      if (!context || !isFinancialSessionActive(queryClient, context.startGen, context.actorId, context.companyId)) {
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: key });
+    },
   });
 }

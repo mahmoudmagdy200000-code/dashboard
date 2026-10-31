@@ -2103,7 +2103,7 @@ function CASubscription() {
   const { data: apiSub, isLoading: isSubLoading, isError: isSubError, error: subError, refetch: refetchSub } = useCompanySubscription();
   const { data: apiPlans = [], isLoading: isPlansLoading, isError: isPlansError, error: plansError, refetch: refetchPlans } = useCompanyPlans();
   const [billing,setBilling]=useState<"annual"|"monthly">("annual");
-  const plansList = Array.isArray(apiPlans) ? apiPlans : [];
+  const plansList = (Array.isArray(apiPlans) ? apiPlans : []).filter(Boolean);
   const hasActiveSub = hasActiveSubscription(apiSub);
   // Driven by GET /plans. No static fallback.
   const plans = plansList.map(p => {
@@ -2250,36 +2250,42 @@ function CASubscription() {
         </div>
       )}
       <div id="available-plans-grid" className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-        {plans.map(p=>(
-          <div key={p.id} className={`bg-white rounded-2xl border-2 shadow-sm overflow-hidden ${p.current?"border-purple-400 shadow-purple-100":"border-gray-100"}`}>
-            {p.current&&<div className="px-4 py-1.5 text-center text-xs font-bold bg-purple-600 text-white">⭐ {t("خطتك الحالية","Your Current Plan")}</div>}
-            <div className="p-5">
-              <p className="font-black text-gray-900 text-lg">{t(PLAN_AR[p.plan]||p.plan, p.plan)}</p>
-              <div className="mt-2 mb-4">
-                {p.price_m === null || p.price_a === null ? (
-                  <p className="text-2xl font-black text-gray-800">{t("حسب الطلب","Custom")}</p>
+        {plans.length === 0 ? (
+          <div className="col-span-full py-12 text-center text-gray-500 bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <p className="text-sm font-semibold">{t("لا توجد خطط اشتراك متاحة حالياً.", "No subscription plans available currently.")}</p>
+          </div>
+        ) : (
+          plans.map(p=>(
+            <div key={p.id} className={`bg-white rounded-2xl border-2 shadow-sm overflow-hidden ${p.current?"border-purple-400 shadow-purple-100":"border-gray-100"}`}>
+              {p.current&&<div className="px-4 py-1.5 text-center text-xs font-bold bg-purple-600 text-white">⭐ {t("خطتك الحالية","Your Current Plan")}</div>}
+              <div className="p-5">
+                <p className="font-black text-gray-900 text-lg">{t(PLAN_AR[p.plan]||p.plan, p.plan)}</p>
+                <div className="mt-2 mb-4">
+                  {p.price_m === null || p.price_a === null ? (
+                    <p className="text-2xl font-black text-gray-800">{t("حسب الطلب","Custom")}</p>
+                  ) : (
+                    <>
+                      <span className="text-2xl font-black text-gray-800">
+                        {billing === "annual" ? (p.price_a != null ? p.price_a.toLocaleString() : "—") : (p.price_m != null ? p.price_m.toLocaleString() : "—")}
+                      </span>
+                      <span className="text-gray-400 text-sm"> {SAR}/{billing==="annual"?perYear:perMonth}</span>
+                    </>
+                  )}
+                </div>
+                <ul className="space-y-1.5 mb-5">{p.features.map((f, fi)=><li key={fi} className="flex items-center gap-2 text-xs text-gray-600"><Check size={11} className="text-emerald-500 flex-shrink-0"/>{f}</li>)}</ul>
+                {p.current ? (
+                  <div className="w-full py-2 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold text-center">{t("خطتك الحالية ✓","Your Current Plan ✓")}</div>
+                ) : p.price_m === null ? (
+                  <button onClick={()=>contactMut.mutate({ message: t("استفسار عن خطة المؤسسات","Enterprise plan inquiry") })} className="w-full py-2 rounded-lg border-2 border-purple-300 text-purple-700 text-xs font-bold hover:bg-purple-50">{t("تواصل مع المبيعات","Contact Sales")}</button>
                 ) : (
-                  <>
-                    <span className="text-2xl font-black text-gray-800">
-                      {billing === "annual" ? (p.price_a != null ? p.price_a.toLocaleString() : "—") : (p.price_m != null ? p.price_m.toLocaleString() : "—")}
-                    </span>
-                    <span className="text-gray-400 text-sm"> {SAR}/{billing==="annual"?perYear:perMonth}</span>
-                  </>
+                  <button onClick={()=>upgradeMut.mutate({ planId: p.id, billingCycle: billing })} className="w-full py-2 rounded-lg bg-purple-600 text-white text-xs font-bold hover:bg-purple-700">
+                    {hasActiveSub ? t("ترقية ↑","Upgrade ↑") : t("اختيار الخطة","Select Plan")}
+                  </button>
                 )}
               </div>
-              <ul className="space-y-1.5 mb-5">{p.features.map((f, fi)=><li key={fi} className="flex items-center gap-2 text-xs text-gray-600"><Check size={11} className="text-emerald-500 flex-shrink-0"/>{f}</li>)}</ul>
-              {p.current ? (
-                <div className="w-full py-2 rounded-lg bg-purple-100 text-purple-700 text-xs font-bold text-center">{t("خطتك الحالية ✓","Your Current Plan ✓")}</div>
-              ) : p.price_m === null ? (
-                <button onClick={()=>contactMut.mutate({ message: t("استفسار عن خطة المؤسسات","Enterprise plan inquiry") })} className="w-full py-2 rounded-lg border-2 border-purple-300 text-purple-700 text-xs font-bold hover:bg-purple-50">{t("تواصل مع المبيعات","Contact Sales")}</button>
-              ) : (
-                <button onClick={()=>upgradeMut.mutate({ planId: p.id, billingCycle: billing })} className="w-full py-2 rounded-lg bg-purple-600 text-white text-xs font-bold hover:bg-purple-700">
-                  {hasActiveSub ? t("ترقية ↑","Upgrade ↑") : t("اختيار الخطة","Select Plan")}
-                </button>
-              )}
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
@@ -7743,8 +7749,14 @@ function CompanyFundingExecution() {
                         // Check reconciliation before retry if an unconfirmed attempt timed out/errored
                         if (intent && (intent.attemptCount > 0 || intent.status === "timed_out" || execute.isError)) {
                           setCheckingStatus(true);
+                          const capturedReconGen = financialAccessGeneration(queryClient);
+                          const capturedReconActorId = user?.id ?? null;
+                          const capturedReconCompanyId = companyId;
                           try {
                             const { data: latest = [], isError: refetchErr } = await refetch();
+                            if (!isFinancialSessionActive(queryClient, capturedReconGen, capturedReconActorId, capturedReconCompanyId)) {
+                              return;
+                            }
                             setCheckingStatus(false);
                             if (refetchErr) {
                               toast.error(t("فشل التحقق من حالة الخادم؛ لا يمكن إعادة المحاولة تلقائياً لحين استقرار الاتصال.", "Server check failed; automatic retry prohibited."));
@@ -7765,6 +7777,9 @@ function CompanyFundingExecution() {
                               return;
                             }
                           } catch {
+                            if (!isFinancialSessionActive(queryClient, capturedReconGen, capturedReconActorId, capturedReconCompanyId)) {
+                              return;
+                            }
                             setCheckingStatus(false);
                             toast.error(t("فشل التحقق من حالة الخادم؛ تعذر التأكد من نتيجة العملية السابقة.", "Failed to check server status."));
                             return;
@@ -7825,10 +7840,10 @@ function CompanyFundingExecution() {
                               setUnconfirmedIntent("funding", request.id, currentIntent, user?.id, companyId);
                               try {
                                 const { data: latest = [], isError: refetchErr } = await refetch();
+                                if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) return;
                                 if (!refetchErr) {
                                   const recon = reconcileExecutionStatus(request.id, latest);
                                   if (recon.alreadyExecuted) {
-                                    if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) return;
                                     currentIntent.status = "resolved";
                                     removeUnconfirmedIntent("funding", request.id, user?.id, companyId);
                                     toast.success(t("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير", "Transfer execution confirmed by server"));
@@ -7839,6 +7854,7 @@ function CompanyFundingExecution() {
                                     return;
                                   }
                                   if (!recon.canRetry) {
+                                    if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) return;
                                     toast.error(recon.reason);
                                     return;
                                   }
@@ -7866,8 +7882,14 @@ function CompanyFundingExecution() {
                         disabled={checkingStatus}
                         onClick={async () => {
                           setCheckingStatus(true);
+                          const capturedManualGen = financialAccessGeneration(queryClient);
+                          const capturedManualActorId = user?.id ?? null;
+                          const capturedManualCompanyId = companyId;
                           try {
                             const { data: latest = [], isError: refetchErr } = await refetch();
+                            if (!isFinancialSessionActive(queryClient, capturedManualGen, capturedManualActorId, capturedManualCompanyId)) {
+                              return;
+                            }
                             if (refetchErr) {
                               toast.error(t("تعذر الاتصال بالخادم للتحقق من الحالة؛ يرجى المحاولة لاحقاً.", "Could not reach server."));
                               return;
@@ -7887,9 +7909,14 @@ function CompanyFundingExecution() {
                               toast.warning(recon.reason);
                             }
                           } catch {
+                            if (!isFinancialSessionActive(queryClient, capturedManualGen, capturedManualActorId, capturedManualCompanyId)) {
+                              return;
+                            }
                             toast.error(t("تعذر الاتصال بالخادم للتحقق من الحالة؛ يرجى المحاولة لاحقاً.", "Could not reach server."));
                           } finally {
-                            setCheckingStatus(false);
+                            if (isFinancialSessionActive(queryClient, capturedManualGen, capturedManualActorId, capturedManualCompanyId)) {
+                              setCheckingStatus(false);
+                            }
                           }
                         }}
                       >

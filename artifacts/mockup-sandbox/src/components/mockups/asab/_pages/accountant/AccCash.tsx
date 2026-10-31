@@ -105,8 +105,14 @@ function FundingExecution() {
                 // check server status first to prevent duplicate 422 errors or blind re-POSTs.
                 if (intent && (intent.attemptCount > 0 || intent.status === "timed_out" || execute.isError)) {
                   setCheckingStatus(true);
+                  const capturedReconGen = financialAccessGeneration(queryClient);
+                  const capturedReconActorId = user?.id ?? null;
+                  const capturedReconCompanyId = (user as any)?.companyId;
                   try {
                     const { data: latest = [], isError: refetchErr } = await refetch();
+                    if (!isFinancialSessionActive(queryClient, capturedReconGen, capturedReconActorId, capturedReconCompanyId)) {
+                      return;
+                    }
                     setCheckingStatus(false);
                     if (refetchErr) {
                       toast.error("فشل التحقق من حالة الخادم؛ لا يمكن إعادة المحاولة تلقائياً لحين استقرار الاتصال.");
@@ -127,6 +133,9 @@ function FundingExecution() {
                       return;
                     }
                   } catch {
+                    if (!isFinancialSessionActive(queryClient, capturedReconGen, capturedReconActorId, capturedReconCompanyId)) {
+                      return;
+                    }
                     setCheckingStatus(false);
                     toast.error("فشل التحقق من حالة الخادم؛ تعذر التأكد من نتيجة العملية السابقة.");
                     return;
@@ -196,10 +205,10 @@ function FundingExecution() {
                       // Automatic server reconciliation upon timeout/error
                       try {
                         const { data: latest = [], isError: refetchErr } = await refetch();
+                        if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) return;
                         if (!refetchErr) {
                           const recon = reconcileExecutionStatus(request.id, latest);
                           if (recon.alreadyExecuted) {
-                            if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) return;
                             currentIntent.status = "resolved";
                             removeUnconfirmedIntent("funding", request.id, user?.id, (user as any)?.companyId);
                             toast.success("تم تأكيد تسجيل التحويل في الخادم بالفعل؛ بانتظار استلام المدير");
@@ -210,6 +219,7 @@ function FundingExecution() {
                             return;
                           }
                           if (!recon.canRetry) {
+                            if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) return;
                             toast.error(`تعذر التحقق من حالة الخادم: ${recon.reason}`);
                             return;
                           }
@@ -217,6 +227,7 @@ function FundingExecution() {
                       } catch {
                         // network refetch failure: prohibit blind retry
                       }
+                      if (!isFinancialSessionActive(queryClient, capturedGen, currentIntent.actorId, currentIntent.companyId)) return;
                       toast.error(getErrorMessage(error, "ar"));
                     },
                   },
@@ -288,8 +299,14 @@ function FundingExecution() {
                   disabled={checkingStatus}
                   onClick={async () => {
                     setCheckingStatus(true);
+                    const capturedManualGen = financialAccessGeneration(queryClient);
+                    const capturedManualActorId = user?.id ?? null;
+                    const capturedManualCompanyId = (user as any)?.companyId;
                     try {
                       const { data: latest = [], isError: refetchErr } = await refetch();
+                      if (!isFinancialSessionActive(queryClient, capturedManualGen, capturedManualActorId, capturedManualCompanyId)) {
+                        return;
+                      }
                       if (refetchErr) {
                         toast.error("تعذر الاتصال بالخادم للتحقق من الحالة؛ يرجى المحاولة لاحقاً وعدم تكرار الإرسال.");
                         return;
@@ -309,9 +326,14 @@ function FundingExecution() {
                         toast.warning(`حالة غير حاسمة: ${recon.reason}`);
                       }
                     } catch {
+                      if (!isFinancialSessionActive(queryClient, capturedManualGen, capturedManualActorId, capturedManualCompanyId)) {
+                        return;
+                      }
                       toast.error("تعذر الاتصال بالخادم للتحقق من الحالة؛ يرجى المحاولة لاحقاً وعدم تكرار الإرسال.");
                     } finally {
-                      setCheckingStatus(false);
+                      if (isFinancialSessionActive(queryClient, capturedManualGen, capturedManualActorId, capturedManualCompanyId)) {
+                        setCheckingStatus(false);
+                      }
                     }
                   }}
                   className="rounded border border-gray-300 px-2 py-1 text-gray-700 text-xs hover:bg-gray-50"
