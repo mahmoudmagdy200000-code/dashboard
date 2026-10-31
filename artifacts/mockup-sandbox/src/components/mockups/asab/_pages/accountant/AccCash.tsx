@@ -45,7 +45,7 @@ import { checkCustodyWriteAuthorization, type DirectDebitSafetyContext } from ".
 import { reconcileExecutionStatus, computeFileHash } from "../../../../../api/queries/fundingExecutionContract.ts";
 import { getUnconfirmedIntent, setUnconfirmedIntent, removeUnconfirmedIntent } from "../../../../../api/queries/financialIntentStore.ts";
 
-function FundingExecution() {
+export function FundingExecution() {
   const { isRole, user } = useAuth();
   const queryClient = useQueryClient();
   const accountant = isRole("accountant");

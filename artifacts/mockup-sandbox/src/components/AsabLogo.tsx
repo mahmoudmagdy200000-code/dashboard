@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactElement } from "react";
 import { LOGO } from "../auth/authTheme";
 
-export const LOGO_EMBLEM_SVG = `${import.meta.env.BASE_URL}assab-emblem.svg`;
+export const LOGO_EMBLEM_SVG = `${import.meta.env?.BASE_URL ?? "/"}assab-emblem.svg`;
 
 export interface AsabLogoProps {
   /**

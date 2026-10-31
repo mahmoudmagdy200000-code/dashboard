@@ -12,7 +12,7 @@ export const G = {
 };
 export const CYAN = "#22D3EE";
 export const FONT = "'IBM Plex Sans Arabic', 'Segoe UI', system-ui, sans-serif";
-export const LOGO = `${import.meta.env.BASE_URL}assab%20logo.png`;
+export const LOGO = `${import.meta.env?.BASE_URL ?? "/"}assab%20logo.png`;
 
 const CSS = `
 .asab-entry{min-height:100vh;display:flex;direction:rtl;font-family:${FONT};background:${G[50]};}

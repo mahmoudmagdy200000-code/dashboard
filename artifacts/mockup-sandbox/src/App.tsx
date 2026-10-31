@@ -92,7 +92,7 @@ function PreviewRenderer({
 // ─── Routing helpers ──────────────────────────────────────────────────────────
 
 function getBasePath(): string {
-  return import.meta.env.BASE_URL.replace(/\/$/, "");
+  return (import.meta.env?.BASE_URL ?? "/").replace(/\/$/, "");
 }
 
 // Returns true when running as deployed static site (BASE_PATH = /)

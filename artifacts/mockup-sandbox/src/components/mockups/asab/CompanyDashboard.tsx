@@ -1,4 +1,6 @@
-import "./_group.css";
+if (typeof window !== "undefined") {
+  import("./_group.css");
+}
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import type { Operation as ApiOperation } from "../../../api/types";
@@ -19,7 +21,7 @@ import { reconcileExecutionStatus, computeFileHash } from "../../../api/queries/
 import { createFinancialIntent, type FinancialIntent } from "../../../api/idempotencyIntent.ts";
 import { checkCustodyWriteAuthorization, type DirectDebitSafetyContext } from "../../../api/queries/cashTransactionContract.ts";
 import { getUnconfirmedIntent, setUnconfirmedIntent, removeUnconfirmedIntent } from "../../../api/queries/financialIntentStore.ts";
-import { useState, useMemo, useEffect, useLayoutEffect, useRef, ReactNode, createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
+import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, ReactNode, createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
 import {
   useOperations, useApproveOperation, useRejectOperation, useBulkApprove, useFinalApprove, useBulkFinalApprove,
   useVerifyExpenseInvoice, useUnverifyExpenseInvoice, useReviewExpenseInvoice,
@@ -129,10 +131,10 @@ import {
 // ═══════════════════════════════════════════════════
 // BILINGUAL SUPPORT — Arabic / English
 // ═══════════════════════════════════════════════════
-type CLang = "ar"|"en";
-type CLangCtx = { lang:CLang; setLang:(l:CLang)=>void; t:(ar:string,en:string)=>string; dir:"rtl"|"ltr" };
-const CLangContext = createContext<CLangCtx>({ lang:"ar", setLang:()=>{}, t:(ar)=>ar, dir:"rtl" });
-const useCLang = () => useContext(CLangContext);
+export type CLang = "ar"|"en";
+export type CLangCtx = { lang:CLang; setLang:(l:CLang)=>void; t:(ar:string,en:string)=>string; dir:"rtl"|"ltr" };
+export const CLangContext = createContext<CLangCtx>({ lang:"ar", setLang:()=>{}, t:(ar)=>ar, dir:"rtl" });
+export const useCLang = () => useContext(CLangContext);
 
 const EN_C_NAV_LABELS:Record<string,string> = {
   "ca-dashboard":"Dashboard","ca-subscription":"Plan & Subscription","ca-users":"User Management",
@@ -317,7 +319,7 @@ function CAssetDraftProvider({ children }:{ children:ReactNode }) {
   );
 }
 
-function CLangProvider({ children }:{ children:ReactNode }) {
+export function CLangProvider({ children }:{ children:ReactNode }) {
   // Seed from the site-wide language chosen on the entry screen, and keep the two in sync.
   const [lang, setLangState] = useState<CLang>(() => getSiteLang());
   useDocumentLang(lang);
@@ -658,7 +660,7 @@ function CPipelineOverview({ ops }: { ops: COp[] }) {
 // HA-F13: Inventory branch static mocks removed. Live payload or clear unavailable status is rendered.
 const INV_BRANCH_DATA: Record<string,{ name:string; unit:string; prev:number; curr:number; cat:string }[]> = {};
 
-type CRole = "company-admin"|"head"|"accountant"|"branch"|"procurement";
+export type CRole = "company-admin"|"head"|"accountant"|"branch"|"procurement";
 
 type NavEntry = { section:string }|{ id:string; label:string; icon:ReactNode; badge?:number };
 const isSection = (e:NavEntry): e is {section:string} => "section" in e;
@@ -2096,7 +2098,7 @@ function CADashboard({ navigate }:{ navigate:(p:string)=>void }) {
   );
 }
 
-function CASubscription() {
+export function CASubscription() {
   const { t, dir, lang } = useCLang();
   const upgradeMut = useUpgradeSubscription();
   const contactMut = useContactSales();
@@ -7657,7 +7659,7 @@ function CashCustodyCard({ custody }:{ custody:CashCustodyRow }) {
   );
 }
 
-function CompanyFundingExecution() {
+export function CompanyFundingExecution() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const companyId = (user as any)?.companyId;
@@ -9264,7 +9266,7 @@ function ProcSent() {
 // ═══════════════════════════════════════════════════
 // PAGE ROUTER
 // ═══════════════════════════════════════════════════
-function PageRouter({ role, page, navigate, ops, approve, reject, requestClarification, bulkApprove, finalApprove, bulkFinalApprove, actionsPending, shiftReviewPage, setShiftReviewPage }:{
+export function PageRouter({ role, page, navigate, ops, approve, reject, requestClarification, bulkApprove, finalApprove, bulkFinalApprove, actionsPending, shiftReviewPage, setShiftReviewPage }:{
   role:CRole; page:string; navigate:(p:string)=>void;
 } & SharedOpsProps) {
   const headProps:HeadProps = { navigate, ops, finalApprove, reject, bulkFinalApprove, actionsPending };
