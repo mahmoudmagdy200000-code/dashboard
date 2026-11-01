@@ -1656,34 +1656,139 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
               </div>
             </div>
 
-            {/* Desktop Topbar (hidden md:flex) */}
-            <div className="hidden md:flex items-center gap-3 px-5 py-3">
-              <div className="flex-1 min-w-0">
-                <h1 className="text-gray-800 font-bold text-base leading-tight">{pageLabel}</h1>
-                <nav aria-label={tL("مسار الصفحة", "Breadcrumb")} className="text-gray-500 text-xs flex flex-wrap gap-2">
-                  <button type="button" onClick={() => navigate(ROLE_PROFILES[role].defaultPage)}>{supplierName || enProfile.label}</button>
-                  <span aria-current="page">{pageLabel}</span>
-                </nav>
+            {/* Tablet Header (hidden md:flex xl:hidden) */}
+            <div className="hidden md:flex xl:hidden flex-col gap-2.5 px-4 py-2.5 bg-white">
+              {/* Row 1: Title/Breadcrumb + Quick Actions (Date, Lang, Bell, Logout) */}
+              <div className="flex items-center justify-between gap-3 w-full">
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-gray-800 font-bold text-base leading-tight truncate">{pageLabel}</h1>
+                  <nav aria-label={tL("مسار الصفحة", "Breadcrumb")} className="text-gray-500 text-xs flex items-center gap-1.5 truncate">
+                    <button type="button" onClick={() => navigate(ROLE_PROFILES[role].defaultPage)} className="hover:underline">
+                      {supplierName || enProfile.label}
+                    </button>
+                    <span aria-hidden="true" className="text-gray-300">/</span>
+                    <span aria-current="page" className="truncate">{pageLabel}</span>
+                  </nav>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 px-2.5 py-1.5 rounded-lg whitespace-nowrap">
+                    {formatTodayLong(lang)}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLang(lang === "ar" ? "en" : "ar")}
+                    className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 font-semibold transition-colors"
+                    title={lang === "ar" ? "Switch to English" : "التبديل للعربية"}
+                  >
+                    <Globe size={13} />
+                    <span>{lang === "ar" ? "EN" : "عربي"}</span>
+                  </button>
+                  {role === "admin" ? (
+                    <div
+                      className="opacity-60 cursor-not-allowed p-1.5 text-gray-400"
+                      title={tL("إشعارات المنصة تتطلب تفعيل مركز إشعارات النظام الإداري", "Platform notifications require system admin notification center")}
+                    >
+                      <Bell size={16} />
+                    </div>
+                  ) : role === "supplier" ? null : (
+                    <NotificationBell t={tL} theme="light" role={role} pages={NAV_CONFIG[role].flatMap(entry => isSection(entry) ? [] : [entry.id])} onNavigate={navigate} />
+                  )}
+                  <button
+                    type="button"
+                    onClick={logout}
+                    className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center gap-1"
+                    title={tL("خروج", "Logout")}
+                  >
+                    <LogOut size={13} />
+                    <span>{tL("خروج", "Logout")}</span>
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2 min-w-0">
+
+              {/* Row 2: Selects + GlobalSearch */}
+              <div className="flex items-center gap-2.5 w-full">
                 {allowedRoles.length > 1 && (
-                  <select aria-label={tL("الدور الممنوح", "Granted role")} value={role}
+                  <select
+                    aria-label={tL("الدور الممنوح", "Granted role")}
+                    value={role}
                     onChange={e => onSelectRole(e.target.value as RoleId)}
-                    className="text-xs border border-gray-200 rounded-lg px-2 py-1.5">
+                    className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-gray-50 flex-shrink-0"
+                  >
                     {allowedRoles.map(r => <option key={r} value={r}>{ROLE_PROFILES[r].label}</option>)}
                   </select>
                 )}
-                <div className="text-xs text-gray-400 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg hidden sm:block">
-                  {formatTodayLong(lang)}
-                </div>
                 {role !== "supplier" && (
-                  <select aria-label={tL("فترة العمليات", "Operations period")} value={period} onChange={e => setPeriod(e.target.value as OpPeriod)} className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 bg-gray-50">
+                  <select
+                    aria-label={tL("فترة العمليات", "Operations period")}
+                    value={period}
+                    onChange={e => setPeriod(e.target.value as OpPeriod)}
+                    className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 bg-gray-50 flex-shrink-0"
+                  >
                     <option value="all">{tL("الكل", "All")}</option>
                     <option value="month">{tL("هذا الشهر", "This Month")}</option>
                     <option value="week">{tL("هذا الأسبوع", "This Week")}</option>
                     <option value="today">{tL("اليوم", "Today")}</option>
                   </select>
                 )}
+                <div className="flex-1 min-w-0">
+                  {role === "admin" ? (
+                    <div
+                      className="opacity-60 cursor-not-allowed"
+                      title={tL(
+                        "بحث المنصة الموحد يتطلب تحديد نطاق مستأجر (شركة) أو تفعيل نقطة نهاية إدارية مركزية",
+                        "Platform search requires company tenant scope or central admin endpoint",
+                      )}
+                    >
+                      <input
+                        disabled
+                        type="text"
+                        placeholder={tL("بحث المنصة غير متاح بدون شركة...", "Platform search unavailable...")}
+                        className="text-xs bg-gray-100 border border-gray-200 rounded-lg px-3 py-1.5 text-gray-400 cursor-not-allowed w-full"
+                      />
+                    </div>
+                  ) : role === "supplier" ? (
+                    <span className="text-xs text-gray-500 truncate block">
+                      {tL("بحث المورد غير متاح بعقد الخادم الحالي", "Supplier search requires an approved Backend contract")}
+                    </span>
+                  ) : (
+                    <GlobalSearch
+                      t={tL}
+                      theme="light"
+                      role={role}
+                      pages={NAV_CONFIG[role].flatMap(entry => isSection(entry) ? [] : [entry.id])}
+                      onNavigate={navigate}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Desktop Topbar (hidden xl:flex) */}
+            <div className="hidden xl:flex items-center gap-3 px-5 py-3">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-gray-800 font-bold text-base leading-tight truncate">{pageLabel}</h1>
+                <nav aria-label={tL("مسار الصفحة", "Breadcrumb")} className="text-gray-500 text-xs flex flex-wrap gap-2">
+                  <button type="button" onClick={() => navigate(ROLE_PROFILES[role].defaultPage)}>{supplierName || enProfile.label}</button>
+                  <span aria-current="page">{pageLabel}</span>
+                </nav>
+              </div>
+              <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
+                {allowedRoles.length > 1 && (
+                  <select aria-label={tL("الدور الممنوح", "Granted role")} value={role}
+                    onChange={e => onSelectRole(e.target.value as RoleId)}
+                    className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-gray-50 flex-shrink-0">
+                    {allowedRoles.map(r => <option key={r} value={r}>{ROLE_PROFILES[r].label}</option>)}
+                  </select>
+                )}
+                <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg whitespace-nowrap flex-shrink-0">
+                  {formatTodayLong(lang)}
+                </div>
+                {role !== "supplier" && <select aria-label={tL("فترة العمليات", "Operations period")} value={period} onChange={e => setPeriod(e.target.value as OpPeriod)} className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 bg-gray-50 flex-shrink-0">
+                    <option value="all">{tL("الكل", "All")}</option>
+                    <option value="month">{tL("هذا الشهر", "This Month")}</option>
+                    <option value="week">{tL("هذا الأسبوع", "This Week")}</option>
+                    <option value="today">{tL("اليوم", "Today")}</option>
+                  </select>}
                 {role === "admin" ? (
                   <div
                     className="opacity-60 cursor-not-allowed"
@@ -1707,14 +1812,14 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
                   <GlobalSearch t={tL} theme="light" role={role} pages={NAV_CONFIG[role].flatMap(entry => isSection(entry) ? [] : [entry.id])} onNavigate={navigate} />
                 )}
                 <button onClick={() => setLang(lang === "ar" ? "en" : "ar")}
-                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 font-semibold transition-colors"
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 font-semibold transition-colors flex-shrink-0"
                   title={lang === "ar" ? "Switch to English" : "التبديل للعربية"}>
                   <Globe size={13} />
                   {lang === "ar" ? "EN" : "عربي"}
                 </button>
                 {role === "admin" ? (
                   <div
-                    className="opacity-60 cursor-not-allowed p-1.5 text-gray-400"
+                    className="opacity-60 cursor-not-allowed p-1.5 text-gray-400 flex-shrink-0"
                     title={tL(
                       "إشعارات المنصة تتطلب تفعيل مركز إشعارات النظام الإداري",
                       "Platform notifications require system admin notification center",
@@ -1727,7 +1832,7 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
                 ) : (
                   <NotificationBell t={tL} theme="light" role={role} pages={NAV_CONFIG[role].flatMap(entry => isSection(entry) ? [] : [entry.id])} onNavigate={navigate} />
                 )}
-                <button onClick={logout} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 flex items-center gap-1">
+                <button onClick={logout} className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 flex items-center gap-1 flex-shrink-0">
                   <LogOut size={13} /> {tL("خروج", "Logout")}
                 </button>
               </div>

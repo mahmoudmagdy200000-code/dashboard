@@ -95,11 +95,11 @@ export function PipelineOverview({ ops, navigate }: { ops: Op[]; navigate: (p: P
         <h3 className="font-bold text-gray-900 text-sm tracking-tight">{t("مسار العمليات — رؤية شاملة للخط الزمني", "Operations Pipeline — Full Timeline View")}</h3>
         <span className="text-xs text-gray-400">{ops.length} {t("عملية إجمالاً", "operations total")}</span>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 lg:gap-0 p-3 sm:p-4 lg:p-0 lg:divide-x lg:divide-x-reverse divide-gray-100">
         {stageCounts.map((s, i) => {
           const isAspirational = i === 5; // stage-6: ERP Reports — future state, never set by getPipelineStage
           return (
-            <div key={s.id} className={`p-3 text-center transition-colors rounded-xl border border-gray-100 md:border-0 md:rounded-none md:px-3 md:py-4
+            <div key={s.id} className={`p-3 text-center transition-colors rounded-xl border border-gray-100 lg:border-0 lg:rounded-none lg:px-3 lg:py-4
               ${isAspirational ? "bg-slate-50/60" : "hover:bg-gray-50/80 bg-white"}`}>
               <div className="flex items-center justify-center gap-1.5 mb-1">
                 <span className="text-lg">{s.icon}</span>

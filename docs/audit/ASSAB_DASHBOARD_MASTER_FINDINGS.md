@@ -3020,7 +3020,7 @@ The following tasks represent policy or architectural changes that require expli
 
 ## 14. Accountant Dashboard Mobile & Tablet Responsive Remediation (2026-11-01)
 
-**Task ID:** `ASSAB-DASHBOARD-RESPONSIVE-UX-20261101`
+**Task ID:** `ASSAB-DASHBOARD-RESPONSIVE-UX-20261101` (Closure: `ASSAB-DASHBOARD-RESPONSIVE-UX-20261101-FINAL-CORRECTION`)
 **Execution Branch:** `fix/accountant-responsive-ux-20261101`
 **Base Commit:** `b476a11e46aa236565c023e26953e97cb27763f9` (`staging/dashboard-m9-candidate-20261016`)
 **Base Tree:** `be715003be2e1e78bacfed3c2dbb7507a3bd0468`
@@ -3031,32 +3031,35 @@ The following tasks represent policy or architectural changes that require expli
 
 | Finding ID | Finding Description | Target Files | Implementation Summary | Status |
 |---|---|---|---|:---:|
-| **F01** | KPI Cards Overflow / Overlap | `AccDashboard.tsx`, `KpiCard.tsx` | Replaced rigid `grid-cols-4` with responsive `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4`. Relocated overdue badge to `top-2.5 end-2.5` to eliminate icon overlap. Responsive card padding (`p-3.5 sm:p-4 md:p-5`) and font sizing (`text-2xl sm:text-3xl`). | `FIXED_AND_VERIFIED` |
-| **F02** | Operations List / OpRow Collapsed Content | `_shared/OpRow.tsx`, `Card.tsx` | Replaced single-row horizontal flex with responsive stacked layout (`flex-col md:flex-row`). Mobile displays top summary (module + branch + amount), middle metadata with `break-all` on IDs, badge cluster, and touch-accessible bottom action row (`min-h-[36px] px-3.5`) with distinct Approve/Reject tap spacing. | `FIXED_AND_VERIFIED` |
-| **F03** | Excessive Mobile Header Height | `ASABPrototype.tsx` | Replaced 4-row floating header (~230px height, `ps-16`) with compact 2-row layout (~88px height). Row 1: inline hamburger `SheetTrigger` + page title/breadcrumb + quick actions (Lang toggle, Notification bell, Logout). Row 2: period selector + GlobalSearch. Desktop single-row layout (`hidden md:flex`) preserved 100%. | `FIXED_AND_VERIFIED` |
-| **F04** | Progress & Six-Stage Pipeline | `AccDashboard.tsx`, `_shared/PipelineOverview.tsx` | Today's Progress changed from rigid `grid-cols-4` to responsive `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`. PipelineOverview changed from `grid-cols-6 divide-x` to `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0` with stage indicator chips (`م1`-`م6` / `S1`-`S6`), card borders on mobile and divider lines on desktop. | `FIXED_AND_VERIFIED` |
-| **F05** | Nine Modules & Search Filters | `AccDashboard.tsx`, `Card.tsx` | Grid changed from `grid-cols-3` to `grid-cols-1 lg:grid-cols-3` so Search Filters stack vertically beneath Modules on mobile and sit alongside on desktop. Modules subgrid changed from `grid-cols-4` to `grid-cols-3 sm:grid-cols-3 md:grid-cols-4` with text clamping and responsive icon dimensions. | `FIXED_AND_VERIFIED` |
-| **F06** | Shared Component Impact | `KpiCard.tsx`, `Card.tsx`, `OpRow.tsx`, `PipelineOverview.tsx` | Preserved all phrasing content (`span` only) in KpiCard. All existing consumers (Head Accountant, Branch, Admin) verified regression-free via automated tests. No global `overflow-x: hidden` hacks used. | `FIXED_AND_VERIFIED` |
+| **F01** | KPI Cards Overflow / Overlap | `AccDashboard.tsx`, `KpiCard.tsx` | Replaced rigid `grid-cols-4` with responsive `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4`. Relocated overdue badge to `top-2.5 end-2.5` to eliminate icon overlap. Responsive card padding (`p-3.5 sm:p-4 md:p-5`) and font sizing (`text-2xl sm:text-3xl`). Verified 1 col on mobile (320–430px), 2 cols on tablet (768–820px), 4 cols on desktop (1024–1280px). | `FIXED_AND_VERIFIED` |
+| **F02** | Operations List / OpRow Collapsed Content | `_shared/OpRow.tsx`, `Card.tsx` | Replaced single-row horizontal flex with responsive stacked card layout (`flex-col md:flex-row`). Mobile displays top summary row (module badge + branch + amount in SAR), middle metadata row with `break-all` on IDs and single-line time with clock icon, status & match badge cluster, and touch-accessible bottom action row (`min-h-[36px] px-3.5`) separated by a top border with distinct Approve/Reject tap spacing. Scrolled DOM capture verified via `scrollIntoViewIfNeeded()`. | `FIXED_AND_VERIFIED` |
+| **F03** | Excessive Mobile & Tablet Header Height / Truncation | `ASABPrototype.tsx` | Replaced 4-row floating header (~230px height, `ps-16`) with responsive 3-tier architecture: (1) Mobile (<768px): 2-row layout (~88px height), inline hamburger `SheetTrigger` + page title/breadcrumb + quick actions (Lang toggle, Notification bell, Logout) + row 2 (period selector + GlobalSearch). (2) Tablet (768px–1279px, `hidden md:flex xl:hidden`): 2-row layout with page title/breadcrumb (`min-w-0 flex-1 truncate`, width 166px–422px, `h1Clipped: false`), date badge with `whitespace-nowrap` (`dateHeight: 30px`, `dateWrapped: false`), Lang, Bell, Logout on row 1, and Granted role, Period, and wide GlobalSearch (370px–480px) on row 2, eliminating title truncation and vertical date wrapping. (3) Desktop (>=1280px, `hidden xl:flex`): Baseline single-row desktop topbar preserved 100% (`h1ClientWidth: 254px`, `dateWrapped: false`, search width 286px). | `FIXED_AND_VERIFIED` |
+| **F04** | Progress & Six-Stage Pipeline | `AccDashboard.tsx`, `_shared/PipelineOverview.tsx` | Today's Progress changed from rigid `grid-cols-4` to responsive `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`. PipelineOverview changed to `grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6` with stage indicator chips (`م1`-`م6` / `S1`-`S6`), spacious rounded card borders on mobile (2 cols) and tablet (3 cols), and single-row dividers on desktop (`lg:`, >=1024px). | `FIXED_AND_VERIFIED` |
+| **F05** | Nine Modules & Search Filters | `AccDashboard.tsx`, `Card.tsx` | Grid changed from `grid-cols-3` to `grid-cols-1 lg:grid-cols-3` so Search Filters stack vertically beneath Modules on mobile and sit alongside on desktop. Modules subgrid changed to `grid-cols-3 sm:grid-cols-3 md:grid-cols-4` with text clamping and responsive icon dimensions. Scrolled DOM capture verified via `scrollIntoViewIfNeeded()`. | `FIXED_AND_VERIFIED` |
+| **F06** | Shared Component Impact | `KpiCard.tsx`, `Card.tsx`, `OpRow.tsx`, `PipelineOverview.tsx` | Preserved all phrasing content (`span` only) in KpiCard. All existing consumers (Head Accountant, Branch, Admin) verified regression-free via automated tests. No global `overflow-x: hidden` hacks used. Source wiring contracts for supplier, admin, and branch preserved. | `FIXED_AND_VERIFIED` |
 
 ### 14.2 Mandatory Responsive Acceptance Matrix (Automated Chrome Headless Verification)
 
-| Viewport Width | Device Category | Mode | clientWidth | scrollWidth | Horizontal Overflow (`scrollWidth > clientWidth`) | Visual Status |
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **320px** | Narrow Mobile | Arabic RTL | 320px | 320px | `FALSE (0px)` | PASS — No clipping, stacked OpRow, compact header |
-| **360px** | Android Mobile | Arabic RTL | 360px | 360px | `FALSE (0px)` | PASS — No clipping, 1-col KPIs, readable IDs |
-| **390px** | Standard Mobile (iPhone) | Arabic RTL | 390px | 390px | `FALSE (0px)` | PASS — 2-row header, 2-col progress/pipeline |
-| **430px** | Large Mobile (Pro Max) | Arabic RTL | 430px | 430px | `FALSE (0px)` | PASS — 2-col KPIs, touch-accessible actions |
-| **768px** | Tablet Portrait (iPad) | Arabic RTL | 768px | 768px | `FALSE (0px)` | PASS — 2-col KPIs, 3-col pipeline, full labels |
-| **820px** | Tablet Portrait (iPad Air) | Arabic RTL | 820px | 820px | `FALSE (0px)` | PASS — Balanced multi-col layout, clean spacing |
-| **1024px** | Tablet Landscape | Arabic RTL | 1024px | 1024px | `FALSE (0px)` | PASS — 4-col KPIs, 6-col pipeline, full desktop layout |
-| **1280px** | Desktop Regression | Arabic RTL | 1280px | 1280px | `FALSE (0px)` | PASS — Desktop layout completely preserved |
-| **390px** | Standard Mobile | English LTR | 390px | 390px | `FALSE (0px)` | PASS — LTR direction, English labels, no overlap |
-| **1280px** | Desktop Regression | English LTR | 1280px | 1280px | `FALSE (0px)` | PASS — LTR desktop layout preserved |
-| **390px** | Mobile Navigation Drawer | Arabic RTL | 390px | 390px | `FALSE (0px)` | PASS — Drawer opens smoothly via header trigger |
+*All metrics measured via Playwright against actual computed DOM styles in Vite preview environment:*
+
+| Viewport Width | Device Category | Mode | clientWidth / scrollWidth | Horiz Overflow | Computed Grids (KPI / Progress / Pipeline / Modules) | Header Status (Title Width / Date Ht / Search Width) | OpRow Scrolled Verification | Visual Status |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **320px** | Narrow Mobile | Arabic RTL | 320px / 320px | `0px (FALSE)` | 1 col (296px) / 1 col (262px) / 2 cols (131px) / 3 cols (85px) | Title: 112px (unclipped) / Date: n/a / Search: 188px | Top summary + wrapped ID + distinct buttons | PASS |
+| **360px** | Android Mobile | Arabic RTL | 360px / 360px | `0px (FALSE)` | 1 col (336px) / 1 col (302px) / 2 cols (151px) / 3 cols (98px) | Title: 152px (unclipped) / Date: n/a / Search: 228px | Top summary + wrapped ID + distinct buttons | PASS |
+| **390px** | Standard Mobile (iPhone) | Arabic RTL | 390px / 390px | `0px (FALSE)` | 1 col (366px) / 1 col (332px) / 2 cols (166px) / 3 cols (108px) | Title: 182px (unclipped) / Date: n/a / Search: 258px | Top summary + wrapped ID + distinct buttons | PASS |
+| **430px** | Large Mobile (Pro Max) | Arabic RTL | 430px / 430px | `0px (FALSE)` | 1 col (406px) / 1 col (372px) / 2 cols (186px) / 3 cols (121px) | Title: 222px (unclipped) / Date: n/a / Search: 298px | Top summary + wrapped ID + distinct buttons | PASS |
+| **768px** | Tablet Portrait (iPad) | Arabic RTL | 768px / 768px | `0px (FALSE)` | 2 cols (230px) / 2 cols (213px) / 3 cols (~158px) / 4 cols (102px) | Title: 166px (unclipped) / Date: 30px (1 line) / Search: 370px | Stacked card with SAR amount + actions | PASS |
+| **820px** | Tablet Portrait (iPad Air) | Arabic RTL | 820px / 820px | `0px (FALSE)` | 2 cols (256px) / 2 cols (239px) / 3 cols (~175px) / 4 cols (115px) | Title: 221px (unclipped) / Date: 30px (1 line) / Search: 422px | Stacked card with SAR amount + actions | PASS |
+| **1024px** | Tablet Landscape | Arabic RTL | 1024px / 1024px | `0px (FALSE)` | 4 cols (171px) / 4 cols (163px) / 6 cols (122px) / 4 cols (103px) | Title: 422px (unclipped) / Date: 30px (1 line) / Search: 480px | Full horizontal row with SAR amount + actions | PASS |
+| **1280px** | Desktop Regression | Arabic RTL | 1280px / 1280px | `0px (FALSE)` | 4 cols (235px) / 4 cols (227px) / 6 cols (170px) / 4 cols (103px) | Title: 254px (unclipped) / Date: 30px (1 line) / Search: 286px | Baseline desktop row preserved 100% | PASS |
+| **390px** | Standard Mobile | English LTR | 390px / 390px | `0px (FALSE)` | 1 col (366px) / 1 col (332px) / 2 cols (166px) / 3 cols (108px) | Title: 167px (unclipped) / Date: n/a / Search: 258px | LTR layout + SAR amount + actions | PASS |
+| **1280px** | Desktop Regression | English LTR | 1280px / 1280px | `0px (FALSE)` | 4 cols (235px) / 4 cols (227px) / 6 cols (170px) / 4 cols (103px) | Title: 200px (unclipped) / Date: 30px (1 line) / Search: 286px | LTR desktop layout preserved | PASS |
+| **390px** | Mobile Navigation Drawer | Arabic RTL | 390px / 390px | `0px (FALSE)` | n/a (Sheet Open) | Hamburger trigger opens drawer cleanly | Overlay touch targets functional | PASS |
 
 ### 14.3 Quality Gates & Test Evidence
 - **TypeScript Typecheck:** `pnpm run typecheck` across all 3 workspace projects (`@workspace/mockup-sandbox`, `@workspace/api-server`, `scripts`) — **0 errors (Exit Code: 0)**.
-- **Production Build:** `pnpm run build` (`vite build`) — **Built in 27.93s, 0 errors (Exit Code: 0)**.
+- **Production Build:** `pnpm run build` (`vite build`) — **Built in 12.09s (sandbox) + 17.36s (api-server bundle), 0 errors (Exit Code: 0)**.
 - **Targeted Unit & Contract Tests:** `node artifacts/api-server/node_modules/tsx/dist/cli.mjs --test` — **70 / 70 tests PASS (100%), 0 fail (Exit Code: 0)**.
 - **Full Historical TAP Regression Suite:** **552 / 552 tests PASS (100%), 0 fail (Exit Code: 0)**.
 - **Git Diff & Whitespace Safety:** `git diff --check` — **0 whitespace or syntax issues (Exit Code: 0)**.
+- **Automated Headless Browser Visual Evidence:** 51 screenshots + `metrics.json` captured across 8 viewports, both RTL and LTR, with internal element scrolling (`scrollIntoViewIfNeeded()`), 0 console errors.

@@ -6,15 +6,74 @@
       "height": 640
     },
     "lang": "ar",
+    "consoleErrors": [],
     "metrics": {
       "clientWidth": 320,
       "scrollWidth": 320,
       "hasHorizontalOverflow": false,
-      "bodyScrollWidth": 320,
-      "bodyClientWidth": 320
+      "header": {
+        "tag": "md:hidden px-3 py-2.5 flex flex-col gap-2",
+        "width": 320,
+        "h1Text": "لوحة التحكم",
+        "h1Width": 112,
+        "h1ScrollWidth": 112,
+        "h1Clipped": false,
+        "dateText": null,
+        "dateHeight": 0,
+        "dateWrapped": false,
+        "searchWidth": 188
+      },
+      "grids": [
+        {
+          "index": 0,
+          "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+          "gridTemplateColumns": "296px",
+          "colCount": 1,
+          "clientWidth": 296,
+          "scrollWidth": 296
+        },
+        {
+          "index": 1,
+          "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+          "gridTemplateColumns": "262px",
+          "colCount": 1,
+          "clientWidth": 262,
+          "scrollWidth": 262
+        },
+        {
+          "index": 2,
+          "className": "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100",
+          "gridTemplateColumns": "131px 131px",
+          "colCount": 2,
+          "clientWidth": 294,
+          "scrollWidth": 294
+        },
+        {
+          "index": 3,
+          "className": "grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5",
+          "gridTemplateColumns": "296px",
+          "colCount": 1,
+          "clientWidth": 296,
+          "scrollWidth": 296
+        },
+        {
+          "index": 4,
+          "className": "p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3",
+          "gridTemplateColumns": "84.6562px 84.6719px 84.6562px",
+          "colCount": 3,
+          "clientWidth": 294,
+          "scrollWidth": 294
+        }
+      ]
     },
-    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\320px_narrow_mobile.png",
-    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\320px_narrow_mobile_full.png"
+    "files": {
+      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\320px_narrow_mobile_header.png",
+      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\320px_narrow_mobile_top.png",
+      "modulesFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\320px_narrow_mobile_modules.png",
+      "opRowScrolledFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\320px_narrow_mobile_oprow_scrolled.png",
+      "opRowCardFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\320px_narrow_mobile_oprow_card.png",
+      "opRowItemFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\320px_narrow_mobile_oprow_single.png"
+    }
   },
   {
     "viewport": {
@@ -23,15 +82,74 @@
       "height": 800
     },
     "lang": "ar",
+    "consoleErrors": [],
     "metrics": {
       "clientWidth": 360,
       "scrollWidth": 360,
       "hasHorizontalOverflow": false,
-      "bodyScrollWidth": 360,
-      "bodyClientWidth": 360
+      "header": {
+        "tag": "md:hidden px-3 py-2.5 flex flex-col gap-2",
+        "width": 360,
+        "h1Text": "لوحة التحكم",
+        "h1Width": 152,
+        "h1ScrollWidth": 152,
+        "h1Clipped": false,
+        "dateText": null,
+        "dateHeight": 0,
+        "dateWrapped": false,
+        "searchWidth": 228
+      },
+      "grids": [
+        {
+          "index": 0,
+          "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+          "gridTemplateColumns": "336px",
+          "colCount": 1,
+          "clientWidth": 336,
+          "scrollWidth": 336
+        },
+        {
+          "index": 1,
+          "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+          "gridTemplateColumns": "302px",
+          "colCount": 1,
+          "clientWidth": 302,
+          "scrollWidth": 302
+        },
+        {
+          "index": 2,
+          "className": "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100",
+          "gridTemplateColumns": "151px 151px",
+          "colCount": 2,
+          "clientWidth": 334,
+          "scrollWidth": 334
+        },
+        {
+          "index": 3,
+          "className": "grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5",
+          "gridTemplateColumns": "336px",
+          "colCount": 1,
+          "clientWidth": 336,
+          "scrollWidth": 336
+        },
+        {
+          "index": 4,
+          "className": "p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3",
+          "gridTemplateColumns": "98px 98px 98px",
+          "colCount": 3,
+          "clientWidth": 334,
+          "scrollWidth": 334
+        }
+      ]
     },
-    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\360px_android_mobile.png",
-    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\360px_android_mobile_full.png"
+    "files": {
+      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\360px_android_mobile_header.png",
+      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\360px_android_mobile_top.png",
+      "modulesFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\360px_android_mobile_modules.png",
+      "opRowScrolledFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\360px_android_mobile_oprow_scrolled.png",
+      "opRowCardFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\360px_android_mobile_oprow_card.png",
+      "opRowItemFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\360px_android_mobile_oprow_single.png"
+    }
   },
   {
     "viewport": {
@@ -40,15 +158,74 @@
       "height": 844
     },
     "lang": "ar",
+    "consoleErrors": [],
     "metrics": {
       "clientWidth": 390,
       "scrollWidth": 390,
       "hasHorizontalOverflow": false,
-      "bodyScrollWidth": 390,
-      "bodyClientWidth": 390
+      "header": {
+        "tag": "md:hidden px-3 py-2.5 flex flex-col gap-2",
+        "width": 390,
+        "h1Text": "لوحة التحكم",
+        "h1Width": 182,
+        "h1ScrollWidth": 182,
+        "h1Clipped": false,
+        "dateText": null,
+        "dateHeight": 0,
+        "dateWrapped": false,
+        "searchWidth": 258
+      },
+      "grids": [
+        {
+          "index": 0,
+          "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+          "gridTemplateColumns": "366px",
+          "colCount": 1,
+          "clientWidth": 366,
+          "scrollWidth": 366
+        },
+        {
+          "index": 1,
+          "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+          "gridTemplateColumns": "332px",
+          "colCount": 1,
+          "clientWidth": 332,
+          "scrollWidth": 332
+        },
+        {
+          "index": 2,
+          "className": "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100",
+          "gridTemplateColumns": "166px 166px",
+          "colCount": 2,
+          "clientWidth": 364,
+          "scrollWidth": 364
+        },
+        {
+          "index": 3,
+          "className": "grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5",
+          "gridTemplateColumns": "366px",
+          "colCount": 1,
+          "clientWidth": 366,
+          "scrollWidth": 366
+        },
+        {
+          "index": 4,
+          "className": "p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3",
+          "gridTemplateColumns": "108px 108px 108px",
+          "colCount": 3,
+          "clientWidth": 364,
+          "scrollWidth": 364
+        }
+      ]
     },
-    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\390px_standard_mobile.png",
-    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\390px_standard_mobile_full.png"
+    "files": {
+      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_header.png",
+      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_top.png",
+      "modulesFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_modules.png",
+      "opRowScrolledFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_oprow_scrolled.png",
+      "opRowCardFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_oprow_card.png",
+      "opRowItemFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_oprow_single.png"
+    }
   },
   {
     "viewport": {
@@ -57,15 +234,74 @@
       "height": 932
     },
     "lang": "ar",
+    "consoleErrors": [],
     "metrics": {
       "clientWidth": 430,
       "scrollWidth": 430,
       "hasHorizontalOverflow": false,
-      "bodyScrollWidth": 430,
-      "bodyClientWidth": 430
+      "header": {
+        "tag": "md:hidden px-3 py-2.5 flex flex-col gap-2",
+        "width": 430,
+        "h1Text": "لوحة التحكم",
+        "h1Width": 222,
+        "h1ScrollWidth": 222,
+        "h1Clipped": false,
+        "dateText": null,
+        "dateHeight": 0,
+        "dateWrapped": false,
+        "searchWidth": 298
+      },
+      "grids": [
+        {
+          "index": 0,
+          "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+          "gridTemplateColumns": "406px",
+          "colCount": 1,
+          "clientWidth": 406,
+          "scrollWidth": 406
+        },
+        {
+          "index": 1,
+          "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+          "gridTemplateColumns": "372px",
+          "colCount": 1,
+          "clientWidth": 372,
+          "scrollWidth": 372
+        },
+        {
+          "index": 2,
+          "className": "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100",
+          "gridTemplateColumns": "186px 186px",
+          "colCount": 2,
+          "clientWidth": 404,
+          "scrollWidth": 404
+        },
+        {
+          "index": 3,
+          "className": "grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5",
+          "gridTemplateColumns": "406px",
+          "colCount": 1,
+          "clientWidth": 406,
+          "scrollWidth": 406
+        },
+        {
+          "index": 4,
+          "className": "p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3",
+          "gridTemplateColumns": "121.328px 121.328px 121.344px",
+          "colCount": 3,
+          "clientWidth": 404,
+          "scrollWidth": 404
+        }
+      ]
     },
-    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\430px_large_mobile.png",
-    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\430px_large_mobile_full.png"
+    "files": {
+      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\430px_large_mobile_header.png",
+      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\430px_large_mobile_top.png",
+      "modulesFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\430px_large_mobile_modules.png",
+      "opRowScrolledFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\430px_large_mobile_oprow_scrolled.png",
+      "opRowCardFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\430px_large_mobile_oprow_card.png",
+      "opRowItemFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\430px_large_mobile_oprow_single.png"
+    }
   },
   {
     "viewport": {
@@ -74,15 +310,74 @@
       "height": 1024
     },
     "lang": "ar",
+    "consoleErrors": [],
     "metrics": {
       "clientWidth": 768,
       "scrollWidth": 768,
       "hasHorizontalOverflow": false,
-      "bodyScrollWidth": 768,
-      "bodyClientWidth": 768
+      "header": {
+        "tag": "hidden md:flex xl:hidden flex-col gap-2.5 px-4 py-2.5 bg-white",
+        "width": 516,
+        "h1Text": "لوحة التحكم",
+        "h1Width": 166,
+        "h1ScrollWidth": 166,
+        "h1Clipped": false,
+        "dateText": "الأحد، 1 نوفمبر 2026",
+        "dateHeight": 30,
+        "dateWrapped": false,
+        "searchWidth": 370
+      },
+      "grids": [
+        {
+          "index": 0,
+          "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+          "gridTemplateColumns": "230px 230px",
+          "colCount": 2,
+          "clientWidth": 476,
+          "scrollWidth": 476
+        },
+        {
+          "index": 1,
+          "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+          "gridTemplateColumns": "213px 213px",
+          "colCount": 2,
+          "clientWidth": 442,
+          "scrollWidth": 442
+        },
+        {
+          "index": 2,
+          "className": "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100",
+          "gridTemplateColumns": "79px 79px 79px 79px 79px 79px",
+          "colCount": 6,
+          "clientWidth": 474,
+          "scrollWidth": 474
+        },
+        {
+          "index": 3,
+          "className": "grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5",
+          "gridTemplateColumns": "476px",
+          "colCount": 1,
+          "clientWidth": 476,
+          "scrollWidth": 476
+        },
+        {
+          "index": 4,
+          "className": "p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3",
+          "gridTemplateColumns": "101.5px 101.5px 101.5px 101.5px",
+          "colCount": 4,
+          "clientWidth": 474,
+          "scrollWidth": 474
+        }
+      ]
     },
-    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\768px_tablet_portrait.png",
-    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\768px_tablet_portrait_full.png"
+    "files": {
+      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_header.png",
+      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_top.png",
+      "modulesFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_modules.png",
+      "opRowScrolledFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_oprow_scrolled.png",
+      "opRowCardFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_oprow_card.png",
+      "opRowItemFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_oprow_single.png"
+    }
   },
   {
     "viewport": {
@@ -91,15 +386,76 @@
       "height": 1180
     },
     "lang": "ar",
+    "consoleErrors": [
+      "Failed to load resource: net::ERR_CONNECTION_RESET"
+    ],
     "metrics": {
       "clientWidth": 820,
       "scrollWidth": 820,
       "hasHorizontalOverflow": false,
-      "bodyScrollWidth": 820,
-      "bodyClientWidth": 820
+      "header": {
+        "tag": "hidden md:flex xl:hidden flex-col gap-2.5 px-4 py-2.5 bg-white",
+        "width": 568,
+        "h1Text": "لوحة التحكم",
+        "h1Width": 221,
+        "h1ScrollWidth": 221,
+        "h1Clipped": false,
+        "dateText": "الأحد، 1 نوفمبر 2026",
+        "dateHeight": 30,
+        "dateWrapped": false,
+        "searchWidth": 422
+      },
+      "grids": [
+        {
+          "index": 0,
+          "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+          "gridTemplateColumns": "256px 256px",
+          "colCount": 2,
+          "clientWidth": 528,
+          "scrollWidth": 528
+        },
+        {
+          "index": 1,
+          "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+          "gridTemplateColumns": "239px 239px",
+          "colCount": 2,
+          "clientWidth": 494,
+          "scrollWidth": 494
+        },
+        {
+          "index": 2,
+          "className": "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100",
+          "gridTemplateColumns": "87.6562px 87.6719px 87.6562px 87.6719px 87.6719px 87.6562px",
+          "colCount": 6,
+          "clientWidth": 526,
+          "scrollWidth": 526
+        },
+        {
+          "index": 3,
+          "className": "grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5",
+          "gridTemplateColumns": "528px",
+          "colCount": 1,
+          "clientWidth": 528,
+          "scrollWidth": 528
+        },
+        {
+          "index": 4,
+          "className": "p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3",
+          "gridTemplateColumns": "114.5px 114.5px 114.5px 114.5px",
+          "colCount": 4,
+          "clientWidth": 526,
+          "scrollWidth": 526
+        }
+      ]
     },
-    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\820px_tablet_portrait.png",
-    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\820px_tablet_portrait_full.png"
+    "files": {
+      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\820px_tablet_portrait_header.png",
+      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\820px_tablet_portrait_top.png",
+      "modulesFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\820px_tablet_portrait_modules.png",
+      "opRowScrolledFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\820px_tablet_portrait_oprow_scrolled.png",
+      "opRowCardFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\820px_tablet_portrait_oprow_card.png",
+      "opRowItemFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\820px_tablet_portrait_oprow_single.png"
+    }
   },
   {
     "viewport": {
@@ -108,15 +464,74 @@
       "height": 768
     },
     "lang": "ar",
+    "consoleErrors": [],
     "metrics": {
       "clientWidth": 1024,
       "scrollWidth": 1024,
       "hasHorizontalOverflow": false,
-      "bodyScrollWidth": 1024,
-      "bodyClientWidth": 1024
+      "header": {
+        "tag": "hidden md:flex xl:hidden flex-col gap-2.5 px-4 py-2.5 bg-white",
+        "width": 772,
+        "h1Text": "لوحة التحكم",
+        "h1Width": 422,
+        "h1ScrollWidth": 422,
+        "h1Clipped": false,
+        "dateText": "الأحد، 1 نوفمبر 2026",
+        "dateHeight": 30,
+        "dateWrapped": false,
+        "searchWidth": 480
+      },
+      "grids": [
+        {
+          "index": 0,
+          "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+          "gridTemplateColumns": "171px 171px 171px 171px",
+          "colCount": 4,
+          "clientWidth": 732,
+          "scrollWidth": 732
+        },
+        {
+          "index": 1,
+          "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+          "gridTemplateColumns": "162.5px 162.5px 162.5px 162.5px",
+          "colCount": 4,
+          "clientWidth": 698,
+          "scrollWidth": 698
+        },
+        {
+          "index": 2,
+          "className": "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100",
+          "gridTemplateColumns": "121.656px 121.672px 121.656px 121.672px 121.672px 121.656px",
+          "colCount": 6,
+          "clientWidth": 730,
+          "scrollWidth": 730
+        },
+        {
+          "index": 3,
+          "className": "grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5",
+          "gridTemplateColumns": "230.656px 230.656px 230.672px",
+          "colCount": 3,
+          "clientWidth": 732,
+          "scrollWidth": 732
+        },
+        {
+          "index": 4,
+          "className": "p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3",
+          "gridTemplateColumns": "102.828px 102.828px 102.828px 102.844px",
+          "colCount": 4,
+          "clientWidth": 479,
+          "scrollWidth": 479
+        }
+      ]
     },
-    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\1024px_tablet_landscape.png",
-    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\1024px_tablet_landscape_full.png"
+    "files": {
+      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_header.png",
+      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_top.png",
+      "modulesFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_modules.png",
+      "opRowScrolledFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_oprow_scrolled.png",
+      "opRowCardFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_oprow_card.png",
+      "opRowItemFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_oprow_single.png"
+    }
   },
   {
     "viewport": {
@@ -125,15 +540,74 @@
       "height": 800
     },
     "lang": "ar",
+    "consoleErrors": [],
     "metrics": {
       "clientWidth": 1280,
       "scrollWidth": 1280,
       "hasHorizontalOverflow": false,
-      "bodyScrollWidth": 1280,
-      "bodyClientWidth": 1280
+      "header": {
+        "tag": "hidden xl:flex items-center gap-3 px-5 py-3",
+        "width": 1028,
+        "h1Text": "لوحة التحكم",
+        "h1Width": 254,
+        "h1ScrollWidth": 254,
+        "h1Clipped": false,
+        "dateText": "الأحد، 1 نوفمبر 2026",
+        "dateHeight": 30,
+        "dateWrapped": false,
+        "searchWidth": 286
+      },
+      "grids": [
+        {
+          "index": 0,
+          "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+          "gridTemplateColumns": "235px 235px 235px 235px",
+          "colCount": 4,
+          "clientWidth": 988,
+          "scrollWidth": 988
+        },
+        {
+          "index": 1,
+          "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
+          "gridTemplateColumns": "226.5px 226.5px 226.5px 226.5px",
+          "colCount": 4,
+          "clientWidth": 954,
+          "scrollWidth": 954
+        },
+        {
+          "index": 2,
+          "className": "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100",
+          "gridTemplateColumns": "164.328px 164.328px 164.328px 164.344px 164.328px 164.328px",
+          "colCount": 6,
+          "clientWidth": 986,
+          "scrollWidth": 986
+        },
+        {
+          "index": 3,
+          "className": "grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5",
+          "gridTemplateColumns": "316px 316px 316px",
+          "colCount": 3,
+          "clientWidth": 988,
+          "scrollWidth": 988
+        },
+        {
+          "index": 4,
+          "className": "p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3",
+          "gridTemplateColumns": "145.5px 145.5px 145.5px 145.5px",
+          "colCount": 4,
+          "clientWidth": 650,
+          "scrollWidth": 650
+        }
+      ]
     },
-    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\1280px_desktop.png",
-    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\1280px_desktop_full.png"
+    "files": {
+      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_header.png",
+      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_top.png",
+      "modulesFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_modules.png",
+      "opRowScrolledFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_oprow_scrolled.png",
+      "opRowCardFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_oprow_card.png",
+      "opRowItemFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_oprow_single.png"
+    }
   },
   {
     "viewport": {
@@ -142,15 +616,91 @@
       "height": 844
     },
     "lang": "en",
+    "consoleErrors": [],
     "metrics": {
       "clientWidth": 390,
       "scrollWidth": 390,
       "hasHorizontalOverflow": false,
-      "bodyScrollWidth": 390,
-      "bodyClientWidth": 390
+      "header": {
+        "tag": "md:hidden px-3 py-2.5 flex flex-col gap-2",
+        "width": 390,
+        "h1Text": "Dashboard",
+        "h1Width": 176,
+        "h1ScrollWidth": 176,
+        "h1Clipped": false,
+        "dateText": null,
+        "dateHeight": 0,
+        "dateWrapped": false,
+        "searchWidth": 252
+      }
     },
-    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\390px_standard_mobile_en.png",
-    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\390px_standard_mobile_en_full.png"
+    "files": {
+      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_header_en.png",
+      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_top_en.png",
+      "opRowFile": null
+    }
+  },
+  {
+    "viewport": {
+      "name": "768px_tablet_portrait",
+      "width": 768,
+      "height": 1024
+    },
+    "lang": "en",
+    "consoleErrors": [],
+    "metrics": {
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "hasHorizontalOverflow": false,
+      "header": {
+        "tag": "hidden md:flex xl:hidden flex-col gap-2.5 px-4 py-2.5 bg-white",
+        "width": 516,
+        "h1Text": "Dashboard",
+        "h1Width": 96,
+        "h1ScrollWidth": 96,
+        "h1Clipped": false,
+        "dateText": "Sunday, November 1, 2026",
+        "dateHeight": 30,
+        "dateWrapped": false,
+        "searchWidth": 364
+      }
+    },
+    "files": {
+      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_header_en.png",
+      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_top_en.png",
+      "opRowFile": null
+    }
+  },
+  {
+    "viewport": {
+      "name": "1024px_tablet_landscape",
+      "width": 1024,
+      "height": 768
+    },
+    "lang": "en",
+    "consoleErrors": [],
+    "metrics": {
+      "clientWidth": 1024,
+      "scrollWidth": 1024,
+      "hasHorizontalOverflow": false,
+      "header": {
+        "tag": "hidden md:flex xl:hidden flex-col gap-2.5 px-4 py-2.5 bg-white",
+        "width": 772,
+        "h1Text": "Dashboard",
+        "h1Width": 352,
+        "h1ScrollWidth": 352,
+        "h1Clipped": false,
+        "dateText": "Sunday, November 1, 2026",
+        "dateHeight": 30,
+        "dateWrapped": false,
+        "searchWidth": 480
+      }
+    },
+    "files": {
+      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_header_en.png",
+      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_top_en.png",
+      "opRowFile": null
+    }
   },
   {
     "viewport": {
@@ -159,14 +709,28 @@
       "height": 800
     },
     "lang": "en",
+    "consoleErrors": [],
     "metrics": {
       "clientWidth": 1280,
       "scrollWidth": 1280,
       "hasHorizontalOverflow": false,
-      "bodyScrollWidth": 1280,
-      "bodyClientWidth": 1280
+      "header": {
+        "tag": "hidden xl:flex items-center gap-3 px-5 py-3",
+        "width": 1028,
+        "h1Text": "Dashboard",
+        "h1Width": 178,
+        "h1ScrollWidth": 178,
+        "h1Clipped": false,
+        "dateText": "Sunday, November 1, 2026",
+        "dateHeight": 30,
+        "dateWrapped": false,
+        "searchWidth": 286
+      }
     },
-    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\1280px_desktop_en.png",
-    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\1280px_desktop_en_full.png"
+    "files": {
+      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_header_en.png",
+      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_top_en.png",
+      "opRowFile": null
+    }
   }
 ]
