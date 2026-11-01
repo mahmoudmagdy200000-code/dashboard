@@ -42,17 +42,17 @@ export function OpRow({ op, onView, onApprove, onReject }: OpRowProps) {
         ${isLocked ? "bg-slate-50/60" : isRejected ? "opacity-55" : ""}`}
     >
       {/* Mobile & Tablet Top Summary Row: Module + Branch + Amount */}
-      <div className="flex items-center justify-between gap-2 lg:hidden w-full">
-        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+      <div className="flex items-start justify-between gap-2 lg:hidden w-full">
+        <div className="flex items-center gap-2 min-w-0 flex-wrap flex-1">
           <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-100 flex-shrink-0">
             {op.moduleLabel}
           </span>
-          <span className="font-bold text-gray-800 text-sm truncate">{op.branch}</span>
+          <span className="font-bold text-gray-800 text-sm truncate md:whitespace-normal md:break-words">{op.branch}</span>
           {op.brandName && op.brandName !== "—" && op.brandName !== op.branch && (
-            <span className="text-xs text-gray-500 truncate">({op.brandName})</span>
+            <span className="text-xs text-gray-500 truncate md:whitespace-normal md:break-words">({op.brandName})</span>
           )}
         </div>
-        <div className="font-extrabold text-gray-900 font-mono text-sm flex-shrink-0 tabular-nums">
+        <div className="font-extrabold text-gray-900 font-mono text-sm flex-shrink-0 tabular-nums pt-0.5">
           {fmtAmt(op.amount)} <span className="text-xs font-sans font-normal text-gray-600">{t("ر.س", "SAR")}</span>
         </div>
       </div>

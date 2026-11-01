@@ -1,10 +1,12 @@
-import pw from "../e2e/node_modules/@playwright/test/index.js";
+import pw from "../../../../e2e/node_modules/@playwright/test/index.js";
 const { chromium } = pw;
 import fs from "fs";
 import path from "path";
 
 const outDir = path.resolve("./artifacts/responsive-evidence/final");
 fs.mkdirSync(outDir, { recursive: true });
+
+const rel = (p) => (p ? "responsive-evidence/final/" + path.basename(p) : null);
 
 const mockUser = {
   id: "11111111-1111-1111-1111-111111111111",
@@ -317,10 +319,13 @@ async function run() {
       });
 
       const firstOp = document.querySelector('[data-testid="op-row"]');
+      const branchSpan = firstOp ? firstOp.querySelector('span.font-bold') : null;
       const opMetrics = firstOp ? {
         width: firstOp.clientWidth,
         height: firstOp.clientHeight,
         hasOverflow: firstOp.scrollWidth > firstOp.clientWidth,
+        branchName: branchSpan ? branchSpan.textContent : null,
+        branchNameClipped: branchSpan ? branchSpan.scrollWidth > branchSpan.clientWidth : false,
       } : null;
 
       return {
@@ -354,12 +359,12 @@ async function run() {
       consoleErrors,
       metrics: computedMetrics,
       files: {
-        headerFile,
-        topFile,
-        modulesFile,
-        opRowScrolledFile,
-        opRowCardFile,
-        opRowItemFile,
+        headerFile: rel(headerFile),
+        topFile: rel(topFile),
+        modulesFile: rel(modulesFile),
+        opRowScrolledFile: rel(opRowScrolledFile),
+        opRowCardFile: rel(opRowCardFile),
+        opRowItemFile: rel(opRowItemFile),
       },
     });
 
@@ -404,7 +409,7 @@ async function run() {
       viewport: { ...vp, name: `${vp.name}_en` },
       lang: "en",
       consoleErrors,
-      files: { headerFile, topFile },
+      files: { headerFile: rel(headerFile), topFile: rel(topFile) },
     });
 
     await context.close();
@@ -435,7 +440,7 @@ async function run() {
     metrics.push({
       viewport: { name: "390px_standard_mobile_drawer", width: 390, height: 844 },
       lang: "ar",
-      files: { drawerFile },
+      files: { drawerFile: rel(drawerFile) },
     });
     await context.close();
   }
@@ -468,11 +473,15 @@ async function run() {
       const periodSelect = activeHeader ? activeHeader.querySelector("select[aria-label='فترة العمليات']") : null;
       const searchNotice = activeHeader ? activeHeader.textContent.includes("بحث المورد غير متاح") : false;
       const bellNotice = activeHeader ? activeHeader.querySelector("[title*='إشعارات المورد']") !== null : false;
+      const bellButton = activeHeader ? activeHeader.querySelector("button[aria-label*='إشعارات المورد']") !== null : false;
+      const bellVisibleText = activeHeader ? activeHeader.textContent.includes("الإشعارات غير متاحة") : false;
       const chatWidget = document.querySelector("#live-chat-widget");
       return {
         hasPeriodSelect: !!periodSelect,
         hasSearchNotice: searchNotice,
         hasBellNotice: bellNotice,
+        bellIsButton: bellButton,
+        bellHasVisibleText: bellVisibleText,
         hasChatWidget: !!chatWidget,
       };
     });
@@ -481,7 +490,7 @@ async function run() {
       viewport: { name: "820px_tablet_supplier", width: 820, height: 1180 },
       role: "supplier",
       supplierHeaderInfo,
-      files: { supplierHeaderFile },
+      files: { supplierHeaderFile: rel(supplierHeaderFile) },
     });
     await context.close();
   }
@@ -491,6 +500,20 @@ async function run() {
   const metricsFile = path.join(outDir, "metrics.json");
   fs.writeFileSync(metricsFile, JSON.stringify(metrics, null, 2), "utf8");
   console.log(`Saved metrics to ${metricsFile}`);
+
+  // Copy to docs/audit/evidence directory
+  const docsEvidenceDir = path.resolve("./docs/audit/evidence/accountant-responsive-ux-20261101");
+  fs.mkdirSync(docsEvidenceDir, { recursive: true });
+  fs.writeFileSync(path.join(docsEvidenceDir, "metrics.json"), JSON.stringify(metrics, null, 2), "utf8");
+
+  // Copy all files to brain artifacts directory
+  const brainDir = path.resolve("C:/Users/COMPUMARTS/.gemini/antigravity/brain/379b7f04-c138-4520-8a68-3deda0ab1d22/responsive-evidence/final");
+  fs.mkdirSync(brainDir, { recursive: true });
+  const allOutFiles = fs.readdirSync(outDir);
+  for (const f of allOutFiles) {
+    fs.copyFileSync(path.join(outDir, f), path.join(brainDir, f));
+  }
+  console.log(`Copied ${allOutFiles.length} files to brain artifact directory.`);
 }
 
 run().catch(err => {

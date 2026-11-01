@@ -30,7 +30,9 @@
       "opMetrics": {
         "width": 294,
         "height": 237,
-        "hasOverflow": false
+        "hasOverflow": false,
+        "branchName": "شفتات",
+        "branchNameClipped": false
       },
       "grids": [
         {
@@ -81,12 +83,12 @@
       ]
     },
     "files": {
-      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\320px_narrow_mobile_header.png",
-      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\320px_narrow_mobile_top.png",
-      "modulesFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\320px_narrow_mobile_modules.png",
-      "opRowScrolledFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\320px_narrow_mobile_oprow_scrolled.png",
-      "opRowCardFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\320px_narrow_mobile_oprow_card.png",
-      "opRowItemFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\320px_narrow_mobile_oprow_single.png"
+      "headerFile": "responsive-evidence/final/320px_narrow_mobile_header.png",
+      "topFile": "responsive-evidence/final/320px_narrow_mobile_top.png",
+      "modulesFile": "responsive-evidence/final/320px_narrow_mobile_modules.png",
+      "opRowScrolledFile": "responsive-evidence/final/320px_narrow_mobile_oprow_scrolled.png",
+      "opRowCardFile": "responsive-evidence/final/320px_narrow_mobile_oprow_card.png",
+      "opRowItemFile": "responsive-evidence/final/320px_narrow_mobile_oprow_single.png"
     }
   },
   {
@@ -120,7 +122,9 @@
       "opMetrics": {
         "width": 334,
         "height": 221,
-        "hasOverflow": false
+        "hasOverflow": false,
+        "branchName": "شفتات",
+        "branchNameClipped": false
       },
       "grids": [
         {
@@ -171,12 +175,12 @@
       ]
     },
     "files": {
-      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\360px_android_mobile_header.png",
-      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\360px_android_mobile_top.png",
-      "modulesFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\360px_android_mobile_modules.png",
-      "opRowScrolledFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\360px_android_mobile_oprow_scrolled.png",
-      "opRowCardFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\360px_android_mobile_oprow_card.png",
-      "opRowItemFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\360px_android_mobile_oprow_single.png"
+      "headerFile": "responsive-evidence/final/360px_android_mobile_header.png",
+      "topFile": "responsive-evidence/final/360px_android_mobile_top.png",
+      "modulesFile": "responsive-evidence/final/360px_android_mobile_modules.png",
+      "opRowScrolledFile": "responsive-evidence/final/360px_android_mobile_oprow_scrolled.png",
+      "opRowCardFile": "responsive-evidence/final/360px_android_mobile_oprow_card.png",
+      "opRowItemFile": "responsive-evidence/final/360px_android_mobile_oprow_single.png"
     }
   },
   {
@@ -210,7 +214,9 @@
       "opMetrics": {
         "width": 364,
         "height": 221,
-        "hasOverflow": false
+        "hasOverflow": false,
+        "branchName": "شفتات",
+        "branchNameClipped": false
       },
       "grids": [
         {
@@ -261,12 +267,12 @@
       ]
     },
     "files": {
-      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_header.png",
-      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_top.png",
-      "modulesFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_modules.png",
-      "opRowScrolledFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_oprow_scrolled.png",
-      "opRowCardFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_oprow_card.png",
-      "opRowItemFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_oprow_single.png"
+      "headerFile": "responsive-evidence/final/390px_standard_mobile_header.png",
+      "topFile": "responsive-evidence/final/390px_standard_mobile_top.png",
+      "modulesFile": "responsive-evidence/final/390px_standard_mobile_modules.png",
+      "opRowScrolledFile": "responsive-evidence/final/390px_standard_mobile_oprow_scrolled.png",
+      "opRowCardFile": "responsive-evidence/final/390px_standard_mobile_oprow_card.png",
+      "opRowItemFile": "responsive-evidence/final/390px_standard_mobile_oprow_single.png"
     }
   },
   {
@@ -300,7 +306,9 @@
       "opMetrics": {
         "width": 404,
         "height": 221,
-        "hasOverflow": false
+        "hasOverflow": false,
+        "branchName": "شفتات",
+        "branchNameClipped": false
       },
       "grids": [
         {
@@ -351,12 +359,12 @@
       ]
     },
     "files": {
-      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\430px_large_mobile_header.png",
-      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\430px_large_mobile_top.png",
-      "modulesFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\430px_large_mobile_modules.png",
-      "opRowScrolledFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\430px_large_mobile_oprow_scrolled.png",
-      "opRowCardFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\430px_large_mobile_oprow_card.png",
-      "opRowItemFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\430px_large_mobile_oprow_single.png"
+      "headerFile": "responsive-evidence/final/430px_large_mobile_header.png",
+      "topFile": "responsive-evidence/final/430px_large_mobile_top.png",
+      "modulesFile": "responsive-evidence/final/430px_large_mobile_modules.png",
+      "opRowScrolledFile": "responsive-evidence/final/430px_large_mobile_oprow_scrolled.png",
+      "opRowCardFile": "responsive-evidence/final/430px_large_mobile_oprow_card.png",
+      "opRowItemFile": "responsive-evidence/final/430px_large_mobile_oprow_single.png"
     }
   },
   {
@@ -389,8 +397,10 @@
       },
       "opMetrics": {
         "width": 474,
-        "height": 227,
-        "hasOverflow": false
+        "height": 247,
+        "hasOverflow": false,
+        "branchName": "شفتات",
+        "branchNameClipped": false
       },
       "grids": [
         {
@@ -441,12 +451,12 @@
       ]
     },
     "files": {
-      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_header.png",
-      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_top.png",
-      "modulesFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_modules.png",
-      "opRowScrolledFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_oprow_scrolled.png",
-      "opRowCardFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_oprow_card.png",
-      "opRowItemFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_oprow_single.png"
+      "headerFile": "responsive-evidence/final/768px_tablet_portrait_header.png",
+      "topFile": "responsive-evidence/final/768px_tablet_portrait_top.png",
+      "modulesFile": "responsive-evidence/final/768px_tablet_portrait_modules.png",
+      "opRowScrolledFile": "responsive-evidence/final/768px_tablet_portrait_oprow_scrolled.png",
+      "opRowCardFile": "responsive-evidence/final/768px_tablet_portrait_oprow_card.png",
+      "opRowItemFile": "responsive-evidence/final/768px_tablet_portrait_oprow_single.png"
     }
   },
   {
@@ -479,8 +489,10 @@
       },
       "opMetrics": {
         "width": 526,
-        "height": 203,
-        "hasOverflow": false
+        "height": 223,
+        "hasOverflow": false,
+        "branchName": "شفتات",
+        "branchNameClipped": false
       },
       "grids": [
         {
@@ -531,12 +543,12 @@
       ]
     },
     "files": {
-      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\820px_tablet_portrait_header.png",
-      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\820px_tablet_portrait_top.png",
-      "modulesFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\820px_tablet_portrait_modules.png",
-      "opRowScrolledFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\820px_tablet_portrait_oprow_scrolled.png",
-      "opRowCardFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\820px_tablet_portrait_oprow_card.png",
-      "opRowItemFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\820px_tablet_portrait_oprow_single.png"
+      "headerFile": "responsive-evidence/final/820px_tablet_portrait_header.png",
+      "topFile": "responsive-evidence/final/820px_tablet_portrait_top.png",
+      "modulesFile": "responsive-evidence/final/820px_tablet_portrait_modules.png",
+      "opRowScrolledFile": "responsive-evidence/final/820px_tablet_portrait_oprow_scrolled.png",
+      "opRowCardFile": "responsive-evidence/final/820px_tablet_portrait_oprow_card.png",
+      "opRowItemFile": "responsive-evidence/final/820px_tablet_portrait_oprow_single.png"
     }
   },
   {
@@ -570,7 +582,9 @@
       "opMetrics": {
         "width": 730,
         "height": 152,
-        "hasOverflow": false
+        "hasOverflow": false,
+        "branchName": "شفتات",
+        "branchNameClipped": false
       },
       "grids": [
         {
@@ -621,12 +635,12 @@
       ]
     },
     "files": {
-      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_header.png",
-      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_top.png",
-      "modulesFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_modules.png",
-      "opRowScrolledFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_oprow_scrolled.png",
-      "opRowCardFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_oprow_card.png",
-      "opRowItemFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_oprow_single.png"
+      "headerFile": "responsive-evidence/final/1024px_tablet_landscape_header.png",
+      "topFile": "responsive-evidence/final/1024px_tablet_landscape_top.png",
+      "modulesFile": "responsive-evidence/final/1024px_tablet_landscape_modules.png",
+      "opRowScrolledFile": "responsive-evidence/final/1024px_tablet_landscape_oprow_scrolled.png",
+      "opRowCardFile": "responsive-evidence/final/1024px_tablet_landscape_oprow_card.png",
+      "opRowItemFile": "responsive-evidence/final/1024px_tablet_landscape_oprow_single.png"
     }
   },
   {
@@ -660,7 +674,9 @@
       "opMetrics": {
         "width": 986,
         "height": 108,
-        "hasOverflow": false
+        "hasOverflow": false,
+        "branchName": "شفتات",
+        "branchNameClipped": false
       },
       "grids": [
         {
@@ -711,12 +727,12 @@
       ]
     },
     "files": {
-      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_header.png",
-      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_top.png",
-      "modulesFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_modules.png",
-      "opRowScrolledFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_oprow_scrolled.png",
-      "opRowCardFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_oprow_card.png",
-      "opRowItemFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_oprow_single.png"
+      "headerFile": "responsive-evidence/final/1280px_desktop_header.png",
+      "topFile": "responsive-evidence/final/1280px_desktop_top.png",
+      "modulesFile": "responsive-evidence/final/1280px_desktop_modules.png",
+      "opRowScrolledFile": "responsive-evidence/final/1280px_desktop_oprow_scrolled.png",
+      "opRowCardFile": "responsive-evidence/final/1280px_desktop_oprow_card.png",
+      "opRowItemFile": "responsive-evidence/final/1280px_desktop_oprow_single.png"
     }
   },
   {
@@ -728,8 +744,8 @@
     "lang": "en",
     "consoleErrors": [],
     "files": {
-      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_header_en.png",
-      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_top_en.png"
+      "headerFile": "responsive-evidence/final/390px_standard_mobile_header_en.png",
+      "topFile": "responsive-evidence/final/390px_standard_mobile_top_en.png"
     }
   },
   {
@@ -741,8 +757,8 @@
     "lang": "en",
     "consoleErrors": [],
     "files": {
-      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_header_en.png",
-      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_top_en.png"
+      "headerFile": "responsive-evidence/final/768px_tablet_portrait_header_en.png",
+      "topFile": "responsive-evidence/final/768px_tablet_portrait_top_en.png"
     }
   },
   {
@@ -754,8 +770,8 @@
     "lang": "en",
     "consoleErrors": [],
     "files": {
-      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_header_en.png",
-      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_top_en.png"
+      "headerFile": "responsive-evidence/final/1024px_tablet_landscape_header_en.png",
+      "topFile": "responsive-evidence/final/1024px_tablet_landscape_top_en.png"
     }
   },
   {
@@ -767,8 +783,8 @@
     "lang": "en",
     "consoleErrors": [],
     "files": {
-      "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_header_en.png",
-      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_top_en.png"
+      "headerFile": "responsive-evidence/final/1280px_desktop_header_en.png",
+      "topFile": "responsive-evidence/final/1280px_desktop_top_en.png"
     }
   },
   {
@@ -779,7 +795,7 @@
     },
     "lang": "ar",
     "files": {
-      "drawerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_drawer_open.png"
+      "drawerFile": "responsive-evidence/final/390px_standard_mobile_drawer_open.png"
     }
   },
   {
@@ -793,10 +809,12 @@
       "hasPeriodSelect": false,
       "hasSearchNotice": true,
       "hasBellNotice": true,
+      "bellIsButton": true,
+      "bellHasVisibleText": true,
       "hasChatWidget": false
     },
     "files": {
-      "supplierHeaderFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\820px_tablet_supplier_header.png"
+      "supplierHeaderFile": "responsive-evidence/final/820px_tablet_supplier_header.png"
     }
   }
 ]

@@ -1584,12 +1584,18 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
                       <Bell size={16} />
                     </div>
                   ) : role === "supplier" ? (
-                    <div
-                      className="opacity-60 cursor-not-allowed p-1.5 text-gray-400"
+                    <button
+                      type="button"
+                      onClick={() => toast.info(tL("إشعارات المورد غير متاحة بعقد الخادم الحالي", "Supplier notifications require an approved Backend contract"))}
+                      className="opacity-70 cursor-pointer p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/40 flex items-center gap-1.5"
                       title={tL("إشعارات المورد غير متاحة بعقد الخادم الحالي", "Supplier notifications require an approved Backend contract")}
+                      aria-label={tL("إشعارات المورد غير متاحة بعقد الخادم الحالي", "Supplier notifications require an approved Backend contract")}
                     >
                       <Bell size={16} />
-                    </div>
+                      <span className="hidden sm:inline text-[11px] text-gray-500 font-normal">
+                        {tL("الإشعارات غير متاحة", "Notifications unavailable")}
+                      </span>
+                    </button>
                   ) : (
                     <NotificationBell t={tL} theme="light" role={role} pages={NAV_CONFIG[role].flatMap(entry => isSection(entry) ? [] : [entry.id])} onNavigate={navigate} />
                   )}
@@ -1698,12 +1704,18 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
                       <Bell size={16} />
                     </div>
                   ) : role === "supplier" ? (
-                    <div
-                      className="opacity-60 cursor-not-allowed p-1.5 text-gray-400"
+                    <button
+                      type="button"
+                      onClick={() => toast.info(tL("إشعارات المورد غير متاحة بعقد الخادم الحالي", "Supplier notifications require an approved Backend contract"))}
+                      className="opacity-70 cursor-pointer p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/40 flex items-center gap-1.5"
                       title={tL("إشعارات المورد غير متاحة بعقد الخادم الحالي", "Supplier notifications require an approved Backend contract")}
+                      aria-label={tL("إشعارات المورد غير متاحة بعقد الخادم الحالي", "Supplier notifications require an approved Backend contract")}
                     >
                       <Bell size={16} />
-                    </div>
+                      <span className="hidden sm:inline text-[11px] text-gray-500 font-normal">
+                        {tL("الإشعارات غير متاحة", "Notifications unavailable")}
+                      </span>
+                    </button>
                   ) : (
                     <NotificationBell t={tL} theme="light" role={role} pages={NAV_CONFIG[role].flatMap(entry => isSection(entry) ? [] : [entry.id])} onNavigate={navigate} />
                   )}
