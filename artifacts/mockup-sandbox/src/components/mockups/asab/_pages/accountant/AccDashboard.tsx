@@ -83,21 +83,21 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-gray-800 font-bold text-xl">{t("ملخص — ", "Summary — ")}{formatTodayLong(lang)}</h2>
-          <p className="text-gray-400 text-sm mt-0.5">{t("الفروع المخصصة: 1–50 | الموديولات: التسعة", "Assigned branches: 1–50 | Modules: All nine")}</p>
+          <h2 className="text-gray-800 font-bold text-lg sm:text-xl">{t("ملخص — ", "Summary — ")}{formatTodayLong(lang)}</h2>
+          <p className="text-gray-400 text-xs sm:text-sm mt-0.5">{t("الفروع المخصصة: 1–50 | الموديولات: التسعة", "Assigned branches: 1–50 | Modules: All nine")}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {overdueCount > 0 && (
-            <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold px-3 py-1.5 rounded-lg">
+            <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg">
               <AlertTriangle size={12} /> {overdueCount} {t("عملية متأخرة >يومين", "operations overdue >2 days")}
             </div>
           )}
           <div className="flex bg-gray-100 rounded-lg p-1 gap-0.5">
             {(["today", "week", "month"] as const).map(p => (
               <button key={p} onClick={() => setPeriod(p)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${period === p ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${period === p ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
                 {p === "today" ? t("اليوم", "Today") : p === "week" ? t("الأسبوع", "Week") : t("الشهر", "Month")}
               </button>
             ))}
@@ -105,10 +105,10 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="relative">
           <KpiCard label={t("تنتظر مراجعتي", "Awaiting My Review")} value={String(awaitingReviewCount)} sub={t("📱 رُفعت من الفروع", "📱 Uploaded from branches")} icon={<Clock size={20} className="text-amber-600" />} accent="amber" />
-          {overdueCount > 0 && <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{overdueCount} {t("متأخر", "overdue")}</span>}
+          {overdueCount > 0 && <span className="absolute top-2.5 end-2.5 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">{overdueCount} {t("متأخر", "overdue")}</span>}
         </div>
         <KpiCard label={t("وافقت عليها", "I Approved")} value={String(iApprovedCount)} sub={t("بانتظار الاعتماد النهائي", "Awaiting final approval")} icon={<CheckCircle2 size={20} className="text-sky-600" />} accent="blue" />
         <KpiCard label={t("معتمدة نهائياً", "Final Approved")} value={String(finalApprovedCount)} sub={t("مُغلقة — تنتظر ERP أو مُرحَّلة", "Closed — awaiting ERP or posted")} icon={<Lock size={20} className="text-emerald-600" />} accent="emerald" />
@@ -117,11 +117,11 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
 
       {/* Daily progress bar */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
           <h3 className="font-bold text-gray-800 text-sm">🎯 {t("تقدم اليوم", "Today's Progress")}</h3>
           <span className="text-xs text-gray-400">{t("الهدف: مراجعة جميع العمليات المعلقة", "Goal: Review all pending operations")}</span>
         </div>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[
             { label: t("المراجعة", "Review"), done: ops.filter(o => o.status !== "pending").length, total: ops.length, color: "bg-purple-500" },
             { label: t("الموافقة", "Approval"), done: ops.filter(o => o.status === "approved" || o.status === "final-approved").length, total: ops.length, color: "bg-emerald-500" },
@@ -143,7 +143,7 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
           ].map(({ label, done, total, color }) => {
             const pct = Math.min(100, total > 0 ? Math.round(done / total * 100) : 0);
             return (
-              <div key={label}>
+              <div key={label} className="bg-gray-50/50 sm:bg-transparent p-2.5 sm:p-0 rounded-lg">
                 <div className="flex justify-between text-[11px] mb-1.5">
                   <span className="font-semibold text-gray-600">{label}</span>
                   <span className={`font-bold ${pct === 100 ? "text-emerald-600" : "text-gray-500"}`}>{done}/{total} {pct === 100 ? "✅" : ""}</span>
@@ -151,7 +151,7 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
                 <div className="w-full bg-gray-100 rounded-full h-2">
                   <div className={`h-2 rounded-full ${color} transition-all`} style={{ width: `${pct}%` }} />
                 </div>
-                <p className="text-[10px] text-gray-400 mt-0.5 text-left">{pct}%</p>
+                <p className="text-[10px] text-gray-400 mt-1 text-left ltr:text-right">{pct}%</p>
               </div>
             );
           })}
@@ -162,20 +162,20 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
 
       <ExceptionPanel ops={ops} forRole="accountant" navigate={navigate} />
 
-      <div className="grid grid-cols-3 gap-5">
-        <div className="col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+        <div className="col-span-1 lg:col-span-2">
           <Card title={t("الموديولات التسعة", "Nine Modules")} actions={<span className="text-xs text-gray-400">{t("المعلق / الإجمالي", "Pending / Total")}</span>}>
-            <div className="p-4 grid grid-cols-4 gap-3">
+            <div className="p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
               {modules.map(m => {
                 const apiRow = m.key ? apiModulesByKey[m.key] : undefined;
                 const mod_pending = apiRow?.pendingCount ?? (m.key ? (pendingByModule[m.key] || 0) : 0);
                 const mod_total = apiRow?.totalCount ?? (m.key ? ops.filter(o => o.moduleKey === m.key).length : 0);
                 return (
                   <button key={m.id} onClick={() => navigate(m.id)}
-                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-gray-100 hover:border-purple-300 hover:bg-purple-50/40 transition-all relative cursor-pointer">
-                    {mod_pending > 0 && <span className="absolute top-1.5 left-1.5 w-2 h-2 rounded-full bg-red-500"></span>}
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg text-white ${m.color}`}>{m.icon}</div>
-                    <span className="text-xs font-medium text-gray-700 text-center leading-tight">{m.label}</span>
+                    className="flex flex-col items-center gap-1.5 p-2.5 sm:p-3 rounded-xl border border-gray-100 hover:border-purple-300 hover:bg-purple-50/40 transition-all relative cursor-pointer">
+                    {mod_pending > 0 && <span className="absolute top-1.5 start-1.5 w-2 h-2 rounded-full bg-red-500"></span>}
+                    <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-base sm:text-lg text-white ${m.color}`}>{m.icon}</div>
+                    <span className="text-xs font-medium text-gray-700 text-center leading-tight line-clamp-1">{m.label}</span>
                     <div className="flex items-center gap-1">
                       {mod_pending > 0 && <span className="bg-red-100 text-red-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{mod_pending}</span>}
                       {mod_total > 0 && <><span className="text-gray-300 text-[10px]">/</span><span className="text-gray-500 text-[10px]">{mod_total}</span></>}
@@ -186,9 +186,9 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
             </div>
           </Card>
         </div>
-        <div>
+        <div className="col-span-1">
           <Card title={t("فلاتر البحث", "Search Filters")}>
-            <div className="p-4 space-y-3">
+            <div className="p-3 sm:p-4 space-y-3">
               {[
                 { label: t("🏪 الفرع", "🏪 Branch"), key: "branch" as const, opts: [t("الكل", "All"), ...BRANCHES] },
                 { label: t("🔄 الحالة", "🔄 Status"), key: "status" as const, opts: [t("الكل", "All"), "pending", "approved", "rejected", "final-approved"] },
@@ -196,7 +196,7 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
                 <div key={f.key}>
                   <label className="text-xs font-semibold text-gray-500 block mb-1">{f.label}</label>
                   <select value={filters[f.key]} onChange={e => setFilters(p => ({ ...p, [f.key]: e.target.value === t("الكل", "All") ? "" : e.target.value }))}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-600">
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-600 bg-white">
                     {f.opts.map(o => {
                       const label = o === t("الكل", "All") ? t("الكل", "All") : (lang === "ar" ? (STATUS_CFG[o as OpStatus]?.label || o) : (EN_STATUS_CFG[o as OpStatus] || STATUS_CFG[o as OpStatus]?.label || o));
                       return <option key={o} value={o === t("الكل", "All") ? "" : o}>{label}</option>;
@@ -206,7 +206,7 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
               ))}
               <div className="flex items-center gap-2 mt-1">
                 <Search size={13} className="text-gray-400 flex-shrink-0" />
-                <input value={filters.search} onChange={e => setFilters(p => ({ ...p, search: e.target.value }))} placeholder={t("بحث...", "Search...")} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-600" />
+                <input value={filters.search} onChange={e => setFilters(p => ({ ...p, search: e.target.value }))} placeholder={t("بحث...", "Search...")} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-600 bg-white" />
               </div>
               {(filters.branch || filters.status !== "pending" || filters.match || filters.search) &&
                 <button onClick={() => setFilters({ branch: "", status: "pending", match: "", search: "" })} className="text-xs text-purple-600 hover:underline flex items-center gap-1"><RotateCcw size={11} /> {t("مسح الفلاتر", "Clear Filters")}</button>
@@ -217,7 +217,7 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
       </div>
 
       <Card title={t("قائمة العمليات", "Operations List")} actions={
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-gray-400">{displayed.length} {t("عملية", "operations")}</span>
           {pendingIds.length > 0 && <Btn size="sm" variant="success" onClick={() => bulkApprove(pendingIds)}>✓ {t("موافقة جماعية", "Bulk Approve")} ({pendingIds.length})</Btn>}
         </div>

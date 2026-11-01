@@ -31,26 +31,26 @@ export function KpiCard({
   const iconBg = accents[accent]?.split(" ")[1] || "bg-purple-500";
   const content = (
     <>
-      <span className={`w-10 h-10 rounded-xl ${iconBg} bg-opacity-10 flex items-center justify-center flex-shrink-0`}>
+      <span className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${iconBg} bg-opacity-10 flex items-center justify-center flex-shrink-0`}>
         {icon}
       </span>
-      <span className="block min-w-0">
+      <span className="block min-w-0 flex-1">
         <span className="block text-gray-500 text-xs font-medium uppercase tracking-wider leading-tight">{label}</span>
         {valueLabel ? (
-          <span className="flex flex-wrap items-baseline gap-x-2 mt-1 text-gray-900 font-extrabold text-3xl leading-none font-mono">
+          <span className="flex flex-wrap items-baseline gap-x-2 mt-1 text-gray-900 font-extrabold text-2xl sm:text-3xl leading-none font-mono">
             <span>{value}</span>
             <span className="min-w-0 max-w-full break-words text-xs font-medium leading-tight text-gray-500">{valueLabel}</span>
           </span>
         ) : (
-          <span className="block text-gray-900 font-extrabold text-3xl mt-1 leading-none font-mono whitespace-nowrap">{value}</span>
+          <span className="block text-gray-900 font-extrabold text-2xl sm:text-3xl mt-1 leading-none font-mono">{value}</span>
         )}
-        {sub && <span className="block text-gray-400 text-xs mt-1.5">{sub}</span>}
+        {sub && <span className="block text-gray-400 text-xs mt-1.5 leading-snug">{sub}</span>}
         {onClick && <span className="block text-[10px] text-purple-500 mt-1">← اضغط للتفاصيل</span>}
       </span>
     </>
   );
 
-  const cardClassName = `bg-white rounded-xl shadow-sm border border-gray-100 border-t-2 ${borderCls} p-5 flex items-start gap-4 ${onClick ? "cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all" : ""}`;
+  const cardClassName = `bg-white rounded-xl shadow-sm border border-gray-100 border-t-2 ${borderCls} p-3.5 sm:p-4 md:p-5 flex items-start gap-3 sm:gap-4 ${onClick ? "cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all" : ""}`;
 
   if (onClick) {
     return (

@@ -1,0 +1,172 @@
+[
+  {
+    "viewport": {
+      "name": "320px_narrow_mobile",
+      "width": 320,
+      "height": 640
+    },
+    "lang": "ar",
+    "metrics": {
+      "clientWidth": 320,
+      "scrollWidth": 320,
+      "hasHorizontalOverflow": false,
+      "bodyScrollWidth": 320,
+      "bodyClientWidth": 320
+    },
+    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\320px_narrow_mobile.png",
+    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\320px_narrow_mobile_full.png"
+  },
+  {
+    "viewport": {
+      "name": "360px_android_mobile",
+      "width": 360,
+      "height": 800
+    },
+    "lang": "ar",
+    "metrics": {
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "hasHorizontalOverflow": false,
+      "bodyScrollWidth": 360,
+      "bodyClientWidth": 360
+    },
+    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\360px_android_mobile.png",
+    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\360px_android_mobile_full.png"
+  },
+  {
+    "viewport": {
+      "name": "390px_standard_mobile",
+      "width": 390,
+      "height": 844
+    },
+    "lang": "ar",
+    "metrics": {
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "bodyScrollWidth": 390,
+      "bodyClientWidth": 390
+    },
+    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\390px_standard_mobile.png",
+    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\390px_standard_mobile_full.png"
+  },
+  {
+    "viewport": {
+      "name": "430px_large_mobile",
+      "width": 430,
+      "height": 932
+    },
+    "lang": "ar",
+    "metrics": {
+      "clientWidth": 430,
+      "scrollWidth": 430,
+      "hasHorizontalOverflow": false,
+      "bodyScrollWidth": 430,
+      "bodyClientWidth": 430
+    },
+    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\430px_large_mobile.png",
+    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\430px_large_mobile_full.png"
+  },
+  {
+    "viewport": {
+      "name": "768px_tablet_portrait",
+      "width": 768,
+      "height": 1024
+    },
+    "lang": "ar",
+    "metrics": {
+      "clientWidth": 768,
+      "scrollWidth": 768,
+      "hasHorizontalOverflow": false,
+      "bodyScrollWidth": 768,
+      "bodyClientWidth": 768
+    },
+    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\768px_tablet_portrait.png",
+    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\768px_tablet_portrait_full.png"
+  },
+  {
+    "viewport": {
+      "name": "820px_tablet_portrait",
+      "width": 820,
+      "height": 1180
+    },
+    "lang": "ar",
+    "metrics": {
+      "clientWidth": 820,
+      "scrollWidth": 820,
+      "hasHorizontalOverflow": false,
+      "bodyScrollWidth": 820,
+      "bodyClientWidth": 820
+    },
+    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\820px_tablet_portrait.png",
+    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\820px_tablet_portrait_full.png"
+  },
+  {
+    "viewport": {
+      "name": "1024px_tablet_landscape",
+      "width": 1024,
+      "height": 768
+    },
+    "lang": "ar",
+    "metrics": {
+      "clientWidth": 1024,
+      "scrollWidth": 1024,
+      "hasHorizontalOverflow": false,
+      "bodyScrollWidth": 1024,
+      "bodyClientWidth": 1024
+    },
+    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\1024px_tablet_landscape.png",
+    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\1024px_tablet_landscape_full.png"
+  },
+  {
+    "viewport": {
+      "name": "1280px_desktop",
+      "width": 1280,
+      "height": 800
+    },
+    "lang": "ar",
+    "metrics": {
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "hasHorizontalOverflow": false,
+      "bodyScrollWidth": 1280,
+      "bodyClientWidth": 1280
+    },
+    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\1280px_desktop.png",
+    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\1280px_desktop_full.png"
+  },
+  {
+    "viewport": {
+      "name": "390px_standard_mobile",
+      "width": 390,
+      "height": 844
+    },
+    "lang": "en",
+    "metrics": {
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "hasHorizontalOverflow": false,
+      "bodyScrollWidth": 390,
+      "bodyClientWidth": 390
+    },
+    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\390px_standard_mobile_en.png",
+    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\390px_standard_mobile_en_full.png"
+  },
+  {
+    "viewport": {
+      "name": "1280px_desktop",
+      "width": 1280,
+      "height": 800
+    },
+    "lang": "en",
+    "metrics": {
+      "clientWidth": 1280,
+      "scrollWidth": 1280,
+      "hasHorizontalOverflow": false,
+      "bodyScrollWidth": 1280,
+      "bodyClientWidth": 1280
+    },
+    "file": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\1280px_desktop_en.png",
+    "fullPageFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\after\\1280px_desktop_en_full.png"
+  }
+]
