@@ -23,9 +23,19 @@
         "dateWrapped": false,
         "searchWidth": 188
       },
+      "pipelineGrid": {
+        "gridTemplateColumns": "131px 131px",
+        "colCount": 2
+      },
+      "opMetrics": {
+        "width": 294,
+        "height": 237,
+        "hasOverflow": false
+      },
       "grids": [
         {
           "index": 0,
+          "testId": null,
           "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
           "gridTemplateColumns": "296px",
           "colCount": 1,
@@ -34,6 +44,7 @@
         },
         {
           "index": 1,
+          "testId": null,
           "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
           "gridTemplateColumns": "262px",
           "colCount": 1,
@@ -42,7 +53,8 @@
         },
         {
           "index": 2,
-          "className": "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100",
+          "testId": "pipeline-overview-grid",
+          "className": "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 lg:gap-0 p-3 sm:p-4 lg:p-0 lg:divide-x lg:divide-x-reverse divide-gray-100",
           "gridTemplateColumns": "131px 131px",
           "colCount": 2,
           "clientWidth": 294,
@@ -50,6 +62,7 @@
         },
         {
           "index": 3,
+          "testId": "modules-and-filters-section",
           "className": "grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5",
           "gridTemplateColumns": "296px",
           "colCount": 1,
@@ -58,6 +71,7 @@
         },
         {
           "index": 4,
+          "testId": null,
           "className": "p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3",
           "gridTemplateColumns": "84.6562px 84.6719px 84.6562px",
           "colCount": 3,
@@ -99,9 +113,19 @@
         "dateWrapped": false,
         "searchWidth": 228
       },
+      "pipelineGrid": {
+        "gridTemplateColumns": "151px 151px",
+        "colCount": 2
+      },
+      "opMetrics": {
+        "width": 334,
+        "height": 221,
+        "hasOverflow": false
+      },
       "grids": [
         {
           "index": 0,
+          "testId": null,
           "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
           "gridTemplateColumns": "336px",
           "colCount": 1,
@@ -110,6 +134,7 @@
         },
         {
           "index": 1,
+          "testId": null,
           "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
           "gridTemplateColumns": "302px",
           "colCount": 1,
@@ -118,7 +143,8 @@
         },
         {
           "index": 2,
-          "className": "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100",
+          "testId": "pipeline-overview-grid",
+          "className": "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 lg:gap-0 p-3 sm:p-4 lg:p-0 lg:divide-x lg:divide-x-reverse divide-gray-100",
           "gridTemplateColumns": "151px 151px",
           "colCount": 2,
           "clientWidth": 334,
@@ -126,6 +152,7 @@
         },
         {
           "index": 3,
+          "testId": "modules-and-filters-section",
           "className": "grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5",
           "gridTemplateColumns": "336px",
           "colCount": 1,
@@ -134,6 +161,7 @@
         },
         {
           "index": 4,
+          "testId": null,
           "className": "p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3",
           "gridTemplateColumns": "98px 98px 98px",
           "colCount": 3,
@@ -175,9 +203,19 @@
         "dateWrapped": false,
         "searchWidth": 258
       },
+      "pipelineGrid": {
+        "gridTemplateColumns": "166px 166px",
+        "colCount": 2
+      },
+      "opMetrics": {
+        "width": 364,
+        "height": 221,
+        "hasOverflow": false
+      },
       "grids": [
         {
           "index": 0,
+          "testId": null,
           "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
           "gridTemplateColumns": "366px",
           "colCount": 1,
@@ -186,6 +224,7 @@
         },
         {
           "index": 1,
+          "testId": null,
           "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
           "gridTemplateColumns": "332px",
           "colCount": 1,
@@ -194,7 +233,8 @@
         },
         {
           "index": 2,
-          "className": "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100",
+          "testId": "pipeline-overview-grid",
+          "className": "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 lg:gap-0 p-3 sm:p-4 lg:p-0 lg:divide-x lg:divide-x-reverse divide-gray-100",
           "gridTemplateColumns": "166px 166px",
           "colCount": 2,
           "clientWidth": 364,
@@ -202,6 +242,7 @@
         },
         {
           "index": 3,
+          "testId": "modules-and-filters-section",
           "className": "grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5",
           "gridTemplateColumns": "366px",
           "colCount": 1,
@@ -210,6 +251,7 @@
         },
         {
           "index": 4,
+          "testId": null,
           "className": "p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3",
           "gridTemplateColumns": "108px 108px 108px",
           "colCount": 3,
@@ -251,9 +293,19 @@
         "dateWrapped": false,
         "searchWidth": 298
       },
+      "pipelineGrid": {
+        "gridTemplateColumns": "186px 186px",
+        "colCount": 2
+      },
+      "opMetrics": {
+        "width": 404,
+        "height": 221,
+        "hasOverflow": false
+      },
       "grids": [
         {
           "index": 0,
+          "testId": null,
           "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
           "gridTemplateColumns": "406px",
           "colCount": 1,
@@ -262,6 +314,7 @@
         },
         {
           "index": 1,
+          "testId": null,
           "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
           "gridTemplateColumns": "372px",
           "colCount": 1,
@@ -270,7 +323,8 @@
         },
         {
           "index": 2,
-          "className": "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100",
+          "testId": "pipeline-overview-grid",
+          "className": "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 lg:gap-0 p-3 sm:p-4 lg:p-0 lg:divide-x lg:divide-x-reverse divide-gray-100",
           "gridTemplateColumns": "186px 186px",
           "colCount": 2,
           "clientWidth": 404,
@@ -278,6 +332,7 @@
         },
         {
           "index": 3,
+          "testId": "modules-and-filters-section",
           "className": "grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5",
           "gridTemplateColumns": "406px",
           "colCount": 1,
@@ -286,6 +341,7 @@
         },
         {
           "index": 4,
+          "testId": null,
           "className": "p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3",
           "gridTemplateColumns": "121.328px 121.328px 121.344px",
           "colCount": 3,
@@ -323,13 +379,23 @@
         "h1ScrollWidth": 166,
         "h1Clipped": false,
         "dateText": "الأحد، 1 نوفمبر 2026",
-        "dateHeight": 30,
+        "dateHeight": 28,
         "dateWrapped": false,
         "searchWidth": 370
+      },
+      "pipelineGrid": {
+        "gridTemplateColumns": "140.656px 140.672px 140.672px",
+        "colCount": 3
+      },
+      "opMetrics": {
+        "width": 474,
+        "height": 227,
+        "hasOverflow": false
       },
       "grids": [
         {
           "index": 0,
+          "testId": null,
           "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
           "gridTemplateColumns": "230px 230px",
           "colCount": 2,
@@ -338,6 +404,7 @@
         },
         {
           "index": 1,
+          "testId": null,
           "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
           "gridTemplateColumns": "213px 213px",
           "colCount": 2,
@@ -346,14 +413,16 @@
         },
         {
           "index": 2,
-          "className": "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100",
-          "gridTemplateColumns": "79px 79px 79px 79px 79px 79px",
-          "colCount": 6,
+          "testId": "pipeline-overview-grid",
+          "className": "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 lg:gap-0 p-3 sm:p-4 lg:p-0 lg:divide-x lg:divide-x-reverse divide-gray-100",
+          "gridTemplateColumns": "140.656px 140.672px 140.672px",
+          "colCount": 3,
           "clientWidth": 474,
           "scrollWidth": 474
         },
         {
           "index": 3,
+          "testId": "modules-and-filters-section",
           "className": "grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5",
           "gridTemplateColumns": "476px",
           "colCount": 1,
@@ -362,6 +431,7 @@
         },
         {
           "index": 4,
+          "testId": null,
           "className": "p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3",
           "gridTemplateColumns": "101.5px 101.5px 101.5px 101.5px",
           "colCount": 4,
@@ -386,9 +456,7 @@
       "height": 1180
     },
     "lang": "ar",
-    "consoleErrors": [
-      "Failed to load resource: net::ERR_CONNECTION_RESET"
-    ],
+    "consoleErrors": [],
     "metrics": {
       "clientWidth": 820,
       "scrollWidth": 820,
@@ -397,17 +465,27 @@
         "tag": "hidden md:flex xl:hidden flex-col gap-2.5 px-4 py-2.5 bg-white",
         "width": 568,
         "h1Text": "لوحة التحكم",
-        "h1Width": 221,
-        "h1ScrollWidth": 221,
+        "h1Width": 218,
+        "h1ScrollWidth": 218,
         "h1Clipped": false,
         "dateText": "الأحد، 1 نوفمبر 2026",
-        "dateHeight": 30,
+        "dateHeight": 28,
         "dateWrapped": false,
         "searchWidth": 422
+      },
+      "pipelineGrid": {
+        "gridTemplateColumns": "158px 158px 158px",
+        "colCount": 3
+      },
+      "opMetrics": {
+        "width": 526,
+        "height": 203,
+        "hasOverflow": false
       },
       "grids": [
         {
           "index": 0,
+          "testId": null,
           "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
           "gridTemplateColumns": "256px 256px",
           "colCount": 2,
@@ -416,6 +494,7 @@
         },
         {
           "index": 1,
+          "testId": null,
           "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
           "gridTemplateColumns": "239px 239px",
           "colCount": 2,
@@ -424,14 +503,16 @@
         },
         {
           "index": 2,
-          "className": "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100",
-          "gridTemplateColumns": "87.6562px 87.6719px 87.6562px 87.6719px 87.6719px 87.6562px",
-          "colCount": 6,
+          "testId": "pipeline-overview-grid",
+          "className": "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 lg:gap-0 p-3 sm:p-4 lg:p-0 lg:divide-x lg:divide-x-reverse divide-gray-100",
+          "gridTemplateColumns": "158px 158px 158px",
+          "colCount": 3,
           "clientWidth": 526,
           "scrollWidth": 526
         },
         {
           "index": 3,
+          "testId": "modules-and-filters-section",
           "className": "grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5",
           "gridTemplateColumns": "528px",
           "colCount": 1,
@@ -440,6 +521,7 @@
         },
         {
           "index": 4,
+          "testId": null,
           "className": "p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3",
           "gridTemplateColumns": "114.5px 114.5px 114.5px 114.5px",
           "colCount": 4,
@@ -477,13 +559,23 @@
         "h1ScrollWidth": 422,
         "h1Clipped": false,
         "dateText": "الأحد، 1 نوفمبر 2026",
-        "dateHeight": 30,
+        "dateHeight": 28,
         "dateWrapped": false,
         "searchWidth": 480
+      },
+      "pipelineGrid": {
+        "gridTemplateColumns": "121.656px 121.672px 121.656px 121.672px 121.672px 121.656px",
+        "colCount": 6
+      },
+      "opMetrics": {
+        "width": 730,
+        "height": 152,
+        "hasOverflow": false
       },
       "grids": [
         {
           "index": 0,
+          "testId": null,
           "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
           "gridTemplateColumns": "171px 171px 171px 171px",
           "colCount": 4,
@@ -492,6 +584,7 @@
         },
         {
           "index": 1,
+          "testId": null,
           "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
           "gridTemplateColumns": "162.5px 162.5px 162.5px 162.5px",
           "colCount": 4,
@@ -500,7 +593,8 @@
         },
         {
           "index": 2,
-          "className": "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100",
+          "testId": "pipeline-overview-grid",
+          "className": "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 lg:gap-0 p-3 sm:p-4 lg:p-0 lg:divide-x lg:divide-x-reverse divide-gray-100",
           "gridTemplateColumns": "121.656px 121.672px 121.656px 121.672px 121.672px 121.656px",
           "colCount": 6,
           "clientWidth": 730,
@@ -508,6 +602,7 @@
         },
         {
           "index": 3,
+          "testId": "modules-and-filters-section",
           "className": "grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5",
           "gridTemplateColumns": "230.656px 230.656px 230.672px",
           "colCount": 3,
@@ -516,6 +611,7 @@
         },
         {
           "index": 4,
+          "testId": null,
           "className": "p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3",
           "gridTemplateColumns": "102.828px 102.828px 102.828px 102.844px",
           "colCount": 4,
@@ -553,13 +649,23 @@
         "h1ScrollWidth": 254,
         "h1Clipped": false,
         "dateText": "الأحد، 1 نوفمبر 2026",
-        "dateHeight": 30,
+        "dateHeight": 28,
         "dateWrapped": false,
         "searchWidth": 286
+      },
+      "pipelineGrid": {
+        "gridTemplateColumns": "164.328px 164.328px 164.328px 164.344px 164.328px 164.328px",
+        "colCount": 6
+      },
+      "opMetrics": {
+        "width": 986,
+        "height": 108,
+        "hasOverflow": false
       },
       "grids": [
         {
           "index": 0,
+          "testId": null,
           "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
           "gridTemplateColumns": "235px 235px 235px 235px",
           "colCount": 4,
@@ -568,6 +674,7 @@
         },
         {
           "index": 1,
+          "testId": null,
           "className": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4",
           "gridTemplateColumns": "226.5px 226.5px 226.5px 226.5px",
           "colCount": 4,
@@ -576,7 +683,8 @@
         },
         {
           "index": 2,
-          "className": "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5 md:gap-0 p-3 sm:p-4 md:p-0 md:divide-x md:divide-x-reverse divide-gray-100",
+          "testId": "pipeline-overview-grid",
+          "className": "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 lg:gap-0 p-3 sm:p-4 lg:p-0 lg:divide-x lg:divide-x-reverse divide-gray-100",
           "gridTemplateColumns": "164.328px 164.328px 164.328px 164.344px 164.328px 164.328px",
           "colCount": 6,
           "clientWidth": 986,
@@ -584,6 +692,7 @@
         },
         {
           "index": 3,
+          "testId": "modules-and-filters-section",
           "className": "grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5",
           "gridTemplateColumns": "316px 316px 316px",
           "colCount": 3,
@@ -592,6 +701,7 @@
         },
         {
           "index": 4,
+          "testId": null,
           "className": "p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3",
           "gridTemplateColumns": "145.5px 145.5px 145.5px 145.5px",
           "colCount": 4,
@@ -611,126 +721,82 @@
   },
   {
     "viewport": {
-      "name": "390px_standard_mobile",
+      "name": "390px_standard_mobile_en",
       "width": 390,
       "height": 844
     },
     "lang": "en",
     "consoleErrors": [],
-    "metrics": {
-      "clientWidth": 390,
-      "scrollWidth": 390,
-      "hasHorizontalOverflow": false,
-      "header": {
-        "tag": "md:hidden px-3 py-2.5 flex flex-col gap-2",
-        "width": 390,
-        "h1Text": "Dashboard",
-        "h1Width": 176,
-        "h1ScrollWidth": 176,
-        "h1Clipped": false,
-        "dateText": null,
-        "dateHeight": 0,
-        "dateWrapped": false,
-        "searchWidth": 252
-      }
-    },
     "files": {
       "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_header_en.png",
-      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_top_en.png",
-      "opRowFile": null
+      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_top_en.png"
     }
   },
   {
     "viewport": {
-      "name": "768px_tablet_portrait",
+      "name": "768px_tablet_portrait_en",
       "width": 768,
       "height": 1024
     },
     "lang": "en",
     "consoleErrors": [],
-    "metrics": {
-      "clientWidth": 768,
-      "scrollWidth": 768,
-      "hasHorizontalOverflow": false,
-      "header": {
-        "tag": "hidden md:flex xl:hidden flex-col gap-2.5 px-4 py-2.5 bg-white",
-        "width": 516,
-        "h1Text": "Dashboard",
-        "h1Width": 96,
-        "h1ScrollWidth": 96,
-        "h1Clipped": false,
-        "dateText": "Sunday, November 1, 2026",
-        "dateHeight": 30,
-        "dateWrapped": false,
-        "searchWidth": 364
-      }
-    },
     "files": {
       "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_header_en.png",
-      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_top_en.png",
-      "opRowFile": null
+      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\768px_tablet_portrait_top_en.png"
     }
   },
   {
     "viewport": {
-      "name": "1024px_tablet_landscape",
+      "name": "1024px_tablet_landscape_en",
       "width": 1024,
       "height": 768
     },
     "lang": "en",
     "consoleErrors": [],
-    "metrics": {
-      "clientWidth": 1024,
-      "scrollWidth": 1024,
-      "hasHorizontalOverflow": false,
-      "header": {
-        "tag": "hidden md:flex xl:hidden flex-col gap-2.5 px-4 py-2.5 bg-white",
-        "width": 772,
-        "h1Text": "Dashboard",
-        "h1Width": 352,
-        "h1ScrollWidth": 352,
-        "h1Clipped": false,
-        "dateText": "Sunday, November 1, 2026",
-        "dateHeight": 30,
-        "dateWrapped": false,
-        "searchWidth": 480
-      }
-    },
     "files": {
       "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_header_en.png",
-      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_top_en.png",
-      "opRowFile": null
+      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1024px_tablet_landscape_top_en.png"
     }
   },
   {
     "viewport": {
-      "name": "1280px_desktop",
+      "name": "1280px_desktop_en",
       "width": 1280,
       "height": 800
     },
     "lang": "en",
     "consoleErrors": [],
-    "metrics": {
-      "clientWidth": 1280,
-      "scrollWidth": 1280,
-      "hasHorizontalOverflow": false,
-      "header": {
-        "tag": "hidden xl:flex items-center gap-3 px-5 py-3",
-        "width": 1028,
-        "h1Text": "Dashboard",
-        "h1Width": 178,
-        "h1ScrollWidth": 178,
-        "h1Clipped": false,
-        "dateText": "Sunday, November 1, 2026",
-        "dateHeight": 30,
-        "dateWrapped": false,
-        "searchWidth": 286
-      }
-    },
     "files": {
       "headerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_header_en.png",
-      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_top_en.png",
-      "opRowFile": null
+      "topFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\1280px_desktop_top_en.png"
+    }
+  },
+  {
+    "viewport": {
+      "name": "390px_standard_mobile_drawer",
+      "width": 390,
+      "height": 844
+    },
+    "lang": "ar",
+    "files": {
+      "drawerFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\390px_standard_mobile_drawer_open.png"
+    }
+  },
+  {
+    "viewport": {
+      "name": "820px_tablet_supplier",
+      "width": 820,
+      "height": 1180
+    },
+    "role": "supplier",
+    "supplierHeaderInfo": {
+      "hasPeriodSelect": false,
+      "hasSearchNotice": true,
+      "hasBellNotice": true,
+      "hasChatWidget": false
+    },
+    "files": {
+      "supplierHeaderFile": "D:\\claude\\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\\worktree_dashboard_responsive_ux\\artifacts\\responsive-evidence\\final\\820px_tablet_supplier_header.png"
     }
   }
 ]

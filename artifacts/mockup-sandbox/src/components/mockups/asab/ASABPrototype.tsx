@@ -1583,7 +1583,14 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
                     >
                       <Bell size={16} />
                     </div>
-                  ) : role === "supplier" ? null : (
+                  ) : role === "supplier" ? (
+                    <div
+                      className="opacity-60 cursor-not-allowed p-1.5 text-gray-400"
+                      title={tL("إشعارات المورد غير متاحة بعقد الخادم الحالي", "Supplier notifications require an approved Backend contract")}
+                    >
+                      <Bell size={16} />
+                    </div>
+                  ) : (
                     <NotificationBell t={tL} theme="light" role={role} pages={NAV_CONFIG[role].flatMap(entry => isSection(entry) ? [] : [entry.id])} onNavigate={navigate} />
                   )}
                   <button
@@ -1690,7 +1697,14 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
                     >
                       <Bell size={16} />
                     </div>
-                  ) : role === "supplier" ? null : (
+                  ) : role === "supplier" ? (
+                    <div
+                      className="opacity-60 cursor-not-allowed p-1.5 text-gray-400"
+                      title={tL("إشعارات المورد غير متاحة بعقد الخادم الحالي", "Supplier notifications require an approved Backend contract")}
+                    >
+                      <Bell size={16} />
+                    </div>
+                  ) : (
                     <NotificationBell t={tL} theme="light" role={role} pages={NAV_CONFIG[role].flatMap(entry => isSection(entry) ? [] : [entry.id])} onNavigate={navigate} />
                   )}
                   <button

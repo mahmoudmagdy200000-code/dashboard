@@ -95,7 +95,7 @@ export function PipelineOverview({ ops, navigate }: { ops: Op[]; navigate: (p: P
         <h3 className="font-bold text-gray-900 text-sm tracking-tight">{t("مسار العمليات — رؤية شاملة للخط الزمني", "Operations Pipeline — Full Timeline View")}</h3>
         <span className="text-xs text-gray-400">{ops.length} {t("عملية إجمالاً", "operations total")}</span>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 lg:gap-0 p-3 sm:p-4 lg:p-0 lg:divide-x lg:divide-x-reverse divide-gray-100">
+      <div data-testid="pipeline-overview-grid" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 lg:gap-0 p-3 sm:p-4 lg:p-0 lg:divide-x lg:divide-x-reverse divide-gray-100">
         {stageCounts.map((s, i) => {
           const isAspirational = i === 5; // stage-6: ERP Reports — future state, never set by getPipelineStage
           return (

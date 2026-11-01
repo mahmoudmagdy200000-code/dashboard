@@ -35,14 +35,16 @@ export function OpRow({ op, onView, onApprove, onReject }: OpRowProps) {
   const isRejected = op.status === "rejected";
   return (
     <div
-      className={`px-4 sm:px-5 py-3.5 sm:py-4 flex flex-col md:flex-row md:items-start gap-3 md:gap-4 hover:bg-gray-50/60 transition-colors border-b border-gray-100 last:border-0
+      data-testid="op-row"
+      data-op-id={op.id}
+      className={`px-4 sm:px-5 py-3.5 sm:py-4 flex flex-col lg:flex-row lg:items-start gap-3 lg:gap-4 hover:bg-gray-50/60 transition-colors border-b border-gray-100 last:border-0
         ${op.match === "diff" ? "border-s-4 rtl:border-r-red-400 ltr:border-l-red-400" : op.match === "review" ? "border-s-4 rtl:border-r-amber-400 ltr:border-l-amber-400" : ""}
         ${isLocked ? "bg-slate-50/60" : isRejected ? "opacity-55" : ""}`}
     >
-      {/* Mobile Top Summary Row: Module + Branch + Amount */}
-      <div className="flex items-center justify-between gap-2 md:hidden w-full">
+      {/* Mobile & Tablet Top Summary Row: Module + Branch + Amount */}
+      <div className="flex items-center justify-between gap-2 lg:hidden w-full">
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
-          <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-100 flex-shrink-0">
+          <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-100 flex-shrink-0">
             {op.moduleLabel}
           </span>
           <span className="font-bold text-gray-800 text-sm truncate">{op.branch}</span>
@@ -56,22 +58,22 @@ export function OpRow({ op, onView, onApprove, onReject }: OpRowProps) {
       </div>
 
       {/* Desktop Module Tag */}
-      <span className="hidden md:inline-block mt-0.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-100 flex-shrink-0">
+      <span className="hidden lg:inline-block mt-0.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-100 flex-shrink-0">
         {op.moduleLabel}
       </span>
 
       {/* Main Details Body */}
-      <div className="flex-1 min-w-0 w-full md:w-auto">
+      <div className="flex-1 min-w-0 w-full lg:w-auto">
         {/* Identifiers and Meta: Branch (desktop only), brand, ID, timeAgo, origin */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap text-xs">
-          <span className="hidden md:inline font-bold text-gray-800 text-sm">{op.branch}</span>
+          <span className="hidden lg:inline font-bold text-gray-800 text-sm">{op.branch}</span>
           {op.brandName && op.brandName !== "—" && op.brandName !== op.branch && (
             <>
-              <span className="hidden md:inline text-gray-200">·</span>
-              <span className="hidden md:inline text-xs text-gray-500">{op.brandName}</span>
+              <span className="hidden lg:inline text-gray-200">·</span>
+              <span className="hidden lg:inline text-xs text-gray-500">{op.brandName}</span>
             </>
           )}
-          <span className="hidden md:inline text-gray-200">·</span>
+          <span className="hidden lg:inline text-gray-200">·</span>
           <span className="text-xs text-gray-500 font-mono tracking-tight break-all select-all">{op.id}</span>
           <span className="text-gray-300">·</span>
           <span className="text-xs text-gray-500 whitespace-nowrap">⏰ {op.timeAgo}</span>
@@ -133,12 +135,12 @@ export function OpRow({ op, onView, onApprove, onReject }: OpRowProps) {
       </div>
 
       {/* Desktop Amount */}
-      <div className="hidden md:block font-extrabold text-gray-800 font-mono text-sm flex-shrink-0 tabular-nums">
+      <div className="hidden lg:block font-extrabold text-gray-800 font-mono text-sm flex-shrink-0 tabular-nums">
         {fmtAmt(op.amount)} {t("ر.س", "SAR")}
       </div>
 
       {/* Action Buttons: Responsive touch targets, safe spacing */}
-      <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100/80 md:border-0 md:pt-0 w-full md:w-auto flex-shrink-0">
+      <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100/80 lg:border-0 lg:pt-0 w-full lg:w-auto flex-shrink-0">
         <Btn size="sm" onClick={onView} className="min-h-[36px] px-3">
           <Eye size={12} /> {t("عرض", "View")}
         </Btn>
@@ -146,12 +148,12 @@ export function OpRow({ op, onView, onApprove, onReject }: OpRowProps) {
           <>
             <Btn size="sm" variant="success" onClick={onApprove} className="min-h-[36px] px-3.5">
               <ThumbsUp size={12} />
-              <span className="md:hidden text-xs">{t("موافقة", "Approve")}</span>
+              <span className="lg:hidden text-xs">{t("موافقة", "Approve")}</span>
             </Btn>
             {!isPkg6SalesReport(op) && (
               <Btn size="sm" variant="danger" onClick={onReject} className="min-h-[36px] px-3.5">
                 <ThumbsDown size={12} />
-                <span className="md:hidden text-xs">{t("رفض", "Reject")}</span>
+                <span className="lg:hidden text-xs">{t("رفض", "Reject")}</span>
               </Btn>
             )}
           </>

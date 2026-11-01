@@ -162,7 +162,7 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
 
       <ExceptionPanel ops={ops} forRole="accountant" navigate={navigate} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+      <div data-testid="modules-and-filters-section" className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
         <div className="col-span-1 lg:col-span-2">
           <Card title={t("الموديولات التسعة", "Nine Modules")} actions={<span className="text-xs text-gray-400">{t("المعلق / الإجمالي", "Pending / Total")}</span>}>
             <div className="p-3 sm:p-4 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">

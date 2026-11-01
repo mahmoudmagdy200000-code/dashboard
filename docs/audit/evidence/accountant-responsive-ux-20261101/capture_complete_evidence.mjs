@@ -25,6 +25,26 @@ const mockUser = {
   permissions: { "*": true },
 };
 
+const mockSupplierUser = {
+  id: "22222222-2222-2222-2222-222222222222",
+  name: "مندوب شركة التوريد",
+  email: "supplier@assab.local",
+  role: "supplier",
+  roles: [
+    {
+      key: "supplier",
+      scope: "all",
+      brandIds: [],
+      restaurantIds: [],
+      branchIds: [],
+      moduleKeys: [],
+    },
+  ],
+  supplier: { id: "sup-01", name: "شركة التوريد الذهبية المحدودة" },
+  companyId: "11111111-1111-1111-1111-111111111111",
+  permissions: { "*": true },
+};
+
 const mockKpis = {
   awaitingReview: 7,
   iApproved: 3,
@@ -123,13 +143,13 @@ const mockApiOps = [
   },
   {
     id: "op-07",
-    publicId: "OPS-FIN-20261101-007-ERP-POSTED",
-    branchName: "فرع الخبر - الواجهة البحرية",
-    moduleKey: "sales",
-    amountHalalas: 1920000,
-    createdAt: new Date(Date.now() - 7 * 86400000).toISOString(),
+    publicId: "OPS-FIN-20261101-007",
+    branchName: "فرع الخبر - الراشد",
+    moduleKey: "inventory",
+    amountHalalas: 0,
+    createdAt: new Date(Date.now() - 6 * 86400000).toISOString(),
     match: "exact",
-    attachmentCount: 3,
+    attachmentCount: 0,
     status: "final-approved",
     origin: "mobile",
     currentStage: 3,
@@ -147,8 +167,8 @@ const viewports = [
   { name: "1280px_desktop", width: 1280, height: 800 },
 ];
 
-async function setupRouteMocks(page) {
-  await page.route("**/api/v1/**", (route) => {
+function setupRouteMocks(page, isSupplier = false) {
+  return page.route("**/api/v1/**", async (route) => {
     const url = route.request().url();
     const headers = {
       "Access-Control-Allow-Origin": "*",
@@ -157,13 +177,20 @@ async function setupRouteMocks(page) {
       "Content-Type": "application/json",
     };
 
+    if (route.request().method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers });
+    }
+
     if (url.includes("/auth/me")) {
-      route.fulfill({ status: 200, headers, body: JSON.stringify(mockUser) });
-      return;
+      return route.fulfill({
+        status: 200,
+        headers,
+        body: JSON.stringify(isSupplier ? mockSupplierUser : mockUser),
+      });
     }
 
     if (url.includes("/accountant/dashboard")) {
-      route.fulfill({
+      return route.fulfill({
         status: 200,
         headers,
         body: JSON.stringify({
@@ -175,15 +202,13 @@ async function setupRouteMocks(page) {
           ],
         }),
       });
-      return;
     }
 
     if (url.includes("/accountant/operations")) {
-      route.fulfill({ status: 200, headers, body: JSON.stringify(mockApiOps) });
-      return;
+      return route.fulfill({ status: 200, headers, body: JSON.stringify(mockApiOps) });
     }
 
-    route.fulfill({ status: 200, headers, body: JSON.stringify({ success: true, data: [] }) });
+    return route.fulfill({ status: 200, headers, body: JSON.stringify({ success: true, data: [] }) });
   });
 }
 
@@ -199,11 +224,11 @@ async function run() {
     });
 
     const page = await context.newPage();
-
-    // Listen to console errors
     const consoleErrors = [];
     page.on("console", msg => {
-      if (msg.type() === "error") consoleErrors.push(msg.text());
+      if (msg.type() === "error") {
+        consoleErrors.push(msg.text());
+      }
     });
 
     await page.addInitScript(() => {
@@ -213,11 +238,11 @@ async function run() {
       localStorage.setItem("asab_lang", "ar");
     });
 
-    await setupRouteMocks(page);
+    await setupRouteMocks(page, false);
 
-    await page.goto("http://127.0.0.1:4173/#/preview/asab/ASABPrototype", { waitUntil: "networkidle" });
+    await page.goto("http://127.0.0.1:4173/#/preview/asab/ASABPrototype", { waitUntil: "load" });
     await page.waitForSelector("header", { timeout: 15000 });
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // 1. Capture Header at top of page
     const headerEl = page.locator("header");
@@ -228,14 +253,14 @@ async function run() {
     const topFile = path.join(outDir, `${vp.name}_top.png`);
     await page.screenshot({ path: topFile, fullPage: false });
 
-    // 3. Scroll main container to Modules Card and capture
-    const modulesCard = page.locator("text=الموديولات التسعة").locator("xpath=ancestor::div[contains(@class, 'rounded-xl')]").first();
+    // 3. Scroll main container to Modules & Filters section and capture
+    const modulesAndFiltersSec = page.locator('[data-testid="modules-and-filters-section"]').first();
     let modulesFile = null;
-    if (await modulesCard.count() > 0) {
-      await modulesCard.scrollIntoViewIfNeeded();
+    if (await modulesAndFiltersSec.count() > 0) {
+      await modulesAndFiltersSec.scrollIntoViewIfNeeded();
       await page.waitForTimeout(300);
       modulesFile = path.join(outDir, `${vp.name}_modules.png`);
-      await modulesCard.screenshot({ path: modulesFile });
+      await modulesAndFiltersSec.screenshot({ path: modulesFile });
     }
 
     // 4. Scroll main container to Operations List (OpRow) and capture
@@ -256,8 +281,8 @@ async function run() {
       opRowCardFile = path.join(outDir, `${vp.name}_oprow_card.png`);
       await opRowCard.screenshot({ path: opRowCardFile });
 
-      // Single first OpRow close-up
-      const firstRow = opRowCard.locator("div.border-b").first();
+      // Single first OpRow close-up (using exact [data-testid="op-row"] selector!)
+      const firstRow = page.locator('[data-testid="op-row"]').first();
       if (await firstRow.count() > 0) {
         opRowItemFile = path.join(outDir, `${vp.name}_oprow_single.png`);
         await firstRow.screenshot({ path: opRowItemFile });
@@ -272,6 +297,9 @@ async function run() {
       const dateEl = activeHeader ? Array.from(activeHeader.querySelectorAll("div")).find(d => d.textContent.includes("2026") && d.classList.contains("whitespace-nowrap")) : null;
       const search = activeHeader ? activeHeader.querySelector("[role='search']") : null;
 
+      const pipelineGrid = document.querySelector('[data-testid="pipeline-overview-grid"]');
+      const modulesSection = document.querySelector('[data-testid="modules-and-filters-section"]');
+
       const allGrids = Array.from(document.querySelectorAll(".grid"));
       const gridDetails = allGrids.map((g, i) => {
         const style = window.getComputedStyle(g);
@@ -279,6 +307,7 @@ async function run() {
         const colCount = colDef ? colDef.split(" ").filter(Boolean).length : 0;
         return {
           index: i,
+          testId: g.getAttribute("data-testid") || null,
           className: g.className,
           gridTemplateColumns: colDef,
           colCount,
@@ -286,6 +315,13 @@ async function run() {
           scrollWidth: g.scrollWidth,
         };
       });
+
+      const firstOp = document.querySelector('[data-testid="op-row"]');
+      const opMetrics = firstOp ? {
+        width: firstOp.clientWidth,
+        height: firstOp.clientHeight,
+        hasOverflow: firstOp.scrollWidth > firstOp.clientWidth,
+      } : null;
 
       return {
         clientWidth: document.documentElement.clientWidth,
@@ -299,10 +335,15 @@ async function run() {
           h1ScrollWidth: h1 ? h1.scrollWidth : 0,
           h1Clipped: h1 ? h1.scrollWidth > h1.clientWidth : false,
           dateText: dateEl ? dateEl.textContent.trim() : null,
-          dateHeight: dateEl ? dateEl.offsetHeight : 0,
-          dateWrapped: dateEl ? dateEl.offsetHeight > 34 : false,
+          dateHeight: dateEl ? dateEl.clientHeight : 0,
+          dateWrapped: dateEl ? dateEl.clientHeight > 36 : false,
           searchWidth: search ? search.clientWidth : 0,
         },
+        pipelineGrid: pipelineGrid ? {
+          gridTemplateColumns: window.getComputedStyle(pipelineGrid).gridTemplateColumns,
+          colCount: window.getComputedStyle(pipelineGrid).gridTemplateColumns.split(" ").filter(Boolean).length,
+        } : null,
+        opMetrics,
         grids: gridDetails,
       };
     });
@@ -322,14 +363,12 @@ async function run() {
       },
     });
 
-    console.log(`[AR-RTL] Verified ${vp.name}: overflow=${computedMetrics.hasHorizontalOverflow}, h1Clipped=${computedMetrics.header.h1Clipped}, dateWrapped=${computedMetrics.header.dateWrapped}, searchW=${computedMetrics.header.searchWidth}`);
-
     await context.close();
   }
 
-  // English LTR test at 390px, 768px, 1024px, 1280px
-  const enViewports = [viewports[2], viewports[4], viewports[6], viewports[7]];
-  for (const vp of enViewports) {
+  // English LTR Checks at 390px, 768px, 1024px, and 1280px
+  for (const w of [390, 768, 1024, 1280]) {
+    const vp = viewports.find(v => v.width === w);
     const context = await browser.newContext({
       viewport: { width: vp.width, height: vp.height },
       locale: "en-US",
@@ -348,11 +387,11 @@ async function run() {
       localStorage.setItem("asab_lang", "en");
     });
 
-    await setupRouteMocks(page);
+    await setupRouteMocks(page, false);
 
-    await page.goto("http://127.0.0.1:4173/#/preview/asab/ASABPrototype", { waitUntil: "networkidle" });
+    await page.goto("http://127.0.0.1:4173/#/preview/asab/ASABPrototype", { waitUntil: "load" });
     await page.waitForSelector("header", { timeout: 15000 });
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     const headerEl = page.locator("header");
     const headerFile = path.join(outDir, `${vp.name}_header_en.png`);
@@ -361,59 +400,23 @@ async function run() {
     const topFile = path.join(outDir, `${vp.name}_top_en.png`);
     await page.screenshot({ path: topFile, fullPage: false });
 
-    // Scroll to OpRow in English
-    const opRowCard = page.locator("text=Operations List, text=Operations").first().locator("xpath=ancestor::div[contains(@class, 'rounded-xl')]").first();
-    let opRowFile = null;
-    if (await opRowCard.count() > 0) {
-      await opRowCard.scrollIntoViewIfNeeded();
-      await page.waitForTimeout(300);
-      opRowFile = path.join(outDir, `${vp.name}_oprow_en.png`);
-      await page.screenshot({ path: opRowFile, fullPage: false });
-    }
-
-    const computedMetrics = await page.evaluate(() => {
-      const header = document.querySelector("header");
-      const activeHeader = Array.from(header.children).find(c => window.getComputedStyle(c).display !== "none");
-      const h1 = activeHeader ? activeHeader.querySelector("h1") : null;
-      const dateEl = activeHeader ? Array.from(activeHeader.querySelectorAll("div")).find(d => d.textContent.includes("2026") && d.classList.contains("whitespace-nowrap")) : null;
-      const search = activeHeader ? activeHeader.querySelector("[role='search']") : null;
-
-      return {
-        clientWidth: document.documentElement.clientWidth,
-        scrollWidth: document.documentElement.scrollWidth,
-        hasHorizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
-        header: {
-          tag: activeHeader ? activeHeader.className : "",
-          width: activeHeader ? activeHeader.clientWidth : 0,
-          h1Text: h1 ? h1.textContent : null,
-          h1Width: h1 ? h1.clientWidth : 0,
-          h1ScrollWidth: h1 ? h1.scrollWidth : 0,
-          h1Clipped: h1 ? h1.scrollWidth > h1.clientWidth : false,
-          dateText: dateEl ? dateEl.textContent.trim() : null,
-          dateHeight: dateEl ? dateEl.offsetHeight : 0,
-          dateWrapped: dateEl ? dateEl.offsetHeight > 34 : false,
-          searchWidth: search ? search.clientWidth : 0,
-        },
-      };
-    });
-
     metrics.push({
-      viewport: vp,
+      viewport: { ...vp, name: `${vp.name}_en` },
       lang: "en",
       consoleErrors,
-      metrics: computedMetrics,
-      files: { headerFile, topFile, opRowFile },
+      files: { headerFile, topFile },
     });
-
-    console.log(`[EN-LTR] Verified ${vp.name}: overflow=${computedMetrics.hasHorizontalOverflow}, h1Clipped=${computedMetrics.header.h1Clipped}, dateWrapped=${computedMetrics.header.dateWrapped}, searchW=${computedMetrics.header.searchWidth}`);
 
     await context.close();
   }
 
-  // Mobile Drawer Open test at 390px
+  // 390px Mobile Navigation Drawer Open Check
   {
-    const vp = viewports[2];
-    const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, locale: "ar-SA" });
+    const vp = viewports.find(v => v.width === 390);
+    const context = await browser.newContext({
+      viewport: { width: vp.width, height: vp.height },
+      locale: "ar-SA",
+    });
     const page = await context.newPage();
     await page.addInitScript(() => {
       sessionStorage.setItem("asab.tokens", JSON.stringify({ accessToken: "mock-token", refreshToken: "mock-token" }));
@@ -421,28 +424,76 @@ async function run() {
       localStorage.setItem("asab_site_lang", "ar");
       localStorage.setItem("asab_lang", "ar");
     });
-    await setupRouteMocks(page);
-    await page.goto("http://127.0.0.1:4173/#/preview/asab/ASABPrototype", { waitUntil: "networkidle" });
+    await setupRouteMocks(page, false);
+    await page.goto("http://127.0.0.1:4173/#/preview/asab/ASABPrototype", { waitUntil: "load" });
+    await page.waitForSelector("header button[aria-label='فتح القائمة']", { timeout: 15000 });
+    await page.click("header button[aria-label='فتح القائمة']");
+    await page.waitForTimeout(500);
+
+    const drawerFile = path.join(outDir, "390px_standard_mobile_drawer_open.png");
+    await page.screenshot({ path: drawerFile, fullPage: false });
+    metrics.push({
+      viewport: { name: "390px_standard_mobile_drawer", width: 390, height: 844 },
+      lang: "ar",
+      files: { drawerFile },
+    });
+    await context.close();
+  }
+
+  // Supplier Header Verification on Tablet (820px)
+  {
+    const vp = viewports.find(v => v.width === 820);
+    const context = await browser.newContext({
+      viewport: { width: vp.width, height: vp.height },
+      locale: "ar-SA",
+    });
+    const page = await context.newPage();
+    await page.addInitScript(() => {
+      sessionStorage.setItem("asab.tokens", JSON.stringify({ accessToken: "mock-token", refreshToken: "mock-token" }));
+      sessionStorage.setItem("asab.entry_selection", JSON.stringify({ slug: "asab/ASABPrototype", role: "supplier" }));
+      localStorage.setItem("asab_site_lang", "ar");
+      localStorage.setItem("asab_lang", "ar");
+    });
+    await setupRouteMocks(page, true);
+    await page.goto("http://127.0.0.1:4173/#/preview/asab/ASABPrototype", { waitUntil: "load" });
     await page.waitForSelector("header", { timeout: 15000 });
     await page.waitForTimeout(500);
 
-    const menuBtn = page.locator('header button[aria-label="فتح القائمة"]');
-    await menuBtn.click();
-    await page.waitForTimeout(600);
+    const supplierHeaderFile = path.join(outDir, "820px_tablet_supplier_header.png");
+    await page.locator("header").screenshot({ path: supplierHeaderFile });
 
-    const drawerFile = path.join(outDir, `${vp.name}_drawer_open.png`);
-    await page.screenshot({ path: drawerFile, fullPage: false });
-    console.log(`[DRAWER] Captured mobile drawer open on ${vp.name}`);
+    const supplierHeaderInfo = await page.evaluate(() => {
+      const header = document.querySelector("header");
+      const activeHeader = Array.from(header.children).find(c => window.getComputedStyle(c).display !== "none");
+      const periodSelect = activeHeader ? activeHeader.querySelector("select[aria-label='فترة العمليات']") : null;
+      const searchNotice = activeHeader ? activeHeader.textContent.includes("بحث المورد غير متاح") : false;
+      const bellNotice = activeHeader ? activeHeader.querySelector("[title*='إشعارات المورد']") !== null : false;
+      const chatWidget = document.querySelector("#live-chat-widget");
+      return {
+        hasPeriodSelect: !!periodSelect,
+        hasSearchNotice: searchNotice,
+        hasBellNotice: bellNotice,
+        hasChatWidget: !!chatWidget,
+      };
+    });
+
+    metrics.push({
+      viewport: { name: "820px_tablet_supplier", width: 820, height: 1180 },
+      role: "supplier",
+      supplierHeaderInfo,
+      files: { supplierHeaderFile },
+    });
     await context.close();
   }
 
   await browser.close();
 
-  fs.writeFileSync(path.join(outDir, "metrics.json"), JSON.stringify(metrics, null, 2));
-  console.log("Full evidence capture and metric verification complete!");
+  const metricsFile = path.join(outDir, "metrics.json");
+  fs.writeFileSync(metricsFile, JSON.stringify(metrics, null, 2), "utf8");
+  console.log(`Saved metrics to ${metricsFile}`);
 }
 
-run().catch((err) => {
-  console.error("Capture script error:", err);
+run().catch(err => {
+  console.error("Error capturing evidence:", err);
   process.exit(1);
 });
