@@ -317,7 +317,7 @@ export function AccShifts({ navigate, setModal }: PageProps) {
       </div>
 
       {/* KPIs (T08 §3 — 4 tiles from live.kpis) */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label="مفتوح الآن" value={String(kpis?.openNow ?? liveShifts.length)} sub="شفت نشط" icon={<span className="w-2 h-2 rounded-full bg-emerald-500" />} accent="emerald" />
         <KpiCard label="مغلقة اليوم" value={String(kpis?.closedToday ?? 0)} sub="شفت مغلق" icon={<CheckCircle2 size={18} className="text-blue-600" />} accent="blue" />
         <KpiCard label="مبيعات اليوم" value={formatShiftHalalas(kpis?.todaySalesHalalas)} sub="ر.س" icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />

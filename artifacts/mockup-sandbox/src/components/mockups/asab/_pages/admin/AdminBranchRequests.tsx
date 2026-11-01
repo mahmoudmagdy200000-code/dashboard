@@ -26,7 +26,7 @@ export function AdminBranchRequests({ }: PageProps) {
   return (
     <div className="space-y-5">
       <div><h2 className="text-xl font-bold text-gray-800">{t("طلبات الفروع", "Branch Requests")}</h2><p className="text-gray-400 text-sm mt-0.5">{t("مراجعة واعتماد الفروع التي أنشأها مديرو الشركات", "Review and approve branches created by company admins")}</p></div>
-      <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+      <div className="flex flex-wrap items-center gap-1 bg-gray-100 rounded-xl p-1 w-full sm:w-fit">
         {TABS.map(([k, ar, en]) => (
           <button key={k} onClick={() => setTab(k)} className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${tab === k ? "bg-white text-gray-800 shadow-sm" : "text-gray-500"}`}>{t(ar, en)}</button>
         ))}
@@ -34,7 +34,7 @@ export function AdminBranchRequests({ }: PageProps) {
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         {rows.length === 0 && <div className="px-5 py-10 text-center text-sm text-gray-400">{t("لا توجد طلبات", "No requests")}</div>}
         {rows.map((r, i) => (
-          <div key={r.id ?? i} className="px-5 py-4 flex items-center gap-4 border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
+          <div key={r.id ?? i} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
             <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0"><Building2 size={16} /></div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold text-sm text-gray-800 truncate">{r.name}</span><Badge className={statusChip(r.reviewStatus)}>{statusLabel(r.reviewStatus)}</Badge></div>
@@ -42,7 +42,7 @@ export function AdminBranchRequests({ }: PageProps) {
               {r.reviewStatus === "rejected" && r.reviewNote && <p className="text-[11px] text-red-600 mt-0.5">{t("سبب الرفض:", "Reason:")} {r.reviewNote}</p>}
             </div>
             {r.reviewStatus === "pending_review" && (
-              <div className="flex gap-1.5 flex-shrink-0">
+              <div className="flex gap-1.5 flex-shrink-0 w-full sm:w-auto justify-end">
                 <Btn size="sm" variant="success" disabled={approveMut.isPending} onClick={() => approveMut.mutate(r.id)}><CheckCircle2 size={12} /> {t("اعتماد", "Approve")}</Btn>
                 <Btn size="sm" variant="danger" onClick={() => { setRejectFor({ id: r.id, name: r.name }); setReason(""); }}><XCircle size={12} /> {t("رفض", "Reject")}</Btn>
               </div>

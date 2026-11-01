@@ -168,12 +168,12 @@ export function AccInventoryItems({ navigate }: PageProps) {
   return (
     <div className="space-y-5">
       <Breadcrumb items={[{ label: "لوحة التحكم", onClick: () => navigate("acc-dashboard") }, { label: "المخزون", onClick: () => navigate("acc-inventory") }, { label: "تحديد الأصناف" }]} />
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">تحديد أصناف الجرد اليومي — حسب الفرع</h2>
           <p className="text-gray-400 text-sm mt-0.5">كل فرع له قائمة أصناف مستقلة · الأصناف بفروقات شهرية كبيرة (&gt;25%) تُعلَّم بـ ⚡ للإضافة السريعة</p>
         </div>
-        <Btn variant="primary" onClick={save} className={saving ? "opacity-70 cursor-not-allowed" : ""}>
+        <Btn variant="primary" onClick={save} className={`w-full sm:w-auto justify-center ${saving ? "opacity-70 cursor-not-allowed" : ""}`}>
           {saving ? <RefreshCw size={13} className="animate-spin" /> : <RefreshCw size={13} />}
           {saving ? "جاري الحفظ..." : "حفظ وتحديث الفرع فوراً"}
         </Btn>

@@ -3737,7 +3737,7 @@ function HeadPending({ ops, finalApprove, reject, bulkFinalApprove, actionsPendi
 
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("بانتظار الاعتماد النهائي","Awaiting Final Approval")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{awaitingHead.length} {t("عملية — موافق عليها من المحاسب · تنتظر اعتمادك (م3 → م4)","operations — accountant-approved · awaiting your final approval (S3 → S4)")}</p>
@@ -3750,7 +3750,7 @@ function HeadPending({ ops, finalApprove, reject, bulkFinalApprove, actionsPendi
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
-        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+        <div className="flex flex-wrap items-center gap-1 bg-gray-100 rounded-xl p-1">
           {brands.map(b=>(
             <button key={b} onClick={()=>setBrandFilter(b)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${brandFilter===b?"bg-white text-gray-800 shadow-sm":"text-gray-500 hover:text-gray-700"}`}>
@@ -3758,7 +3758,7 @@ function HeadPending({ ops, finalApprove, reject, bulkFinalApprove, actionsPendi
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {(["","sales","shifts","expenses","purchases","inventory"] as (""|CModKey)[]).map(m=>(
             <button key={m} onClick={()=>setModFilter(m)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${modFilter===m?"bg-purple-600 text-white border-purple-600":"bg-white text-gray-600 border-gray-200 hover:border-purple-300"}`}>
@@ -4597,7 +4597,7 @@ function AccDashboard({ navigate, ops }:{ navigate:(p:string)=>void; ops:COp[] }
         </p>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label={t("تنتظر مراجعتي","Awaiting My Review")}   value={String(cAwaiting)} sub={t("📱 رُفعت من الفروع","📱 Uploaded from branches")}      icon={<Clock size={18} className="text-amber-600"/>}      accent="amber"/>
         <KpiCard label={t("وافقت عليها","I Approved")}              value={String(cApproved)} sub={t("بانتظار الاعتماد النهائي","Awaiting final approval")}   icon={<CheckCircle2 size={18} className="text-sky-600"/>}  accent="blue"/>
         <KpiCard label={t("معتمدة نهائياً","Final Approved")}       value={String(cFinal)}    sub={t("مُغلقة — بانتظار ERP","Closed — awaiting ERP")}        icon={<Lock size={18} className="text-emerald-600"/>}     accent="emerald"/>
@@ -4612,7 +4612,7 @@ function AccDashboard({ navigate, ops }:{ navigate:(p:string)=>void; ops:COp[] }
           <h3 className="font-bold text-gray-800 text-sm">🎯 {t("تقدم اليوم","Today's Progress")}</h3>
           <span className="text-xs text-gray-400">{t("الهدف: مراجعة جميع العمليات المعلقة","Goal: Review all pending operations")}</span>
         </div>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {progressBars.map(({ar,en,pct,color})=>{
             const p = Math.min(100,Math.max(0,pct||0));
             return (
@@ -4632,7 +4632,7 @@ function AccDashboard({ navigate, ops }:{ navigate:(p:string)=>void; ops:COp[] }
 
       <CPipelineOverview ops={ops}/>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <h3 className="font-bold text-gray-800 text-sm mb-3">⏳ {t("العمليات بحسب الموديول","Operations by Module")}</h3>
           <div className="grid grid-cols-3 gap-2">
@@ -4730,7 +4730,7 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
         {bulkSalesIds.length>0 && <Btn variant="success" size="sm" onClick={()=>bulkApprove(bulkSalesIds)}>✓ {t("موافقة على الكل","Approve All")} ({bulkSalesIds.length})</Btn>}
         {pending.some(isPkg6SalesReport) && <p className="text-xs text-amber-700">{t("تقارير اليوم تُعتمد فرديًا","Day reports are approved individually")}</p>}
       </div>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label={t("إجمالي البيانات المرفوعة","Total Uploaded")} value={String(mOps.length)} sub={t("كل الحالات","All statuses")}          icon={<FileText size={18} className="text-purple-600"/>} accent="purple"/>
         <KpiCard label={t("قيد المراجعة","Under Review")}               value={String(pending.length)} sub={t("رُفعت من الفروع","Uploaded from branches")} icon={<Clock size={18} className="text-amber-600"/>} accent="amber"/>
         <KpiCard label={t("تمت الموافقة","Approved")}                   value={String(mOps.filter(o=>o.status==="approved"||o.status==="final-approved").length)} sub={t("موافق + معتمد نهائياً","Approved + Final")} icon={<CheckCircle2 size={18} className="text-sky-600"/>} accent="blue"/>
@@ -4739,7 +4739,7 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
 
       {/* Sales financial KPIs (T04 §2) — live from GET /company/me/sales/kpis */}
       {kpis && (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard label={t("إجمالي المبيعات","Total Sales")}   value={`${fmtH(kpis.totalSalesHalalas)}`}     sub={`${kpis.branchCount} ${t("فرع","branches")}`} icon={<TrendingUp size={18} className="text-purple-600"/>} accent="purple"/>
           <KpiCard label={t("إجمالي التحصيل","Total Collected")} value={`${fmtH(kpis.totalCollectedHalalas)}`}  sub={kpis.trendPct==null?t("لا مقارنة","—"):`${kpis.trendPct>0?"▲":"▼"} ${Math.abs(kpis.trendPct)}%`} icon={<CheckCircle2 size={18} className="text-sky-600"/>} accent="blue"/>
           <KpiCard label={t("الفرق","Variance")}                value={`${fmtH(kpis.totalVarianceHalalas)}`}   sub={`${kpis.varianceCaseCount} ${t("حالة فرق","variance cases")}`} icon={<AlertTriangle size={18} className="text-red-600"/>} accent={kpis.totalVarianceHalalas===0?"emerald":"red"}/>
@@ -4779,7 +4779,7 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
             </button>
           ))}
         </div>
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع","Branch")}</label>
             <select value={branchFilter} onChange={e=>setBranchFilter(e.target.value)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
               <option value="">{t("الكل","All")}</option>
@@ -4836,9 +4836,9 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
       )}
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
+        <div className="px-4 sm:px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-center justify-between gap-2">
           <div><h3 className="font-bold text-gray-900 text-sm">{t("بيانات المبيعات","Sales Statements")}</h3><p className="text-[11px] text-gray-400 mt-0.5">{shown.length} {t("بيان · إجمالي","statements · total")} {fmt(totalShown)} {t("ر.س","SAR")}</p></div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button onClick={()=>exportOpsMut.mutate({moduleKey:"sales", format:"xlsx"})} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><Download size={11}/> Excel</button>
             {bulkSalesIds.length>0 && <Btn size="sm" variant="success" onClick={()=>bulkApprove(bulkSalesIds)}>✓ موافقة جماعية ({bulkSalesIds.length})</Btn>}
           </div>
@@ -5101,11 +5101,11 @@ function AccCompanyExpenses({ ops, approve, reject, bulkApprove }:{ ops:COp[]; a
   const SAR = t("ر.س","SAR");
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div><h2 className="text-xl font-bold text-gray-800">{t("موديول المصروفات","Expenses Module")}</h2><p className="text-gray-400 text-sm mt-0.5">{pending.length} {t("بيان معلق — كل بيان قد يحتوي فواتير متعددة","pending entries — each may contain multiple invoices")}</p></div>
         {pending.length>0 && <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">{t("اعتماد المصروفات من صلاحية مالك العلامة (EXP-06)","Expense approval is restricted to Brand Owner (EXP-06)")}</span>}
       </div>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label={t("إجمالي البيانات المرفوعة","Total Entries")}  value={String(mOps.length)} sub={t("كل الحالات","all statuses")} icon={<FileText size={18} className="text-purple-600"/>} accent="purple"/>
         <KpiCard label={t("قيد المراجعة","Under Review")}               value={String(pending.length)} sub={t("رُفعت من الفروع","Uploaded from branches")} icon={<Clock size={18} className="text-amber-600"/>} accent="amber"/>
         <KpiCard label={t("تمت الموافقة","Approved")}                   value={String(mOps.filter(o=>o.status==="approved"||o.status==="final-approved").length)} sub={t("موافق + معتمد نهائياً","approved + final")} icon={<CheckCircle2 size={18} className="text-sky-600"/>} accent="blue"/>
@@ -5114,7 +5114,7 @@ function AccCompanyExpenses({ ops, approve, reject, bulkApprove }:{ ops:COp[]; a
 
       {/* Expenses financial + invoice-match KPIs (T05 §2) — GET /company/me/expenses/kpis */}
       {kpis && (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard label={t("إجمالي المصروفات","Total Expenses")} value={fmtH(kpis.totalHalalas)} sub={`${t("ضريبة","VAT")} ${fmtH(kpis.vat15Halalas)}`} icon={<FileText size={18} className="text-purple-600"/>} accent="purple"/>
           <KpiCard label={t("فواتير مطابقة","Matched")}   value={String(kpis.pendingInvoices.matched)}  sub={t("قيد المراجعة","under review")} icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
           <KpiCard label={t("غير مطابقة","Mismatch")}      value={String(kpis.pendingInvoices.mismatch)} sub={t("تحتاج تدقيق","needs audit")} icon={<AlertTriangle size={18} className="text-amber-600"/>} accent="amber"/>
@@ -5123,7 +5123,7 @@ function AccCompanyExpenses({ ops, approve, reject, bulkApprove }:{ ops:COp[]; a
       )}
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("العلامة التجارية","Brand")}</label>
             <select value={brandFilter} onChange={e=>setBrandFilter(e.target.value)} disabled={brandNames.length===0} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2 disabled:bg-gray-50 disabled:text-gray-400"><option>{t("الكل","All")}</option>{brandNames.map(n=><option key={n}>{n}</option>)}</select>
           </div>
@@ -5136,9 +5136,9 @@ function AccCompanyExpenses({ ops, approve, reject, bulkApprove }:{ ops:COp[]; a
         </div>
       </div>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
+        <div className="px-4 sm:px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-bold text-gray-900 text-sm">{t("بيانات المصروفات","Expense Entries")}</h3>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-gray-400">{shown.length} {t("بيان","entries")} · {fmt(totalShown)} {SAR}</span>
             <button onClick={()=>exportOpsMut.mutate({moduleKey:"expenses", format:"xlsx"})} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><Download size={11}/> Excel</button>
           </div>
@@ -5478,7 +5478,7 @@ function AccCompanyPurchases({ ops, approve, reject, bulkApprove, requestClarifi
       </div>
 
       {/* KPI header (T06 §1 — meta.summary.purchases) */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label={t("مشتريات اليوم","Today's Purchases")} value={fmtH(summary?.todayTotalHalalas ?? 0)} sub={t("ر.س — كل الحالات","SAR — all statuses")} icon={<ShoppingCart size={18} className="text-purple-600"/>} accent="purple"/>
         <KpiCard label={t("قيد المراجعة","Pending Review")} value={String(summary?.pendingReview ?? pendingIds.length)} sub={t("تنتظر القرار","awaiting decision")} icon={<Clock size={18} className="text-amber-600"/>} accent="amber"/>
         <KpiCard label={t("فروق كميات","Qty Discrepancies")} value={String(summary?.qtyDiscrepancies ?? 0)} sub={t("طلبات مفتوحة بها فرق","open orders w/ diff")} icon={<AlertTriangle size={18} className="text-red-600"/>} accent="red"/>
@@ -5487,7 +5487,7 @@ function AccCompanyPurchases({ ops, approve, reject, bulkApprove, requestClarifi
 
       {/* Filters: supplier / date / source / match / status */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المورد","Supplier")}</label>
             <select value={supplierFilter} onChange={e=>setSupplierFilter(e.target.value)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
               <option value="">{t("الكل","All")}</option>{supplierOpts.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
@@ -5514,7 +5514,7 @@ function AccCompanyPurchases({ ops, approve, reject, bulkApprove, requestClarifi
 
       {viewMode==="ops" && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
+          <div className="px-4 sm:px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-bold text-gray-900 text-sm">{t("بيانات المشتريات","Purchase Orders")}</h3>
             <button onClick={()=>exportOpsMut.mutate({moduleKey:"purchases", format:"xlsx"})} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><Download size={11}/> Excel</button>
           </div>
@@ -5749,15 +5749,15 @@ function AccCompanyInventory({ navigate, ops, approve, reject }:{ navigate:(p:st
 
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div><h2 className="text-xl font-bold text-gray-800">{t("موديول المخزون","Inventory Module")}</h2><p className="text-gray-400 text-sm mt-0.5">{t("مراجعة الجرد اليومي والشهري لكل فرع — مقارنة ومعادلة","Review daily and monthly stock counts per branch — compare and reconcile")}</p></div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button onClick={()=>exportInvMut.mutate({})} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><Download size={12}/> {t("Excel — كل الفروع","Excel — all branches")}</button>
           <Btn variant="primary" size="sm" onClick={()=>setShowItemPage(true)}><Package size={13}/> {t("تحديد أصناف الجرد","Set Inventory Items")}</Btn>
         </div>
       </div>
       {/* KPI header (T07 §1 — summary) */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label={t("أصناف منخفضة","Low Items")} value={String(summary?.lowItems ?? 0)} sub={t("تحت الحد الأدنى","below min level")} icon={<Package size={18} className="text-amber-600"/>} accent="amber"/>
         <KpiCard label={t("هدر اليوم","Waste Today")} value={fmtH(summary?.totalWasteTodayHalalas ?? 0)} sub={t("ر.س","SAR")} icon={<AlertTriangle size={18} className="text-red-600"/>} accent="red"/>
         <KpiCard label={t("نسبة الهدر","Waste Rate")} value={`${(summary?.wasteRatePct ?? 0).toFixed(1)}%`} sub={t("من المبيعات","of sales")} icon={<TrendingUp size={18} className="text-purple-600"/>} accent="purple"/>
@@ -5765,7 +5765,7 @@ function AccCompanyInventory({ navigate, ops, approve, reject }:{ navigate:(p:st
       </div>
       {/* Controls */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("العلامة التجارية","Brand")}</label>
             <select value={brandFilter} onChange={e=>setBrandFilter(e.target.value)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"><option>الكل</option>{BRANDS.map(b=><option key={b.id}>{b.name}</option>)}</select>
           </div>
@@ -6047,9 +6047,9 @@ function AccCompanyAssets() {
 
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div><h2 className="text-xl font-bold text-gray-800">{t("الأصول الثابتة","Fixed Assets")}</h2><p className="text-gray-400 text-sm">{totalCount} {t("أصل مسجل","registered assets")}{draftAssets.length>0?` + ${draftAssets.length} ${t("مسودة","draft")}`:""}</p></div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <input type="file" id="asset-import-file" accept=".xlsx,.csv" onChange={e=>{ const f=e.target.files?.[0]; if(f) importAssetsMut.mutate(f); }} style={{display:"none"}}/>
           <Btn size="sm" onClick={()=>exportAssetsMut.mutate({format:"xlsx", category:catFilter!=="all"?catFilter:undefined})}><Download size={12}/> Excel</Btn>
           <Btn size="sm" onClick={()=>document.getElementById("asset-import-file")?.click()}><Upload size={12}/> {t("استيراد","Import")}</Btn>
@@ -6129,7 +6129,7 @@ function AccCompanyAssets() {
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <KpiCard label={t("القيمة المسجّلة","Registered Value")} value={fmtSar2(totalValue)} sub={SAR} icon={<Building2 size={18} className="text-blue-600"/>} accent="blue"/>
         <KpiCard label={t("أصول نشطة","Active")}            value={String(activeCount)} sub={`${t("من","of")} ${totalCount}`} icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
         <KpiCard label={summary?t("بانتظار الفرع","Pending branch"):t("في صيانة","Maintenance")} value={String(summary?summary.pendingBranch:maintCount)} sub={t("أصول","assets")} icon={<AlertTriangle size={18} className="text-red-500"/>} accent="red"/>
@@ -6149,14 +6149,14 @@ function AccCompanyAssets() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="grid grid-cols-6 gap-3 px-5 py-3 border-b border-gray-100 bg-gray-50 text-[10px] font-semibold text-gray-500">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+        <div className="grid grid-cols-6 gap-3 px-5 py-3 border-b border-gray-100 bg-gray-50 text-[10px] font-semibold text-gray-500 min-w-[600px]">
           <span className="col-span-2">{t("الأصل","Asset")}</span><span>{t("الفرع","Branch")}</span><span>{t("الفئة","Category")}</span><span>{t("القيمة المسجّلة","Registered Value")}</span><span>{t("الحالة","Status")}</span>
         </div>
         {apiAssets.length===0 ? (
           <div className="py-10 text-center text-gray-400 text-sm">✅ {t("لا توجد أصول","No assets")}</div>
         ) : apiAssets.map(a=>(
-          <div key={a.id} className="grid grid-cols-6 gap-3 px-5 py-4 border-b border-gray-50 last:border-0 items-center hover:bg-gray-50/50">
+          <div key={a.id} className="grid grid-cols-6 gap-3 px-5 py-4 border-b border-gray-50 last:border-0 items-center hover:bg-gray-50/50 min-w-[600px]">
             <div className="col-span-2">
               <p className="font-semibold text-gray-800 text-sm">{a.name}</p>
               <p className="text-[10px] text-gray-400" dir="ltr">{a.publicId}{a.serial?` · ${a.serial}`:""}</p>
@@ -6323,7 +6323,7 @@ function AccCompanyShifts({ approve, reject, requestClarification, page, setPage
       </div>
 
       {/* KPIs (T08 §3) */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label={t("مفتوح الآن","Open Now")} value={String(kpis?.openNow ?? allLive.length)} sub={t("شفت نشط","active shifts")} icon={<Activity size={18} className="text-amber-600"/>} accent="amber"/>
         <KpiCard label={t("مغلقة اليوم","Closed Today")} value={String(kpis?.closedToday ?? 0)} sub={t("شفت مغلق","closed")} icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
         <KpiCard label={t("مبيعات اليوم","Today's Sales")} value={formatShiftHalalas(kpis?.todaySalesHalalas, lang)} sub={t("ر.س","SAR")} icon={<Wallet size={18} className="text-purple-600"/>} accent="purple"/>
@@ -6331,7 +6331,7 @@ function AccCompanyShifts({ approve, reject, requestClarification, page, setPage
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-1 w-fit">
+      <div className="flex flex-wrap items-center gap-2 bg-gray-100 rounded-xl p-1 w-full sm:w-fit">
         {TABS.map(tb=>(
           <button key={tb.key} onClick={()=>setTab(tb.key)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${tab===tb.key?"bg-white text-gray-800 shadow-sm":"text-gray-500 hover:text-gray-700"}`}>
@@ -7202,7 +7202,7 @@ function AccCompanyEmployees() {
         <div><h2 className="text-xl font-bold text-gray-800">{t("كشف حساب الموظفين","Employee Accounts")}</h2><p className="text-gray-400 text-sm mt-0.5">{t("الرواتب والحركات المالية للموظفين","Salaries and financial movements")}</p></div>
         <button onClick={()=>exportPayrollMut.mutate(new Date().toISOString().slice(0,7))} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><Download size={12}/> {t("كشف الرواتب Excel","Payroll Excel")}</button>
       </div>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label={t("إجمالي الرواتب","Total Salaries")}      value={fmtH(totalSalariesH)} sub={t("ر.س شهرياً","SAR / month")} icon={<Users size={18} className="text-blue-600"/>} accent="blue"/>
         <KpiCard label={t("مستحق على الموظفين","Owed to company")} value={fmtH(owedToCompanyH)} sub={SAR} icon={<AlertTriangle size={18} className="text-red-500"/>} accent="red"/>
         <KpiCard label={t("مستحق للموظفين","Owed to employees")}   value={fmtH(owedToEmpH)}     sub={SAR} icon={<Wallet size={18} className="text-amber-600"/>} accent="amber"/>
@@ -7210,7 +7210,7 @@ function AccCompanyEmployees() {
       </div>
       {/* فلاتر */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("بحث — اسم الموظف","Search — name")}</label>
             <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2"><Search size={13} className="text-gray-400"/><input value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} placeholder={t("اسم الموظف...","Employee name...")} className="flex-1 text-sm outline-none"/></div>
           </div>
@@ -7223,9 +7223,9 @@ function AccCompanyEmployees() {
         </div>
       </div>
       {/* Two-panel layout */}
-      <div className="grid grid-cols-5 gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
         {/* Left: Employee list */}
-        <div className="col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="col-span-1 lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/60">
             <p className="font-bold text-gray-900 text-sm">{t("قائمة الموظفين","Employees")} ({employees.length})</p>
           </div>

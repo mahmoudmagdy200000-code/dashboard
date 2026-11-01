@@ -792,7 +792,7 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
 
       {/* ── LIST TAB ── */}
       {usersTab === "list" && (<>
-        <div className="grid grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
           {[["محاسب", "blue"], ["رئيس حسابات", "amber"], ["مدير فرع", "emerald"], ["مدير مشتريات", "purple"], ["مورد", "orange"], ["أدمن", "red"]].map(([r, c]) => (
             <div key={r} className={`bg-white rounded-xl border border-gray-100 p-3 text-center cursor-pointer hover:border-${c}-200 transition-all ${roleFilter === r ? `border-${c}-300 bg-${c}-50/40` : ""}`}
               onClick={() => setRoleFilter(roleFilter === r ? "" : r)}>
@@ -803,16 +803,16 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
         </div>
 
         <Card title={t("قائمة المستخدمين", "User List")} actions={
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 border border-gray-200 rounded-lg px-3 py-1.5 bg-white">
-              <Search size={13} className="text-gray-400" />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("بحث بالاسم...", "Search by name...")} className="text-xs outline-none text-gray-600 w-28" />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 border border-gray-200 rounded-lg px-3 py-1.5 bg-white flex-1 sm:flex-initial min-w-[130px]">
+              <Search size={13} className="text-gray-400 flex-shrink-0" />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("بحث بالاسم...", "Search by name...")} className="text-xs outline-none text-gray-600 w-full sm:w-28" />
             </div>
-            <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 bg-white">
+            <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 bg-white flex-1 sm:flex-initial">
               <option value="">{t("جميع الأدوار", "All Roles")}</option>
               {["محاسب", "رئيس حسابات", "مدير فرع", "مدير مشتريات", "مورد", "أدمن"].map(r => <option key={r}>{r}</option>)}
             </select>
-            <select value={brandFilter} onChange={e => setBrandFilter(e.target.value)} className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 bg-white">
+            <select value={brandFilter} onChange={e => setBrandFilter(e.target.value)} className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 bg-white flex-1 sm:flex-initial">
               <option value="">{t("جميع العلامات", "All Brands")}</option>
               {allBrands.map(b => <option key={b}>{b}</option>)}
             </select>

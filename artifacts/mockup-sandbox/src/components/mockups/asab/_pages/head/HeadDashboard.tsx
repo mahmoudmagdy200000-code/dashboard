@@ -40,7 +40,7 @@ export function HeadDashboard({ navigate, setModal, setDetailId, ops, finalAppro
         <h2 className="text-xl font-bold text-gray-800">{t("لوحة رئيس الحسابات 👑", "Head Accountant Dashboard 👑")}</h2>
         <p className="text-gray-400 text-sm mt-0.5">{t("الإشراف على 4 محاسبين · 100 فرع · الاعتماد النهائي وترحيل ERP", "Supervising 4 accountants · 100 branches · Final approval & ERP posting")}</p>
       </div>
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <KpiCard label={t("بانتظار اعتمادي", "Awaiting My Approval")} value={String(kpiAwaiting)} sub={t("📱 من المحاسبين · م3", "📱 From accountants · S3")} icon={<Clock size={18} className="text-amber-600" />} accent="amber" onClick={() => setTab("approval")} />
         <KpiCard label={t("معتمدة نهائياً", "Final Approved")} value={String(kpiFinalErp)} sub={t("مُغلقة · تنتظر ERP · م4", "Closed · Awaiting ERP · S4")} icon={<Lock size={18} className="text-emerald-600" />} accent="emerald" onClick={() => setTab("erp")} />
         <KpiCard label={t("مُرحَّلة لـ ERP", "Posted to ERP")} value={String(kpiErpPosted)} sub={t("مُعالَجة · م5", "Processed · S5")} icon={<ChevronsRight size={18} className="text-indigo-600" />} accent="blue" onClick={() => setTab("erp")} />

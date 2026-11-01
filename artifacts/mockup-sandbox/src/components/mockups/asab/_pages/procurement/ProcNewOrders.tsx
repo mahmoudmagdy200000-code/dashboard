@@ -96,7 +96,7 @@ export function ProcNewOrders({ role }: PageProps) {
 
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("الطلبات الجديدة", "New Orders")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{t("مراجعة استهلاك الفروع وإعداد أوامر التوريد — الاعتماد المالي وفق PUR-01", "Review branch consumption and prepare supply orders — financial approval per PUR-01")}</p>
@@ -106,7 +106,7 @@ export function ProcNewOrders({ role }: PageProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <KpiCard label={t("طلبات جديدة معلقة", "Pending New Orders")} value={String(pending.length)} sub={t("من الفروع", "from branches")} icon={<ShoppingCart size={18} className="text-amber-600" />} accent="amber" />
         <KpiCard label={t("تم اعتمادها", "Approved")} value={String(approvedCount)} sub={t("هذه الجلسة", "this session")} icon={<CheckCircle2 size={18} className="text-emerald-600" />} accent="emerald" />
         <KpiCard label={t("الموردون المعنيون", "Relevant Suppliers")} value={String(new Set(pending.map(o => o.supplierId).filter(Boolean)).size)} sub={t("يحتاجون موافقة", "need approval")} icon={<Truck size={18} className="text-blue-600" />} accent="blue" />
@@ -114,7 +114,7 @@ export function ProcNewOrders({ role }: PageProps) {
 
       {/* Filters panel */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir={dir}>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label htmlFor="proc-new-branch-filter" className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع", "Branch")}</label>
             <select id="proc-new-branch-filter" value={filterBranch} onChange={e => setFilterBranch(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
@@ -171,7 +171,7 @@ export function ProcNewOrders({ role }: PageProps) {
           return (
             <div key={groupKey} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               {/* Group header */}
-              <div className="px-5 py-3 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between">
+              <div className="px-5 py-3 bg-gray-50/70 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-gray-800 text-sm">{groupKey}</span>
                   <Badge className="bg-blue-50 text-blue-700 text-[10px]">{groupOrders.length} {t("طلب", "orders")}</Badge>

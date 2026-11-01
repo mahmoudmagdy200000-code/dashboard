@@ -136,19 +136,19 @@ export function AdminCompanies({ navigate }: PageProps) {
   return (
     <div className="space-y-5" dir={dir}>
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("اشتراكات الشركات — بوابة المجموعات", "Company Subscriptions — Groups Portal")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{companies.length} {t("شركة مسجلة", "registered companies")} · {companies.filter(c => c.status === "active" || c.status === "warning").length} {t("نشطة", "active")} · {t("إيراد شهري تقديري (كتالوج SUB-01)", "Est. Monthly Plan Revenue (SUB-01 Catalog)")} {(totalRevenue / 1000).toFixed(0)}K {t("ر.س", "SAR")}</p>
         </div>
         <button onClick={() => setShowAdd(true)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-bold hover:bg-purple-700 shadow-sm">
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-bold hover:bg-purple-700 shadow-sm w-full sm:w-auto justify-center">
           <Plus size={14} /> {t("إضافة شركة جديدة", "Add New Company")}
         </button>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
         <KpiCard label={t("شركات نشطة", "Active Companies")} value={String(companies.filter(c => ["active", "warning", "danger"].includes(c.status)).length)} sub={t("من إجمالي الشركات", "of all companies")} icon={<CheckCircle2 size={16} className="text-emerald-600" />} accent="emerald" />
         <KpiCard label={t("تجريبي", "Trial")} value={String(companies.filter(c => c.status === "trial").length)} sub={t("يحتاج تحويل", "needs conversion")} icon={<Star size={16} className="text-blue-500" />} accent="blue" />
         <KpiCard label={t("ينتهي خلال 30 يوم", "Expires in 30 Days")} value={String(companies.filter(c => c.daysLeft > 0 && c.daysLeft <= 30).length)} sub={t("شركات تحتاج تجديد", "companies need renewal")} icon={<AlertTriangle size={16} className="text-amber-600" />} accent="amber" />

@@ -80,11 +80,13 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
     const wasCond = conditionalApproved.has(op.id);
     return (
       <div key={op.id} className={`border-b border-gray-100 last:border-0 ${op.match === "diff" ? "border-r-4 border-r-red-400" : ""}`}>
-        <div className="px-5 py-4 flex items-center gap-4 hover:bg-gray-50/60">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-400 to-cyan-400 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">{accountant[0]}</div>
-          {groupBy !== "module" && <Badge className="bg-purple-50 text-purple-700 border border-purple-100 text-xs flex-shrink-0">{op.moduleLabel}</Badge>}
-          {groupBy !== "accountant" && <Badge className="bg-blue-50 text-blue-700 border border-blue-100 text-[10px] flex-shrink-0">{accountant}</Badge>}
-          <div className="flex-1 min-w-0">
+        <div className="px-4 sm:px-5 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 hover:bg-gray-50/60">
+          <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-400 to-cyan-400 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">{accountant[0]}</div>
+            {groupBy !== "module" && <Badge className="bg-purple-50 text-purple-700 border border-purple-100 text-xs flex-shrink-0">{op.moduleLabel}</Badge>}
+            {groupBy !== "accountant" && <Badge className="bg-blue-50 text-blue-700 border border-blue-100 text-[10px] flex-shrink-0">{accountant}</Badge>}
+          </div>
+          <div className="flex-1 min-w-0 w-full sm:w-auto">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-sm text-gray-800">{op.branch}</span>
               <span className="text-xs font-mono text-gray-400">{op.id}</span>
@@ -94,7 +96,7 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
             <p className="text-xs text-gray-400 mt-0.5">⏰ {op.timeAgo}</p>
           </div>
           <span className="font-mono font-bold text-gray-800 tabular-nums">{fmtAmt(op.amount)} {t("ر.س", "SAR")}</span>
-          <div className="flex gap-1.5 flex-shrink-0">
+          <div className="flex gap-1.5 flex-wrap sm:flex-nowrap flex-shrink-0 w-full sm:w-auto justify-end">
             <Btn size="sm" variant="success" onClick={() => finalApproveOp(op.id)}><CheckCircle2 size={12} /> {t("اعتماد", "Approve")}</Btn>
             <button onClick={() => { setConditionalId(isCond ? null : op.id); setApprovalComment(""); }}
               className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border font-semibold transition-all ${isCond ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"}`}>
@@ -157,12 +159,12 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
 
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("بانتظار الاعتماد النهائي", "Awaiting Final Approval")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{filtered.length} {t("عملية وافق عليها المحاسبون", "operations approved by accountants")} · {fmtAmt(totalAmt)} {t("ر.س إجمالياً", "SAR total")}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {/* HA-F23: Export matches head queue status (approved) */}
           <button onClick={() => exportHeadOpsMut.mutate({ status: "approved", format: "xlsx" })}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 transition-all">
@@ -172,14 +174,14 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <KpiCard label={t("بانتظار الاعتماد", "Awaiting Approval")} value={String(filtered.length)} sub={t("جميع الموديولات", "All modules")} icon={<Clock size={18} className="text-amber-600" />} accent="amber" />
         <KpiCard label={t("الإجمالي", "Total")} value={totalAmt != null ? `${(totalAmt / 1000).toFixed(0)}K` : "—"} valueLabel={totalAmt != null ? t("تقريبي", "Approximate") : undefined} sub={t("ر.س", "SAR")} icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
         <KpiCard label={t("يوجد فروقات", "Has Differences")} value={String(filtered.filter(o => o.match === "diff").length)} sub={t("تحتاج مراجعة إضافية", "Needs further review")} icon={<AlertTriangle size={18} className="text-red-600" />} accent="red" />
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir={dir}>
-        <div className="grid grid-cols-4 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
           <div>
             <label htmlFor="head-pending-accountant-filter" className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المحاسب المراجع", "Reviewing Accountant")}</label>
             <select id="head-pending-accountant-filter" value={accFilter} onChange={e => setAccFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
@@ -211,8 +213,8 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
             </select>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex-1 flex items-center gap-1.5 border border-gray-200 rounded-lg px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex-1 min-w-[180px] flex items-center gap-1.5 border border-gray-200 rounded-lg px-3 py-2">
             <Search size={13} className="text-gray-400 flex-shrink-0" />
             <input aria-label={t("بحث بالفرع أو المطعم أو رقم العملية", "Search by branch, restaurant or operation ID")} value={filters.search} onChange={e => setFilters({ ...filters, search: e.target.value })} placeholder={t("بحث بالفرع أو المطعم أو رقم العملية...", "Search by branch, restaurant or operation ID...")} className="flex-1 text-sm outline-none" />
           </div>
@@ -223,7 +225,7 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-semibold text-gray-500">{t("تجميع حسب:", "Group by:")}</span>
         {([["flat", t("بدون تجميع", "No grouping")], ["module", t("الموديول", "Module")], ["accountant", t("المحاسب", "Accountant")]] as [typeof groupBy, string][]).map(([val, lbl]) => (
           <button key={val} onClick={() => setGroupBy(val)}
@@ -244,7 +246,7 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
         : groupBy === "flat"
           ? (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-3.5 bg-gray-50/60 border-b border-gray-100 flex items-center justify-between">
+              <div className="px-4 sm:px-5 py-3.5 bg-gray-50/60 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-bold text-gray-900 text-sm">{t("العمليات المعلقة", "Pending Operations")}</h3>
                 <span className="text-xs text-gray-400">{filtered.length} {t("عملية", "operations")} · {fmtAmt(totalAmt)} {t("ر.س", "SAR")}</span>
               </div>
@@ -259,14 +261,14 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
                 const diffCount = grp.ops.filter(o => o.match === "diff").length;
                 return (
                   <div key={grp.key} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <button onClick={() => toggleGroup(grp.key)} className="w-full px-5 py-3.5 bg-gray-50/60 border-b border-gray-100 flex items-center justify-between hover:bg-gray-100/60 transition-colors">
-                      <div className="flex items-center gap-3">
+                    <button onClick={() => toggleGroup(grp.key)} className="w-full px-4 sm:px-5 py-3.5 bg-gray-50/60 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2 hover:bg-gray-100/60 transition-colors">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <ChevronRight size={14} className={`text-gray-400 transition-transform ${isCollapsed ? "rotate-0" : "-rotate-90"}`} />
                         <span className="font-bold text-gray-900 text-sm">{grp.label}</span>
                         <Badge className="bg-amber-50 text-amber-700 border border-amber-100 text-[10px]">{grp.ops.length} {t("عملية", "ops")}</Badge>
                         {diffCount > 0 && <Badge className="bg-red-50 text-red-700 border border-red-100 text-[10px]">⚠️ {diffCount} {t("فروقات", "diffs")}</Badge>}
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <span className="font-mono text-sm font-bold text-gray-700">{fmtAmt(grpAmt)} {t("ر.س", "SAR")}</span>
                         <Btn size="sm" variant="success" onClick={e => { e.stopPropagation(); bulkApprove(grp.ops.map(o => o.id)); }}>
                           <CheckCircle2 size={11} /> {t("اعتماد المجموعة", "Approve Group")}
@@ -277,9 +279,9 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
                   </div>
                 );
               })}
-              <div className="bg-gradient-to-l from-purple-50 to-blue-50 rounded-xl border border-purple-100 p-4 flex items-center justify-between">
+              <div className="bg-gradient-to-l from-purple-50 to-blue-50 rounded-xl border border-purple-100 p-4 flex flex-wrap items-center justify-between gap-2">
                 <span className="font-bold text-purple-800 text-sm">{t("إجمالي العمليات المعلقة", "Total Pending Operations")}</span>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                   <span className="text-sm text-gray-600">{filtered.length} {t("عملية في", "operations in")} {groups.length} {groupBy === "module" ? t("موديول", "module") : t("محاسب", "accountant")}</span>
                   <span className="font-mono font-bold text-purple-700 text-base">{fmtAmt(totalAmt)} {t("ر.س", "SAR")}</span>
                 </div>

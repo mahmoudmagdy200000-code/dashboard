@@ -277,9 +277,9 @@ export function HeadERP({ ops, markErpPosted }: PageProps) {
         </div>
 
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center gap-0 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0 mb-6">
             {[{ n: 1, label: `1. ${t("اختيار الفترة", "Select Period")}`, icon: "📅" }, { n: 2, label: `2. ${t("معاينة البيانات", "Preview Data")}`, icon: "👁" }, { n: 3, label: `3. ${t("تأكيد الإرسال", "Confirm Send")}`, icon: "✅" }].map((s, i) => (
-              <div key={i} className="flex items-center flex-1">
+              <div key={i} className="flex items-center flex-1 w-full sm:w-auto">
                 <button
                   disabled={(s.n === 3 && !postedBatchId) || (s.n === 2 && (toPost.length === 0 || !canProceedPreflight(erpPreflight)) && !postedBatchId)}
                   onClick={() => {
@@ -287,18 +287,18 @@ export function HeadERP({ ops, markErpPosted }: PageProps) {
                     if (s.n === 2 && (toPost.length === 0 || !canProceedPreflight(erpPreflight)) && !postedBatchId) return;
                     setStep((s.n - 1) as 0 | 1 | 2);
                   }}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all ${step === s.n - 1 ? "bg-purple-600 text-white" : step > s.n - 1 ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-400"} ${((s.n === 3 && !postedBatchId) || (s.n === 2 && (toPost.length === 0 || !canProceedPreflight(erpPreflight)) && !postedBatchId)) ? "opacity-50 cursor-not-allowed" : ""}`}>
+                  className={`flex items-center justify-center sm:justify-start gap-2 px-3 py-2 rounded-xl transition-all w-full sm:w-auto ${step === s.n - 1 ? "bg-purple-600 text-white" : step > s.n - 1 ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-400"} ${((s.n === 3 && !postedBatchId) || (s.n === 2 && (toPost.length === 0 || !canProceedPreflight(erpPreflight)) && !postedBatchId)) ? "opacity-50 cursor-not-allowed" : ""}`}>
                   <span>{step >= s.n ? "✓" : s.icon}</span>
                   <span className="text-xs font-semibold whitespace-nowrap">{s.label}</span>
                 </button>
-                {i < 2 && <div className={`flex-1 h-0.5 mx-1 ${step > i ? "bg-emerald-300" : "bg-gray-200"}`}></div>}
+                {i < 2 && <div className={`hidden sm:block flex-1 h-0.5 mx-1 ${step > i ? "bg-emerald-300" : "bg-gray-200"}`}></div>}
               </div>
             ))}
           </div>
           {step === 0 && (
             <div className="space-y-4">
               {/* ── Advanced export filters per document ── */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                 {/* Module filter */}
                 <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">

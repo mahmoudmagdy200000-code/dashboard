@@ -68,7 +68,7 @@ export function BranchUpload({ }: PageProps) {
 
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("رفع البيانات اليومية", "Daily Data Upload")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{t("البيانات تُرسَل للمحاسب المسؤول لمراجعتها ثم رفعها لمدير الحسابات.", "Data is sent to the responsible accountant for review, then to the head accountant.")}</p>
@@ -76,7 +76,7 @@ export function BranchUpload({ }: PageProps) {
         <span className="text-sm text-gray-400">{new Date().toLocaleDateString("ar-SA")}</span>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Sales + expenses — the daily figures the accountant reviews. */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
           <div className="flex items-center justify-between">

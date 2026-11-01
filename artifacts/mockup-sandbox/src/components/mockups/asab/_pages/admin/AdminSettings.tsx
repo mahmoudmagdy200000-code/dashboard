@@ -42,7 +42,7 @@ export function AdminSettings({ }: PageProps) {
           <p className="text-xs text-gray-400 mt-0.5">{t("ملاحظة أمنية: تغيير الإعدادات يسجل في الخادم كإعدادات تفضيلية؛ إنفاذ السياسات يخضع لمسارات المصادقة والخوادم المستقلة (PERM-00)", "Security Notice: Settings changes are saved as system preferences; policy enforcement is governed by independent server authentication flows (PERM-00)")}</p>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
         {/* B4: wired to GET/PATCH /admin/settings with the backend's authoritative field names.
             PATCH is a deep partial merge → send one section/key at a time. */}
         {([

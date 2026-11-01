@@ -284,12 +284,12 @@ export function AdminRestaurants({ }: PageProps) {
 
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("الهيكل التشغيلي — العلامات والمطاعم والفروع", "Operational Structure — Brands, Restaurants & Branches")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{BRANDS.length} {t("علامة تجارية", "brands")} · {totalRests} {t("مطعم", "restaurants")} · {totalBranches} {t("فرع", "branches")}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Btn variant="ghost" onClick={() => setShowAddRest("")}><Plus size={14} /> {t("مطعم جديد", "New Restaurant")}</Btn>
           <Btn variant="primary" onClick={() => setShowAddBrand(true)}><Plus size={14} /> {t("علامة تجارية", "New Brand")}</Btn>
         </div>
@@ -480,7 +480,7 @@ export function AdminRestaurants({ }: PageProps) {
                   </span>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                 {/* Column hints mirror the shipped templates: items and raw
                     materials use «التصنيف»; suppliers genuinely uses «الفئة». */}
                 <UploadCard
@@ -529,8 +529,9 @@ export function AdminRestaurants({ }: PageProps) {
                     {uploadRestFilter && <button onClick={() => setUploadRestFilter("")} className="text-gray-400 hover:text-gray-600"><X size={10} /></button>}
                   </div>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                  <div className="grid grid-cols-5 gap-0 bg-gray-50 border-b border-gray-200 px-4 py-2">
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+                  <div className="min-w-[500px]">
+                    <div className="grid grid-cols-5 gap-0 bg-gray-50 border-b border-gray-200 px-4 py-2">
                     <p className="text-[10px] font-bold text-gray-500 col-span-2">{t("المطعم", "Restaurant")}</p>
                     <p className="text-[10px] font-bold text-gray-500 text-center">{t("حالة الرفع", "Upload Status")}</p>
                     <p className="text-[10px] font-bold text-gray-500 text-center">{t("آخر تحديث", "Last Updated")}</p>
@@ -577,6 +578,7 @@ export function AdminRestaurants({ }: PageProps) {
                       </div>
                     );
                   })}
+                  </div>
                 </div>
               </div>
             )}
@@ -593,64 +595,66 @@ export function AdminRestaurants({ }: PageProps) {
                   {branchAssetDoneCount}/{branchTotalCount} {t("فرع", "branches")}
                 </span>
               </div>
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="grid grid-cols-6 gap-0 bg-gray-50 border-b border-gray-200 px-4 py-2">
-                  <p className="text-[10px] font-bold text-gray-500 col-span-2">{t("المطعم", "Restaurant")}</p>
-                  <p className="text-[10px] font-bold text-gray-500 col-span-2">{t("الفرع", "Branch")}</p>
-                  <p className="text-[10px] font-bold text-gray-500 text-center">{t("حالة الرفع", "Upload Status")}</p>
-                  <p className="text-[10px] font-bold text-gray-500 text-center">{t("إجراء", "Action")}</p>
-                </div>
-                {selBrand.restaurants.filter(r => !uploadRestFilter || r.name.includes(uploadRestFilter)).flatMap(rest =>
-                  rest.branches.map((br: any, bi: number) => {
-                    // Keyed by the real branch id — the endpoint needs it, and the
-                    // old index-based key broke as soon as branches reordered.
-                    const branchId = typeof br === "string" ? "" : (br?.id ?? "");
-                    const aKey = branchId || `${uploadBrand}_${rest.id}_${bi}`;
-                    // Prefer the per-branch endpoint's tri-state; fall back to the
-                    // (legacy, usually empty) brand map, then the optimistic flip.
-                    const failed = branchId ? branchAssetStatusMap[branchId] === "failed" : false;
-                    const done = branchAssetDone(branchId, aKey);
-                    const errKey = `asset_${aKey}`;
-                    return (
-                      <div key={aKey} className="border-b border-gray-50 last:border-0">
-                        {uploadErrors[errKey] && <div className="px-4 pt-2"><UploadErrorBox err={uploadErrors[errKey]} /></div>}
-                        <div className="grid grid-cols-6 gap-0 items-center px-4 py-2.5 hover:bg-gray-50/50">
-                          <div className="col-span-2 flex items-center gap-2">
-                            <div className="w-5 h-5 rounded-md flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0" style={{ background: selBrand.color + "aa" }}>{rest.name[0]}</div>
-                            <p className="text-[10px] text-gray-500 truncate">{rest.name}</p>
-                          </div>
-                          <div className="col-span-2 flex items-center gap-2">
-                            <Home size={10} className="text-gray-300 flex-shrink-0" />
-                            <div>
-                              <p className="text-xs font-semibold text-gray-700">{br.name}</p>
-                              <p className="text-[10px] text-gray-400">{br.manager}</p>
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+                <div className="min-w-[550px]">
+                  <div className="grid grid-cols-6 gap-0 bg-gray-50 border-b border-gray-200 px-4 py-2">
+                    <p className="text-[10px] font-bold text-gray-500 col-span-2">{t("المطعم", "Restaurant")}</p>
+                    <p className="text-[10px] font-bold text-gray-500 col-span-2">{t("الفرع", "Branch")}</p>
+                    <p className="text-[10px] font-bold text-gray-500 text-center">{t("حالة الرفع", "Upload Status")}</p>
+                    <p className="text-[10px] font-bold text-gray-500 text-center">{t("إجراء", "Action")}</p>
+                  </div>
+                  {selBrand.restaurants.filter(r => !uploadRestFilter || r.name.includes(uploadRestFilter)).flatMap(rest =>
+                    rest.branches.map((br: any, bi: number) => {
+                      // Keyed by the real branch id — the endpoint needs it, and the
+                      // old index-based key broke as soon as branches reordered.
+                      const branchId = typeof br === "string" ? "" : (br?.id ?? "");
+                      const aKey = branchId || `${uploadBrand}_${rest.id}_${bi}`;
+                      // Prefer the per-branch endpoint's tri-state; fall back to the
+                      // (legacy, usually empty) brand map, then the optimistic flip.
+                      const failed = branchId ? branchAssetStatusMap[branchId] === "failed" : false;
+                      const done = branchAssetDone(branchId, aKey);
+                      const errKey = `asset_${aKey}`;
+                      return (
+                        <div key={aKey} className="border-b border-gray-50 last:border-0">
+                          {uploadErrors[errKey] && <div className="px-4 pt-2"><UploadErrorBox err={uploadErrors[errKey]} /></div>}
+                          <div className="grid grid-cols-6 gap-0 items-center px-4 py-2.5 hover:bg-gray-50/50">
+                            <div className="col-span-2 flex items-center gap-2">
+                              <div className="w-5 h-5 rounded-md flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0" style={{ background: selBrand.color + "aa" }}>{rest.name[0]}</div>
+                              <p className="text-[10px] text-gray-500 truncate">{rest.name}</p>
+                            </div>
+                            <div className="col-span-2 flex items-center gap-2">
+                              <Home size={10} className="text-gray-300 flex-shrink-0" />
+                              <div>
+                                <p className="text-xs font-semibold text-gray-700">{br.name}</p>
+                                <p className="text-[10px] text-gray-400">{br.manager}</p>
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              {done
+                                ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full"><CheckCircle2 size={9} /> {t("مرفوع", "Uploaded")}</span>
+                                : failed
+                                  ? <span title={branchId ? branchAssetReasonMap[branchId] : undefined} className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-700 bg-red-50 px-2 py-0.5 rounded-full cursor-help"><AlertTriangle size={9} /> {t("فشل الرفع", "Upload failed")}</span>
+                                  : <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full"><Clock size={9} /> {t("لم يُرفع", "Not Uploaded")}</span>
+                              }
+                            </div>
+                            <div className="text-center flex items-center justify-center gap-1">
+                              <label className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors inline-flex items-center gap-1 ${branchId ? "cursor-pointer" : "opacity-40 cursor-not-allowed"} ${done ? "bg-gray-100 text-gray-600 hover:bg-emerald-50 hover:text-emerald-700" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}
+                                title={branchId ? undefined : t("لا يوجد معرّف للفرع", "Branch id unavailable")}>
+                                <input type="file" accept=".xlsx,.xls,.csv" className="hidden" disabled={!branchId || uploadAssetsMut.isPending}
+                                  onChange={e => {
+                                    const f = e.target.files?.[0]; e.target.value = ""; if (!f || !branchId) return; clearUploadError(errKey);
+                                    uploadAssetsMut.mutate({ branchId, file: f }, { onSuccess: (r) => { noteRowErrors(errKey, r); setBranchAsset(aKey); }, onError: (er) => noteUploadError(errKey, er) });
+                                  }} />
+                                <Upload size={9} />{done ? t("تحديث", "Update") : t("رفع", "Upload")}
+                              </label>
+                              <Btn size="sm" onClick={() => templateMut.mutate(branchId ? { type: "fixed-assets", branchId } : { type: "fixed-assets", brandId: uploadBrand })}><Download size={9} /></Btn>
                             </div>
                           </div>
-                          <div className="text-center">
-                            {done
-                              ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full"><CheckCircle2 size={9} /> {t("مرفوع", "Uploaded")}</span>
-                              : failed
-                                ? <span title={branchId ? branchAssetReasonMap[branchId] : undefined} className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-700 bg-red-50 px-2 py-0.5 rounded-full cursor-help"><AlertTriangle size={9} /> {t("فشل الرفع", "Upload failed")}</span>
-                                : <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full"><Clock size={9} /> {t("لم يُرفع", "Not Uploaded")}</span>
-                            }
-                          </div>
-                          <div className="text-center flex items-center justify-center gap-1">
-                            <label className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors inline-flex items-center gap-1 ${branchId ? "cursor-pointer" : "opacity-40 cursor-not-allowed"} ${done ? "bg-gray-100 text-gray-600 hover:bg-emerald-50 hover:text-emerald-700" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}
-                              title={branchId ? undefined : t("لا يوجد معرّف للفرع", "Branch id unavailable")}>
-                              <input type="file" accept=".xlsx,.xls,.csv" className="hidden" disabled={!branchId || uploadAssetsMut.isPending}
-                                onChange={e => {
-                                  const f = e.target.files?.[0]; e.target.value = ""; if (!f || !branchId) return; clearUploadError(errKey);
-                                  uploadAssetsMut.mutate({ branchId, file: f }, { onSuccess: (r) => { noteRowErrors(errKey, r); setBranchAsset(aKey); }, onError: (er) => noteUploadError(errKey, er) });
-                                }} />
-                              <Upload size={9} />{done ? t("تحديث", "Update") : t("رفع", "Upload")}
-                            </label>
-                            <Btn size="sm" onClick={() => templateMut.mutate(branchId ? { type: "fixed-assets", branchId } : { type: "fixed-assets", brandId: uploadBrand })}><Download size={9} /></Btn>
-                          </div>
                         </div>
-                      </div>
-                    );
-                  })
-                )}
+                      );
+                    })
+                  )}
+                </div>
               </div>
             </div>
 
@@ -777,7 +781,7 @@ export function AdminRestaurants({ }: PageProps) {
               </div>
               {/* No company picker: the backend auto-creates a company named after the
               brand (companyId is omitted entirely). */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div><label className="text-xs text-gray-500 block mb-1">{t("اسم العلامة", "Brand Name")}</label><input value={brandForm.name} onChange={e => setBrandForm(f => ({ ...f, name: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder={t("علامة جديدة", "New brand")} /></div>
                 <div><label className="text-xs text-gray-500 block mb-1">{t("المالك / المسؤول", "Owner / Manager")}</label><input value={brandForm.owner} onChange={e => setBrandForm(f => ({ ...f, owner: e.target.value }))} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" placeholder={t("اسم المالك", "Owner name")} /></div>
                 <div><label className="text-xs text-gray-500 block mb-1">{t("الباقة", "Plan")}</label>

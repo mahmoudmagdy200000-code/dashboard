@@ -68,14 +68,14 @@ export function BranchSettings({ navigate }: PageProps) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("إعدادات الفرع", "Branch Settings")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{form.branchName}</p>
         </div>
-        <Btn variant="success" onClick={save}><CheckCircle2 size={14} /> {saved ? `✅ ${t("تم الحفظ", "Saved")}` : t("حفظ الإعدادات", "Save Settings")}</Btn>
+        <Btn variant="success" onClick={save} className="w-full sm:w-auto justify-center"><CheckCircle2 size={14} /> {saved ? `✅ ${t("تم الحفظ", "Saved")}` : t("حفظ الإعدادات", "Save Settings")}</Btn>
       </div>
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
         <Card title={`📋 ${t("البيانات الأساسية", "Basic Information")}`}>
           <div className="p-4 space-y-3">
             {[{ label: t("اسم الفرع", "Branch Name"), field: "branchName" }, { label: t("مدير الفرع", "Branch Manager"), field: "manager" }, { label: t("رقم الهاتف", "Phone"), field: "phone" }, { label: t("العنوان", "Address"), field: "address" }].map(({ label, field }) => {
