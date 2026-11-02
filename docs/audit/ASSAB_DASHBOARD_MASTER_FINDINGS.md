@@ -3065,3 +3065,49 @@ The following tasks represent policy or architectural changes that require expli
 - **Full Historical TAP Regression Suite:** **552 / 552 tests PASS (100%), 0 fail (Exit Code: 0)**.
 - **Git Diff & Whitespace Safety:** `git diff --check` — **0 whitespace or syntax issues (Exit Code: 0)**.
 - **Automated Headless Browser Visual Evidence:** 52 screenshots + `metrics.json` captured across 8 viewports, both RTL and LTR, with internal element scrolling (`scrollIntoViewIfNeeded()`), 0 console errors, clean relative paths.
+
+---
+
+## 15. All Roles & All Modules Full-Depth Mobile & Tablet Remediation (2026-11-02)
+
+**Task ID:** `ASSAB-DASHBOARD-MOBILE-TABLET-FULL-DEPTH-20261102`
+**Execution Branch:** `fix/mobile-tablet-full-depth-20261102`
+**Base Commit:** `53d2f575b57c28b40d4c2387639c8758c95d25ce` (`staging/dashboard-m9-candidate-20261016` merged PR #11 & PR #12)
+**Execution Date:** 2026-11-02
+**Context & Trigger:**
+Analysis of 4 real-world Android phone screenshots from `shboard-staging.vercel.app` revealed severe mobile breakdowns below the fold:
+1. *Sales Module (`CompanyDashboard` -> `acc-sales`):* Operation cards (`OpRow`) severely squished branch names (`[HARNESS] Branch [HARNESS] assab-ui-qa-20261018`) into vertical 1-word columns (~50px), collided SAR amounts and status badges, and the floating chat bubble covered bottom cards and timestamps.
+2. *Main Dashboard (`CompanyDashboard` -> `acc-dashboard`):* "العمليات بحسب الموديول" truncated all 9 module titles into "..." under icons; "حالة الفروع اليوم" truncated branch names into `...HARNESS]`.
+3. *Expenses Module (`CompanyDashboard` -> `acc-expenses`):* Operation cards had identical branch squishing; expanded attached invoices table ("الفواتير المرفقة") was severely cramped on mobile without proper min-width/horizontal scroll.
+4. *Global LiveChat Floating Widget (`LiveChatWidget`):* Sat at `bottom: 24px, insetInlineEnd: 24px` with zero bottom padding buffer on `<main>`, obscuring bottom actions, timestamps, and buttons on mobile and tablet.
+
+### 15.1 Root Causes & Remediation Matrix
+
+| Defect ID | Defect Description | Target Files | Root Cause & Implementation Summary | Status |
+|:---:|---|---|---|:---:|
+| **MOB-01** | OpRow Branch Name Squishing & Badge Collision | `CompanyDashboard.tsx`, `_shared/OpRow.tsx` | Duplicate `OpRow` inside `CompanyDashboard.tsx` (lines 1822–1950) used a rigid horizontal flex layout that squeezed branch names into ~50px on mobile. Refactored into a responsive layout: Mobile/Tablet (`lg:hidden`) renders a stacked card with brand line, full branch name with `break-words`, brand badge, module pill, and bold SAR amount (`tabular-nums`), followed by dedicated status badges row, metadata row, and clean bottom action buttons. Desktop (`hidden lg:flex`) preserves exact baseline horizontal row. | `FIXED_AND_VERIFIED` |
+| **MOB-02** | Main Dashboard Module Titles Truncation to "..." | `CompanyDashboard.tsx` | Grid used `grid-cols-3` inside a cramped card, forcing 66px column widths where `truncate` collapsed all Arabic titles into "...". Changed grid to `grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5` and replaced `truncate` with `break-words leading-tight line-clamp-2 min-h-[28px]`, making 100% of module labels fully visible. | `FIXED_AND_VERIFIED` |
+| **MOB-03** | Daily Branch Status Chip Truncation (`...HARNESS]`) | `CompanyDashboard.tsx` | "حالة الفروع اليوم" used rigid `grid-cols-2` with `truncate`. Changed to `grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2` with `break-words`, rendering long branch names completely without clipping. | `FIXED_AND_VERIFIED` |
+| **MOB-04** | Floating LiveChat Launcher Overlapping Bottom Content | `CompanyDashboard.tsx`, `ASABPrototype.tsx`, `AppLayout.tsx` | Fixed floating chat launcher (`bottom: 24px, insetInlineEnd: 24px`, height 56px) had no clearance buffer because `<main>` used `pb-6` / `pb-5` (24px padding). Scrolled to the bottom, the button obscured the last row's interactive elements. Updated all shells to `pb-24 sm:pb-24 md:pb-24` (96px clearance), completely eliminating overlap across all viewports. | `FIXED_AND_VERIFIED` |
+| **MOB-05** | Attached Invoices & Data Tables Horizontal Compression | `CompanyDashboard.tsx`, `ExpensesModule.tsx`, `SalesModule.tsx`, `PurchasesModule.tsx`, `AccExpensesPage.tsx`, `AccAssets.tsx`, `AccPurchases.tsx` | Attached invoices panel and sub-module tables lacked explicit minimum width boundaries. Wrapped all data tables with `overflow-x-auto` and configured explicit responsive `min-w` (`min-w-[650px]` for invoices, `min-w-[700px]`–`min-w-[850px]` for module tables). | `FIXED_AND_VERIFIED` |
+
+### 15.2 Automated Headless Chrome Playwright Full-Depth Verification (128 Viewport Runs)
+
+*Environment: Headless Chrome via Playwright, Vite Preview daemon on port 4173.*
+*Tested Screens: 8 core screens (`acc-sales`, `acc-dashboard`, `acc-expenses`, `acc-purchases`, `acc-shifts`, `ASABPrototype acc-sales`, `ASABPrototype acc-expenses`, `head-pending`).*
+*Tested Viewports: 320px, 360px, 390px, 430px, 768px, 820px, 1024px, 1280px in both Arabic (RTL) and English (LTR).*
+
+- **Total Test Runs:** 128 / 128
+- **Document Horizontal Overflow (`hasDocOverflow`):** 0 / 128 (0%) — Zero horizontal scrollbar on viewport.
+- **Main Container Horizontal Overflow (`hasMainOverflow`):** 0 / 128 (0%) — Zero main container overflow.
+- **Floating LiveChat Overlap (`chatOverlap`):** 0 / 128 (0%) — 96px clearance buffer verified across all viewports.
+- **Module Title Truncation (`moduleTitleTruncated`):** 0 / 128 (0%) — All 9 Arabic & English module titles 100% visible.
+- **Branch Name Truncation (`branchClipped`):** 0 / 128 (0%) — Full text readable without squishing.
+- **Evidence Files:** `artifacts/responsive-evidence/mobile-tablet-full-depth-20261102/full_depth_metrics.json` and 128 top & bottom screenshots.
+
+### 15.3 Quality Gates & Evidence Summary
+- **TypeScript Typecheck:** `pnpm run typecheck` across all workspace projects (`mockup-sandbox`, `api-server`, `scripts`) — **0 errors (Exit Code: 0)**.
+- **Production Build:** `pnpm run build` (`vite build`) — **0 errors (Exit Code: 0)**.
+- **Targeted Unit Tests:** 60 / 60 tests PASS (100%, Exit Code: 0) across `headReviewGuards`, `phase1cAccountant`, `shiftOpPanel`, `sharedOperationWidgets`, `shiftReviewQueue`, `halalasPrecision`, `adminOverviewResponsive`.
+- **Git Diff & Whitespace Safety:** `git diff --check` — **Clean (Exit Code: 0)**.
+- **Working Tree & Financial Rules:** Zero mutations to financial state machines, halala calculations, or API contracts. Strictly local branch implementation.

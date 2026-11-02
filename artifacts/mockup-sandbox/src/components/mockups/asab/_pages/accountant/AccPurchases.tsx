@@ -59,7 +59,8 @@ export const PURCHASE_DETAIL = { default: PUR_RECORDS[0] ? { supplier: PUR_RECOR
 export function PurItemsTable({ items, verifiedMap, onToggleVerify }: { items: PurItem[]; verifiedMap?: Record<string, boolean>; onToggleVerify?: (key: string) => void }) {
   const { t } = useLang();
   return (
-    <table className="w-full border border-gray-100 rounded-xl overflow-hidden text-xs" dir="rtl">
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[750px] border border-gray-100 rounded-xl overflow-hidden text-xs" dir="rtl">
       <thead className="bg-gray-100">
         <tr>
           <th className="px-3 py-2 text-right">{t("الصنف", "Item")}</th>
@@ -128,6 +129,7 @@ export function PurItemsTable({ items, verifiedMap, onToggleVerify }: { items: P
         </tr>
       </tfoot>
     </table>
+    </div>
   );
 }
 

@@ -1067,7 +1067,7 @@ export function Shell({ role, page, navigate, onLogout, children, headPendingCou
             <NotificationBell t={t} theme="light" role={role} pages={nav.flatMap(entry => "id" in entry ? [entry.id] : [])} onNavigate={handleNav} />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 pb-24 sm:pb-24 md:pb-24">{children}</main>
       </div>
     </div>
   );
@@ -1101,16 +1101,16 @@ function BranchDayStateChips({ date }:{ date?:string }) {
         <h3 className="font-bold text-gray-800 text-sm">📊 {t("حالة الفروع اليوم","Branch Status Today")}</h3>
         <span className="text-[10px] text-gray-400">{data?.meta?.branchDays ?? rows.length} {t("فرع/يوم","branch-days")}</span>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         {rows.map(r=>{
           const cfg = ROLLUP_CHIP_CFG[r.state?.key] ?? ROLLUP_CHIP_CFG.empty;
           return (
             <div key={`${r.branchId}-${r.date}`} className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-gray-700 truncate">{r.branchName}</p>
+                <p className="text-xs font-semibold text-gray-700 break-words">{r.branchName}</p>
                 <p className="text-[10px] text-gray-400">{r.state?.subLabelAr ?? ""}</p>
               </div>
-              <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border whitespace-nowrap ${cfg.cls}`}>
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border whitespace-nowrap flex-shrink-0 ${cfg.cls}`}>
                 {r.state?.labelAr ?? cfg.label}
               </span>
             </div>
@@ -1819,14 +1819,33 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
       ${op.match==="diff"?"border-r-4 border-r-red-400":op.match==="review"?"border-r-4 border-r-amber-400":""}
       ${isLocked?"bg-slate-50/50":isRejected?"opacity-60":""}
       ${expanded?"bg-purple-50/20":""}`}>
-      <div className="px-5 py-3.5 flex items-center gap-3 hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={onToggle}>
-        <div className="w-1 h-10 rounded-full flex-shrink-0" style={{background:op.brandColor}}/>
-        <div className="flex-shrink-0 text-left">
+      <div className="px-4 sm:px-5 py-3 sm:py-3.5 flex flex-col lg:flex-row lg:items-center gap-2.5 lg:gap-3 hover:bg-gray-50/50 transition-colors cursor-pointer" onClick={onToggle}>
+        {/* Mobile/Tablet Top Summary Row (lg:hidden) */}
+        <div className="flex items-start justify-between gap-2 lg:hidden w-full">
+          <div className="flex items-center gap-2 min-w-0 flex-wrap flex-1">
+            <div className="w-1.5 h-4 rounded-full flex-shrink-0" style={{background:op.brandColor}}/>
+            <span className="font-bold text-gray-800 text-sm break-words">{op.branch}</span>
+            <Badge className="bg-gray-100 text-gray-600 text-[10px]">{op.brandName}</Badge>
+            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-100">{op.moduleLabel}</span>
+          </div>
+          {op.amount != null && op.amount>0 && (
+            <div className="font-mono font-extrabold text-gray-900 text-sm flex-shrink-0 tabular-nums whitespace-nowrap pt-0.5">
+              {fmt(op.amount)} <span className="text-xs font-sans font-normal text-gray-600">{t("ر.س","SAR")}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Brand Color & Reference/Date Columns */}
+        <div className="hidden lg:block w-1 h-10 rounded-full flex-shrink-0" style={{background:op.brandColor}}/>
+        <div className="hidden lg:block flex-shrink-0 text-left">
           <p className="text-[10px] font-bold text-gray-400" dir="ltr">{op.refNum}</p>
           <p className="text-[10px] text-gray-400">{op.date}</p>
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
+
+        {/* Main Details Body */}
+        <div className="flex-1 min-w-0 w-full lg:w-auto">
+          {/* Desktop Heading with Branch & Badges */}
+          <div className="hidden lg:flex items-center gap-1.5 flex-wrap">
             <span className="font-semibold text-gray-800 text-sm">{op.branch}</span>
             <Badge className="bg-gray-100 text-gray-600 text-[10px]">{op.brandName}</Badge>
             <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-100">{op.moduleLabel}</span>
@@ -1841,11 +1860,30 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
             </Badge>
             <COpStagePill op={op}/>
           </div>
-          <div className="flex items-center gap-3 mt-0.5">
-            <span className="text-[11px] text-gray-400">{op.submittedBy}</span>
-            <span className="text-[11px] text-gray-400">⏰ {op.timeAgo}</span>
-            <span className="text-[11px] text-gray-400 flex items-center gap-0.5"><Paperclip size={9}/> {op.attachments} {t("مرفق","attach.")}</span>
+
+          {/* Mobile/Tablet Badges Row */}
+          <div className="flex lg:hidden items-center gap-1.5 flex-wrap">
+            <Badge className={`text-[10px] border ${MATCH_CFG[op.match].cls}`}>
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${MATCH_CFG[op.match].dot}`}/>
+              {t(MATCH_CFG[op.match].label, EN_MATCH_CD[op.match])}
+            </Badge>
+            {op.diff && <span className="text-[10px] text-red-600 font-semibold bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">⚠ {op.diff}</span>}
+            <Badge className={`text-[10px] border ${STATUS_CFG[op.status].cls}`}>
+              {isLocked && <Lock size={9}/>}
+              {t(STATUS_CFG[op.status].label, EN_STATUS_CD[op.status].label)}
+            </Badge>
+            <COpStagePill op={op}/>
           </div>
+
+          {/* Metadata Row: RefNum, Date, SubmittedBy, Attachments */}
+          <div className="flex items-center gap-2 sm:gap-3 mt-1 text-[11px] text-gray-400 flex-wrap">
+            <span className="lg:hidden font-mono font-medium text-gray-500" dir="ltr">{op.refNum}</span>
+            <span className="lg:hidden text-gray-300">·</span>
+            <span>{op.submittedBy}</span>
+            <span>⏰ {op.timeAgo}</span>
+            <span className="flex items-center gap-0.5"><Paperclip size={9}/> {op.attachments} {t("مرفق","attach.")}</span>
+          </div>
+
           {/* Sales matching breakdown (T04 §8) — cash/card/apps + collected/variance */}
           {op.module==="sales" && (
             <div className="flex items-center gap-2 mt-1 flex-wrap text-[10px]">
@@ -1864,10 +1902,14 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
             </div>
           )}
         </div>
-        <div className="text-left flex-shrink-0">
-          {op.amount != null && op.amount>0 && <p className="font-mono font-bold text-gray-800 text-sm">{fmt(op.amount)} {t("ر.س","SAR")}</p>}
+
+        {/* Desktop Amount */}
+        <div className="hidden lg:block text-left flex-shrink-0">
+          {op.amount != null && op.amount>0 && <p className="font-mono font-bold text-gray-800 text-sm whitespace-nowrap">{fmt(op.amount)} {t("ر.س","SAR")}</p>}
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0" onClick={e=>e.stopPropagation()}>
+
+        {/* Action Buttons: Responsive touch targets, clear alignment */}
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100/80 lg:border-0 lg:pt-0 w-full lg:w-auto flex-shrink-0" onClick={e=>e.stopPropagation()}>
           {!forHead && isPending && (
             op.module === "expenses" ? (
               <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">
@@ -1927,7 +1969,7 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
               <p className="text-xs font-bold text-gray-700 mb-2">{t("تفاصيل جرد المخزون","Inventory Count Details")} — {op.branch}</p>
               {Array.isArray((op as any).payload?.items) && (op as any).payload.items.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
+                  <table className="w-full min-w-[480px] text-xs">
                     <thead>
                       <tr className="bg-gray-50 text-[10px] text-gray-500 font-bold border-b border-gray-100">
                         <th className="px-3 py-2 text-right">{t("الصنف","Item")}</th>
@@ -4635,17 +4677,17 @@ function AccDashboard({ navigate, ops }:{ navigate:(p:string)=>void; ops:COp[] }
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
           <h3 className="font-bold text-gray-800 text-sm mb-3">⏳ {t("العمليات بحسب الموديول","Operations by Module")}</h3>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
             {moduleTiles.map(m=>(
               <button
                 key={m.key}
                 onClick={()=>navigate(modPages[m.key] ?? "acc-dashboard")}
-                className="relative text-right bg-gray-50 hover:bg-purple-50 border border-gray-100 rounded-lg p-3 transition-colors"
+                className="relative text-right bg-gray-50 hover:bg-purple-50 border border-gray-100 rounded-lg p-2.5 sm:p-3 transition-colors min-w-0"
               >
                 {m.hasUrgent && <span className="absolute top-2 left-2 w-2 h-2 rounded-full bg-red-500"/>}
                 <div className="text-lg mb-1">{m.icon ?? modIconsFb[m.key] ?? "📄"}</div>
-                <div className="text-xs font-semibold text-gray-700 truncate">{m.labelAr ?? modLabelsFb[m.key] ?? m.key}</div>
-                <div className="flex items-center gap-1.5 mt-1">
+                <div className="text-xs font-semibold text-gray-700 break-words leading-tight line-clamp-2 min-h-[28px]">{m.labelAr ?? modLabelsFb[m.key] ?? m.key}</div>
+                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                   <Badge className={`text-[10px] ${m.pendingCount>0?"bg-amber-50 text-amber-700 border border-amber-200":"bg-gray-100 text-gray-400"}`}>{m.pendingCount} {t("معلق","pending")}</Badge>
                   <span className="text-[10px] text-gray-400">/ {m.totalCount}</span>
                 </div>
@@ -4967,8 +5009,8 @@ function ExpenseStatementPanel({ op, onApprove, onReject, onConvert, convertedIn
       )}
 
       {invoices.length>0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs border border-gray-200 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto -mx-1 sm:mx-0">
+          <table className="min-w-[650px] w-full text-xs border border-gray-200 rounded-xl overflow-hidden">
             <thead>
               <tr className="bg-gray-100 text-gray-600 font-semibold">
                 <th className="px-3 py-2 text-right">{t("رقم الفاتورة","Invoice")}</th>
@@ -5397,27 +5439,29 @@ function PurchaseOpRow({ op, purchaseRow, isPending, forHead, onApprove, onRejec
   const scfg = STATUS_CFG[op.status] ?? STATUS_CFG.pending;
   return (
     <div className="border-b border-gray-50 last:border-0">
-      <div className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50/60 cursor-pointer" onClick={()=>setExpanded(v=>!v)}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 px-4 py-3 hover:bg-gray-50/60 cursor-pointer" onClick={()=>setExpanded(v=>!v)}>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-mono text-[11px] text-gray-400">{op.refNum}</span>
-            <span className="font-semibold text-gray-800 text-sm truncate">{purchaseRow?.supplierName ?? op.branch}</span>
+            <span className="font-semibold text-gray-800 text-sm break-words">{purchaseRow?.supplierName ?? op.branch}</span>
             {purchaseRow?.isDocumented && <CheckCircle2 size={12} className="text-emerald-500 flex-shrink-0"/>}
           </div>
-          <p className="text-[10px] text-gray-400 mt-0.5">
+          <p className="text-[10px] text-gray-400 mt-0.5 break-words">
             {op.branch}
             {purchaseRow?.receiveDate && ` · ${t("استلام","Rcv")}: ${purchaseRow.receiveDate}`}
             {purchaseRow?.itemCount!=null && ` · ${purchaseRow.itemCount} ${t("صنف","items")}`}
             {purchaseRow?.orderSource && ` · ${purchaseRow.orderSource.labelAr}`}
           </p>
         </div>
-        {op.diff && <span className="text-[10px] text-red-500 max-w-[160px] truncate">{op.diff}</span>}
-        <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${mcfg.cls}`}>{op.matchLabelAr ?? mcfg.label}</span>
-        <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${scfg.cls}`}>{op.statusLabelAr ?? scfg.label}</span>
-        {op.amount != null && op.amount>0 && <span className="font-mono font-bold text-gray-800 text-sm w-24 text-left">{fmt(op.amount)}</span>}
-        <button className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 flex items-center justify-center flex-shrink-0" onClick={e=>{e.stopPropagation();setExpanded(v=>!v);}}>
-          {expanded?<ChevronUp size={13}/>:<ChevronDown size={13}/>}
-        </button>
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between sm:justify-end">
+          {op.diff && <span className="text-[10px] text-red-500">{op.diff}</span>}
+          <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${mcfg.cls}`}>{op.matchLabelAr ?? mcfg.label}</span>
+          <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${scfg.cls}`}>{op.statusLabelAr ?? scfg.label}</span>
+          {op.amount != null && op.amount>0 && <span className="font-mono font-bold text-gray-800 text-sm whitespace-nowrap">{fmt(op.amount)} {t("ر.س","SAR")}</span>}
+          <button className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 flex items-center justify-center flex-shrink-0" onClick={e=>{e.stopPropagation();setExpanded(v=>!v);}}>
+            {expanded?<ChevronUp size={13}/>:<ChevronDown size={13}/>}
+          </button>
+        </div>
       </div>
       {expanded && (
         <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-4">
@@ -6450,7 +6494,8 @@ function AccCompanyShifts({ approve, reject, requestClarification, page, setPage
           {!historyBusy && historyQuery.isError && <p role="alert" className="text-center text-red-700 text-sm py-8">{getErrorMessage(historyQuery.error,lang)}</p>}
           {!historyBusy && !historyQuery.isError && history.length===0 && <p className="text-center text-gray-400 text-sm py-8">{t("لا يوجد سجل لهذه المرشحات","No history for these filters")}</p>}
           {!historyBusy && !historyQuery.isError && history.length>0 && (
-            <table className="w-full text-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[540px] text-xs">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-right font-semibold text-gray-600">{t("الفرع","Branch")}</th>
@@ -6480,6 +6525,7 @@ function AccCompanyShifts({ approve, reject, requestClarification, page, setPage
                 })}
               </tbody>
             </table>
+            </div>
           )}
           <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between text-xs">
             <span>{t("الصفحة","Page")} {historyShownPage} / {historyMeta?.totalPages ?? "—"}</span>
@@ -7300,7 +7346,7 @@ function AccCompanyEmployees() {
                     )}
                   </div>
                 </div>
-                <div className="grid grid-cols-4 gap-2 mt-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
                   <div className="bg-blue-50 rounded-xl p-2.5 text-center">
                     <p className="text-[10px] text-blue-600 font-semibold">{t("الراتب","Salary")}</p>
                     <p className="font-mono font-bold text-blue-800 text-xs">{fmtH(selectedRow.monthlySalary)}</p>
@@ -7334,7 +7380,7 @@ function AccCompanyEmployees() {
                 </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full min-w-[500px] text-xs">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-3 py-2.5 text-right font-semibold text-gray-600">{t("التاريخ","Date")}</th>
@@ -7609,7 +7655,7 @@ function CashCustodyCard({ custody }:{ custody:CashCustodyRow }) {
             </div>
           </div>
           <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full min-w-[500px] text-xs">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-3 py-2 text-right font-semibold text-gray-600">{t("التاريخ","Date")}</th>

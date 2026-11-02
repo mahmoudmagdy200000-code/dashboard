@@ -111,7 +111,8 @@ function PurchaseDetailModal({ pur, onClose }: { pur: Purchase; onClose: () => v
           {/* Items table */}
           <div>
             <h4 className="font-bold text-gray-700 text-sm mb-3">مقارنة الكميات المطلوبة والمستلمة</h4>
-            <table className="w-full border border-gray-100 rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[550px] border border-gray-100 rounded-xl overflow-hidden">
               <thead className="bg-gray-50 text-xs text-gray-500 font-semibold">
                 <tr>
                   <th className="px-4 py-3 text-right">الصنف</th>
@@ -153,6 +154,7 @@ function PurchaseDetailModal({ pur, onClose }: { pur: Purchase; onClose: () => v
                 </tr>
               </tfoot>
             </table>
+            </div>
           </div>
 
           {/* Total comparison */}

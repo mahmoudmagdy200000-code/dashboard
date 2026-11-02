@@ -622,7 +622,8 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
                         </div>
                       </div>
                     )}
-                    <table className="w-full border border-gray-100 rounded-xl overflow-hidden text-xs" dir={dir}>
+                    <div className="overflow-x-auto rounded-xl border border-gray-100">
+                      <table className="w-full min-w-[700px] text-xs" dir={dir}>
                       <thead className="bg-gray-100">
                         <tr>
                           <th className={`px-3 py-2 ${dir === "ltr" ? "text-left" : "text-right"}`}>{t("رقم الفاتورة", "Invoice No.")}</th>
@@ -712,6 +713,7 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
                         </tr>
                       </tfoot>
                     </table>
+                    </div>
                   </div>
                 )}
               </div>
