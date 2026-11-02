@@ -1,0 +1,38 @@
+=== Starting Strict Targeted Delta Verification (28 Cases) ===
+[PASS] ASABPrototype | accountant | acc-purchases | ar | 390px -> scroll: [0, 288, 577] / max 577px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | accountant | acc-assets | ar | 390px -> scroll: [0, 201, 403] / max 403px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | accountant | acc-purchases | en | 390px -> scroll: [0, 280, 561] / max 561px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | accountant | acc-purchases | en | 820px -> scroll: [0, 97, 194] / max 194px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | admin | admin-companies | ar | 390px -> scroll: [0, 134, 268] / max 268px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | admin | admin-companies | en | 390px -> scroll: [0, 158, 316] / max 316px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | head | head-dashboard | ar | 390px -> scroll: [0, 1447, 2895] / max 2895px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | head | head-sales | ar | 390px -> scroll: [0, 571, 1143] / max 1143px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | head | head-pending | ar | 820px -> scroll: [0, 356, 712] / max 712px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | head | head-dashboard | en | 390px -> scroll: [0, 1526, 3052] / max 3052px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | head | head-sales | en | 390px -> scroll: [0, 581, 1163] / max 1163px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | head | head-pending | en | 820px -> scroll: [0, 374, 748] / max 748px | docOvf: false | mainOvf: false
+[PASS] CompanyDashboard | head | head-dashboard | ar | 390px -> scroll: [0, 309, 619] / max 619px | docOvf: false | mainOvf: false
+[PASS] CompanyDashboard | head | head-dashboard | ar | 820px -> scroll: [0, 51, 102] / max 102px | docOvf: false | mainOvf: false
+[PASS] CompanyDashboard | head | head-dashboard | ar | 1280px -> scroll: [0, 46, 92] / max 92px | docOvf: false | mainOvf: false
+[PASS] CompanyDashboard | head | head-dashboard | en | 390px -> scroll: [0, 327, 655] / max 655px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | accountant | acc-cash | ar | 390px -> scroll: [0, 475, 950] / max 950px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | accountant | acc-cash | ar | 820px -> scroll: [0, 149, 298] / max 298px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | accountant | acc-cash | ar | 1280px -> scroll: [0, 91, 183] / max 183px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | accountant | acc-cash | en | 390px -> scroll: [0, 442, 885] / max 885px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | accountant | acc-cash | en | 820px -> scroll: [0, 135, 271] / max 271px | docOvf: false | mainOvf: false
+[PASS] ASABPrototype | accountant | acc-cash | en | 1280px -> scroll: [0, 91, 183] / max 183px | docOvf: false | mainOvf: false
+[PASS] CompanyDashboard | accountant | acc-cash | ar | 390px -> scroll: [0, 225, 451] / max 451px | docOvf: false | mainOvf: false
+[PASS] CompanyDashboard | accountant | acc-cash | ar | 820px -> scroll: [0, 36, 73] / max 73px | docOvf: false | mainOvf: false
+[PASS] CompanyDashboard | accountant | acc-cash | ar | 1280px -> scroll: [0, 85, 170] / max 170px | docOvf: false | mainOvf: false
+[PASS] CompanyDashboard | accountant | acc-cash | en | 390px -> scroll: [0, 210, 421] / max 421px | docOvf: false | mainOvf: false
+[PASS] CompanyDashboard | accountant | acc-cash | en | 820px -> scroll: [0, 31, 62] / max 62px | docOvf: false | mainOvf: false
+[PASS] CompanyDashboard | accountant | acc-cash | en | 1280px -> scroll: [0, 85, 170] / max 170px | docOvf: false | mainOvf: false
+
+=======================================================
+STRICT TARGETED DELTA VERIFICATION COMPLETE:
+Total Cases: 28
+PASS: 28 | FAIL: 0
+Results saved to: D:\claude\ASSAB ERP GITHUB BACKEND ANTIGRAVITY\worktree_dashboard_responsive_ux\docs\audit\evidence\mobile-tablet-full-depth-20261102\delta_remediation_metrics.json
+=======================================================
+
+EXIT_CODE=0

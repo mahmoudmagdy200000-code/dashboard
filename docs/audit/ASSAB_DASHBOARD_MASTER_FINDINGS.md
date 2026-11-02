@@ -3255,3 +3255,8 @@ Analysis of 4 real-world Android phone screenshots from `shboard-staging.vercel.
   5. `TOOL-NEG-05` (Login Screen Fallback): Verified runner catches authenticated route falling back to login form -> **CAUGHT & REJECTED (FAIL)**.
   6. `TOOL-NEG-06` (Unmatched Matrix Key): Verified synchronizer rejects unmatched delta keys -> **REJECTED & DISCARDED**.
 - Tooling integrity evidence dataset: `docs/audit/evidence/mobile-tablet-full-depth-20261102/tooling_integrity_evidence.json` (**100% PROVEN**).
+
+
+### 15.7 Work Evidence Integrity Closure (2026-11-02)
+
+This section supersedes the aggregate acceptance/provenance claims in sections 15.4–15.6. The production UI source is unchanged from 8ec147c9. Actual final evidence is 28 targeted full-depth cases plus 656 identity/error smoke cases, 684 unique combinations. The remaining historical layout measurements are retained as partial evidence, not freshly certified full-depth results. Original sales/expense fixture failures and six internal-label reruns are preserved in raw logs. Shared real guards, strict measured-only reconciliation, six negative scenarios and a positive control pass. See evidence/mobile-tablet-full-depth-20261102/FINAL_EVIDENCE_CLOSURE_HANDOFF.md for scope, commands, logs and limitations. Staging, live Backend and physical devices were not tested. No Push/PR/Merge/Deploy/Migrations.

@@ -1,0 +1,3 @@
+{"screen":"acc-sales","legacyOutcome":"REPRODUCED_ERROR","error":"فشل تحميل المعاينة / Failed to render preview\n\nتعذر تحميل البيانات بشكل صحيح. لم يتم عرض أي بيانات مالية افتراضية للحفاظ على دقة السجلات.\n\nCannot read properties of undefined (reading 'length')\nإعادة المحاولة"}
+{"screen":"acc-expenses","legacyOutcome":"REPRODUCED_ERROR","error":"فشل تحميل المعاينة / Failed to render preview\n\nتعذر تحميل البيانات بشكل صحيح. لم يتم عرض أي بيانات مالية افتراضية للحفاظ على دقة السجلات.\n\nCannot read properties of undefined (reading 'matched')\nإعادة المحاولة"}
+EXIT_CODE=0

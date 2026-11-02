@@ -1,3 +1,5 @@
+// Archived: historical runner did not prove page identity; never overwrite closure evidence.
+throw new Error("Archived unsafe evidence runner; use run_smoke_closure.mjs and verify_delta_remediation.mjs");
 import pw from "../../../../e2e/node_modules/@playwright/test/index.js";
 const { chromium } = pw;
 import fs from "fs";

@@ -1,5 +1,7 @@
 {
-  "timestamp": "2026-11-02T15:33:28.500Z",
+  "timestamp": "2026-11-02T16:07:55.729Z",
+  "testedCommit": "8ec147c9c92f3d0678d2c333f0518e6857eeb5a1",
+  "fixtureSha256": "8650f93bd1a2421d90d85558096ae5d14b931306fb1bde1756b0a9dabccc11ba",
   "totalCases": 28,
   "passCount": 28,
   "failCount": 0,
@@ -18,6 +20,10 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "المشتريات محاسب EN الكل هذا الشهر هذا الأسبوع اليوم",
+      "expectedHeader": "المشتريات",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -53,6 +59,10 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "الأصول الثابتة محاسب EN الكل هذا الشهر هذا الأسبوع اليوم",
+      "expectedHeader": "الأصول الثابتة",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -88,6 +98,10 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "Purchases Accountant عربي All This Month This Week Today",
+      "expectedHeader": "Purchases",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -123,6 +137,10 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "Purchases Accountant / Purchases Monday, November 2, 2026 عربي Logout All This Month This Week Today",
+      "expectedHeader": "Purchases",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -158,6 +176,10 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "اشتراكات الشركات أدمن النظام EN الكل هذا الشهر هذا الأسبوع اليوم",
+      "expectedHeader": "اشتراكات الشركات",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -193,6 +215,10 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "Company Subscriptions System Admin عربي All This Month This Week Today",
+      "expectedHeader": "Company Subscriptions",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -228,6 +254,10 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "لوحة التحكم رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم",
+      "expectedHeader": "لوحة التحكم",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -263,6 +293,10 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "المبيعات رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم",
+      "expectedHeader": "المبيعات",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -298,19 +332,23 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "بانتظار الاعتماد رئيس الحسابات / بانتظار الاعتماد الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم",
+      "expectedHeader": "بانتظار الاعتماد",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
       "scrollMeasurement": {
-        "totalHeight": 1648,
+        "totalHeight": 1626,
         "clientHeight": 914,
-        "maxScroll": 734,
-        "middleScroll": 367,
+        "maxScroll": 712,
+        "middleScroll": 356,
         "scrollStatus": "SCROLLABLE",
         "actualScrollOffsets": {
           "top": 0,
-          "mid": 367,
-          "bottom": 734
+          "mid": 356,
+          "bottom": 712
         }
       },
       "screenshots": {
@@ -333,6 +371,10 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "Dashboard Head Accountant عربي All This Month This Week Today",
+      "expectedHeader": "Dashboard",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -368,6 +410,10 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "Sales Head Accountant عربي All This Month This Week Today",
+      "expectedHeader": "Sales",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -403,19 +449,23 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "Pending Approval Head Accountant / Pending Approval Monday, November 2, 2026 عربي Logout All This Month This Week Today",
+      "expectedHeader": "Pending Approval",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
       "scrollMeasurement": {
-        "totalHeight": 1664,
+        "totalHeight": 1662,
         "clientHeight": 914,
-        "maxScroll": 750,
-        "middleScroll": 375,
+        "maxScroll": 748,
+        "middleScroll": 374,
         "scrollStatus": "SCROLLABLE",
         "actualScrollOffsets": {
           "top": 0,
-          "mid": 375,
-          "bottom": 750
+          "mid": 374,
+          "bottom": 748
         }
       },
       "screenshots": {
@@ -438,6 +488,10 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "— لوحة التحكم 👑 رئيس الحسابات",
+      "expectedHeader": "لوحة التحكم",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -473,6 +527,10 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "— لوحة التحكم 👑 رئيس الحسابات",
+      "expectedHeader": "لوحة التحكم",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -508,6 +566,10 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "— لوحة التحكم 👑 رئيس الحسابات",
+      "expectedHeader": "لوحة التحكم",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -543,6 +605,10 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "— Dashboard 👑 Head Accountant",
+      "expectedHeader": "Dashboard",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -578,6 +644,47 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "إدارة العهد النقدية محاسب EN الكل هذا الشهر هذا الأسبوع اليوم",
+      "expectedHeader": "إدارة العهد النقدية",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -613,6 +720,47 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "إدارة العهد النقدية محاسب / إدارة العهد النقدية الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم",
+      "expectedHeader": "إدارة العهد النقدية",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -648,6 +796,47 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "إدارة العهد النقدية محاسب إدارة العهد النقدية الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج",
+      "expectedHeader": "إدارة العهد النقدية",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -683,6 +872,47 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "Cash Custody Accountant عربي All This Month This Week Today",
+      "expectedHeader": "Cash Custody",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -718,6 +948,47 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "Cash Custody Accountant / Cash Custody Monday, November 2, 2026 عربي Logout All This Month This Week Today",
+      "expectedHeader": "Cash Custody",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -753,6 +1024,47 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "Cash Custody Accountant Cash Custody Monday, November 2, 2026 All This Month This Week Today عربي Logout",
+      "expectedHeader": "Cash Custody",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -788,6 +1100,47 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "— إدارة العهد النقدية 📊 محاسب",
+      "expectedHeader": "إدارة العهد النقدية",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -823,6 +1176,47 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "— إدارة العهد النقدية 📊 محاسب",
+      "expectedHeader": "إدارة العهد النقدية",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -858,6 +1252,47 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "— إدارة العهد النقدية 📊 محاسب",
+      "expectedHeader": "إدارة العهد النقدية",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -893,6 +1328,47 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "— Cash Custody Management 📊 Accountant",
+      "expectedHeader": "Cash Custody Management",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -928,6 +1404,47 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "— Cash Custody Management 📊 Accountant",
+      "expectedHeader": "Cash Custody Management",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
@@ -963,6 +1480,47 @@
       "hasErrorBoundary": false,
       "passesDistinctIdentity": true,
       "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "— Cash Custody Management 📊 Accountant",
+      "expectedHeader": "Cash Custody Management",
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,

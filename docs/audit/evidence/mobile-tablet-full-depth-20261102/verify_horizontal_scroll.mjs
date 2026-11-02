@@ -108,11 +108,11 @@ async function verifyHorizontalScroll() {
     const { context, page } = await setupContextAndPage("accountant", "acc-purchases", "ar", 390);
 
     const purchaseTabResult = await page.evaluate(async () => {
-      const tabs = Array.from(document.querySelectorAll("button")).filter(b => 
+      const tabs = Array.from(document.querySelectorAll("button")).filter(b =>
         b.textContent.includes("المرتجعات") || b.textContent.includes("الفرع") || b.textContent.includes("المورد")
       );
       if (tabs.length === 0) return { error: "No tabs found" };
-      
+
       const container = tabs[0].closest(".overflow-x-auto") || tabs[0].parentElement;
       const initialScrollLeft = container.scrollLeft;
       const isScrollable = container.scrollWidth > container.clientWidth;
@@ -121,7 +121,7 @@ async function verifyHorizontalScroll() {
 
       // Scroll container to make last tab fully visible
       lastTab.scrollIntoView({ behavior: "instant", inline: "center" });
-      
+
       const rect = lastTab.getBoundingClientRect();
       const isVisibleInViewport = rect.right > 0 && rect.left < window.innerWidth && rect.bottom > 0 && rect.top < window.innerHeight;
 
@@ -136,7 +136,7 @@ async function verifyHorizontalScroll() {
     });
 
     await page.screenshot({ path: path.join(outDir, "proof1_acc_purchases_before_click.png") });
-    
+
     // Click the last tab and verify it becomes active
     const lastTabLocator = page.locator("button:has-text('المرتجعات')").first();
     await lastTabLocator.click();
@@ -171,7 +171,7 @@ async function verifyHorizontalScroll() {
     const { context, page } = await setupContextAndPage("admin", "admin-companies", "ar", 390);
 
     const adminPillsResult = await page.evaluate(async () => {
-      const pills = Array.from(document.querySelectorAll("button")).filter(b => 
+      const pills = Array.from(document.querySelectorAll("button")).filter(b =>
         b.textContent.includes("الكل") || b.textContent.includes("موقوف") || b.textContent.includes("تجريبي")
       );
       if (pills.length === 0) return { error: "No filter pills found" };
@@ -198,7 +198,7 @@ async function verifyHorizontalScroll() {
     });
 
     await page.screenshot({ path: path.join(outDir, "proof2_admin_companies_before_click.png") });
-    
+
     // Click the last pill and verify it becomes active
     const lastPillLocator = page.locator("button:has-text('موقوف')").first();
     await lastPillLocator.click();
@@ -236,7 +236,7 @@ async function verifyHorizontalScroll() {
       const docWidth = document.documentElement.scrollWidth;
       const winWidth = window.innerWidth;
       const addAssetBtn = Array.from(document.querySelectorAll("button")).find(b => b.textContent.includes("إضافة أصل") || b.textContent.includes("إضافة"));
-      
+
       return {
         hasDocOverflow: (docWidth - winWidth) > 2,
         docWidth,
