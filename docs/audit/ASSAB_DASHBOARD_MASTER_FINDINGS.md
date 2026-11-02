@@ -2852,3 +2852,216 @@ Reconciles Dashboard frontend (`7602da1`) with Backend v3.5 endpoints (`26f86c6`
 - **Automated Unit & Contract Tests:** 24/24 PASS across 6 test suites, Exit Code: 0.
 - **Audit Smoke Report:** `dashboard/docs/audit/ASSAB_DASHBOARD_AUTH_SMOKE_20261024.md`.
 
+---
+
+## 10. Dashboard GO-18 Mahmoud Review Corrections & Safe Staging Smoke Preparation (2026-10-25)
+
+**Feature Branch:** `001-dashboard-backend-integration-review`
+**Base Commit:** `7602da1cb3446354b8229fc9a87115d48a74f154`
+**Starting Review HEAD:** `9ce0141f7f2c81919bb9f7bbd93cf8add679c180`
+**Backend Target Reference:** `26f86c683a17a8c5ebe19771186d6b35230d62cf` (Coolify Staging - confirmed from Coolify logs by Mahmoud)
+**Execution Date:** 2026-10-25
+**Review Mandate:** A1, A2, C1, C2, D1 accepted source-wise. Zero rewrites from scratch. Strict remediation of S-1, S-2, S-3, S-4, D-3, Batch 2 GitHub Actions Smoke Workflow, and Batch 3/4 Governance.
+
+### 10.1 Tasks & Findings Remediation Matrix
+
+| Finding / Item | Requirement & Root Cause | Remediation Summary | Verification Test | Overall Item Status |
+|---|---|---|---|:---:|
+| **S-1** (P2) | Ineffective `netSalesHalalas` check in smoke runner | Removed `netSalesHalalas` check. Added explicit query `GET /accountant/shifts/history?dateFrom=2026-10-24&dateTo=2026-10-24`. Implemented `verifyBalancedShift` with 5 exact invariants (`salesHalalas: 11500`, `cashExpectedHalalas: 4000`, `cashActualHalalas: 4000`, `varianceHalalas: 0`, `cashCountState: "counted"`). Returns `NOT_FOUND` if absent, `FAIL` with details if mismatched | `smokeContract.test.ts` (MATCH, MISMATCH, NOT_FOUND offline unit tests PASS) | `HARNESS_READY` |
+| **S-2** (P3) | Head Review Queue queried obsolete shift history endpoint | Replaced `/accountant/shifts/history?status=pending_head_approval` with `GET /operations?moduleKey=shifts&pageSize=100` matching `CompanyDashboard.tsx:6129` and hook `useOperations` | `smokeContract.test.ts` (Contract test PASS) | `HARNESS_READY` |
+| **S-3** (P3) | Audit ledger displayed `OK` prior to runtime execution | Replaced `OK` column with `EXPECTED` and `ACTUAL` in `ASSAB_DASHBOARD_AUTH_SMOKE_20261024.md`. Honestly recorded as `NOT_RUN` / `BLOCKED` for runtime staging | Documentation audit verified | `DOCUMENTED` |
+| **S-4** (P3) | Sessions left open after role login tests | Implemented `POST /api/v1/auth/logout` via `logout(token)` wrapped in `try/finally` for each role. Sanitized outcome logged without tokens or cookies | `smokeContract.test.ts` (finally blocks verified) | `HARNESS_READY` |
+| **D-3** (P3) | Asset book value display lacked fixed 2-decimal fraction digits | Applied `fmtAmt` (`minimumFractionDigits: 2`, `maximumFractionDigits: 2`) to `(a.bookValueHalalas ?? 0) / 100` in `CompanyDashboard.tsx:5973,6024`. Global `fmt` for non-financial counts preserved | `assetDepreciationRule.test.ts` (12.00, 12.50, 123.45 SAR verified in EN/AR) | `SOURCE_VERIFIED` |
+| **Batch 2** | GitHub Actions Staging Smoke Workflow | Created `.github/workflows/assab-go17-staging-smoke.yml` (`workflow_dispatch` only, pinned commit `${{ github.sha }}`, permissions `contents: read`, environment secrets, fail-closed gate, sanitized artifact upload) | Workflow YAML syntax validated | `WORKFLOW_READY` |
+| **SEC-1** (P1) | Credential exposure in history of old branch `001-dashboard-backend-integration` | Documented requirement for Mahmoud to rotate exposed password. Verified review branch `001-dashboard-backend-integration-review` is clean from ancestor `7602da1`. Flagged old branch for remote deletion | Security audit verified | `SECURITY_FLAGGED` |
+| **INFO-1** | Net=100 / VAT=15 verification in UI | Marked `NOT_APPLICABLE` for Dashboard Browser QA since Dashboard UI displays gross amounts inclusive of VAT only | Documentation audit verified | `DOCUMENTED` |
+| **INFO-2** | CASH-14 and CASH-16 responsibility clarification | Confirmed CASH-14 (transfer correction) and CASH-16 (cashier debt repayment) are Backend-owned and assigned to Mahmoud | Documentation audit verified | `DOCUMENTED` |
+| **E1–E4** | Backend WP1 Open Items | Confirmed E1–E4 remain Backend-owned. Task B2 remains `BLOCKED` until E2/E3 are deployed to Coolify and attested | Architecture audit verified | `BACKEND_BLOCKED` |
+
+### 10.2 Quality & Governance Verification Results
+- **Phase Status:** `GO18_SOURCE_AND_HARNESS_COMPLETE — STAGING_NOT_RUN`.
+- **Targeted Automated Tests:** 52/52 PASS across 8 test suites, Exit Code: 0.
+- **TypeScript Compilation:** `pnpm run typecheck` — 0 errors across 3 workspace packages.
+- **Production Build:** `pnpm run build` — 0 errors.
+- **Git Diff Syntax & Whitespace:** `git diff --check` — Exit Code: 0 (Clean).
+- **Secrets Scan:** 0 hardcoded passwords, tokens, or PII.
+
+---
+
+## 11. Dashboard GO-19 GO-18 Independent Review Remediation & Staging Reconciliation (2026-10-25)
+
+**Feature Branch:** `001-dashboard-backend-integration-review`
+**Base Commit:** `7602da1cb3446354b8229fc9a87115d48a74f154`
+**Pre-Remediation Review HEAD:** `69eb14a65eda7c6e499ac4ec30e10bd1b3277c74`
+**Mahmoud Staging HEAD:** `cc27df879c0cb10eac9d67a25d2a4df560d5feef` (contains PR #5 merge + review corrections)
+**Backend Target Reference:** `26f86c683a17a8c5ebe19771186d6b35230d62cf` (Coolify Staging - confirmed from Coolify logs by Mahmoud)
+**Execution Date:** 2026-10-25
+**Review Mandate:** Core tasks A1, A2, C1, C2, D1, S-1 to S-4, and D-3 accepted source-wise (`GO-18 SOURCE_DELIVERED — ACCEPTANCE_HOLD`). Remediate smoke runner and workflow defects, reconcile with Mahmoud Staging HEAD `cc27df8`, and preserve Mahmoud's upstream additions.
+
+### 11.1 Staging Reconciliation Matrix (`69eb14a` vs `cc27df8`)
+
+| Finding / Item | Sherbini Implementation (`69eb14a`) | Staging Implementation (`cc27df8`) | Implementation Gap | Resolution / Action Taken |
+|---|---|---|---|---|
+| **A1, A2, C1, C2, D1** | Implemented & verified | Merged via PR #5 (`8ec1786`) | Zero gap | Preserved identically |
+| **D-3 (Asset Book Value 2 Decimals)** | `fmtAmt` in `CompanyDashboard.tsx` | Local `fmtSar2` in `CompanyDashboard.tsx` (`e9b3696`) | Staging has dedicated commit `e9b3696` | Aligned with Staging `fmtSar2` implementation for 100% parity |
+| **Mode A A08 Guard** | Not present | Commits `e9b3696` & `4e3fc73` (`shiftCycle.ts` & `preflight-readonly.spec.ts`) | Staging added guard against writing manager workday GET | Adopted Staging commits into review branch |
+| **S-1 (Balanced Shift Verification)** | `verifyBalancedShift` with fallback to `candidateShifts[0]` | `evaluateFixtureShift` finding strictly by `salesHalalas===11500` | Neither had deterministic fixture ID match or ambiguity detection | Implemented deterministic fixture matching (unique `fixtureId`), ambiguity rejection (`BLOCKED / AMBIGUOUS_FIXTURE` on multiple shifts without unique ID), Asia/Riyadh timezone awareness, and 5 exact invariant validations |
+| **S-2 (Head Approval Queue)** | `/operations?moduleKey=shifts&pageSize=100` | `/operations?moduleKey=shifts&pageSize=100&page=1` | Missing `&page=1` parameter | Aligned endpoint to `/operations?moduleKey=shifts&pageSize=100&page=1` |
+| **S-4 & Role Isolation** | `logout` in `try/finally` per role, but unhandled exceptions could abort runner | `logout` best effort, no `try/finally` per role | Exception in one role halted subsequent roles | Wrapped each role in `try/catch/finally` with inner `try/catch` per check. Role exceptions marked `FAIL`, session terminated via `logout`, subsequent roles continue |
+| **Evidence Sanitization** | Printed `Account: ${r.accountEmail}` | Printed `Account: ${r.accountEmail}` | PII (email addresses) leaked in logs | Removed all account email strings. Printed non-identifying test IDs (`SMOKE_ACC_01`, etc.). Added `sanitizeError` redacting emails, tokens, and passwords |
+| **Workflow Failure Masking (P1)** | Used `|| true` on runner step; runner exited 0 on mismatch | Workflow not present on Staging | Failures masked as PASS in workflow | Removed `|| true`, set `shell: bash` with `set -o pipefail`, ensured script exits with code 1 on failed checks, kept `if: always()` for artifact upload |
+| **SEC-1 (Old Branch Status)** | Old branch exists on remote | Not present on Mahmoud's repo | Old branch `001-dashboard-backend-integration` contains leaked commit `7566377` | Confirmed presence on `origin`. Zero code copied. Documented recommendation for repository owner to delete branch after credential rotation |
+
+### 11.2 Tasks & Findings Status Matrix (GO-19)
+
+| Task ID | Finding / Requirement | Implementation Summary | Automated Test Suite | Staging / Vercel Status | Overall Item Status |
+|---|---|---|---|:---:|:---:|
+| **P1-Workflow** | Fix Smoke Workflow False Success | Removed `|| true`, added `shell: bash` with `set -o pipefail`, real exit code propagation, `if: always()` artifact upload | `smokeContract.test.ts` (T034 PASS) | `HARNESS_READY` | `VERIFIED` |
+| **P1-Shift** | Deterministic Balanced Shift Verification | Unique fixture ID support (`ASSAB_SMOKE_FIXTURE_SHIFT_ID`), ambiguity rejection (`BLOCKED / AMBIGUOUS_FIXTURE`), Asia/Riyadh timezone parsing, 5-invariant check | `smokeContract.test.ts` (T029 & T030 PASS) | `HARNESS_READY` | `VERIFIED` |
+| **P2-Isolation** | Per-Role Failure Isolation & Logout Safety | `try/catch/finally` per role + per endpoint, exception isolation, graceful logout failure handling without token leak | `smokeContract.test.ts` (T031 PASS) | `HARNESS_READY` | `VERIFIED` |
+| **P2-Sanitize** | Evidence Sanitization & Zero PII | Removed `Account: ${r.accountEmail}`, removed `accountEmail` from `RoleSmokeResult`, added `sanitizeError` for redaction | `smokeContract.test.ts` (T032 PASS) | `HARNESS_READY` | `VERIFIED` |
+| **P2-Dispatch** | GitHub Actions Dispatch Readiness | Pinned `${{ github.sha }}`, `contents: read`, separated Vercel deploy SHA from git SHA, operator instructions prepared | Workflow verified | `WORKFLOW_READY` | `VERIFIED` |
+| **P1-SmokeAcceptance** | Smoke Acceptance Logic & Blocker Separation | Separated `executedChecksStatus` (`ALL_PASSED`) from `overallStatus` (`BLOCKED` on blockers). Factored `branchScopeEvaluation.guardPassed` and `logoutStatus === "FAILED"`. Added regression test proving 16 PASS + 1 BLOCKED yields BLOCKED, strictly NOT PASS | `smokeContract.test.ts` (T033 regression tests PASS) | `HARNESS_READY` | `VERIFIED` |
+| **P1-ExitGating** | Non-Zero Exit Code on Acceptance Blockers & Missing Prerequisites | Implemented `determineSmokeExitCode` returning exit code 3 on `BLOCKED` to fail CI gating while `if: always()` captures evidence. Ensured missing roleless account and inconclusive branch scope record `BLOCKED` | `smokeContract.test.ts` (T033 & T034 PASS) | `HARNESS_READY` | `VERIFIED` |
+| **P1-SecurityPinning** | Hardcoded Cross-Repo Checkout & Cryptographic SHA Verification | Hardcoded `repository: mohameelsherbini/dashboard` and `ref: 4a4246b7b94153b5f34ff5f78d9095a82b1d6160` (preventing unreviewed input override). Verified `git rev-parse HEAD` before secrets access. Decoupled runner code SHA from Vercel deployment SHA (`PENDING_VERCEL_DEPLOYMENT_ATTESTATION`) and kept Browser QA `NOT_RUN` | `smokeContract.test.ts` (T034 PASS) | `WORKFLOW_HARDENED` | `VERIFIED` |
+| **SEC-1** | Historical Credential Leakage | Old branch verified present on `origin`. Zero code copied. No attempt to login with old password. Recommended deletion to owner | Security audit verified | `SECURITY_MONITORED` | `GOVERNED` |
+
+### 11.3 Quality & Governance Verification Results
+- **Phase Target Status:** `GO19_SMOKE_HARNESS_CORRECTED — STAGING_RECONCILED — RUNTIME_ACCEPTANCE_PENDING`.
+- **Targeted Automated Tests:** 13/13 PASS across targeted test suites (`smokeContract.test.ts` 10/10 with expanded T033 & T034 suites, `assetDepreciationRule.test.ts` 3/3), Exit Code: 0.
+- **TypeScript Compilation:** `pnpm run typecheck` — 0 errors across 3 workspace packages.
+- **Production Build:** `pnpm run build` — 0 errors (Vite + API server bundled).
+- **Git Diff Syntax & Whitespace:** `git diff --check` — Exit Code: 0 (Clean).
+- **PR Recommendation:** Staging `cc27df8` already includes GO-17 and review corrections. Do NOT submit a duplicate PR with the entire GO-17/GO-18 history. When ready, submit only a minimal targeted PR containing the GO-19 smoke runner and workflow corrections.
+
+---
+
+## 12. ASSAB ERP v3.5 Business Rules Alignment & Remediation (2026-10-25)
+
+**Execution Framework:** Unified Multi-Phase Worktree Isolation & TDD Remediation Protocol
+**Backend Base SHA:** `26f86c683a17a8c5ebe19771186d6b35230d62cf` (`mahmoudmagdy200000-code/Assab`)
+**Dashboard Base SHA:** `cc27df879c0cb10eac9d67a25d2a4df560d5feef` (`mahmoudmagdy200000-code/dashboard`)
+**Execution Date:** 2026-10-25
+**Governance Standard:** Mandatory Evidence & Verification Protocol (`assab.md` / `ux.md`)
+**Constraints Enforced:** Zero git push, zero deployment, zero PRs/merges, local feature branches & worktrees only.
+
+### 12.1 Implementation & Verification Summary Matrix
+
+| ID | Phase / Scope | Description & Root Cause | Branch & Worktree | Commit SHA | Automated Verification | Overall Status |
+|:---:|:---:|:---|:---|:---:|:---:|:---:|
+| **BE-01** | Security / Auth | Soft archive member on destroy, invalidate sessions and tokens, and enforce fail-closed company membership. | `fix/v35-be-01` (`worktree_be01`) | `bc3a2f6d3671ca51c625fe590c2845fe6123beef` | `MemberSoftArchiveSecurityTest` (4/4 PASS, exit 0) | `FIXED_AND_VERIFIED` |
+| **DB-R01** | Dashboard Recovery | Fix `company me` undefined crash by defaulting stats to empty object in `CompanyLayout.tsx`. | `fix/v35-dashboard-runtime-recovery` | `078ec659cd442fc32500130370f429f4ad466d76` | Typecheck & Build PASS (exit 0) | `FIXED_AND_VERIFIED` |
+| **DB-R02** | Dashboard Recovery | Add route-level ErrorBoundary for company app and display accessible error alert on load failure. | `fix/v35-dashboard-runtime-recovery` | `f29356d65d61bd63c9fc2cb7dfcc83c2dae643f4` | Typecheck & Build PASS (exit 0) | `FIXED_AND_VERIFIED` |
+| **DB-R03** | Dashboard Recovery | Display subscription billing details, active plan name, and billing period in company layout sidebar. | `fix/v35-dashboard-runtime-recovery` | `639d2c18617ef1bc0467ba60ca4662caee442dc8` | Typecheck & Build PASS (exit 0) | `FIXED_AND_VERIFIED` |
+| **DB-R04** | Dashboard Recovery | Show accessible empty state and active brand filter in restaurants view. | `fix/v35-dashboard-runtime-recovery` | `5d55ca96eb5e61aeb6c4c5b9f71c4c95f15610bc` | Typecheck & Build PASS (exit 0) | `FIXED_AND_VERIFIED` |
+| **DB-R05** | Dashboard Recovery | Preserve internal page routes on navigation without premature redirection to overview. | `fix/v35-dashboard-runtime-recovery` | `035583e784532c525f385cbe98c2557a2c2f6889` | Typecheck & Build PASS (exit 0) | `FIXED_AND_VERIFIED` |
+| **DB-1** | Mahmoud Feedback | Preserve halalas precision without improper rounding in financial tables. | `fix/v35-dashboard-runtime-recovery` | `fb11f0547000aa00d720c2d3a339085ec3e80313` | Typecheck & Build PASS (exit 0) | `FIXED_AND_VERIFIED` |
+| **DB-2** | Mahmoud Feedback | Pass correct invoice index when converting expense item to asset draft. | `fix/v35-dashboard-runtime-recovery` | `38e103bc4375b47a06c888db644fc27266b03947` | Typecheck & Build PASS (exit 0) | `FIXED_AND_VERIFIED` |
+| **DB-4** | Mahmoud Feedback | Display dash (`—`) for missing VAT instead of fabricated calculation. | `fix/v35-dashboard-runtime-recovery` | `6514ca7dbf253a6509f6984e7233fb1f6927a421` | Typecheck & Build PASS (exit 0) | `FIXED_AND_VERIFIED` |
+| **DB-5** | Mahmoud Feedback | Remove hardcoded 15% VAT assumption from purchase orders view. | `fix/v35-dashboard-runtime-recovery` | `57647960fc5d4ca843a85bb12aeb784d142d7655` | Typecheck & Build PASS (exit 0) | `FIXED_AND_VERIFIED` |
+| **DB-6** | Mahmoud Feedback | Remove unused mockup sandbox data and legacy stub comments from company dashboard. | `fix/v35-dashboard-runtime-recovery` | `ff39281a6c0b968a7356263cb64fae019b84e622` | Typecheck & Build PASS (exit 0) | `FIXED_AND_VERIFIED` |
+| **BE-02** | Backend Wave 1 | Restrict branch manager role scope to empty brand and restaurant ids (E2 + E3). | `fix/v35-be-02` (`worktree_be02`) | `27696f6740c2e89110f13812a1b2273689c3db29` | `BranchRoleScopeTest` (3/3 PASS, exit 0) | `FIXED_AND_VERIFIED` |
+| **BE-03** | Backend Wave 1 | Expose tenant-scoped asset drafts route under `/api/v1/company/me/asset-drafts` (E1). | `fix/v35-be-03` (`worktree_be03`) | `5786a5ed5e1cb2b653f247571d080ca696f691aa` | `FixedAssetsRegisterTest` (19/19 PASS, exit 0) | `FIXED_AND_VERIFIED` |
+| **BE-04** | Backend Wave 1 | Add `hasDebitBalance` alongside `autoDeductFromSalary` in employee statement (DIFF-04). | `fix/v35-be-04` (`worktree_be04`) | `bb483f307bccedba6711732dbc6ba5b605a20ced` | `T09EmployeeLedgerTest` (12/12 PASS, exit 0) | `FIXED_AND_VERIFIED` |
+| **BE-05** | Backend Wave 1 | Remove depreciation fields and make useful life nullable in fixed assets (ASSET-01 step 2). | `fix/v35-be-05` (`worktree_be05`) | `dbc9bff12f2271ada025d6191d4f2a613a33e3d7` | `FixedAssetsRegisterTest` (19/19 PASS, exit 0) | `FIXED_AND_VERIFIED` |
+| **BE-06** | Backend Wave 1 | Do not reserve custody on expense pre-approval (EXP-10 / AC-27). | `fix/v35-be-06` (`worktree_be06`) | `e8605c62405e818e73d25f5d744fd7452acd3ce3` | `ExpenseCustodyLifecycleTest` (6/6 PASS, exit 0) | `FIXED_AND_VERIFIED` |
+| **BE-07** | Backend Wave 1 | Reverse employee allocation with credit entries instead of deletion (AUD-01). | `fix/v35-be-07` (`worktree_be07`) | `c698e167e750c670b554fbdb29b09ae7d2c8c21d` | `EmployeeAllocationReversalTest` (2/2 PASS, exit 0), `InventoryWasteTest` (23/23 PASS) | `FIXED_AND_VERIFIED` |
+| **BE-08** | Backend Wave 1 | Regression test asserting cashier shift consolidated report from multiple devices/drawers (OPS-09 / AC-47). | `fix/v35-be-08` (`worktree_be08`) | `69e2b9e974fc4f209e5eb1ba90d16c1e036269b1` | `CashierShiftConsolidatedReportTest` (2/2 PASS, exit 0), `ShiftsTest` (18/18 PASS), `ShiftOperationalResponsibilityTest` (10/10 PASS) | `FIXED_AND_VERIFIED` |
+| **BE-31** | Backend Wave 1 | Restrict Brand and Restaurant creation to Platform Admin; return 403 Forbidden with zero side effects for all company/operational roles. | `fix/v35-be-31-brand-restaurant-creation-guard` | `6f579b6fe69d2828adef99aeb510997e03217d5f` | `BrandRestaurantCreationGuardTest` (6/6 PASS, 25 assertions, exit 0) | `FIXED_AND_VERIFIED` |
+| **W1-B-HOOKS** | Dashboard Wave 1 | React hook ordering invariance in `CABranches` & `CAUsers` across Loading -> Error -> Retry -> Loaded transitions (prevents blank screen crashes). | `fix/v35-dashboard-runtime-recovery` | `7906f1e1ee3f1e4d3cf08b968f013da244d1f6ac` | `companyLoadingTransitions.test.ts` (8/8 PASS, exit 0) | `FIXED_AND_VERIFIED` |
+| **W1-C-BRAND-REST** | Dashboard Wave 1 | Remove Company Admin Add Brand/Restaurant buttons, modals, and mutation hooks; enforce platform-only role guard `canRoleCreateBrandOrRestaurant`. | `fix/v35-dashboard-runtime-recovery` | `7906f1e1ee3f1e4d3cf08b968f013da244d1f6ac` | `companyLoadingTransitions.test.ts` (8/8 PASS, exit 0) | `FIXED_AND_VERIFIED` |
+
+### 12.2 Finding ID Traceability & Crosswalk (Unambiguous Disambiguation)
+
+To prevent confusion with preexisting historical Dashboard Recovery findings:
+- **`DB-R03` (Historical):** Preserved for subscription billing sidebar details (`CompanyLayout.tsx`).
+- **`DB-R04` (Historical):** Preserved for restaurant empty state and active brand filter in restaurants view.
+- **`W1-B-HOOKS` (Wave 1):** Dedicated ID for React Hook ordering invariance under conditional transitions.
+- **`W1-C-BRAND-REST` (Wave 1):** Dedicated ID for Company Admin Brand & Restaurant creation separation.
+- **`BE-31` (Wave 1):** Dedicated ID for Backend Platform Admin Brand & Restaurant creation authorization guard.
+
+### 12.3 Decision-Gated Items on Architectural HOLD
+
+The following tasks represent policy or architectural changes that require explicit documented approval prior to implementation:
+
+1. **BE-10 (Custody Movement Timing on Transfer Proposal — CASH-01 / CASH-02):**
+   - *Status:* `APPROVAL_REQUIRED` / `HOLD`.
+   - *Rationale:* Deciding whether custody transfers immediately deduct from the sender upon proposal or only upon recipient acceptance alters financial ledger state machines and requires business rule sign-off.
+2. **BE-11 (Subscription Provisioning & Company Plan Gating — SUB-01 / SUB-02):**
+   - *Status:* `APPROVAL_REQUIRED` / `HOLD`.
+   - *Rationale:* Central billing gating vs automatic plan activation requires product management confirmation on the subscription lifecycle contract.
+3. **S1-12 (Session Restoration & Token Expiration Policy — AUTH-02):**
+   - *Status:* `APPROVAL_REQUIRED` / `HOLD`.
+   - *Rationale:* Adjusting token lifetimes or automated session restoration directly impacts Sanctum token security policies across mobile and dashboard consumers.
+
+---
+
+## 13. WAVE 3 FINAL TECHNICAL ACCEPTANCE & VERIFICATION REGISTER (2026-10-30)
+
+### 13.1 Authoritative Baseline & Provenance
+- **Repository:** `mohameelsherbini/Assab`
+- **Base Branch:** `review/v35-wave12-final-backend`
+- **Base Commit SHA:** `dabb172236f89f806e95273d2f0ce33abeec6c91`
+- **Candidate Delivery Branch:** `review/v35-wave3-final-backend`
+- **Candidate Commit SHA:** `7824b2f96144e54e4eb120df055b80455db38927`
+- **Candidate Patch:** `DOCS/wave3_unified_candidate.patch` (SHA-256: `F0284BC5A89FBBC177D91B02C39294BA99C0B49211FDAC5D7FDA1A8A5267FB66`)
+- **MySQL 8.4 CI Run:** [Run 40980649534](https://github.com/mohameelsherbini/Assab/actions/runs/40980649534) (100% PASS: 7 tests, 46 assertions, exit 0)
+- **Local Targeted & Regression Tests:** 44 tests, 219 assertions (100% PASS, exit 0)
+
+### 13.2 Wave 3 Finding-to-Fix-to-Test Mapping Table
+| Finding ID | Scope / Wave | Description | Implementation Branch | Commit SHA | Verification Evidence | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **BE-13** | Backend Wave 3 | CASH-14: Two-party cash handover reversal workflow (`HandoverSettlementService::requestReversal`, `confirmReversal`, `rejectReversal`, `linkCorrectedHandover`). | `review/v35-wave3-final-backend` | `7824b2f96144e54e4eb120df055b80455db38927` | `HandoverTwoPartyReversalTest` (10/10 PASS, exit 0); MySQL CI Case 1 (7 assertions, PASS) | `FIXED_AND_VERIFIED — PENDING_MAHMOUD_FINAL_ACCEPTANCE` |
+| **BE-14** | Backend Wave 3 | STMT-01: Shift shortage statement review status (`EmployeeLedgerService::statement` deriving `reviewStatus` as `under_review` vs `approved` via atomic DB transition). | `review/v35-wave3-final-backend` | `7824b2f96144e54e4eb120df055b80455db38927` | `EmployeeShortageReviewStatusTest` (4/4 PASS, exit 0); MySQL CI Case 2 (6 assertions, PASS) | `FIXED_AND_VERIFIED — PENDING_MAHMOUD_FINAL_ACCEPTANCE` |
+| **BE-15** | Backend Wave 3 | IDEM-01: Financial command idempotency (`IdempotencyKey` middleware conflict check on mutated payload + `EmployeeAllocationService` deduplication). | `review/v35-wave3-final-backend` | `7824b2f96144e54e4eb120df055b80455db38927` | `FinancialCommandIdempotencyAuditTest` (6/6 PASS, exit 0); MySQL CI Case 3a & 3b (6 assertions, PASS) | `FIXED_AND_VERIFIED — PENDING_MAHMOUD_FINAL_ACCEPTANCE` |
+| **BE-16** | Backend Wave 3 | CASH-16: Cashier debt repayment handover with canonical lock ordering `Cashier -> Repayment` preventing overpayment and deadlocks. | `review/v35-wave3-final-backend` | `7824b2f96144e54e4eb120df055b80455db38927` | `CashierDebtRepaymentHandoverTest` (9/9 PASS, exit 0); MySQL CI Case 4a, 4b, 4c (27 assertions, PASS) | `FIXED_AND_VERIFIED — PENDING_MAHMOUD_FINAL_ACCEPTANCE` |
+
+---
+
+## 14. Accountant Dashboard Mobile & Tablet Responsive Remediation (2026-11-01)
+
+**Task ID:** `ASSAB-DASHBOARD-RESPONSIVE-UX-20261101-FINAL-CLOSURE`
+**Execution Branch:** `fix/accountant-responsive-ux-20261101`
+**Base Commit:** `b476a11e46aa236565c023e26953e97cb27763f9` (`staging/dashboard-m9-candidate-20261016`)
+**Base Tree:** `be715003be2e1e78bacfed3c2dbb7507a3bd0468`
+**Previous Review Commits:** `8ce9fe25ee5adba0f716418a08ba1efa3f978a64`, `0b37c5bcd7df901527f21922d475c53c89c15232`
+**Execution Date:** 2026-11-01
+**Scope Standard:** Frontend Responsive UI Only — No Backend, Flutter, API Contract, or Financial State Mutation
+
+### 14.1 Scope & Findings Remediation Matrix
+
+| Finding ID | Finding Description | Target Files | Implementation Summary | Status |
+|---|---|---|---|:---:|
+| **F01** | KPI Cards Overflow / Overlap | `AccDashboard.tsx`, `KpiCard.tsx` | Replaced rigid `grid-cols-4` with responsive `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4`. Relocated overdue badge to `top-2.5 end-2.5` to eliminate icon overlap. Responsive card padding (`p-3.5 sm:p-4 md:p-5`) and font sizing (`text-2xl sm:text-3xl`). Verified 1 col on mobile (320–430px), 2 cols on tablet (768–820px), 4 cols on desktop (1024–1280px). | `FIXED_AND_VERIFIED` |
+| **F02** | Operations List / OpRow Collapsed Content | `_shared/OpRow.tsx`, `Card.tsx` | Replaced single-row horizontal flex with responsive stacked card layout using `lg:` breakpoint (`flex-col lg:flex-row lg:items-start`). On mobile and tablet portrait (768px & 820px with 252px sidebar open, available content ~468px–520px), OpRow renders in stacked card layout displaying top summary row (module badge + branch + amount in SAR). Long branch names are fully readable on tablet portrait without truncation (`truncate md:whitespace-normal md:break-words`), while amount stays neatly aligned at the top-end (`flex-shrink-0 tabular-nums`) without shifting. Middle metadata row uses `break-all` exclusively on IDs, single-line time with clock icon, status & match badge cluster, and touch-accessible bottom action row (`min-h-[36px] px-3.5`) separated by top border with distinct Approve/Reject tap spacing. Desktop horizontal row activates at `lg:` (1024px & 1280px). Targeted close-up verified via `data-testid="op-row"`. | `FIXED_AND_VERIFIED` |
+| **F03** | Excessive Mobile & Tablet Header Height / Truncation | `ASABPrototype.tsx` | Replaced 4-row floating header (~230px height, `ps-16`) with responsive 3-tier architecture: (1) Mobile (<768px): 2-row layout (~88px height), inline hamburger `SheetTrigger` + page title/breadcrumb + quick actions (Lang toggle, Notification bell, Logout) + row 2 (period selector + GlobalSearch). (2) Tablet (768px–1279px, `hidden md:flex xl:hidden`): 2-row layout with page title/breadcrumb (`min-w-0 flex-1 truncate`, width 166px–422px, `h1Clipped: false`), date badge with `whitespace-nowrap` (`dateHeight: 30px`, `dateWrapped: false`), Lang, Bell, Logout on row 1, and Granted role, Period, and wide GlobalSearch (370px–480px) on row 2, eliminating title truncation and vertical date wrapping. (3) Desktop (>=1280px, `hidden xl:flex`): Baseline single-row desktop topbar preserved 100% (`h1ClientWidth: 254px`, `dateWrapped: false`, search width 286px). Supplier header remediation verified: notification bell rendered as focusable touch/keyboard-accessible button (`type="button"`, `focus:ring-2`, `aria-label`, `title`) with informational toast on tap/click (`toast.info`), and visible text indicator on tablet (`الإشعارات غير متاحة`), with no period selector, no search, no chat widget, and 0 unauthorized capabilities. | `FIXED_AND_VERIFIED` |
+| **F04** | Progress & Six-Stage Pipeline | `AccDashboard.tsx`, `_shared/PipelineOverview.tsx` | Today's Progress changed from rigid `grid-cols-4` to responsive `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`. PipelineOverview changed to `grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6` with stage indicator chips (`م1`-`م6` / `S1`-`S6`), spacious rounded card borders on mobile (2 cols) and tablet portrait (3 cols: `140.656px` at 768px, `158px` at 820px), and single-row dividers on desktop (`lg:`, >=1024px: 6 cols). Verified via `data-testid="pipeline-overview-grid"`. | `FIXED_AND_VERIFIED` |
+| **F05** | Nine Modules & Search Filters | `AccDashboard.tsx`, `Card.tsx` | Grid changed from `grid-cols-3` to `grid-cols-1 lg:grid-cols-3` so Search Filters stack vertically beneath Modules on mobile and sit alongside on desktop. Modules subgrid changed to `grid-cols-3 sm:grid-cols-3 md:grid-cols-4` with text clamping and responsive icon dimensions. Parent container `data-testid="modules-and-filters-section"` captures both 9 Modules and Search Filters simultaneously via `scrollIntoViewIfNeeded()`. | `FIXED_AND_VERIFIED` |
+| **F06** | Shared Component Impact | `KpiCard.tsx`, `Card.tsx`, `OpRow.tsx`, `PipelineOverview.tsx` | Preserved all phrasing content (`span` only) in KpiCard. All existing consumers (Head Accountant, Branch, Admin) verified regression-free via automated tests. No global `overflow-x: hidden` hacks used. Source wiring contracts for supplier, admin, and branch preserved. | `FIXED_AND_VERIFIED` |
+
+### 14.2 Mandatory Responsive Acceptance Matrix (Automated Chrome Headless Verification)
+
+*All metrics measured via Playwright against actual computed DOM styles in Vite preview environment:*
+
+| Viewport Width | Device Category | Mode | clientWidth / scrollWidth | Horiz Overflow | Computed Grids (KPI / Progress / Pipeline / Modules) | Header Status (Title Width / Date Ht / Search Width) | OpRow Scrolled Verification | Visual Status |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **320px** | Narrow Mobile | Arabic RTL | 320px / 320px | `0px (FALSE)` | 1 col (296px) / 1 col (262px) / 2 cols (131px) / 3 cols (85px) | Title: 112px (unclipped) / Date: n/a / Search: 188px | Top summary + wrapped ID + distinct buttons | PASS |
+| **360px** | Android Mobile | Arabic RTL | 360px / 360px | `0px (FALSE)` | 1 col (336px) / 1 col (302px) / 2 cols (151px) / 3 cols (98px) | Title: 152px (unclipped) / Date: n/a / Search: 228px | Top summary + wrapped ID + distinct buttons | PASS |
+| **390px** | Standard Mobile (iPhone) | Arabic RTL | 390px / 390px | `0px (FALSE)` | 1 col (366px) / 1 col (332px) / 2 cols (166px) / 3 cols (108px) | Title: 182px (unclipped) / Date: n/a / Search: 258px | Top summary + wrapped ID + distinct buttons | PASS |
+| **430px** | Large Mobile (Pro Max) | Arabic RTL | 430px / 430px | `0px (FALSE)` | 1 col (406px) / 1 col (372px) / 2 cols (186px) / 3 cols (121px) | Title: 222px (unclipped) / Date: n/a / Search: 298px | Top summary + wrapped ID + distinct buttons | PASS |
+| **768px** | Tablet Portrait (iPad) | Arabic RTL | 768px / 768px | `0px (FALSE)` | 2 cols (230px) / 2 cols (213px) / 3 cols (140.67px) / 4 cols (102px) | Title: 166px (unclipped) / Date: 30px (1 line) / Search: 370px | Stacked card with SAR amount + actions (0px overflow) | PASS |
+| **820px** | Tablet Portrait (iPad Air) | Arabic RTL | 820px / 820px | `0px (FALSE)` | 2 cols (256px) / 2 cols (239px) / 3 cols (158px) / 4 cols (115px) | Title: 221px (unclipped) / Date: 30px (1 line) / Search: 422px | Stacked card with SAR amount + actions (0px overflow) | PASS |
+| **1024px** | Tablet Landscape | Arabic RTL | 1024px / 1024px | `0px (FALSE)` | 4 cols (171px) / 4 cols (163px) / 6 cols (121.67px) / 4 cols (103px) | Title: 422px (unclipped) / Date: 30px (1 line) / Search: 480px | Full horizontal row with SAR amount + actions | PASS |
+| **1280px** | Desktop Regression | Arabic RTL | 1280px / 1280px | `0px (FALSE)` | 4 cols (235px) / 4 cols (227px) / 6 cols (164.33px) / 4 cols (103px) | Title: 254px (unclipped) / Date: 30px (1 line) / Search: 286px | Baseline desktop row preserved 100% | PASS |
+| **390px** | Standard Mobile | English LTR | 390px / 390px | `0px (FALSE)` | 1 col (366px) / 1 col (332px) / 2 cols (166px) / 3 cols (108px) | Title: 167px (unclipped) / Date: n/a / Search: 258px | LTR layout + SAR amount + actions | PASS |
+| **1280px** | Desktop Regression | English LTR | 1280px / 1280px | `0px (FALSE)` | 4 cols (235px) / 4 cols (227px) / 6 cols (164.33px) / 4 cols (103px) | Title: 200px (unclipped) / Date: 30px (1 line) / Search: 286px | LTR desktop layout preserved | PASS |
+| **390px** | Mobile Navigation Drawer | Arabic RTL | 390px / 390px | `0px (FALSE)` | n/a (Sheet Open) | Hamburger trigger opens drawer cleanly | Overlay touch targets functional | PASS |
+| **820px** | Tablet Supplier Header | Arabic RTL | 820px / 820px | `0px (FALSE)` | n/a (Supplier Shell) | Bell: accessible button + visible label / Period: absent / Search: absent | `hasPeriodSelect: false, hasSearchNotice: true, hasBellNotice: true, bellIsButton: true, bellHasVisibleText: true, hasChatWidget: false` | PASS |
+
+### 14.3 Quality Gates & Test Evidence
+- **TypeScript Typecheck:** `pnpm run typecheck` across all 3 workspace projects (`@workspace/mockup-sandbox`, `@workspace/api-server`, `scripts`) — **0 errors (Exit Code: 0)**.
+- **Production Build:** `pnpm run build` (`vite build`) — **Built in 10.81s (sandbox) + 10.51s (api-server bundle), 0 errors (Exit Code: 0)**.
+- **Targeted Unit & Contract Tests:** `node artifacts/api-server/node_modules/tsx/dist/cli.mjs --test` — **77 / 77 tests PASS (100%), 0 fail (Exit Code: 0)**.
+- **Full Historical TAP Regression Suite:** **552 / 552 tests PASS (100%), 0 fail (Exit Code: 0)**.
+- **Git Diff & Whitespace Safety:** `git diff --check` — **0 whitespace or syntax issues (Exit Code: 0)**.
+- **Automated Headless Browser Visual Evidence:** 52 screenshots + `metrics.json` captured across 8 viewports, both RTL and LTR, with internal element scrolling (`scrollIntoViewIfNeeded()`), 0 console errors, clean relative paths.

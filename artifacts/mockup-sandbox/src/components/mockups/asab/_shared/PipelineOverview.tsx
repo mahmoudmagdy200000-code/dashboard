@@ -91,17 +91,20 @@ export function PipelineOverview({ ops, navigate }: { ops: Op[]; navigate: (p: P
   const rejected = ops.filter(o => o.status === "rejected").length;
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
+      <div className="px-4 sm:px-5 py-3 sm:py-3.5 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between flex-wrap gap-2">
         <h3 className="font-bold text-gray-900 text-sm tracking-tight">{t("مسار العمليات — رؤية شاملة للخط الزمني", "Operations Pipeline — Full Timeline View")}</h3>
         <span className="text-xs text-gray-400">{ops.length} {t("عملية إجمالاً", "operations total")}</span>
       </div>
-      <div className="grid grid-cols-6 divide-x divide-x-reverse divide-gray-100">
+      <div data-testid="pipeline-overview-grid" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 lg:gap-0 p-3 sm:p-4 lg:p-0 lg:divide-x lg:divide-x-reverse divide-gray-100">
         {stageCounts.map((s, i) => {
           const isAspirational = i === 5; // stage-6: ERP Reports — future state, never set by getPipelineStage
           return (
-            <div key={s.id} className={`px-3 py-4 text-center transition-colors
-              ${isAspirational ? "bg-slate-50/60" : "hover:bg-gray-50/80"}`}>
-              <div className="text-lg mb-1">{s.icon}</div>
+            <div key={s.id} className={`p-3 text-center transition-colors rounded-xl border border-gray-100 lg:border-0 lg:rounded-none lg:px-3 lg:py-4
+              ${isAspirational ? "bg-slate-50/60" : "hover:bg-gray-50/80 bg-white"}`}>
+              <div className="flex items-center justify-center gap-1.5 mb-1">
+                <span className="text-lg">{s.icon}</span>
+                <span className="text-[10px] font-bold text-gray-400">{lang === "ar" ? `م${i + 1}` : `S${i + 1}`}</span>
+              </div>
               {isAspirational ? (
                 <>
                   <p className="text-[10px] font-bold text-slate-400 font-mono">—</p>
@@ -110,7 +113,7 @@ export function PipelineOverview({ ops, navigate }: { ops: Op[]; navigate: (p: P
                 </>
               ) : (
                 <>
-                  <p className={`text-2xl font-extrabold font-mono ${s.count > 0 ? s.text : "text-gray-200"}`}>{s.count}</p>
+                  <p className={`text-xl sm:text-2xl font-extrabold font-mono ${s.count > 0 ? s.text : "text-gray-200"}`}>{s.count}</p>
                   <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{s.shortLabel}</p>
                   {i < 4 && (
                     <div className={`mx-auto mt-2 h-1 w-6 rounded-full ${s.count > 0 ? s.fill : "bg-gray-100"}`} />
@@ -121,11 +124,11 @@ export function PipelineOverview({ ops, navigate }: { ops: Op[]; navigate: (p: P
           );
         })}
       </div>
-      <div className="px-5 py-2 border-t border-gray-100 bg-slate-50/30 flex items-center justify-between flex-wrap gap-2">
+      <div className="px-4 sm:px-5 py-2.5 border-t border-gray-100 bg-slate-50/30 flex items-center justify-between flex-wrap gap-2 text-xs">
         {rejected > 0 && (
           <span className="text-xs text-red-500 font-medium">✕ {rejected} {t("مرفوضة — خارج المسار", "rejected — off pipeline")}</span>
         )}
-        <span className="text-[10px] text-slate-400 mr-auto">
+        <span className="text-[10px] text-slate-400 ms-auto">
           {t("م1–م5: مدارة بواسطة آلة الحالة · م6 (تقارير ERP): بيانات مرجعية مُستوردة — مرحلة مستقبلية", "S1–S5: Managed by state machine · S6 (ERP Reports): Imported reference data — Future stage")}
         </span>
       </div>
