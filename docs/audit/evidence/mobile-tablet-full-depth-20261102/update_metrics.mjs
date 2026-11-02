@@ -34,23 +34,42 @@ for (const item of fullData.coverage) {
     item.mainOverflow = measured.mainOverflow;
     item.branchClipped = measured.branchClipped;
     item.chatCoveringBottom = measured.chatOverlap;
+    item.passesDistinctIdentity = measured.passesDistinctIdentity;
+    item.hasValidKpis = measured.hasValidKpis;
+    item.scrollMeasurement = measured.scrollMeasurement;
+    item.provenance = "VERIFIED_DELTA";
     item.isBlocked = false;
     item.blockReason = null;
     updatedCount++;
+  } else {
+    if (!item.provenance) {
+      item.provenance = "VERIFIED_INITIAL_VALID";
+    }
   }
 }
 
 fullData.passCount = fullData.coverage.filter(c => c.status === "PASS").length;
 fullData.failCount = fullData.coverage.filter(c => c.status === "FAIL").length;
 fullData.blockedCount = fullData.coverage.filter(c => c.status === "BLOCKED").length;
+fullData.mainOverflowCount = fullData.coverage.filter(c => c.mainOverflow).length;
+fullData.docOverflowCount = fullData.coverage.filter(c => c.docOverflow).length;
+fullData.branchClippedCount = fullData.coverage.filter(c => c.branchClipped).length;
+fullData.chatOverlapCount = fullData.coverage.filter(c => c.chatCoveringBottom).length;
+fullData.deltaUpdatedCount = updatedCount;
+fullData.lastUpdated = new Date().toISOString();
 
 fs.writeFileSync(fullMetricsPath, JSON.stringify(fullData, null, 2), "utf8");
 
-console.log(`Updated ${updatedCount} records in full 114 coverage metrics using measured delta execution:`);
+console.log(`Successfully reconciled ${updatedCount} delta records into master 114 coverage metrics:`);
 console.log({
   totalPaths: fullData.totalPaths,
   totalExecutions: fullData.totalExecutions,
   passCount: fullData.passCount,
   failCount: fullData.failCount,
   blockedCount: fullData.blockedCount,
+  mainOverflowCount: fullData.mainOverflowCount,
+  docOverflowCount: fullData.docOverflowCount,
+  branchClippedCount: fullData.branchClippedCount,
+  chatOverlapCount: fullData.chatOverlapCount,
+  deltaUpdatedCount: fullData.deltaUpdatedCount,
 });

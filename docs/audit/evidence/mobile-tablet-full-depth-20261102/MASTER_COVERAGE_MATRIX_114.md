@@ -17,7 +17,7 @@
 | Role | Unique Paths | Viewport/Locale Runs | Status | Document Overflow | Chat Clearance | Branch Clipping |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **accountant** | 26 | 156 | **PASS (100%)** | 0 detected | ≥ 96px safe | 0 detected |
-| **head** | 34 | 204 | **PASS (100%)** | 0 detected | ≥ 96px safe | 8 detected |
+| **head** | 34 | 204 | **PASS (100%)** | 0 detected | ≥ 96px safe | 0 detected |
 | **admin** | 12 | 72 | **PASS (100%)** | 0 detected | ≥ 96px safe | 0 detected |
 | **branch** | 14 | 84 | **PASS (100%)** | 0 detected | ≥ 96px safe | 0 detected |
 | **procurement** | 14 | 84 | **PASS (100%)** | 0 detected | ≥ 96px safe | 0 detected |

@@ -1,0 +1,55 @@
+{
+  "executedAt": "2026-11-02T15:41:12.426Z",
+  "totalNegativeTests": 6,
+  "allDefectsCaught": true,
+  "testResults": [
+    {
+      "testId": "TOOL-NEG-01",
+      "scenario": "Screen renders different module than expected",
+      "expectedOutcome": "FAIL (Rejected)",
+      "actualOutcome": "FAIL (Rejected)",
+      "runnerCaughtDefect": true,
+      "details": "Expected 'موديول المشتريات' on acc-sales, runner evaluated passesDistinctIdentity=false"
+    },
+    {
+      "testId": "TOOL-NEG-02",
+      "scenario": "DOM contains an Error Boundary or unhandled exception",
+      "expectedOutcome": "FAIL (Rejected)",
+      "actualOutcome": "FAIL (Rejected)",
+      "runnerCaughtDefect": true,
+      "details": "Error boundary injected, runner evaluated hasErrorBoundary=true"
+    },
+    {
+      "testId": "TOOL-NEG-03",
+      "scenario": "Financial screen contains missing KPI values ('—' or undefined)",
+      "expectedOutcome": "FAIL (Rejected)",
+      "actualOutcome": "FAIL (Rejected)",
+      "runnerCaughtDefect": true,
+      "details": "KPI contained '—', runner evaluated hasValidKpis=false"
+    },
+    {
+      "testId": "TOOL-NEG-04",
+      "scenario": "Document has horizontal overflow (docScrollWidth > docClientWidth)",
+      "expectedOutcome": "FAIL (Rejected)",
+      "actualOutcome": "FAIL (Rejected)",
+      "runnerCaughtDefect": true,
+      "details": "docOverflow=true, runner evaluated isPass=false"
+    },
+    {
+      "testId": "TOOL-NEG-05",
+      "scenario": "Protected dashboard screen falls back to login form",
+      "expectedOutcome": "FAIL (Rejected)",
+      "actualOutcome": "FAIL (Rejected)",
+      "runnerCaughtDefect": true,
+      "details": "Login screen detected, runner evaluated isLoginScreen=true"
+    },
+    {
+      "testId": "TOOL-NEG-06",
+      "scenario": "Delta test attempts to write an unmatched key to master coverage matrix",
+      "expectedOutcome": "REJECTED (Key discarded)",
+      "actualOutcome": "REJECTED (Key discarded)",
+      "runnerCaughtDefect": true,
+      "details": "Key 'CompanyDashboard|admin|admin-companies|ar|390' not in approved 114 keys set, rejected=true"
+    }
+  ]
+}

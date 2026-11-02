@@ -1,9 +1,219 @@
 {
-  "timestamp": "2026-11-02T14:57:42.013Z",
-  "totalCases": 34,
-  "passCount": 34,
+  "timestamp": "2026-11-02T15:33:28.500Z",
+  "totalCases": 28,
+  "passCount": 28,
   "failCount": 0,
   "results": [
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-purchases",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1313,
+        "clientHeight": 736,
+        "maxScroll": 577,
+        "middleScroll": 288,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 288,
+          "bottom": 577
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-purchases_ar_390_top.png",
+        "mid": "ASABPrototype_accountant_acc-purchases_ar_390_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-purchases_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-assets",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1139,
+        "clientHeight": 736,
+        "maxScroll": 403,
+        "middleScroll": 201,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 201,
+          "bottom": 403
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-assets_ar_390_top.png",
+        "mid": "ASABPrototype_accountant_acc-assets_ar_390_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-assets_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-purchases",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1297,
+        "clientHeight": 736,
+        "maxScroll": 561,
+        "middleScroll": 280,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 280,
+          "bottom": 561
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-purchases_en_390_top.png",
+        "mid": "ASABPrototype_accountant_acc-purchases_en_390_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-purchases_en_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-purchases",
+      "lang": "en",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "568/568",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1108,
+        "clientHeight": 914,
+        "maxScroll": 194,
+        "middleScroll": 97,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 97,
+          "bottom": 194
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-purchases_en_820_top.png",
+        "mid": "ASABPrototype_accountant_acc-purchases_en_820_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-purchases_en_820_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "admin",
+      "screen": "admin-companies",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1016,
+        "clientHeight": 748,
+        "maxScroll": 268,
+        "middleScroll": 134,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 134,
+          "bottom": 268
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_admin_admin-companies_ar_390_top.png",
+        "mid": "ASABPrototype_admin_admin-companies_ar_390_mid.png",
+        "bottom": "ASABPrototype_admin_admin-companies_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "admin",
+      "screen": "admin-companies",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1064,
+        "clientHeight": 748,
+        "maxScroll": 316,
+        "middleScroll": 158,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 158,
+          "bottom": 316
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_admin_admin-companies_en_390_top.png",
+        "mid": "ASABPrototype_admin_admin-companies_en_390_mid.png",
+        "bottom": "ASABPrototype_admin_admin-companies_en_390_bottom.png"
+      }
+    },
     {
       "surface": "ASABPrototype",
       "role": "head",
@@ -16,16 +226,22 @@
       "docWidths": "390/390",
       "mainWidths": "390/390",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
+      "scrollMeasurement": {
         "totalHeight": 3631,
         "clientHeight": 736,
-        "topY": 0,
-        "midY": 1816,
-        "bottomY": 2895
+        "maxScroll": 2895,
+        "middleScroll": 1447,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 1447,
+          "bottom": 2895
+        }
       },
       "screenshots": {
         "top": "ASABPrototype_head_head-dashboard_ar_390_top.png",
@@ -45,16 +261,22 @@
       "docWidths": "390/390",
       "mainWidths": "390/390",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
+      "scrollMeasurement": {
         "totalHeight": 1879,
         "clientHeight": 736,
-        "topY": 0,
-        "midY": 940,
-        "bottomY": 1143
+        "maxScroll": 1143,
+        "middleScroll": 571,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 571,
+          "bottom": 1143
+        }
       },
       "screenshots": {
         "top": "ASABPrototype_head_head-sales_ar_390_top.png",
@@ -74,16 +296,22 @@
       "docWidths": "820/820",
       "mainWidths": "568/568",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
+      "scrollMeasurement": {
         "totalHeight": 1648,
         "clientHeight": 914,
-        "topY": 0,
-        "midY": 734,
-        "bottomY": 734
+        "maxScroll": 734,
+        "middleScroll": 367,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 367,
+          "bottom": 734
+        }
       },
       "screenshots": {
         "top": "ASABPrototype_head_head-pending_ar_820_top.png",
@@ -103,16 +331,22 @@
       "docWidths": "390/390",
       "mainWidths": "390/390",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
+      "scrollMeasurement": {
         "totalHeight": 3788,
         "clientHeight": 736,
-        "topY": 0,
-        "midY": 1894,
-        "bottomY": 3052
+        "maxScroll": 3052,
+        "middleScroll": 1526,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 1526,
+          "bottom": 3052
+        }
       },
       "screenshots": {
         "top": "ASABPrototype_head_head-dashboard_en_390_top.png",
@@ -132,16 +366,22 @@
       "docWidths": "390/390",
       "mainWidths": "390/390",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
+      "scrollMeasurement": {
         "totalHeight": 1899,
         "clientHeight": 736,
-        "topY": 0,
-        "midY": 950,
-        "bottomY": 1163
+        "maxScroll": 1163,
+        "middleScroll": 581,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 581,
+          "bottom": 1163
+        }
       },
       "screenshots": {
         "top": "ASABPrototype_head_head-sales_en_390_top.png",
@@ -161,16 +401,22 @@
       "docWidths": "820/820",
       "mainWidths": "568/568",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
+      "scrollMeasurement": {
         "totalHeight": 1664,
         "clientHeight": 914,
-        "topY": 0,
-        "midY": 750,
-        "bottomY": 750
+        "maxScroll": 750,
+        "middleScroll": 375,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 375,
+          "bottom": 750
+        }
       },
       "screenshots": {
         "top": "ASABPrototype_head_head-pending_en_820_top.png",
@@ -190,16 +436,22 @@
       "docWidths": "390/390",
       "mainWidths": "390/390",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
+      "scrollMeasurement": {
         "totalHeight": 1357,
         "clientHeight": 738,
-        "topY": 0,
-        "midY": 619,
-        "bottomY": 619
+        "maxScroll": 619,
+        "middleScroll": 309,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 309,
+          "bottom": 619
+        }
       },
       "screenshots": {
         "top": "CompanyDashboard_head_head-dashboard_ar_390_top.png",
@@ -219,16 +471,22 @@
       "docWidths": "820/820",
       "mainWidths": "580/580",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
+      "scrollMeasurement": {
         "totalHeight": 1028,
         "clientHeight": 926,
-        "topY": 0,
-        "midY": 102,
-        "bottomY": 102
+        "maxScroll": 102,
+        "middleScroll": 51,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 51,
+          "bottom": 102
+        }
       },
       "screenshots": {
         "top": "CompanyDashboard_head_head-dashboard_ar_820_top.png",
@@ -248,16 +506,22 @@
       "docWidths": "1280/1280",
       "mainWidths": "1040/1040",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
+      "scrollMeasurement": {
         "totalHeight": 826,
         "clientHeight": 734,
-        "topY": 0,
-        "midY": 92,
-        "bottomY": 92
+        "maxScroll": 92,
+        "middleScroll": 46,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 46,
+          "bottom": 92
+        }
       },
       "screenshots": {
         "top": "CompanyDashboard_head_head-dashboard_ar_1280_top.png",
@@ -277,16 +541,22 @@
       "docWidths": "390/390",
       "mainWidths": "390/390",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
+      "scrollMeasurement": {
         "totalHeight": 1393,
         "clientHeight": 738,
-        "topY": 0,
-        "midY": 655,
-        "bottomY": 655
+        "maxScroll": 655,
+        "middleScroll": 327,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 327,
+          "bottom": 655
+        }
       },
       "screenshots": {
         "top": "CompanyDashboard_head_head-dashboard_en_390_top.png",
@@ -306,16 +576,22 @@
       "docWidths": "390/390",
       "mainWidths": "390/390",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 1564,
+      "scrollMeasurement": {
+        "totalHeight": 1686,
         "clientHeight": 736,
-        "topY": 0,
-        "midY": 782,
-        "bottomY": 828
+        "maxScroll": 950,
+        "middleScroll": 475,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 475,
+          "bottom": 950
+        }
       },
       "screenshots": {
         "top": "ASABPrototype_accountant_acc-cash_ar_390_top.png",
@@ -335,16 +611,22 @@
       "docWidths": "820/820",
       "mainWidths": "568/568",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 1130,
+      "scrollMeasurement": {
+        "totalHeight": 1212,
         "clientHeight": 914,
-        "topY": 0,
-        "midY": 216,
-        "bottomY": 216
+        "maxScroll": 298,
+        "middleScroll": 149,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 149,
+          "bottom": 298
+        }
       },
       "screenshots": {
         "top": "ASABPrototype_accountant_acc-cash_ar_820_top.png",
@@ -364,16 +646,22 @@
       "docWidths": "1280/1280",
       "mainWidths": "1028/1028",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 855,
+      "scrollMeasurement": {
+        "totalHeight": 917,
         "clientHeight": 734,
-        "topY": 0,
-        "midY": 121,
-        "bottomY": 121
+        "maxScroll": 183,
+        "middleScroll": 91,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 91,
+          "bottom": 183
+        }
       },
       "screenshots": {
         "top": "ASABPrototype_accountant_acc-cash_ar_1280_top.png",
@@ -393,16 +681,22 @@
       "docWidths": "390/390",
       "mainWidths": "390/390",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 1482,
+      "scrollMeasurement": {
+        "totalHeight": 1621,
         "clientHeight": 736,
-        "topY": 0,
-        "midY": 741,
-        "bottomY": 746
+        "maxScroll": 885,
+        "middleScroll": 442,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 442,
+          "bottom": 885
+        }
       },
       "screenshots": {
         "top": "ASABPrototype_accountant_acc-cash_en_390_top.png",
@@ -422,16 +716,22 @@
       "docWidths": "820/820",
       "mainWidths": "568/568",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 1103,
+      "scrollMeasurement": {
+        "totalHeight": 1185,
         "clientHeight": 914,
-        "topY": 0,
-        "midY": 189,
-        "bottomY": 189
+        "maxScroll": 271,
+        "middleScroll": 135,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 135,
+          "bottom": 271
+        }
       },
       "screenshots": {
         "top": "ASABPrototype_accountant_acc-cash_en_820_top.png",
@@ -451,16 +751,22 @@
       "docWidths": "1280/1280",
       "mainWidths": "1028/1028",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 855,
+      "scrollMeasurement": {
+        "totalHeight": 917,
         "clientHeight": 734,
-        "topY": 0,
-        "midY": 121,
-        "bottomY": 121
+        "maxScroll": 183,
+        "middleScroll": 91,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 91,
+          "bottom": 183
+        }
       },
       "screenshots": {
         "top": "ASABPrototype_accountant_acc-cash_en_1280_top.png",
@@ -480,16 +786,22 @@
       "docWidths": "390/390",
       "mainWidths": "390/390",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 1055,
+      "scrollMeasurement": {
+        "totalHeight": 1189,
         "clientHeight": 738,
-        "topY": 0,
-        "midY": 317,
-        "bottomY": 317
+        "maxScroll": 451,
+        "middleScroll": 225,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 225,
+          "bottom": 451
+        }
       },
       "screenshots": {
         "top": "CompanyDashboard_accountant_acc-cash_ar_390_top.png",
@@ -509,16 +821,22 @@
       "docWidths": "820/820",
       "mainWidths": "580/580",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 926,
+      "scrollMeasurement": {
+        "totalHeight": 999,
         "clientHeight": 926,
-        "topY": 0,
-        "midY": 0,
-        "bottomY": 0
+        "maxScroll": 73,
+        "middleScroll": 36,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 36,
+          "bottom": 73
+        }
       },
       "screenshots": {
         "top": "CompanyDashboard_accountant_acc-cash_ar_820_top.png",
@@ -538,16 +856,22 @@
       "docWidths": "1280/1280",
       "mainWidths": "1040/1040",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 833,
+      "scrollMeasurement": {
+        "totalHeight": 904,
         "clientHeight": 734,
-        "topY": 0,
-        "midY": 99,
-        "bottomY": 99
+        "maxScroll": 170,
+        "middleScroll": 85,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 85,
+          "bottom": 170
+        }
       },
       "screenshots": {
         "top": "CompanyDashboard_accountant_acc-cash_ar_1280_top.png",
@@ -567,16 +891,22 @@
       "docWidths": "390/390",
       "mainWidths": "390/390",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 1005,
+      "scrollMeasurement": {
+        "totalHeight": 1159,
         "clientHeight": 738,
-        "topY": 0,
-        "midY": 267,
-        "bottomY": 267
+        "maxScroll": 421,
+        "middleScroll": 210,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 210,
+          "bottom": 421
+        }
       },
       "screenshots": {
         "top": "CompanyDashboard_accountant_acc-cash_en_390_top.png",
@@ -596,16 +926,22 @@
       "docWidths": "820/820",
       "mainWidths": "580/580",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 926,
+      "scrollMeasurement": {
+        "totalHeight": 988,
         "clientHeight": 926,
-        "topY": 0,
-        "midY": 0,
-        "bottomY": 0
+        "maxScroll": 62,
+        "middleScroll": 31,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 31,
+          "bottom": 62
+        }
       },
       "screenshots": {
         "top": "CompanyDashboard_accountant_acc-cash_en_820_top.png",
@@ -625,369 +961,27 @@
       "docWidths": "1280/1280",
       "mainWidths": "1040/1040",
       "hasErrorBoundary": false,
-      "hasExpectedContent": true,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
       "branchClipped": false,
       "chatOverlap": false,
       "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 833,
+      "scrollMeasurement": {
+        "totalHeight": 904,
         "clientHeight": 734,
-        "topY": 0,
-        "midY": 99,
-        "bottomY": 99
+        "maxScroll": 170,
+        "middleScroll": 85,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 85,
+          "bottom": 170
+        }
       },
       "screenshots": {
         "top": "CompanyDashboard_accountant_acc-cash_en_1280_top.png",
         "mid": "CompanyDashboard_accountant_acc-cash_en_1280_mid.png",
         "bottom": "CompanyDashboard_accountant_acc-cash_en_1280_bottom.png"
-      }
-    },
-    {
-      "surface": "CompanyDashboard",
-      "role": "accountant",
-      "screen": "acc-purchases",
-      "lang": "ar",
-      "width": 390,
-      "status": "PASS",
-      "docOverflow": false,
-      "mainOverflow": false,
-      "docWidths": "390/390",
-      "mainWidths": "390/390",
-      "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": false,
-      "chatOverlap": false,
-      "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 1614,
-        "clientHeight": 738,
-        "topY": 0,
-        "midY": 807,
-        "bottomY": 876
-      },
-      "screenshots": {
-        "top": "CompanyDashboard_accountant_acc-purchases_ar_390_top.png",
-        "mid": "CompanyDashboard_accountant_acc-purchases_ar_390_mid.png",
-        "bottom": "CompanyDashboard_accountant_acc-purchases_ar_390_bottom.png"
-      }
-    },
-    {
-      "surface": "CompanyDashboard",
-      "role": "accountant",
-      "screen": "acc-purchases",
-      "lang": "en",
-      "width": 390,
-      "status": "PASS",
-      "docOverflow": false,
-      "mainOverflow": false,
-      "docWidths": "390/390",
-      "mainWidths": "390/390",
-      "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": false,
-      "chatOverlap": false,
-      "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 1614,
-        "clientHeight": 738,
-        "topY": 0,
-        "midY": 807,
-        "bottomY": 876
-      },
-      "screenshots": {
-        "top": "CompanyDashboard_accountant_acc-purchases_en_390_top.png",
-        "mid": "CompanyDashboard_accountant_acc-purchases_en_390_mid.png",
-        "bottom": "CompanyDashboard_accountant_acc-purchases_en_390_bottom.png"
-      }
-    },
-    {
-      "surface": "CompanyDashboard",
-      "role": "accountant",
-      "screen": "acc-purchases",
-      "lang": "ar",
-      "width": 820,
-      "status": "PASS",
-      "docOverflow": false,
-      "mainOverflow": false,
-      "docWidths": "820/820",
-      "mainWidths": "580/580",
-      "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": false,
-      "chatOverlap": false,
-      "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 1010,
-        "clientHeight": 958,
-        "topY": 0,
-        "midY": 82,
-        "bottomY": 82
-      },
-      "screenshots": {
-        "top": "CompanyDashboard_accountant_acc-purchases_ar_820_top.png",
-        "mid": "CompanyDashboard_accountant_acc-purchases_ar_820_mid.png",
-        "bottom": "CompanyDashboard_accountant_acc-purchases_ar_820_bottom.png"
-      }
-    },
-    {
-      "surface": "CompanyDashboard",
-      "role": "accountant",
-      "screen": "acc-purchases",
-      "lang": "en",
-      "width": 820,
-      "status": "PASS",
-      "docOverflow": false,
-      "mainOverflow": false,
-      "docWidths": "820/820",
-      "mainWidths": "580/580",
-      "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": false,
-      "chatOverlap": false,
-      "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 1008,
-        "clientHeight": 926,
-        "topY": 0,
-        "midY": 82,
-        "bottomY": 82
-      },
-      "screenshots": {
-        "top": "CompanyDashboard_accountant_acc-purchases_en_820_top.png",
-        "mid": "CompanyDashboard_accountant_acc-purchases_en_820_mid.png",
-        "bottom": "CompanyDashboard_accountant_acc-purchases_en_820_bottom.png"
-      }
-    },
-    {
-      "surface": "CompanyDashboard",
-      "role": "accountant",
-      "screen": "acc-assets",
-      "lang": "ar",
-      "width": 390,
-      "status": "PASS",
-      "docOverflow": false,
-      "mainOverflow": false,
-      "docWidths": "390/390",
-      "mainWidths": "390/390",
-      "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": false,
-      "chatOverlap": false,
-      "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 1023,
-        "clientHeight": 738,
-        "topY": 0,
-        "midY": 285,
-        "bottomY": 285
-      },
-      "screenshots": {
-        "top": "CompanyDashboard_accountant_acc-assets_ar_390_top.png",
-        "mid": "CompanyDashboard_accountant_acc-assets_ar_390_mid.png",
-        "bottom": "CompanyDashboard_accountant_acc-assets_ar_390_bottom.png"
-      }
-    },
-    {
-      "surface": "CompanyDashboard",
-      "role": "accountant",
-      "screen": "acc-assets",
-      "lang": "en",
-      "width": 390,
-      "status": "PASS",
-      "docOverflow": false,
-      "mainOverflow": false,
-      "docWidths": "390/390",
-      "mainWidths": "390/390",
-      "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": false,
-      "chatOverlap": false,
-      "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 1023,
-        "clientHeight": 738,
-        "topY": 0,
-        "midY": 285,
-        "bottomY": 285
-      },
-      "screenshots": {
-        "top": "CompanyDashboard_accountant_acc-assets_en_390_top.png",
-        "mid": "CompanyDashboard_accountant_acc-assets_en_390_mid.png",
-        "bottom": "CompanyDashboard_accountant_acc-assets_en_390_bottom.png"
-      }
-    },
-    {
-      "surface": "CompanyDashboard",
-      "role": "accountant",
-      "screen": "acc-assets",
-      "lang": "ar",
-      "width": 820,
-      "status": "PASS",
-      "docOverflow": false,
-      "mainOverflow": false,
-      "docWidths": "820/820",
-      "mainWidths": "580/580",
-      "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": false,
-      "chatOverlap": false,
-      "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 926,
-        "clientHeight": 926,
-        "topY": 0,
-        "midY": 0,
-        "bottomY": 0
-      },
-      "screenshots": {
-        "top": "CompanyDashboard_accountant_acc-assets_ar_820_top.png",
-        "mid": "CompanyDashboard_accountant_acc-assets_ar_820_mid.png",
-        "bottom": "CompanyDashboard_accountant_acc-assets_ar_820_bottom.png"
-      }
-    },
-    {
-      "surface": "CompanyDashboard",
-      "role": "accountant",
-      "screen": "acc-assets",
-      "lang": "en",
-      "width": 820,
-      "status": "PASS",
-      "docOverflow": false,
-      "mainOverflow": false,
-      "docWidths": "820/820",
-      "mainWidths": "580/580",
-      "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": false,
-      "chatOverlap": false,
-      "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 926,
-        "clientHeight": 926,
-        "topY": 0,
-        "midY": 0,
-        "bottomY": 0
-      },
-      "screenshots": {
-        "top": "CompanyDashboard_accountant_acc-assets_en_820_top.png",
-        "mid": "CompanyDashboard_accountant_acc-assets_en_820_mid.png",
-        "bottom": "CompanyDashboard_accountant_acc-assets_en_820_bottom.png"
-      }
-    },
-    {
-      "surface": "CompanyDashboard",
-      "role": "admin",
-      "screen": "admin-companies",
-      "lang": "ar",
-      "width": 390,
-      "status": "PASS",
-      "docOverflow": false,
-      "mainOverflow": false,
-      "docWidths": "390/390",
-      "mainWidths": "390/390",
-      "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": false,
-      "chatOverlap": false,
-      "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 1016,
-        "clientHeight": 748,
-        "topY": 0,
-        "midY": 268,
-        "bottomY": 268
-      },
-      "screenshots": {
-        "top": "CompanyDashboard_admin_admin-companies_ar_390_top.png",
-        "mid": "CompanyDashboard_admin_admin-companies_ar_390_mid.png",
-        "bottom": "CompanyDashboard_admin_admin-companies_ar_390_bottom.png"
-      }
-    },
-    {
-      "surface": "CompanyDashboard",
-      "role": "admin",
-      "screen": "admin-companies",
-      "lang": "en",
-      "width": 390,
-      "status": "PASS",
-      "docOverflow": false,
-      "mainOverflow": false,
-      "docWidths": "390/390",
-      "mainWidths": "390/390",
-      "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": false,
-      "chatOverlap": false,
-      "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 1064,
-        "clientHeight": 748,
-        "topY": 0,
-        "midY": 316,
-        "bottomY": 316
-      },
-      "screenshots": {
-        "top": "CompanyDashboard_admin_admin-companies_en_390_top.png",
-        "mid": "CompanyDashboard_admin_admin-companies_en_390_mid.png",
-        "bottom": "CompanyDashboard_admin_admin-companies_en_390_bottom.png"
-      }
-    },
-    {
-      "surface": "CompanyDashboard",
-      "role": "admin",
-      "screen": "admin-companies",
-      "lang": "ar",
-      "width": 820,
-      "status": "PASS",
-      "docOverflow": false,
-      "mainOverflow": false,
-      "docWidths": "820/820",
-      "mainWidths": "568/568",
-      "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": false,
-      "chatOverlap": false,
-      "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 926,
-        "clientHeight": 926,
-        "topY": 0,
-        "midY": 0,
-        "bottomY": 0
-      },
-      "screenshots": {
-        "top": "CompanyDashboard_admin_admin-companies_ar_820_top.png",
-        "mid": "CompanyDashboard_admin_admin-companies_ar_820_mid.png",
-        "bottom": "CompanyDashboard_admin_admin-companies_ar_820_bottom.png"
-      }
-    },
-    {
-      "surface": "CompanyDashboard",
-      "role": "admin",
-      "screen": "admin-companies",
-      "lang": "en",
-      "width": 820,
-      "status": "PASS",
-      "docOverflow": false,
-      "mainOverflow": false,
-      "docWidths": "820/820",
-      "mainWidths": "568/568",
-      "hasErrorBoundary": false,
-      "hasExpectedContent": true,
-      "branchClipped": false,
-      "chatOverlap": false,
-      "consoleErrors": 0,
-      "scrollPositions": {
-        "totalHeight": 926,
-        "clientHeight": 926,
-        "topY": 0,
-        "midY": 0,
-        "bottomY": 0
-      },
-      "screenshots": {
-        "top": "CompanyDashboard_admin_admin-companies_en_820_top.png",
-        "mid": "CompanyDashboard_admin_admin-companies_en_820_mid.png",
-        "bottom": "CompanyDashboard_admin_admin-companies_en_820_bottom.png"
       }
     }
   ]

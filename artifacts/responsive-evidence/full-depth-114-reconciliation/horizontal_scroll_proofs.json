@@ -1,0 +1,44 @@
+{
+  "executedAt": "2026-11-02T15:40:16.045Z",
+  "totalProofs": 3,
+  "passedCount": 3,
+  "failedCount": 0,
+  "proofs": [
+    {
+      "testId": "HORIZ-01",
+      "screen": "acc-purchases",
+      "element": "Tabs Container & Last Tab ('المرتجعات')",
+      "scrollWidth": 831,
+      "clientWidth": 366,
+      "isScrollable": true,
+      "lastTabFound": "↩️ المرتجعات",
+      "isVisibleInViewport": true,
+      "clickedSuccessfully": true,
+      "becameActive": true,
+      "passed": true
+    },
+    {
+      "testId": "HORIZ-02",
+      "screen": "admin-companies",
+      "element": "Filter Pills & Last Pill ('موقوف')",
+      "scrollWidth": 375,
+      "clientWidth": 332,
+      "isScrollable": true,
+      "lastPillFound": "موقوف",
+      "isVisibleInViewport": true,
+      "clickedSuccessfully": true,
+      "becameActive": true,
+      "passed": true
+    },
+    {
+      "testId": "HORIZ-03",
+      "screen": "acc-assets",
+      "element": "Header Action Toolbar & 'إضافة أصل' Button",
+      "hasDocOverflow": false,
+      "addAssetBtnExists": true,
+      "addAssetBtnText": "إضافة أصل جديد",
+      "addAssetBtnVisible": true,
+      "passed": true
+    }
+  ]
+}
