@@ -228,7 +228,7 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
       <div className={`bg-white rounded-xl border shadow-sm overflow-hidden ${isLocked ? "border-slate-200" : "border-gray-100"}`}>
         {isLocked && <div className="h-1 bg-gradient-to-l from-emerald-400 to-emerald-600 w-full" />}
         <div className="p-5">
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
                 <span className="text-2xl">💰</span>
@@ -267,8 +267,8 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="col-span-1 lg:col-span-2 space-y-4">
           <Card title={t("تسوية المبيعات", "Sales Reconciliation")} actions={
             salesPolicy.edit && recon && (
               <button onClick={() => reconEditMode ? saveEdit() : beginEdit()} disabled={patchMut.isPending}

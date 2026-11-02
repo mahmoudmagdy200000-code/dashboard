@@ -66,22 +66,22 @@ export function ProcSuppliers({ }: PageProps) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div><h2 className="text-xl font-bold text-gray-800">{t("الموردون", "Suppliers")}</h2><p className="text-gray-400 text-sm mt-0.5">{suppliers.length} {t("مورد", "suppliers")}</p></div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button onClick={() => exportSuppliersMut.mutate("xlsx")} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><FileText size={11} /> Excel</button>
           <Btn variant="primary" onClick={() => setShowAdd(true)}><Plus size={13} /> {t("إضافة مورد", "Add Supplier")}</Btn>
         </div>
       </div>
       {supKpis && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <KpiCard label={t("موردون نشطون", "Active Suppliers")} value={String(supKpis.activeSuppliers ?? 0)} sub="" icon={<Truck size={18} className="text-emerald-600" />} accent="emerald" />
           <KpiCard label={t("إجمالي المشتريات", "Total Purchases")} value={`${fmtAmt(supKpis.totalPurchases ?? 0)} ${t("ر.س", "SAR")}`} sub="" icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
           <KpiCard label={t("متوسط التقييم", "Avg Rating")} value={`${(supKpis.avgRating ?? 0).toFixed(1)} ★`} sub={t("من 5", "of 5")} icon={<Star size={18} className="text-amber-600" />} accent="amber" />
         </div>
       )}
       {suppliers.length === 0 && <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-10 text-center text-sm text-gray-400">{t("لا يوجد موردون", "No suppliers")}</div>}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {suppliers.map((sup, i) => {
           const active = isActiveOf(sup);
           const stars = starsOf(sup);

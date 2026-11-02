@@ -665,7 +665,7 @@ export function AccCash({ }: PageProps) {
         <button onClick={() => exportCashMut.mutate({ brandId: brandFilter || undefined, branchId: branchFilter || undefined })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><FileText size={12} /> ملخص العهد Excel</button>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label="عدد العهود النشطة" value={String(kpis?.activeCustodies ?? custodies.length)} sub="فروع لديها عهدة" icon={<ArrowLeftRight size={18} className="text-orange-600" />} accent="orange" />
         <KpiCard label="طلبات صرف معلقة" value={String(kpis?.pendingRequests ?? 0)} sub="بانتظار المراجعة والموافقة" icon={<Clock size={18} className="text-amber-600" />} accent="amber" />
         <KpiCard label="عهود قريبة من النفاد" value={String(kpis?.nearDepletion ?? 0)} sub="أقل من 500 ر.س متبقٍ" icon={<AlertTriangle size={18} className="text-red-600" />} accent="red" />
@@ -683,7 +683,7 @@ export function AccCash({ }: PageProps) {
 
       {/* Filter bar */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir="rtl">
-        <div className="grid grid-cols-4 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">بحث — الفرع أو أمين الصندوق</label>
             <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2">

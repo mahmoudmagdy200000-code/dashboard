@@ -105,7 +105,7 @@ export function AccSalesPage({
         )}
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard
           label={t("إجمالي البيانات المرفوعة", "Total Uploaded")}
           value={String(mOps.length)}
@@ -142,7 +142,7 @@ export function AccSalesPage({
 
       {/* Sales financial KPIs (T04 §2) — GET /company/me/sales/kpis */}
       {kpis && (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard
             label={t("إجمالي المبيعات", "Total Sales")}
             value={fmtAmt(Math.round(kpis.totalSalesHalalas / 100))}
@@ -213,7 +213,7 @@ export function AccSalesPage({
         className="bg-white rounded-xl border border-gray-100 shadow-sm p-4"
         dir={dir}
       >
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">
               {t("الفرع", "Branch")}

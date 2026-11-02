@@ -302,7 +302,7 @@ export function AdminSubscriptions({ }: PageProps) {
       )}
 
       {/* Summary KPIs */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard label={t("اشتراكات نشطة", "Active Subscriptions")} value={String(subs.filter(s => s.subStatus === "active").length)} sub="" icon={<CheckCircle2 size={18} className="text-emerald-600" />} accent="emerald" />
         <KpiCard label={t("تنتهي قريباً", "Expiring Soon")} value={String(subs.filter(s => s.subStatus === "warning" || s.subStatus === "danger").length)} sub="" icon={<AlertTriangle size={18} className="text-amber-600" />} accent="amber" />
         <KpiCard label={t("منتهية الاشتراك", "Expired")} value={String(subs.filter(s => s.subStatus === "expired").length)} sub="" icon={<XCircle size={18} className="text-red-500" />} accent="red" />
@@ -380,7 +380,7 @@ export function AdminSubscriptions({ }: PageProps) {
               {/* Expanded detail */}
               {isExp && (
                 <div className="border-t border-gray-200 px-5 py-4 space-y-4 bg-gray-50/50">
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
                       <p className="text-xs font-bold text-gray-500 mb-2">{t("الموديولات الفعّالة", "Active Modules")}</p>
                       <div className="flex flex-wrap gap-1">

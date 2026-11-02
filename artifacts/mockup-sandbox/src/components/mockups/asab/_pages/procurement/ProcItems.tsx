@@ -19,7 +19,7 @@ import { Badge } from "../../components/Badge";
 
 export function ProcItems({ }: PageProps) {
   const { data: apiItems } = useProcurementItemsPlatform();
-  const { t } = useLang();
+  const { t, dir } = useLang();
   const { data: catLookup } = useLookup("supplier-categories");
   const exportItemsMut = useExportProcurementItems();
   const importItemsMut = useImportProcurementItems();
@@ -62,9 +62,9 @@ export function ProcItems({ }: PageProps) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div><h2 className="text-xl font-bold text-gray-800">{t("كتالوج الأصناف", "Item Catalog")}</h2><p className="text-gray-400 text-sm mt-0.5">{filtered.length} {t("صنف", "items")}</p></div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => templateMut.mutate("xlsx")} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-50 text-gray-600 border border-gray-200 text-xs font-semibold hover:bg-gray-100"><Download size={11} /> {t("نموذج", "Template")}</button>
           <label className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer ${importItemsMut.isPending ? "bg-purple-100 text-purple-400 border-purple-100" : "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"}`}>
             <input type="file" accept=".xlsx,.xls,.csv" className="hidden" disabled={importItemsMut.isPending}
@@ -81,8 +81,8 @@ export function ProcItems({ }: PageProps) {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("بحث بالصنف أو التصنيف...", "Search by item or category...")} className="flex-1 text-sm outline-none" />
         </div>
       </div>
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <table className="w-full text-sm" dir="rtl">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
+        <table className="w-full min-w-[650px] text-sm" dir={dir}>
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr className="text-xs text-gray-500">
               <th className="px-4 py-3 text-right">{t("الصنف", "Item")}</th>
@@ -121,7 +121,7 @@ export function ProcItems({ }: PageProps) {
 
       {(showAdd || editId) && (() => {
         const isEdit = !!editId; const f = isEdit ? editForm : form; const setF = isEdit ? setEditForm : setForm; const close = () => isEdit ? setEditId(null) : setShowAdd(false); const busy = isEdit ? updateItemMut.isPending : createItemMut.isPending; return (
-          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={close} dir="rtl">
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={close} dir={dir}>
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-gray-800">{isEdit ? t("تعديل صنف", "Edit Item") : t("إضافة صنف", "Add Item")}</h3><button onClick={close} className="text-gray-400"><XCircle size={18} /></button></div>
               <div className="space-y-3">

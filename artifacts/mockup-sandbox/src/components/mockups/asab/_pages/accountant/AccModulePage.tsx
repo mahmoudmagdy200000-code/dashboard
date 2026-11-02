@@ -32,7 +32,7 @@ export function AccModulePage({ moduleKey, title, navigate, setModal, setDetailI
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label={t("إجمالي البيانات المرفوعة", "Total Uploaded")} value={String(mOps.length)} sub={t("كل الحالات", "All statuses")} icon={<FileText size={18} className="text-purple-600" />} accent="purple" />
         <KpiCard label={t("قيد المراجعة", "Under Review")} value={String(pending.length)} sub={t("رُفعت من الفروع", "Uploaded from branches")} icon={<Clock size={18} className="text-amber-600" />} accent="amber" />
         <KpiCard label={t("تمت الموافقة", "Approved")} value={String(mOps.filter(o => o.status === "approved").length)} sub={t("بانتظار الاعتماد النهائي", "Awaiting final approval")} icon={<CheckCircle2 size={18} className="text-sky-600" />} accent="blue" />

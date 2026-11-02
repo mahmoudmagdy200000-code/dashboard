@@ -451,7 +451,7 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
         )}
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label={t("إجمالي البيانات المرفوعة", "Total Uploaded")} value={String(mOps.length)} sub={t("كل الحالات", "All statuses")} icon={<FileText size={18} className="text-purple-600" />} accent="purple" />
         <KpiCard label={t("قيد المراجعة", "Under Review")} value={String(pending.length)} sub={t("رُفعت من الفروع", "Uploaded from branches")} icon={<Clock size={18} className="text-amber-600" />} accent="amber" />
         <KpiCard label={t("تمت الموافقة", "Approved")} value={String(mOps.filter(o => o.status === "approved" || o.status === "final-approved").length)} sub={t("موافق + معتمد نهائياً", "Approved + Final-approved")} icon={<CheckCircle2 size={18} className="text-sky-600" />} accent="blue" />
@@ -460,7 +460,7 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
 
       {/* Expenses invoice-match KPIs (T05 §2) — GET /company/me/expenses/kpis */}
       {expKpis && (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard label={t("إجمالي المصروفات", "Total Expenses")} value={fmtAmt(Math.round(expKpis.totalHalalas / 100))} sub={`${t("ضريبة", "VAT")} ${fmtAmt(Math.round(expKpis.vat15Halalas / 100))}`} icon={<FileText size={18} className="text-purple-600" />} accent="purple" />
           <KpiCard label={t("فواتير مطابقة", "Matched")} value={String(expKpis.pendingInvoices.matched)} sub={t("قيد المراجعة", "under review")} icon={<CheckCircle2 size={18} className="text-emerald-600" />} accent="emerald" />
           <KpiCard label={t("غير مطابقة", "Mismatch")} value={String(expKpis.pendingInvoices.mismatch)} sub={t("تحتاج تدقيق", "needs audit")} icon={<AlertTriangle size={18} className="text-amber-600" />} accent="amber" />
@@ -469,7 +469,7 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
       )}
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir={dir}>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع", "Branch")}</label>
             <select value={filters.branch} onChange={e => setFilters(p => ({ ...p, branch: e.target.value === t("الكل", "All") ? "" : e.target.value }))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">

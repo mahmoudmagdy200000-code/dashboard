@@ -25,7 +25,7 @@ export function ProcOverview({ navigate }: PageProps) {
   return (
     <div className="space-y-5">
       <div><h2 className="text-xl font-bold text-gray-800">{t("لوحة تحكم المشتريات", "Procurement Dashboard")}</h2><p className="text-gray-400 text-sm mt-0.5">{t("تجميع الطلبات والتنسيق مع الموردين", "Consolidate orders and coordinate with suppliers")}</p></div>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label={t("طلبات جديدة من الفروع", "New Branch Orders")} value={String(fromBranches)} sub={t("بانتظار القرار", "awaiting decision")} icon={<ShoppingCart size={18} className="text-red-600" />} accent="red" />
         <KpiCard label={t("جاهزة للإرسال", "Ready to Send")} value={String(readyToSend)} sub={t("مؤكدة وغير مجمعة", "confirmed & ungrouped")} icon={<Package size={18} className="text-blue-600" />} accent="blue" />
         <KpiCard label={t("مرسلة بانتظار التأكيد", "Sent — Awaiting")} value={String(awaitingConf)} sub={t("لم يتصرف المورد بعد", "supplier not acting yet")} icon={<Truck size={18} className="text-amber-600" />} accent="amber" />

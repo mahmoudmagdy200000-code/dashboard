@@ -87,12 +87,12 @@ export function AdminPermissions({ }: PageProps) {
 
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("مصفوفة الصلاحيات", "Permissions Matrix")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{t("صلاحيات الأدوار", "Role Permissions")} — {editMode ? t("وضع التعديل نشط · اضغط على أي خلية لتغيير الصلاحية", "Edit mode active · click any cell to change permission") : t("للتعديل فعّل وضع التحرير", "Enable edit mode to modify")}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {editMode && changes > 0 && (
             <>
               <Badge className="bg-amber-50 text-amber-700 border border-amber-200">{changes} {t("تعديل معلّق", "pending changes")}</Badge>
@@ -173,7 +173,7 @@ export function AdminPermissions({ }: PageProps) {
             <p className="text-xs text-amber-800 font-semibold">{t("مصفوفة الصلاحيات معتمدة مركزياً بموجب PERM-00 — تعديل أو تدوير الصلاحيات مقيد ويتطلب اعتماداً صريحاً (APPROVAL_REQUIRED)", "Permissions matrix is canonically defined under PERM-00 — modifying or cycling permissions is gated (APPROVAL_REQUIRED)")}</p>
           </div>
         )}
-        <table className="w-full text-xs" dir="rtl">
+        <table className="w-full text-xs min-w-[600px]" dir={dir}>
           <thead>
             <tr className="border-b border-gray-100">
               <th className="px-4 py-3 text-right font-semibold text-gray-500 bg-gray-50 w-44">{t("الموديول", "Module")}</th>

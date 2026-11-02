@@ -202,10 +202,10 @@ export function OwnerReportsPage({ ops }: PageProps) {
 
           {/* Identity header — distinct visual, communicates ERP-only data provenance */}
           <div className="rounded-2xl overflow-hidden shadow-md" style={{ background: "linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#1e3a5f 100%)" }}>
-            <div className="px-8 py-6 flex items-start justify-between">
+            <div className="px-4 sm:px-8 py-4 sm:py-6 flex flex-col sm:flex-row items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center flex-shrink-0">
                     <Eye size={18} className="text-white" />
                   </div>
                   <div>
@@ -217,7 +217,7 @@ export function OwnerReportsPage({ ops }: PageProps) {
                   {t("هذه الصفحة وجهة نهائية للمالك وتُعرض بيانات مُعتمدة نهائياً ومُرحَّلة في ERP حصراً. لا تظهر هنا أي بيانات في طور المراجعة أو الاعتماد أو الانتظار.", "This page is the owner's final destination and displays only fully approved, ERP-posted data. No data under review or pending approval is shown here.")}
                 </p>
               </div>
-              <div className="flex flex-col items-end gap-2">
+              <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 w-full sm:w-auto">
                 <div className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-center">
                   <p className="text-indigo-200 text-[10px] font-semibold">{t("الفترة المالية", "Financial Period")}</p>
                   <p className="text-white font-bold text-sm">{t("أكتوبر 2025", "October 2025")}</p>
@@ -229,7 +229,7 @@ export function OwnerReportsPage({ ops }: PageProps) {
               </div>
             </div>
             {/* Data provenance strip */}
-            <div className="bg-black/20 border-t border-white/10 px-8 py-2.5 flex items-center gap-8 text-[11px] text-indigo-300">
+            <div className="bg-black/20 border-t border-white/10 px-4 sm:px-8 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-indigo-300">
               <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>{t("المصدر: ERP مُعتمد فقط", "Source: Approved ERP only")}</span>
               <span>·</span>
               <span>{t("الأرقام غير المُعتمدة نهائياً مُستبعدة", "Unapproved figures excluded")}</span>

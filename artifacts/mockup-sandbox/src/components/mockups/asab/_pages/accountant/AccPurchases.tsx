@@ -489,7 +489,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
       </div>
 
       {/* KPI cards — real GET /company/me/purchases → meta.kpis (2026-08-09) */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label={t("إجمالي قيمة المشتريات", "Total Purchases")}
           value={purKpis?.totalPurchasesSar != null ? `${(purKpis.totalPurchasesSar / 1000).toFixed(1)}K ${t("ر.س", "SAR")}` : `${(totalVal / 1000).toFixed(1)}K ${t("ر.س", "SAR")}`}
           sub={t("الفترة المحددة", "Selected period")} icon={<ShoppingCart size={18} className="text-blue-600" />} accent="blue" />

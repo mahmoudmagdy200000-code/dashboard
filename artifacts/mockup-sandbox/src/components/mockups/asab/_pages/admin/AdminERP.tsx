@@ -68,7 +68,7 @@ export function AdminERP({ }: PageProps) {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label={t("جاهزة للتصدير", "Ready")} value={String(kpis?.ready ?? 0)} sub={t("بانتظار الترحيل", "awaiting export")} icon={<Clock size={18} className="text-amber-600" />} accent="amber" />
         <KpiCard label={t("صُدِّرت اليوم", "Exported Today")} value={String(kpis?.exportedToday ?? 0)} sub={t("اليوم", "today")} icon={<CheckCircle2 size={18} className="text-emerald-600" />} accent="emerald" />
         <KpiCard label={t("بانتظار رئيس الحسابات", "Awaiting Head")} value={String(kpis?.awaitingHead ?? 0)} sub={t("لم تُعتمد نهائياً", "not final-approved")} icon={<Lock size={18} className="text-blue-600" />} accent="blue" />
@@ -77,7 +77,7 @@ export function AdminERP({ }: PageProps) {
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الحالة", "Status")}</label>
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as typeof statusFilter)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">

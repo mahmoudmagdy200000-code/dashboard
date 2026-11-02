@@ -69,12 +69,12 @@ export function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops
         <span className="text-gray-800 font-semibold">{moduleEmoji[moduleKey] || "📋"} {label}</span>
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{label} — {t("الاعتماد النهائي", "Final Approval")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{t("العمليات الموافق عليها من المحاسبين — تنتظر اعتمادك النهائي", "Operations approved by accountants — awaiting your final approval")}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {/* HA-F23: Export matches head module queue status (approved) */}
           <button onClick={() => exportHeadOpsMut.mutate({ status: "approved", moduleKey, format: "xlsx" })}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 transition-all">
@@ -84,7 +84,7 @@ export function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard label={t("بانتظار الاعتماد", "Awaiting Approval")} value={String(filtered.length)} sub={t("عملية موافق عليها", "approved operations")} icon={<Clock size={18} className="text-amber-600" />} accent="amber" />
         <KpiCard label={t("الإجمالي", "Total")} value={totalAmt != null ? `${(totalAmt / 1000).toFixed(0)}K` : "—"} sub={t("ر.س", "SAR")} icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
         <KpiCard label={t("يوجد فروقات", "Has Differences")} value={String(diffCount)} sub={t("تحتاج مراجعة", "Needs review")} icon={<AlertTriangle size={18} className="text-red-600" />} accent="red" />
@@ -92,7 +92,7 @@ export function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir={dir}>
-        <div className="grid grid-cols-4 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المحاسب المراجع", "Reviewing Accountant")}</label>
             <select value={accFilter} onChange={e => setAccFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">

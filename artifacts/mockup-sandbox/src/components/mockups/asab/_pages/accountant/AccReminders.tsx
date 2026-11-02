@@ -113,7 +113,7 @@ export function AccReminders({ }: PageProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard label="لم تُرسَل بعد" value={String(remSummary?.notSent ?? notSent.length)} sub="تنتظر إجراءً منك" icon={<Bell size={18} className="text-red-600" />} accent="red" />
         <KpiCard label="تم الإرسال" value={String(remSummary?.sent ?? sent.length)} sub="ينتظر رد الفرع" icon={<Send size={18} className="text-amber-600" />} accent="amber" />
         <KpiCard label="تم الرد" value={String(remSummary?.responded ?? responded.length)} sub="استجاب مدير الفرع" icon={<CheckCircle2 size={18} className="text-emerald-600" />} accent="emerald" />
@@ -122,7 +122,7 @@ export function AccReminders({ }: PageProps) {
 
       {/* Filters: Module + Branch search + Brand + Excel */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-        <div className="grid grid-cols-4 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">الموديول</label>
             <select value={filterModule} onChange={e => setFilterModule(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
@@ -314,7 +314,7 @@ export function AutoReminderRules({ moduleLabels }: { moduleLabels: Record<strin
       {showAdd && (
         <div className="px-5 py-4 bg-purple-50/40 border-b border-purple-100">
           <p className="text-xs font-bold text-purple-700 mb-3">➕ قاعدة جديدة</p>
-          <div className="grid grid-cols-3 gap-3 mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
             <div>
               <label className="text-[10px] font-semibold text-gray-500 block mb-1">الموديول</label>
               <select value={newRule.module} onChange={e => setNewRule(p => ({ ...p, module: e.target.value }))} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5">
