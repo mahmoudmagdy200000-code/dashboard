@@ -1,0 +1,800 @@
+[
+  {
+    "surface": "ASABPrototype",
+    "role": "accountant",
+    "screen": "acc-dashboard",
+    "label": "لوحة التحكم",
+    "module": "الرئيسية"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "accountant",
+    "screen": "acc-reminders",
+    "label": "التذكيرات",
+    "module": "الرئيسية"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "accountant",
+    "screen": "acc-sales",
+    "label": "المبيعات",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "accountant",
+    "screen": "acc-expenses",
+    "label": "المصروفات",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "accountant",
+    "screen": "acc-purchases",
+    "label": "المشتريات",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "accountant",
+    "screen": "acc-inventory",
+    "label": "المخزون",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "accountant",
+    "screen": "acc-waste",
+    "label": "الهدر والتالف",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "accountant",
+    "screen": "acc-assets",
+    "label": "الأصول الثابتة",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "accountant",
+    "screen": "acc-shifts",
+    "label": "إدارة الشفتات",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "accountant",
+    "screen": "acc-employees",
+    "label": "كشف حساب الموظفين",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "accountant",
+    "screen": "acc-cash",
+    "label": "إدارة العهد النقدية",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "accountant",
+    "screen": "acc-reports",
+    "label": "التقارير",
+    "module": "التقارير"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-dashboard",
+    "label": "لوحة التحكم",
+    "module": "الرئيسية"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-pending",
+    "label": "بانتظار الاعتماد",
+    "module": "المراجعة والاعتماد"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-approved",
+    "label": "المعتمدة نهائياً",
+    "module": "المراجعة والاعتماد"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-rejected",
+    "label": "المرفوضة",
+    "module": "المراجعة والاعتماد"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-sales",
+    "label": "المبيعات",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-expenses",
+    "label": "المصروفات",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-purchases",
+    "label": "المشتريات",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-inventory",
+    "label": "المخزون",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-waste",
+    "label": "الهدر والتالف",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-assets",
+    "label": "الأصول الثابتة",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-shifts",
+    "label": "الشفتات",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-employees",
+    "label": "كشف حساب الموظفين",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-cash",
+    "label": "العهد النقدية",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-reminders",
+    "label": "التذكيرات",
+    "module": "التذكيرات والتقارير"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-accountants",
+    "label": "أداء المحاسبين",
+    "module": "الإدارة"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-erp",
+    "label": "التصدير لـ ERP",
+    "module": "الإدارة"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "head",
+    "screen": "head-reports",
+    "label": "التقارير",
+    "module": "الإدارة"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "admin",
+    "screen": "admin-overview",
+    "label": "نظرة عامة",
+    "module": "الرئيسية"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "admin",
+    "screen": "admin-users",
+    "label": "المستخدمون",
+    "module": "الإدارة"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "admin",
+    "screen": "admin-restaurants",
+    "label": "المطاعم والفروع",
+    "module": "الإدارة"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "admin",
+    "screen": "admin-branch-requests",
+    "label": "طلبات الفروع",
+    "module": "الإدارة"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "admin",
+    "screen": "admin-subscriptions",
+    "label": "الاشتراكات",
+    "module": "الإدارة"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "admin",
+    "screen": "admin-packages",
+    "label": "الباقات",
+    "module": "الإدارة"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "admin",
+    "screen": "admin-companies",
+    "label": "اشتراكات الشركات",
+    "module": "الإدارة"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "admin",
+    "screen": "admin-permissions",
+    "label": "الصلاحيات",
+    "module": "الإدارة"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "admin",
+    "screen": "admin-reports",
+    "label": "مدير التقارير",
+    "module": "التقارير"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "admin",
+    "screen": "admin-audit",
+    "label": "سجل النشاطات",
+    "module": "التقارير"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "admin",
+    "screen": "admin-erp",
+    "label": "التصدير لـ ERP",
+    "module": "النظام"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "admin",
+    "screen": "admin-settings",
+    "label": "إعدادات النظام",
+    "module": "النظام"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "branch",
+    "screen": "branch-overview",
+    "label": "نظرة عامة",
+    "module": "الرئيسية"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "branch",
+    "screen": "branch-employees",
+    "label": "الموظفون",
+    "module": "إدارة البيانات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "branch",
+    "screen": "branch-items",
+    "label": "الأصناف",
+    "module": "إدارة البيانات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "branch",
+    "screen": "branch-suppliers",
+    "label": "الموردون",
+    "module": "إدارة البيانات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "branch",
+    "screen": "branch-upload",
+    "label": "رفع البيانات",
+    "module": "إدارة البيانات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "branch",
+    "screen": "branch-settings",
+    "label": "إعدادات الفرع",
+    "module": "الإعدادات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "procurement",
+    "screen": "proc-overview",
+    "label": "لوحة التحكم",
+    "module": "الرئيسية"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "procurement",
+    "screen": "proc-new",
+    "label": "الطلبات الجديدة",
+    "module": "الطلبات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "procurement",
+    "screen": "proc-grouped",
+    "label": "الطلبات المجمعة",
+    "module": "الطلبات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "procurement",
+    "screen": "proc-sent",
+    "label": "المرسلة للموردين",
+    "module": "الطلبات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "procurement",
+    "screen": "proc-items",
+    "label": "الأصناف",
+    "module": "الإدارة"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "procurement",
+    "screen": "proc-suppliers",
+    "label": "الموردون",
+    "module": "الإدارة"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "procurement",
+    "screen": "proc-reports",
+    "label": "التقارير",
+    "module": "الإدارة"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "supplier",
+    "screen": "sup-overview",
+    "label": "لوحة التحكم",
+    "module": "الرئيسية"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "supplier",
+    "screen": "sup-new",
+    "label": "الطلبات الجديدة",
+    "module": "الطلبات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "supplier",
+    "screen": "sup-accepted",
+    "label": "المقبولة",
+    "module": "الطلبات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "supplier",
+    "screen": "sup-rejected",
+    "label": "المرفوضة",
+    "module": "الطلبات"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "supplier",
+    "screen": "sup-items",
+    "label": "الأصناف والأسعار",
+    "module": "الكتالوج"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "supplier",
+    "screen": "sup-reports",
+    "label": "تقارير المبيعات",
+    "module": "الكتالوج"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "company-admin",
+    "screen": "ca-dashboard",
+    "label": "الرئيسية",
+    "module": "لوحة التحكم"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "company-admin",
+    "screen": "ca-subscription",
+    "label": "الاشتراك والخطة",
+    "module": "لوحة التحكم"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "company-admin",
+    "screen": "ca-users",
+    "label": "إدارة المستخدمين",
+    "module": "لوحة التحكم"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "company-admin",
+    "screen": "ca-branches",
+    "label": "العلامات والفروع",
+    "module": "لوحة التحكم"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "company-admin",
+    "screen": "ca-modules",
+    "label": "الوحدات النشطة",
+    "module": "لوحة التحكم"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "company-admin",
+    "screen": "ca-billing",
+    "label": "الفواتير والمدفوعات",
+    "module": "المالية"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "company-admin",
+    "screen": "ca-settings",
+    "label": "إعدادات الشركة",
+    "module": "الإعدادات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "company-admin",
+    "screen": "ca-support",
+    "label": "الدعم الفني",
+    "module": "الإعدادات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-dashboard",
+    "label": "لوحة التحكم",
+    "module": "الرئيسية"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-pending",
+    "label": "بانتظار الاعتماد",
+    "module": "الاعتماد"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-approved",
+    "label": "المعتمدة نهائياً",
+    "module": "الاعتماد"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-rejected",
+    "label": "المرفوضة",
+    "module": "الاعتماد"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-sales",
+    "label": "المبيعات",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-expenses",
+    "label": "المصروفات",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-purchases",
+    "label": "المشتريات",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-inventory",
+    "label": "المخزون",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-waste",
+    "label": "الهدر والتالف",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-assets",
+    "label": "الأصول الثابتة",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-shifts",
+    "label": "الشفتات",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-employees",
+    "label": "كشف حساب الموظفين",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-cash",
+    "label": "العهد النقدية",
+    "module": "الموديولات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-reminders",
+    "label": "التذكيرات",
+    "module": "التقارير"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-accountants",
+    "label": "أداء المحاسبين",
+    "module": "التقارير"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-erp",
+    "label": "التصدير لـ ERP",
+    "module": "التقارير"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "head",
+    "screen": "head-reports",
+    "label": "التقارير المالية",
+    "module": "التقارير"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "accountant",
+    "screen": "acc-dashboard",
+    "label": "لوحة التحكم",
+    "module": "الرئيسية"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "accountant",
+    "screen": "acc-reminders",
+    "label": "التذكيرات",
+    "module": "الرئيسية"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "accountant",
+    "screen": "acc-sales",
+    "label": "المبيعات",
+    "module": "الوحدات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "accountant",
+    "screen": "acc-expenses",
+    "label": "المصروفات",
+    "module": "الوحدات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "accountant",
+    "screen": "acc-purchases",
+    "label": "المشتريات",
+    "module": "الوحدات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "accountant",
+    "screen": "acc-inventory",
+    "label": "المخزون",
+    "module": "الوحدات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "accountant",
+    "screen": "acc-waste",
+    "label": "الهدر والتالف",
+    "module": "الوحدات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "accountant",
+    "screen": "acc-assets",
+    "label": "الأصول الثابتة",
+    "module": "الوحدات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "accountant",
+    "screen": "acc-shifts",
+    "label": "إدارة الشفتات",
+    "module": "الوحدات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "accountant",
+    "screen": "acc-employees",
+    "label": "كشف حساب الموظفين",
+    "module": "الوحدات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "accountant",
+    "screen": "acc-cash",
+    "label": "إدارة العهد النقدية",
+    "module": "الوحدات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "accountant",
+    "screen": "acc-reports",
+    "label": "التقارير",
+    "module": "التقارير"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "branch",
+    "screen": "branch-overview",
+    "label": "نظرة عامة",
+    "module": "الرئيسية"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "branch",
+    "screen": "branch-upload",
+    "label": "رفع البيانات",
+    "module": "إدارة البيانات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "branch",
+    "screen": "branch-shifts",
+    "label": "شفتات الفرع",
+    "module": "إدارة البيانات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "branch",
+    "screen": "branch-requests",
+    "label": "طلبات الشراء",
+    "module": "إدارة البيانات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "branch",
+    "screen": "branch-employees",
+    "label": "الموظفون",
+    "module": "إدارة البيانات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "branch",
+    "screen": "branch-items",
+    "label": "الأصناف",
+    "module": "إدارة البيانات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "branch",
+    "screen": "branch-suppliers",
+    "label": "الموردون",
+    "module": "إدارة البيانات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "branch",
+    "screen": "branch-settings",
+    "label": "إعدادات الفرع",
+    "module": "الإعدادات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "procurement",
+    "screen": "proc-overview",
+    "label": "لوحة التحكم",
+    "module": "الرئيسية"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "procurement",
+    "screen": "proc-new",
+    "label": "الطلبات الجديدة",
+    "module": "الطلبات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "procurement",
+    "screen": "proc-grouped",
+    "label": "الطلبات المجمعة",
+    "module": "الطلبات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "procurement",
+    "screen": "proc-sent",
+    "label": "المرسلة للموردين",
+    "module": "الطلبات"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "procurement",
+    "screen": "proc-items",
+    "label": "الأصناف",
+    "module": "الإدارة"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "procurement",
+    "screen": "proc-suppliers",
+    "label": "الموردون",
+    "module": "الإدارة"
+  },
+  {
+    "surface": "CompanyDashboard",
+    "role": "procurement",
+    "screen": "proc-reports",
+    "label": "التقارير",
+    "module": "الإدارة"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "accountant",
+    "screen": "acc-sales-detail",
+    "label": "تفاصيل عملية المبيعات",
+    "module": "المبيعات / صفحة داخلية"
+  },
+  {
+    "surface": "ASABPrototype",
+    "role": "accountant",
+    "screen": "acc-inventory-items",
+    "label": "تحديد أصناف الجرد اليومي",
+    "module": "المخزون / صفحة داخلية"
+  }
+]

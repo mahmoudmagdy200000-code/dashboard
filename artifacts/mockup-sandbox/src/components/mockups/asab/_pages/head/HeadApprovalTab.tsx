@@ -70,9 +70,9 @@ export function HeadApprovalTab({ ops, finalApproveOp, rejectOp, setModal, setDe
           {expanded === g.key && (
             <div>
               {g.ops.map(op => (
-                <div key={op.id} className="flex items-center gap-3 px-5 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                <div key={op.id} className="flex items-center gap-3 flex-wrap sm:flex-nowrap px-5 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                   <span className="font-mono text-xs text-purple-600 font-semibold w-24 flex-shrink-0">{op.id}</span>
-                  <span className="text-sm text-gray-700 flex-1">{op.branch}</span>
+                  <span className="text-sm text-gray-700 flex-1 min-w-0 break-words">{op.branch}</span>
                   <Badge className={`${MATCH_CFG[op.match].cls} border`}>{en ? (op.match === "exact" ? "Exact" : "Diff") : MATCH_CFG[op.match].label}</Badge>
                   <Badge className={STATUS_CFG[op.status].cls}>{en ? (EN_STATUS_CFG[op.status] || STATUS_CFG[op.status].label) : STATUS_CFG[op.status].label}</Badge>
                   <span className="font-mono font-semibold text-gray-800">{fmtAmt(op.amount)} {t("ر.س", "SAR")}</span>

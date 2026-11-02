@@ -88,7 +88,7 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
           </div>
           <div className="flex-1 min-w-0 w-full sm:w-auto">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-sm text-gray-800">{op.branch}</span>
+              <span className="font-semibold text-sm text-gray-800 break-words">{op.branch}</span>
               <span className="text-xs font-mono text-gray-400">{op.id}</span>
               <Badge className={`${MATCH_CFG[op.match].cls} border text-[10px]`}>{en ? (op.match === "exact" ? "Exact" : "Diff") : MATCH_CFG[op.match].label}</Badge>
               {wasCond && <span className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-bold">⚡ {t("اعتماد مشروط", "Conditional Approval")}</span>}

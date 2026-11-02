@@ -23,8 +23,8 @@ export function HeadRejected({ ops }: PageProps) {
           : rejected.map(op => (
             <div key={op.id} className="px-5 py-4 flex items-center gap-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 border-r-4 border-r-red-400">
               <Badge className="bg-purple-50 text-purple-700">{op.moduleLabel}</Badge>
-              <div className="flex-1">
-                <div className="flex items-center gap-2"><span className="font-semibold text-sm text-gray-800">{op.branch}</span><span className="text-xs font-mono text-gray-400">{op.id}</span></div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap"><span className="font-semibold text-sm text-gray-800 break-words">{op.branch}</span><span className="text-xs font-mono text-gray-400">{op.id}</span></div>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge className="bg-red-50 text-red-700">✕ {t("مرفوض", "Rejected")}</Badge>
                   {op.rejectReason && <span className="text-xs text-red-500">{op.rejectReason}</span>}

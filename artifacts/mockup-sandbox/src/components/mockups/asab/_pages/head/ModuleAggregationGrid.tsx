@@ -108,7 +108,7 @@ export function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate: 
         </div>
       </div>
 
-      <div className="p-4 grid grid-cols-4 gap-3">
+      <div className="p-4 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {MODULE_META.map(m => {
           const cardKey = m.key || m.label;
           const mLabel = en ? (EN_MODULE_META[m.label] || m.label) : m.label;
