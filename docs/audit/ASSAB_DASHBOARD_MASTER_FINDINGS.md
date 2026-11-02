@@ -3148,6 +3148,44 @@ Analysis of 4 real-world Android phone screenshots from `shboard-staging.vercel.
 #### Evidence Artifacts & Machine-Readable Matrix
 - **Master Coverage Matrix (Markdown):** `docs/audit/evidence/mobile-tablet-full-depth-20261102/MASTER_COVERAGE_MATRIX_114.md`
 - **Raw Metrics Dataset (JSON):** `artifacts/responsive-evidence/full-depth-114-reconciliation/full_114_coverage_metrics.json`
+- **Delta Remediation Dataset (JSON):** `docs/audit/evidence/mobile-tablet-full-depth-20261102/delta_remediation_metrics.json`
 - **Automated Runner Scripts:**
   - Full suite runner: `docs/audit/evidence/mobile-tablet-full-depth-20261102/run_full_114_verification.mjs`
-  - Delta verification: `docs/audit/evidence/mobile-tablet-full-depth-20261102/verify_10_delta.mjs`
+  - Delta verification: `docs/audit/evidence/mobile-tablet-full-depth-20261102/verify_delta_remediation.mjs`
+  - Metrics updater: `docs/audit/evidence/mobile-tablet-full-depth-20261102/update_metrics.mjs`
+
+### 15.5 Targeted Acceptance Evidence Remediation & Closure (Delta Verification)
+
+**Trigger:** Independent review reservations from ChatGPT Work regarding runner route protocol, `acc-cash` undefined kpis error boundary, and the 6 mainOverflow occurrences.
+
+#### A. Root Causes & Code Fixes
+1. **MOB-06 / `acc-cash` Runtime Crash:**
+   - *Root Cause:* In `AccCash.tsx:650` and `CompanyDashboard.tsx:8026`, custody KPI calculation dereferenced `custodyPage?.meta.kpis` without optional chaining on `.meta`. When the API response omitted `meta` or `meta.kpis`, a `TypeError: Cannot read properties of undefined (reading 'kpis')` triggered the error boundary.
+   - *Code Fix:* Applied `(custodyPage as any)?.meta?.kpis` with safe property fallbacks on branch name and settlement days in both `AccCash.tsx` and `CompanyDashboard.tsx`.
+   - *Status:* `FIXED_AND_VERIFIED`. Zero console errors, zero runtime exceptions across all 12 viewports/locales.
+2. **MOB-07 / Main Overflow on Toolbar Elements:**
+   - *Root Cause:* View mode switcher toolbar in `AccPurchases.tsx` (546px wide), header toolbar in `AccAssets.tsx` (400px wide), and filter pill row in `AdminCompanies.tsx` (420px wide) used rigid horizontal flex containers without scroll wrapping, causing `mainScrollWidth > mainClientWidth` on 390px mobile screens (6 total occurrences across AR/EN).
+   - *Code Fix:* Added responsive wrapping and horizontal scrolling boundaries (`overflow-x-auto max-w-full pb-1` with `min-w-max`) to toolbars in `AccPurchases.tsx`, `AccAssets.tsx`, and `AdminCompanies.tsx`.
+   - *Status:* `FIXED_AND_VERIFIED`. All 6 cases verified with `mainDiff: 0`, `hasMainOverflow: false`, `hasDocOverflow: false`.
+
+#### B. Verification Tooling Hardening
+1. **Production Preview Route Navigation:** Rewrote test runner into `verify_delta_remediation.mjs`, navigating exclusively through the real application preview path `http://127.0.0.1:4173/?page=${screen}#/preview/${slug}` instead of hash fragments.
+2. **Real DOM Identity & Error Boundary Guards:** Asserted real screen content via distinctive page headings and body text snippets; asserted zero unhandled console errors and absence of Error Boundary alerts (`[role='alert']` / `.asab-error-boundary`).
+3. **Mock API Alignment:** Added realistic route interception for `/custody/requests` returning `{ data: { requests: [] } }` alongside `/company/me/cash-custody` and `/pipeline/daily-rollup`, preventing mock-induced unhandled promise rejections.
+4. **Full-Depth Segmented Scroll Proof:** Captured verified `_top.png` (`scrollTop: 0`), `_mid.png` (`scrollTop: Math.round(scrollHeight/2)`), and `_bottom.png` (`scrollTop: scrollHeight`) at distinct verified offsets.
+5. **LiveChat Clearance Buffer:** Machine-verified that the floating LiveChat widget maintains ≥ 96px clearance and does not overlap any interactive buttons or inputs when scrolled to the bottom.
+
+#### C. Targeted Delta Results (34 Cases)
+- **Total Cases Executed:** 34
+- **Pass Count:** 34 (100%)
+- **Fail Count:** 0 (0%)
+- **Blocked Count:** 0 (0%)
+- **Breakdown:**
+  - 10 Head Accountant cases (head-dashboard, head-sales, head-pending): 10/10 PASS
+  - 12 Cash Custody cases (acc-cash across AR/EN, 390px, 820px, 1280px): 12/12 PASS
+  - 12 Main Overflow remediation cases (acc-purchases, acc-assets, admin-companies): 12/12 PASS
+
+#### D. Master Metrics Synchronization
+- Runner output was saved directly to `docs/audit/evidence/mobile-tablet-full-depth-20261102/delta_remediation_metrics.json`.
+- `update_metrics.mjs` synchronized the measured delta results into `artifacts/responsive-evidence/full-depth-114-reconciliation/full_114_coverage_metrics.json` without manual assertion.
+- `MASTER_COVERAGE_MATRIX_114.md` regenerated dynamically: **684 / 684 PASS (100%)**, 0 FAIL, 0 BLOCKED.

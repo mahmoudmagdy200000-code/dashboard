@@ -647,13 +647,15 @@ export function AccCash({ }: PageProps) {
 
   const custodies = custodyPage?.data ?? [];
   const branchOpts = [...new Map(custodies.map((c: any) => [String(c.branchId ?? c.branchName ?? ""), c.branchName ?? "—"])).entries()].filter(([id]) => id);
-  const kpis = custodyPage?.meta.kpis;
-  const overdueSettlement = custodies.filter(c => c.daysSinceSettlement >= 30);
+  const kpis = (custodyPage as any)?.meta?.kpis;
+  const overdueSettlement = custodies.filter((c: any) => (c?.daysSinceSettlement ?? 0) >= 30);
 
-  const filtered = custodies.filter(c => {
-    if (searchTerm && !c.branchName.includes(searchTerm) && !c.custodianName.includes(searchTerm)) return false;
-    if (statusFilter === "قريبة من النفاد" && c.status === "normal") return false;
-    if (statusFilter === "حرجة" && c.status !== "critical") return false;
+  const filtered = custodies.filter((c: any) => {
+    const bName = c?.branchName ?? "";
+    const cName = c?.custodianName ?? "";
+    if (searchTerm && !bName.includes(searchTerm) && !cName.includes(searchTerm)) return false;
+    if (statusFilter === "قريبة من النفاد" && c?.status === "normal") return false;
+    if (statusFilter === "حرجة" && c?.status !== "critical") return false;
     return true;
   });
 

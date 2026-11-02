@@ -1,0 +1,994 @@
+{
+  "timestamp": "2026-11-02T14:57:42.013Z",
+  "totalCases": 34,
+  "passCount": 34,
+  "failCount": 0,
+  "results": [
+    {
+      "surface": "ASABPrototype",
+      "role": "head",
+      "screen": "head-dashboard",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": true,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 3631,
+        "clientHeight": 736,
+        "topY": 0,
+        "midY": 1816,
+        "bottomY": 2895
+      },
+      "screenshots": {
+        "top": "ASABPrototype_head_head-dashboard_ar_390_top.png",
+        "mid": "ASABPrototype_head_head-dashboard_ar_390_mid.png",
+        "bottom": "ASABPrototype_head_head-dashboard_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "head",
+      "screen": "head-sales",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1879,
+        "clientHeight": 736,
+        "topY": 0,
+        "midY": 940,
+        "bottomY": 1143
+      },
+      "screenshots": {
+        "top": "ASABPrototype_head_head-sales_ar_390_top.png",
+        "mid": "ASABPrototype_head_head-sales_ar_390_mid.png",
+        "bottom": "ASABPrototype_head_head-sales_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "head",
+      "screen": "head-pending",
+      "lang": "ar",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "568/568",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": true,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1648,
+        "clientHeight": 914,
+        "topY": 0,
+        "midY": 734,
+        "bottomY": 734
+      },
+      "screenshots": {
+        "top": "ASABPrototype_head_head-pending_ar_820_top.png",
+        "mid": "ASABPrototype_head_head-pending_ar_820_mid.png",
+        "bottom": "ASABPrototype_head_head-pending_ar_820_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "head",
+      "screen": "head-dashboard",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": true,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 3788,
+        "clientHeight": 736,
+        "topY": 0,
+        "midY": 1894,
+        "bottomY": 3052
+      },
+      "screenshots": {
+        "top": "ASABPrototype_head_head-dashboard_en_390_top.png",
+        "mid": "ASABPrototype_head_head-dashboard_en_390_mid.png",
+        "bottom": "ASABPrototype_head_head-dashboard_en_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "head",
+      "screen": "head-sales",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1899,
+        "clientHeight": 736,
+        "topY": 0,
+        "midY": 950,
+        "bottomY": 1163
+      },
+      "screenshots": {
+        "top": "ASABPrototype_head_head-sales_en_390_top.png",
+        "mid": "ASABPrototype_head_head-sales_en_390_mid.png",
+        "bottom": "ASABPrototype_head_head-sales_en_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "head",
+      "screen": "head-pending",
+      "lang": "en",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "568/568",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": true,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1664,
+        "clientHeight": 914,
+        "topY": 0,
+        "midY": 750,
+        "bottomY": 750
+      },
+      "screenshots": {
+        "top": "ASABPrototype_head_head-pending_en_820_top.png",
+        "mid": "ASABPrototype_head_head-pending_en_820_mid.png",
+        "bottom": "ASABPrototype_head_head-pending_en_820_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "head",
+      "screen": "head-dashboard",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": true,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1357,
+        "clientHeight": 738,
+        "topY": 0,
+        "midY": 619,
+        "bottomY": 619
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_head_head-dashboard_ar_390_top.png",
+        "mid": "CompanyDashboard_head_head-dashboard_ar_390_mid.png",
+        "bottom": "CompanyDashboard_head_head-dashboard_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "head",
+      "screen": "head-dashboard",
+      "lang": "ar",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "580/580",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": true,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1028,
+        "clientHeight": 926,
+        "topY": 0,
+        "midY": 102,
+        "bottomY": 102
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_head_head-dashboard_ar_820_top.png",
+        "mid": "CompanyDashboard_head_head-dashboard_ar_820_mid.png",
+        "bottom": "CompanyDashboard_head_head-dashboard_ar_820_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "head",
+      "screen": "head-dashboard",
+      "lang": "ar",
+      "width": 1280,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "1280/1280",
+      "mainWidths": "1040/1040",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": true,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 826,
+        "clientHeight": 734,
+        "topY": 0,
+        "midY": 92,
+        "bottomY": 92
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_head_head-dashboard_ar_1280_top.png",
+        "mid": "CompanyDashboard_head_head-dashboard_ar_1280_mid.png",
+        "bottom": "CompanyDashboard_head_head-dashboard_ar_1280_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "head",
+      "screen": "head-dashboard",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": true,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1393,
+        "clientHeight": 738,
+        "topY": 0,
+        "midY": 655,
+        "bottomY": 655
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_head_head-dashboard_en_390_top.png",
+        "mid": "CompanyDashboard_head_head-dashboard_en_390_mid.png",
+        "bottom": "CompanyDashboard_head_head-dashboard_en_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1564,
+        "clientHeight": 736,
+        "topY": 0,
+        "midY": 782,
+        "bottomY": 828
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-cash_ar_390_top.png",
+        "mid": "ASABPrototype_accountant_acc-cash_ar_390_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-cash_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "ar",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "568/568",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1130,
+        "clientHeight": 914,
+        "topY": 0,
+        "midY": 216,
+        "bottomY": 216
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-cash_ar_820_top.png",
+        "mid": "ASABPrototype_accountant_acc-cash_ar_820_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-cash_ar_820_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "ar",
+      "width": 1280,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "1280/1280",
+      "mainWidths": "1028/1028",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 855,
+        "clientHeight": 734,
+        "topY": 0,
+        "midY": 121,
+        "bottomY": 121
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-cash_ar_1280_top.png",
+        "mid": "ASABPrototype_accountant_acc-cash_ar_1280_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-cash_ar_1280_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1482,
+        "clientHeight": 736,
+        "topY": 0,
+        "midY": 741,
+        "bottomY": 746
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-cash_en_390_top.png",
+        "mid": "ASABPrototype_accountant_acc-cash_en_390_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-cash_en_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "en",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "568/568",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1103,
+        "clientHeight": 914,
+        "topY": 0,
+        "midY": 189,
+        "bottomY": 189
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-cash_en_820_top.png",
+        "mid": "ASABPrototype_accountant_acc-cash_en_820_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-cash_en_820_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "en",
+      "width": 1280,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "1280/1280",
+      "mainWidths": "1028/1028",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 855,
+        "clientHeight": 734,
+        "topY": 0,
+        "midY": 121,
+        "bottomY": 121
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-cash_en_1280_top.png",
+        "mid": "ASABPrototype_accountant_acc-cash_en_1280_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-cash_en_1280_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1055,
+        "clientHeight": 738,
+        "topY": 0,
+        "midY": 317,
+        "bottomY": 317
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-cash_ar_390_top.png",
+        "mid": "CompanyDashboard_accountant_acc-cash_ar_390_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-cash_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "ar",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "580/580",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 926,
+        "clientHeight": 926,
+        "topY": 0,
+        "midY": 0,
+        "bottomY": 0
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-cash_ar_820_top.png",
+        "mid": "CompanyDashboard_accountant_acc-cash_ar_820_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-cash_ar_820_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "ar",
+      "width": 1280,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "1280/1280",
+      "mainWidths": "1040/1040",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 833,
+        "clientHeight": 734,
+        "topY": 0,
+        "midY": 99,
+        "bottomY": 99
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-cash_ar_1280_top.png",
+        "mid": "CompanyDashboard_accountant_acc-cash_ar_1280_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-cash_ar_1280_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1005,
+        "clientHeight": 738,
+        "topY": 0,
+        "midY": 267,
+        "bottomY": 267
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-cash_en_390_top.png",
+        "mid": "CompanyDashboard_accountant_acc-cash_en_390_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-cash_en_390_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "en",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "580/580",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 926,
+        "clientHeight": 926,
+        "topY": 0,
+        "midY": 0,
+        "bottomY": 0
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-cash_en_820_top.png",
+        "mid": "CompanyDashboard_accountant_acc-cash_en_820_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-cash_en_820_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "en",
+      "width": 1280,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "1280/1280",
+      "mainWidths": "1040/1040",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 833,
+        "clientHeight": 734,
+        "topY": 0,
+        "midY": 99,
+        "bottomY": 99
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-cash_en_1280_top.png",
+        "mid": "CompanyDashboard_accountant_acc-cash_en_1280_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-cash_en_1280_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-purchases",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1614,
+        "clientHeight": 738,
+        "topY": 0,
+        "midY": 807,
+        "bottomY": 876
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-purchases_ar_390_top.png",
+        "mid": "CompanyDashboard_accountant_acc-purchases_ar_390_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-purchases_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-purchases",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1614,
+        "clientHeight": 738,
+        "topY": 0,
+        "midY": 807,
+        "bottomY": 876
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-purchases_en_390_top.png",
+        "mid": "CompanyDashboard_accountant_acc-purchases_en_390_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-purchases_en_390_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-purchases",
+      "lang": "ar",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "580/580",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1010,
+        "clientHeight": 958,
+        "topY": 0,
+        "midY": 82,
+        "bottomY": 82
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-purchases_ar_820_top.png",
+        "mid": "CompanyDashboard_accountant_acc-purchases_ar_820_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-purchases_ar_820_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-purchases",
+      "lang": "en",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "580/580",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1008,
+        "clientHeight": 926,
+        "topY": 0,
+        "midY": 82,
+        "bottomY": 82
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-purchases_en_820_top.png",
+        "mid": "CompanyDashboard_accountant_acc-purchases_en_820_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-purchases_en_820_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-assets",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1023,
+        "clientHeight": 738,
+        "topY": 0,
+        "midY": 285,
+        "bottomY": 285
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-assets_ar_390_top.png",
+        "mid": "CompanyDashboard_accountant_acc-assets_ar_390_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-assets_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-assets",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1023,
+        "clientHeight": 738,
+        "topY": 0,
+        "midY": 285,
+        "bottomY": 285
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-assets_en_390_top.png",
+        "mid": "CompanyDashboard_accountant_acc-assets_en_390_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-assets_en_390_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-assets",
+      "lang": "ar",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "580/580",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 926,
+        "clientHeight": 926,
+        "topY": 0,
+        "midY": 0,
+        "bottomY": 0
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-assets_ar_820_top.png",
+        "mid": "CompanyDashboard_accountant_acc-assets_ar_820_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-assets_ar_820_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-assets",
+      "lang": "en",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "580/580",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 926,
+        "clientHeight": 926,
+        "topY": 0,
+        "midY": 0,
+        "bottomY": 0
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-assets_en_820_top.png",
+        "mid": "CompanyDashboard_accountant_acc-assets_en_820_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-assets_en_820_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "admin",
+      "screen": "admin-companies",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1016,
+        "clientHeight": 748,
+        "topY": 0,
+        "midY": 268,
+        "bottomY": 268
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_admin_admin-companies_ar_390_top.png",
+        "mid": "CompanyDashboard_admin_admin-companies_ar_390_mid.png",
+        "bottom": "CompanyDashboard_admin_admin-companies_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "admin",
+      "screen": "admin-companies",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 1064,
+        "clientHeight": 748,
+        "topY": 0,
+        "midY": 316,
+        "bottomY": 316
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_admin_admin-companies_en_390_top.png",
+        "mid": "CompanyDashboard_admin_admin-companies_en_390_mid.png",
+        "bottom": "CompanyDashboard_admin_admin-companies_en_390_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "admin",
+      "screen": "admin-companies",
+      "lang": "ar",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "568/568",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 926,
+        "clientHeight": 926,
+        "topY": 0,
+        "midY": 0,
+        "bottomY": 0
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_admin_admin-companies_ar_820_top.png",
+        "mid": "CompanyDashboard_admin_admin-companies_ar_820_mid.png",
+        "bottom": "CompanyDashboard_admin_admin-companies_ar_820_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "admin",
+      "screen": "admin-companies",
+      "lang": "en",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "568/568",
+      "hasErrorBoundary": false,
+      "hasExpectedContent": true,
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollPositions": {
+        "totalHeight": 926,
+        "clientHeight": 926,
+        "topY": 0,
+        "midY": 0,
+        "bottomY": 0
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_admin_admin-companies_en_820_top.png",
+        "mid": "CompanyDashboard_admin_admin-companies_en_820_mid.png",
+        "bottom": "CompanyDashboard_admin_admin-companies_en_820_bottom.png"
+      }
+    }
+  ]
+}

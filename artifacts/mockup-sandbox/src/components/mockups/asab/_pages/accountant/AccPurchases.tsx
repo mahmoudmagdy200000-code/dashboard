@@ -501,8 +501,8 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
       </div>
 
       {/* View mode tabs */}
-      <div className="flex items-center justify-between">
-        <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
+      <div className="flex items-center justify-between overflow-x-auto max-w-full pb-1">
+        <div className="flex bg-gray-100 rounded-xl p-1 gap-1 flex-nowrap min-w-max">
           {([["supplier", `🏭 ${t("عرض حسب المورد", "By Supplier")}`], ["branch", `🏪 ${t("عرض حسب الفرع", "By Branch")}`], ["suppliers", `📇 ${t("الموردون المعتمدون", "Suppliers")}`], ["returns", `↩️ ${t("المرتجعات", "Returns")}`]] as const).map(([mode, label]) => (
             <button key={mode} onClick={() => { setViewMode(mode); setExpandedId(null); }}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === mode ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>

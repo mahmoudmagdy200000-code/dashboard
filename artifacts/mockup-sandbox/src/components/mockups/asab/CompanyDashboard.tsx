@@ -8023,7 +8023,7 @@ function AccCompanyCash() {
   const exportCashMut = useExportCash();
 
   const custodies = custodyPage?.data ?? [];
-  const kpis = custodyPage?.meta.kpis;
+  const kpis = (custodyPage as any)?.meta?.kpis;
 
   const filtered = custodies.filter(c=>{
     if(statusFilter==="قريبة من النفاد" && c.status==="normal") return false;
