@@ -1,0 +1,658 @@
+{"key":"ASABPrototype|accountant|acc-dashboard|ar|390","status":"PASS","header":"لوحة التحكم محاسب EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"لوحة التحكم","errors":[]}
+{"key":"ASABPrototype|accountant|acc-sales|ar|390","status":"PASS","header":"المبيعات محاسب EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"المبيعات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-reminders|ar|390","status":"PASS","header":"التذكيرات محاسب EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"التذكيرات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-expenses|ar|390","status":"PASS","header":"المصروفات محاسب EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"المصروفات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-inventory|ar|390","status":"PASS","header":"المخزون محاسب EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"المخزون","errors":[]}
+{"key":"ASABPrototype|accountant|acc-waste|ar|390","status":"PASS","header":"الهدر والتالف محاسب EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"الهدر والتالف","errors":[]}
+{"key":"ASABPrototype|accountant|acc-shifts|ar|390","status":"PASS","header":"إدارة الشفتات محاسب EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"إدارة الشفتات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-reports|ar|390","status":"PASS","header":"التقارير محاسب EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"التقارير","errors":[]}
+{"key":"ASABPrototype|accountant|acc-employees|ar|390","status":"PASS","header":"كشف حساب الموظفين محاسب EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"كشف حساب الموظفين","errors":[]}
+{"key":"ASABPrototype|accountant|acc-inventory-items|ar|390","status":"PASS","header":"تحديد أصناف الجرد اليومي محاسب EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"تحديد أصناف الجرد اليومي","errors":[]}
+{"key":"ASABPrototype|accountant|acc-sales-detail|ar|390","status":"PASS","header":"تفاصيل عملية المبيعات محاسب EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"تفاصيل عملية المبيعات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-dashboard|ar|820","status":"PASS","header":"لوحة التحكم محاسب / لوحة التحكم الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"لوحة التحكم","errors":[]}
+{"key":"ASABPrototype|accountant|acc-reminders|ar|820","status":"PASS","header":"التذكيرات محاسب / التذكيرات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"التذكيرات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-expenses|ar|820","status":"PASS","header":"المصروفات محاسب / المصروفات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"المصروفات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-sales|ar|820","status":"PASS","header":"المبيعات محاسب / المبيعات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"المبيعات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-waste|ar|820","status":"PASS","header":"الهدر والتالف محاسب / الهدر والتالف الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"الهدر والتالف","errors":[]}
+{"key":"ASABPrototype|accountant|acc-inventory|ar|820","status":"PASS","header":"المخزون محاسب / المخزون الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"المخزون","errors":[]}
+{"key":"ASABPrototype|accountant|acc-purchases|ar|820","status":"PASS","header":"المشتريات محاسب / المشتريات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"المشتريات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-shifts|ar|820","status":"PASS","header":"إدارة الشفتات محاسب / إدارة الشفتات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"إدارة الشفتات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-assets|ar|820","status":"PASS","header":"الأصول الثابتة محاسب / الأصول الثابتة الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"الأصول الثابتة","errors":[]}
+{"key":"ASABPrototype|accountant|acc-employees|ar|820","status":"PASS","header":"كشف حساب الموظفين محاسب / كشف حساب الموظفين الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"كشف حساب الموظفين","errors":[]}
+{"key":"ASABPrototype|accountant|acc-reports|ar|820","status":"PASS","header":"التقارير محاسب / التقارير الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"التقارير","errors":[]}
+{"key":"ASABPrototype|accountant|acc-sales-detail|ar|820","status":"PASS","header":"تفاصيل عملية المبيعات محاسب / تفاصيل عملية المبيعات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"تفاصيل عملية المبيعات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-inventory-items|ar|820","status":"PASS","header":"تحديد أصناف الجرد اليومي محاسب / تحديد أصناف الجرد اليومي الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"تحديد أصناف الجرد اليومي","errors":[]}
+{"key":"ASABPrototype|accountant|acc-reminders|ar|1280","status":"PASS","header":"التذكيرات محاسب التذكيرات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"التذكيرات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-dashboard|ar|1280","status":"PASS","header":"لوحة التحكم محاسب لوحة التحكم الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"لوحة التحكم","errors":[]}
+{"key":"ASABPrototype|accountant|acc-sales|ar|1280","status":"PASS","header":"المبيعات محاسب المبيعات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"المبيعات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-purchases|ar|1280","status":"PASS","header":"المشتريات محاسب المشتريات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"المشتريات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-inventory|ar|1280","status":"PASS","header":"المخزون محاسب المخزون الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"المخزون","errors":[]}
+{"key":"ASABPrototype|accountant|acc-expenses|ar|1280","status":"PASS","header":"المصروفات محاسب المصروفات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"المصروفات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-waste|ar|1280","status":"PASS","header":"الهدر والتالف محاسب الهدر والتالف الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"الهدر والتالف","errors":[]}
+{"key":"ASABPrototype|accountant|acc-assets|ar|1280","status":"PASS","header":"الأصول الثابتة محاسب الأصول الثابتة الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"الأصول الثابتة","errors":[]}
+{"key":"ASABPrototype|accountant|acc-employees|ar|1280","status":"PASS","header":"كشف حساب الموظفين محاسب كشف حساب الموظفين الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"كشف حساب الموظفين","errors":[]}
+{"key":"ASABPrototype|accountant|acc-reports|ar|1280","status":"PASS","header":"التقارير محاسب التقارير الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"التقارير","errors":[]}
+{"key":"ASABPrototype|accountant|acc-sales-detail|ar|1280","status":"PASS","header":"تفاصيل عملية المبيعات محاسب تفاصيل عملية المبيعات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"تفاصيل عملية المبيعات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-shifts|ar|1280","status":"PASS","header":"إدارة الشفتات محاسب إدارة الشفتات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"إدارة الشفتات","errors":[]}
+{"key":"ASABPrototype|accountant|acc-inventory-items|ar|1280","status":"PASS","header":"تحديد أصناف الجرد اليومي محاسب تحديد أصناف الجرد اليومي الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"تحديد أصناف الجرد اليومي","errors":[]}
+{"key":"ASABPrototype|accountant|acc-reminders|en|390","status":"PASS","header":"Reminders Accountant عربي All This Month This Week Today","expected":"Reminders","errors":[]}
+{"key":"ASABPrototype|accountant|acc-dashboard|en|390","status":"PASS","header":"Dashboard Accountant عربي All This Month This Week Today","expected":"Dashboard","errors":[]}
+{"key":"ASABPrototype|accountant|acc-sales|en|390","status":"PASS","header":"Sales Accountant عربي All This Month This Week Today","expected":"Sales","errors":[]}
+{"key":"ASABPrototype|accountant|acc-expenses|en|390","status":"PASS","header":"Expenses Accountant عربي All This Month This Week Today","expected":"Expenses","errors":[]}
+{"key":"ASABPrototype|accountant|acc-inventory|en|390","status":"PASS","header":"Inventory Accountant عربي All This Month This Week Today","expected":"Inventory","errors":[]}
+{"key":"ASABPrototype|accountant|acc-waste|en|390","status":"PASS","header":"Waste & Spoilage Accountant عربي All This Month This Week Today","expected":"Waste & Spoilage","errors":[]}
+{"key":"ASABPrototype|accountant|acc-assets|en|390","status":"PASS","header":"Fixed Assets Accountant عربي All This Month This Week Today","expected":"Fixed Assets","errors":[]}
+{"key":"ASABPrototype|accountant|acc-shifts|en|390","status":"PASS","header":"Shift Management Accountant عربي All This Month This Week Today","expected":"Shift Management","errors":[]}
+{"key":"ASABPrototype|accountant|acc-employees|en|390","status":"PASS","header":"Employee Accounts Accountant عربي All This Month This Week Today","expected":"Employee Accounts","errors":[]}
+{"key":"ASABPrototype|accountant|acc-reports|en|390","status":"PASS","header":"Reports Accountant عربي All This Month This Week Today","expected":"Reports","errors":[]}
+{"key":"ASABPrototype|accountant|acc-sales-detail|en|390","status":"FAIL","header":"Sales Operation Details Accountant عربي All This Month This Week Today","expected":"تفاصيل عملية المبيعات","errors":[],"requests":["/api/v1/auth/me","/api/v1/company/me/notifications","/api/v1/company/me/asset-drafts","/api/v1/accountant/operations"]}
+{"key":"ASABPrototype|accountant|acc-inventory-items|en|390","status":"FAIL","header":"Select Daily Inventory Items Accountant عربي All This Month This Week Today","expected":"تحديد أصناف الجرد اليومي","errors":[],"requests":["/api/v1/auth/me","/api/v1/company/me/notifications","/api/v1/accountant/inventory","/api/v1/accountant/inventory/brands","/api/v1/accountant/inventory/catalog","/api/v1/company/me/asset-drafts","/api/v1/accountant/operations"]}
+{"key":"ASABPrototype|accountant|acc-reminders|en|820","status":"PASS","header":"Reminders Accountant / Reminders Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Reminders","errors":[]}
+{"key":"ASABPrototype|accountant|acc-dashboard|en|820","status":"PASS","header":"Dashboard Accountant / Dashboard Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Dashboard","errors":[]}
+{"key":"ASABPrototype|accountant|acc-sales|en|820","status":"PASS","header":"Sales Accountant / Sales Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Sales","errors":[]}
+{"key":"ASABPrototype|accountant|acc-expenses|en|820","status":"PASS","header":"Expenses Accountant / Expenses Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Expenses","errors":[]}
+{"key":"ASABPrototype|accountant|acc-inventory|en|820","status":"PASS","header":"Inventory Accountant / Inventory Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Inventory","errors":[]}
+{"key":"ASABPrototype|accountant|acc-waste|en|820","status":"PASS","header":"Waste & Spoilage Accountant / Waste & Spoilage Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Waste & Spoilage","errors":[]}
+{"key":"ASABPrototype|accountant|acc-assets|en|820","status":"PASS","header":"Fixed Assets Accountant / Fixed Assets Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Fixed Assets","errors":[]}
+{"key":"ASABPrototype|accountant|acc-shifts|en|820","status":"PASS","header":"Shift Management Accountant / Shift Management Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Shift Management","errors":[]}
+{"key":"ASABPrototype|accountant|acc-employees|en|820","status":"PASS","header":"Employee Accounts Accountant / Employee Accounts Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Employee Accounts","errors":[]}
+{"key":"ASABPrototype|accountant|acc-sales-detail|en|820","status":"FAIL","header":"Sales Operation Details Accountant / Sales Operation Details Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"تفاصيل عملية المبيعات","errors":[],"requests":["/api/v1/auth/me","/api/v1/company/me/notifications","/api/v1/company/me/asset-drafts","/api/v1/accountant/operations"]}
+{"key":"ASABPrototype|accountant|acc-reports|en|820","status":"PASS","header":"Reports Accountant / Reports Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Reports","errors":[]}
+{"key":"ASABPrototype|accountant|acc-inventory-items|en|820","status":"FAIL","header":"Select Daily Inventory Items Accountant / Select Daily Inventory Items Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"تحديد أصناف الجرد اليومي","errors":[],"requests":["/api/v1/auth/me","/api/v1/company/me/notifications","/api/v1/accountant/inventory","/api/v1/accountant/inventory/brands","/api/v1/accountant/inventory/catalog","/api/v1/company/me/asset-drafts","/api/v1/accountant/operations"]}
+{"key":"ASABPrototype|accountant|acc-dashboard|en|1280","status":"PASS","header":"Dashboard Accountant Dashboard Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Dashboard","errors":[]}
+{"key":"ASABPrototype|accountant|acc-reminders|en|1280","status":"PASS","header":"Reminders Accountant Reminders Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Reminders","errors":[]}
+{"key":"ASABPrototype|accountant|acc-sales|en|1280","status":"PASS","header":"Sales Accountant Sales Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Sales","errors":[]}
+{"key":"ASABPrototype|accountant|acc-inventory|en|1280","status":"PASS","header":"Inventory Accountant Inventory Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Inventory","errors":[]}
+{"key":"ASABPrototype|accountant|acc-expenses|en|1280","status":"PASS","header":"Expenses Accountant Expenses Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Expenses","errors":[]}
+{"key":"ASABPrototype|accountant|acc-waste|en|1280","status":"PASS","header":"Waste & Spoilage Accountant Waste & Spoilage Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Waste & Spoilage","errors":[]}
+{"key":"ASABPrototype|accountant|acc-purchases|en|1280","status":"PASS","header":"Purchases Accountant Purchases Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Purchases","errors":[]}
+{"key":"ASABPrototype|accountant|acc-assets|en|1280","status":"PASS","header":"Fixed Assets Accountant Fixed Assets Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Fixed Assets","errors":[]}
+{"key":"ASABPrototype|accountant|acc-shifts|en|1280","status":"PASS","header":"Shift Management Accountant Shift Management Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Shift Management","errors":[]}
+{"key":"ASABPrototype|accountant|acc-employees|en|1280","status":"PASS","header":"Employee Accounts Accountant Employee Accounts Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Employee Accounts","errors":[]}
+{"key":"ASABPrototype|accountant|acc-reports|en|1280","status":"PASS","header":"Reports Accountant Reports Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Reports","errors":[]}
+{"key":"ASABPrototype|accountant|acc-sales-detail|en|1280","status":"FAIL","header":"Sales Operation Details Accountant Sales Operation Details Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"تفاصيل عملية المبيعات","errors":[],"requests":["/api/v1/auth/me","/api/v1/company/me/notifications","/api/v1/company/me/asset-drafts","/api/v1/accountant/operations"]}
+{"key":"ASABPrototype|accountant|acc-inventory-items|en|1280","status":"FAIL","header":"Select Daily Inventory Items Accountant Select Daily Inventory Items Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"تحديد أصناف الجرد اليومي","errors":[],"requests":["/api/v1/auth/me","/api/v1/company/me/notifications","/api/v1/accountant/inventory","/api/v1/accountant/inventory/brands","/api/v1/accountant/inventory/catalog","/api/v1/company/me/asset-drafts","/api/v1/accountant/operations"]}
+{"key":"ASABPrototype|head|head-pending|ar|390","status":"PASS","header":"بانتظار الاعتماد رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"بانتظار الاعتماد","errors":[]}
+{"key":"ASABPrototype|head|head-approved|ar|390","status":"PASS","header":"المعتمدة نهائياً رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"المعتمدة نهائياً","errors":[]}
+{"key":"ASABPrototype|head|head-rejected|ar|390","status":"PASS","header":"المرفوضة رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"المرفوضة","errors":[]}
+{"key":"ASABPrototype|head|head-expenses|ar|390","status":"PASS","header":"المصروفات رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"المصروفات","errors":[]}
+{"key":"ASABPrototype|head|head-waste|ar|390","status":"PASS","header":"الهدر والتالف رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"الهدر والتالف","errors":[]}
+{"key":"ASABPrototype|head|head-inventory|ar|390","status":"PASS","header":"المخزون رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"المخزون","errors":[]}
+{"key":"ASABPrototype|head|head-purchases|ar|390","status":"PASS","header":"المشتريات رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"المشتريات","errors":[]}
+{"key":"ASABPrototype|head|head-assets|ar|390","status":"PASS","header":"الأصول الثابتة رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"الأصول الثابتة","errors":[]}
+{"key":"ASABPrototype|head|head-shifts|ar|390","status":"PASS","header":"الشفتات رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"الشفتات","errors":[]}
+{"key":"ASABPrototype|head|head-employees|ar|390","status":"PASS","header":"كشف حساب الموظفين رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"كشف حساب الموظفين","errors":[]}
+{"key":"ASABPrototype|head|head-cash|ar|390","status":"PASS","header":"العهد النقدية رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"العهد النقدية","errors":[]}
+{"key":"ASABPrototype|head|head-accountants|ar|390","status":"PASS","header":"أداء المحاسبين رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"أداء المحاسبين","errors":[]}
+{"key":"ASABPrototype|head|head-reminders|ar|390","status":"PASS","header":"التذكيرات رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"التذكيرات","errors":[]}
+{"key":"ASABPrototype|head|head-reports|ar|390","status":"PASS","header":"التقارير رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"التقارير","errors":[]}
+{"key":"ASABPrototype|head|head-erp|ar|390","status":"PASS","header":"التصدير لـ ERP رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"التصدير لـ ERP","errors":[]}
+{"key":"ASABPrototype|head|head-dashboard|ar|820","status":"PASS","header":"لوحة التحكم رئيس الحسابات / لوحة التحكم الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"لوحة التحكم","errors":[]}
+{"key":"ASABPrototype|head|head-approved|ar|820","status":"PASS","header":"المعتمدة نهائياً رئيس الحسابات / المعتمدة نهائياً الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"المعتمدة نهائياً","errors":[]}
+{"key":"ASABPrototype|head|head-rejected|ar|820","status":"PASS","header":"المرفوضة رئيس الحسابات / المرفوضة الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"المرفوضة","errors":[]}
+{"key":"ASABPrototype|head|head-sales|ar|820","status":"PASS","header":"المبيعات رئيس الحسابات / المبيعات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"المبيعات","errors":[]}
+{"key":"ASABPrototype|head|head-purchases|ar|820","status":"PASS","header":"المشتريات رئيس الحسابات / المشتريات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"المشتريات","errors":[]}
+{"key":"ASABPrototype|head|head-expenses|ar|820","status":"PASS","header":"المصروفات رئيس الحسابات / المصروفات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"المصروفات","errors":[]}
+{"key":"ASABPrototype|head|head-inventory|ar|820","status":"PASS","header":"المخزون رئيس الحسابات / المخزون الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"المخزون","errors":[]}
+{"key":"ASABPrototype|head|head-waste|ar|820","status":"PASS","header":"الهدر والتالف رئيس الحسابات / الهدر والتالف الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"الهدر والتالف","errors":[]}
+{"key":"ASABPrototype|head|head-assets|ar|820","status":"PASS","header":"الأصول الثابتة رئيس الحسابات / الأصول الثابتة الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"الأصول الثابتة","errors":[]}
+{"key":"ASABPrototype|head|head-shifts|ar|820","status":"PASS","header":"الشفتات رئيس الحسابات / الشفتات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"الشفتات","errors":[]}
+{"key":"ASABPrototype|head|head-employees|ar|820","status":"PASS","header":"كشف حساب الموظفين رئيس الحسابات / كشف حساب الموظفين الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"كشف حساب الموظفين","errors":[]}
+{"key":"ASABPrototype|head|head-cash|ar|820","status":"PASS","header":"العهد النقدية رئيس الحسابات / العهد النقدية الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"العهد النقدية","errors":[]}
+{"key":"ASABPrototype|head|head-reminders|ar|820","status":"PASS","header":"التذكيرات رئيس الحسابات / التذكيرات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"التذكيرات","errors":[]}
+{"key":"ASABPrototype|head|head-erp|ar|820","status":"PASS","header":"التصدير لـ ERP رئيس الحسابات / التصدير لـ ERP الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"التصدير لـ ERP","errors":[]}
+{"key":"ASABPrototype|head|head-accountants|ar|820","status":"PASS","header":"أداء المحاسبين رئيس الحسابات / أداء المحاسبين الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"أداء المحاسبين","errors":[]}
+{"key":"ASABPrototype|head|head-reports|ar|820","status":"PASS","header":"التقارير رئيس الحسابات / التقارير الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"التقارير","errors":[]}
+{"key":"ASABPrototype|head|head-dashboard|ar|1280","status":"PASS","header":"لوحة التحكم رئيس الحسابات لوحة التحكم الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"لوحة التحكم","errors":[]}
+{"key":"ASABPrototype|head|head-pending|ar|1280","status":"PASS","header":"بانتظار الاعتماد رئيس الحسابات بانتظار الاعتماد الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"بانتظار الاعتماد","errors":[]}
+{"key":"ASABPrototype|head|head-approved|ar|1280","status":"PASS","header":"المعتمدة نهائياً رئيس الحسابات المعتمدة نهائياً الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"المعتمدة نهائياً","errors":[]}
+{"key":"ASABPrototype|head|head-rejected|ar|1280","status":"PASS","header":"المرفوضة رئيس الحسابات المرفوضة الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"المرفوضة","errors":[]}
+{"key":"ASABPrototype|head|head-sales|ar|1280","status":"PASS","header":"المبيعات رئيس الحسابات المبيعات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"المبيعات","errors":[]}
+{"key":"ASABPrototype|head|head-expenses|ar|1280","status":"PASS","header":"المصروفات رئيس الحسابات المصروفات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"المصروفات","errors":[]}
+{"key":"ASABPrototype|head|head-purchases|ar|1280","status":"PASS","header":"المشتريات رئيس الحسابات المشتريات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"المشتريات","errors":[]}
+{"key":"ASABPrototype|head|head-inventory|ar|1280","status":"PASS","header":"المخزون رئيس الحسابات المخزون الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"المخزون","errors":[]}
+{"key":"ASABPrototype|head|head-waste|ar|1280","status":"PASS","header":"الهدر والتالف رئيس الحسابات الهدر والتالف الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"الهدر والتالف","errors":[]}
+{"key":"ASABPrototype|head|head-assets|ar|1280","status":"PASS","header":"الأصول الثابتة رئيس الحسابات الأصول الثابتة الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"الأصول الثابتة","errors":[]}
+{"key":"ASABPrototype|head|head-shifts|ar|1280","status":"PASS","header":"الشفتات رئيس الحسابات الشفتات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"الشفتات","errors":[]}
+{"key":"ASABPrototype|head|head-employees|ar|1280","status":"PASS","header":"كشف حساب الموظفين رئيس الحسابات كشف حساب الموظفين الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"كشف حساب الموظفين","errors":[]}
+{"key":"ASABPrototype|head|head-reminders|ar|1280","status":"PASS","header":"التذكيرات رئيس الحسابات التذكيرات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"التذكيرات","errors":[]}
+{"key":"ASABPrototype|head|head-cash|ar|1280","status":"PASS","header":"العهد النقدية رئيس الحسابات العهد النقدية الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"العهد النقدية","errors":[]}
+{"key":"ASABPrototype|head|head-accountants|ar|1280","status":"PASS","header":"أداء المحاسبين رئيس الحسابات أداء المحاسبين الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"أداء المحاسبين","errors":[]}
+{"key":"ASABPrototype|head|head-erp|ar|1280","status":"PASS","header":"التصدير لـ ERP رئيس الحسابات التصدير لـ ERP الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"التصدير لـ ERP","errors":[]}
+{"key":"ASABPrototype|head|head-reports|ar|1280","status":"PASS","header":"التقارير رئيس الحسابات التقارير الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"التقارير","errors":[]}
+{"key":"ASABPrototype|head|head-pending|en|390","status":"PASS","header":"Pending Approval Head Accountant عربي All This Month This Week Today","expected":"Pending Approval","errors":[]}
+{"key":"ASABPrototype|head|head-approved|en|390","status":"PASS","header":"Final Approved Head Accountant عربي All This Month This Week Today","expected":"Final Approved","errors":[]}
+{"key":"ASABPrototype|head|head-expenses|en|390","status":"PASS","header":"Expenses Head Accountant عربي All This Month This Week Today","expected":"Expenses","errors":[]}
+{"key":"ASABPrototype|head|head-rejected|en|390","status":"PASS","header":"Rejected Head Accountant عربي All This Month This Week Today","expected":"Rejected","errors":[]}
+{"key":"ASABPrototype|head|head-purchases|en|390","status":"PASS","header":"Purchases Head Accountant عربي All This Month This Week Today","expected":"Purchases","errors":[]}
+{"key":"ASABPrototype|head|head-inventory|en|390","status":"PASS","header":"Inventory Head Accountant عربي All This Month This Week Today","expected":"Inventory","errors":[]}
+{"key":"ASABPrototype|head|head-waste|en|390","status":"PASS","header":"Waste & Spoilage Head Accountant عربي All This Month This Week Today","expected":"Waste & Spoilage","errors":[]}
+{"key":"ASABPrototype|head|head-assets|en|390","status":"PASS","header":"Fixed Assets Head Accountant عربي All This Month This Week Today","expected":"Fixed Assets","errors":[]}
+{"key":"ASABPrototype|head|head-shifts|en|390","status":"PASS","header":"Shifts Head Accountant عربي All This Month This Week Today","expected":"Shifts","errors":[]}
+{"key":"ASABPrototype|head|head-employees|en|390","status":"PASS","header":"Employee Accounts Head Accountant عربي All This Month This Week Today","expected":"Employee Accounts","errors":[]}
+{"key":"ASABPrototype|head|head-cash|en|390","status":"PASS","header":"Cash Custody Head Accountant عربي All This Month This Week Today","expected":"Cash Custody","errors":[]}
+{"key":"ASABPrototype|head|head-reminders|en|390","status":"PASS","header":"Reminders Head Accountant عربي All This Month This Week Today","expected":"Reminders","errors":[]}
+{"key":"ASABPrototype|head|head-accountants|en|390","status":"PASS","header":"Accountant Performance Head Accountant عربي All This Month This Week Today","expected":"Accountant Performance","errors":[]}
+{"key":"ASABPrototype|head|head-erp|en|390","status":"PASS","header":"ERP Export Head Accountant عربي All This Month This Week Today","expected":"ERP Export","errors":[]}
+{"key":"ASABPrototype|head|head-approved|en|820","status":"PASS","header":"Final Approved Head Accountant / Final Approved Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Final Approved","errors":[]}
+{"key":"ASABPrototype|head|head-reports|en|390","status":"PASS","header":"Reports Head Accountant عربي All This Month This Week Today","expected":"Reports","errors":[]}
+{"key":"ASABPrototype|head|head-dashboard|en|820","status":"PASS","header":"Dashboard Head Accountant / Dashboard Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Dashboard","errors":[]}
+{"key":"ASABPrototype|head|head-rejected|en|820","status":"PASS","header":"Rejected Head Accountant / Rejected Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Rejected","errors":[]}
+{"key":"ASABPrototype|head|head-expenses|en|820","status":"PASS","header":"Expenses Head Accountant / Expenses Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Expenses","errors":[]}
+{"key":"ASABPrototype|head|head-sales|en|820","status":"PASS","header":"Sales Head Accountant / Sales Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Sales","errors":[]}
+{"key":"ASABPrototype|head|head-purchases|en|820","status":"PASS","header":"Purchases Head Accountant / Purchases Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Purchases","errors":[]}
+{"key":"ASABPrototype|head|head-inventory|en|820","status":"PASS","header":"Inventory Head Accountant / Inventory Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Inventory","errors":[]}
+{"key":"ASABPrototype|head|head-waste|en|820","status":"PASS","header":"Waste & Spoilage Head Accountant / Waste & Spoilage Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Waste & Spoilage","errors":[]}
+{"key":"ASABPrototype|head|head-shifts|en|820","status":"PASS","header":"Shifts Head Accountant / Shifts Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Shifts","errors":[]}
+{"key":"ASABPrototype|head|head-employees|en|820","status":"PASS","header":"Employee Accounts Head Accountant / Employee Accounts Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Employee Accounts","errors":[]}
+{"key":"ASABPrototype|head|head-assets|en|820","status":"PASS","header":"Fixed Assets Head Accountant / Fixed Assets Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Fixed Assets","errors":[]}
+{"key":"ASABPrototype|head|head-cash|en|820","status":"PASS","header":"Cash Custody Head Accountant / Cash Custody Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Cash Custody","errors":[]}
+{"key":"ASABPrototype|head|head-reminders|en|820","status":"PASS","header":"Reminders Head Accountant / Reminders Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Reminders","errors":[]}
+{"key":"ASABPrototype|head|head-accountants|en|820","status":"PASS","header":"Accountant Performance Head Accountant / Accountant Performance Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Accountant Performance","errors":[]}
+{"key":"ASABPrototype|head|head-erp|en|820","status":"PASS","header":"ERP Export Head Accountant / ERP Export Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"ERP Export","errors":[]}
+{"key":"ASABPrototype|head|head-reports|en|820","status":"PASS","header":"Reports Head Accountant / Reports Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Reports","errors":[]}
+{"key":"ASABPrototype|head|head-dashboard|en|1280","status":"PASS","header":"Dashboard Head Accountant Dashboard Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Dashboard","errors":[]}
+{"key":"ASABPrototype|head|head-approved|en|1280","status":"PASS","header":"Final Approved Head Accountant Final Approved Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Final Approved","errors":[]}
+{"key":"ASABPrototype|head|head-pending|en|1280","status":"PASS","header":"Pending Approval Head Accountant Pending Approval Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Pending Approval","errors":[]}
+{"key":"ASABPrototype|head|head-rejected|en|1280","status":"PASS","header":"Rejected Head Accountant Rejected Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Rejected","errors":[]}
+{"key":"ASABPrototype|head|head-sales|en|1280","status":"PASS","header":"Sales Head Accountant Sales Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Sales","errors":[]}
+{"key":"ASABPrototype|head|head-expenses|en|1280","status":"PASS","header":"Expenses Head Accountant Expenses Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Expenses","errors":[]}
+{"key":"ASABPrototype|head|head-purchases|en|1280","status":"PASS","header":"Purchases Head Accountant Purchases Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Purchases","errors":[]}
+{"key":"ASABPrototype|head|head-inventory|en|1280","status":"PASS","header":"Inventory Head Accountant Inventory Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Inventory","errors":[]}
+{"key":"ASABPrototype|head|head-waste|en|1280","status":"PASS","header":"Waste & Spoilage Head Accountant Waste & Spoilage Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Waste & Spoilage","errors":[]}
+{"key":"ASABPrototype|head|head-assets|en|1280","status":"PASS","header":"Fixed Assets Head Accountant Fixed Assets Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Fixed Assets","errors":[]}
+{"key":"ASABPrototype|head|head-shifts|en|1280","status":"PASS","header":"Shifts Head Accountant Shifts Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Shifts","errors":[]}
+{"key":"ASABPrototype|head|head-employees|en|1280","status":"PASS","header":"Employee Accounts Head Accountant Employee Accounts Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Employee Accounts","errors":[]}
+{"key":"ASABPrototype|head|head-cash|en|1280","status":"PASS","header":"Cash Custody Head Accountant Cash Custody Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Cash Custody","errors":[]}
+{"key":"ASABPrototype|head|head-reminders|en|1280","status":"PASS","header":"Reminders Head Accountant Reminders Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Reminders","errors":[]}
+{"key":"ASABPrototype|head|head-accountants|en|1280","status":"PASS","header":"Accountant Performance Head Accountant Accountant Performance Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Accountant Performance","errors":[]}
+{"key":"ASABPrototype|head|head-erp|en|1280","status":"PASS","header":"ERP Export Head Accountant ERP Export Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"ERP Export","errors":[]}
+{"key":"ASABPrototype|admin|admin-overview|ar|390","status":"PASS","header":"نظرة عامة أدمن النظام EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"نظرة عامة","errors":[]}
+{"key":"ASABPrototype|head|head-reports|en|1280","status":"PASS","header":"Reports Head Accountant Reports Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Reports","errors":[]}
+{"key":"ASABPrototype|admin|admin-users|ar|390","status":"PASS","header":"المستخدمون أدمن النظام EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"المستخدمون","errors":[]}
+{"key":"ASABPrototype|admin|admin-restaurants|ar|390","status":"PASS","header":"المطاعم والفروع أدمن النظام EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"المطاعم والفروع","errors":[]}
+{"key":"ASABPrototype|admin|admin-branch-requests|ar|390","status":"PASS","header":"طلبات الفروع أدمن النظام EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"طلبات الفروع","errors":[]}
+{"key":"ASABPrototype|admin|admin-subscriptions|ar|390","status":"PASS","header":"الاشتراكات أدمن النظام EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"الاشتراكات","errors":[]}
+{"key":"ASABPrototype|admin|admin-packages|ar|390","status":"PASS","header":"الباقات أدمن النظام EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"الباقات","errors":[]}
+{"key":"ASABPrototype|admin|admin-permissions|ar|390","status":"PASS","header":"الصلاحيات أدمن النظام EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"الصلاحيات","errors":[]}
+{"key":"ASABPrototype|admin|admin-reports|ar|390","status":"PASS","header":"مدير التقارير أدمن النظام EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"مدير التقارير","errors":[]}
+{"key":"ASABPrototype|admin|admin-audit|ar|390","status":"PASS","header":"سجل النشاطات أدمن النظام EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"سجل النشاطات","errors":[]}
+{"key":"ASABPrototype|admin|admin-erp|ar|390","status":"PASS","header":"التصدير لـ ERP أدمن النظام EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"التصدير لـ ERP","errors":[]}
+{"key":"ASABPrototype|admin|admin-settings|ar|390","status":"PASS","header":"إعدادات النظام أدمن النظام EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"إعدادات النظام","errors":[]}
+{"key":"ASABPrototype|admin|admin-overview|ar|820","status":"PASS","header":"نظرة عامة أدمن النظام / نظرة عامة الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"نظرة عامة","errors":[]}
+{"key":"ASABPrototype|admin|admin-restaurants|ar|820","status":"PASS","header":"المطاعم والفروع أدمن النظام / المطاعم والفروع الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"المطاعم والفروع","errors":[]}
+{"key":"ASABPrototype|admin|admin-users|ar|820","status":"PASS","header":"المستخدمون أدمن النظام / المستخدمون الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"المستخدمون","errors":[]}
+{"key":"ASABPrototype|admin|admin-branch-requests|ar|820","status":"PASS","header":"طلبات الفروع أدمن النظام / طلبات الفروع الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"طلبات الفروع","errors":[]}
+{"key":"ASABPrototype|admin|admin-subscriptions|ar|820","status":"PASS","header":"الاشتراكات أدمن النظام / الاشتراكات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"الاشتراكات","errors":[]}
+{"key":"ASABPrototype|admin|admin-packages|ar|820","status":"PASS","header":"الباقات أدمن النظام / الباقات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"الباقات","errors":[]}
+{"key":"ASABPrototype|admin|admin-companies|ar|820","status":"PASS","header":"اشتراكات الشركات أدمن النظام / اشتراكات الشركات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"اشتراكات الشركات","errors":[]}
+{"key":"ASABPrototype|admin|admin-permissions|ar|820","status":"PASS","header":"الصلاحيات أدمن النظام / الصلاحيات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"الصلاحيات","errors":[]}
+{"key":"ASABPrototype|admin|admin-reports|ar|820","status":"PASS","header":"مدير التقارير أدمن النظام / مدير التقارير الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"مدير التقارير","errors":[]}
+{"key":"ASABPrototype|admin|admin-audit|ar|820","status":"PASS","header":"سجل النشاطات أدمن النظام / سجل النشاطات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"سجل النشاطات","errors":[]}
+{"key":"ASABPrototype|admin|admin-settings|ar|820","status":"PASS","header":"إعدادات النظام أدمن النظام / إعدادات النظام الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"إعدادات النظام","errors":[]}
+{"key":"ASABPrototype|admin|admin-erp|ar|820","status":"PASS","header":"التصدير لـ ERP أدمن النظام / التصدير لـ ERP الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"التصدير لـ ERP","errors":[]}
+{"key":"ASABPrototype|admin|admin-overview|ar|1280","status":"PASS","header":"نظرة عامة أدمن النظام نظرة عامة الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"نظرة عامة","errors":[]}
+{"key":"ASABPrototype|admin|admin-restaurants|ar|1280","status":"PASS","header":"المطاعم والفروع أدمن النظام المطاعم والفروع الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"المطاعم والفروع","errors":[]}
+{"key":"ASABPrototype|admin|admin-users|ar|1280","status":"PASS","header":"المستخدمون أدمن النظام المستخدمون الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"المستخدمون","errors":[]}
+{"key":"ASABPrototype|admin|admin-branch-requests|ar|1280","status":"PASS","header":"طلبات الفروع أدمن النظام طلبات الفروع الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"طلبات الفروع","errors":[]}
+{"key":"ASABPrototype|admin|admin-subscriptions|ar|1280","status":"PASS","header":"الاشتراكات أدمن النظام الاشتراكات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"الاشتراكات","errors":[]}
+{"key":"ASABPrototype|admin|admin-packages|ar|1280","status":"PASS","header":"الباقات أدمن النظام الباقات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"الباقات","errors":[]}
+{"key":"ASABPrototype|admin|admin-companies|ar|1280","status":"PASS","header":"اشتراكات الشركات أدمن النظام اشتراكات الشركات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"اشتراكات الشركات","errors":[]}
+{"key":"ASABPrototype|admin|admin-audit|ar|1280","status":"PASS","header":"سجل النشاطات أدمن النظام سجل النشاطات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"سجل النشاطات","errors":[]}
+{"key":"ASABPrototype|admin|admin-permissions|ar|1280","status":"PASS","header":"الصلاحيات أدمن النظام الصلاحيات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"الصلاحيات","errors":[]}
+{"key":"ASABPrototype|admin|admin-reports|ar|1280","status":"PASS","header":"مدير التقارير أدمن النظام مدير التقارير الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"مدير التقارير","errors":[]}
+{"key":"ASABPrototype|admin|admin-overview|en|390","status":"PASS","header":"Overview System Admin عربي All This Month This Week Today","expected":"Overview","errors":[]}
+{"key":"ASABPrototype|admin|admin-erp|ar|1280","status":"PASS","header":"التصدير لـ ERP أدمن النظام التصدير لـ ERP الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"التصدير لـ ERP","errors":[]}
+{"key":"ASABPrototype|admin|admin-settings|ar|1280","status":"PASS","header":"إعدادات النظام أدمن النظام إعدادات النظام الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"إعدادات النظام","errors":[]}
+{"key":"ASABPrototype|admin|admin-users|en|390","status":"PASS","header":"Users System Admin عربي All This Month This Week Today","expected":"Users","errors":[]}
+{"key":"ASABPrototype|admin|admin-restaurants|en|390","status":"PASS","header":"Restaurants & Branches System Admin عربي All This Month This Week Today","expected":"Restaurants & Branches","errors":[]}
+{"key":"ASABPrototype|admin|admin-branch-requests|en|390","status":"PASS","header":"Branch Requests System Admin عربي All This Month This Week Today","expected":"Branch Requests","errors":[]}
+{"key":"ASABPrototype|admin|admin-packages|en|390","status":"PASS","header":"Packages System Admin عربي All This Month This Week Today","expected":"Packages","errors":[]}
+{"key":"ASABPrototype|admin|admin-subscriptions|en|390","status":"PASS","header":"Subscriptions System Admin عربي All This Month This Week Today","expected":"Subscriptions","errors":[]}
+{"key":"ASABPrototype|admin|admin-permissions|en|390","status":"PASS","header":"Permissions System Admin عربي All This Month This Week Today","expected":"Permissions","errors":[]}
+{"key":"ASABPrototype|admin|admin-audit|en|390","status":"PASS","header":"Activity Log System Admin عربي All This Month This Week Today","expected":"Activity Log","errors":[]}
+{"key":"ASABPrototype|admin|admin-erp|en|390","status":"PASS","header":"ERP Export System Admin عربي All This Month This Week Today","expected":"ERP Export","errors":[]}
+{"key":"ASABPrototype|admin|admin-reports|en|390","status":"PASS","header":"Report Manager System Admin عربي All This Month This Week Today","expected":"Report Manager","errors":[]}
+{"key":"ASABPrototype|admin|admin-overview|en|820","status":"PASS","header":"Overview System Admin / Overview Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Overview","errors":[]}
+{"key":"ASABPrototype|admin|admin-settings|en|390","status":"PASS","header":"System Settings System Admin عربي All This Month This Week Today","expected":"System Settings","errors":[]}
+{"key":"ASABPrototype|admin|admin-users|en|820","status":"PASS","header":"Users System Admin / Users Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Users","errors":[]}
+{"key":"ASABPrototype|admin|admin-restaurants|en|820","status":"PASS","header":"Restaurants & Branches System Admin / Restaurants & Branches Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Restaurants & Branches","errors":[]}
+{"key":"ASABPrototype|admin|admin-branch-requests|en|820","status":"PASS","header":"Branch Requests System Admin / Branch Requests Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Branch Requests","errors":[]}
+{"key":"ASABPrototype|admin|admin-subscriptions|en|820","status":"PASS","header":"Subscriptions System Admin / Subscriptions Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Subscriptions","errors":[]}
+{"key":"ASABPrototype|admin|admin-packages|en|820","status":"PASS","header":"Packages System Admin / Packages Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Packages","errors":[]}
+{"key":"ASABPrototype|admin|admin-permissions|en|820","status":"PASS","header":"Permissions System Admin / Permissions Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Permissions","errors":[]}
+{"key":"ASABPrototype|admin|admin-companies|en|820","status":"PASS","header":"Company Subscriptions System Admin / Company Subscriptions Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Company Subscriptions","errors":[]}
+{"key":"ASABPrototype|admin|admin-reports|en|820","status":"PASS","header":"Report Manager System Admin / Report Manager Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Report Manager","errors":[]}
+{"key":"ASABPrototype|admin|admin-erp|en|820","status":"PASS","header":"ERP Export System Admin / ERP Export Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"ERP Export","errors":[]}
+{"key":"ASABPrototype|admin|admin-audit|en|820","status":"PASS","header":"Activity Log System Admin / Activity Log Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Activity Log","errors":[]}
+{"key":"ASABPrototype|admin|admin-settings|en|820","status":"PASS","header":"System Settings System Admin / System Settings Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"System Settings","errors":[]}
+{"key":"ASABPrototype|admin|admin-users|en|1280","status":"PASS","header":"Users System Admin Users Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Users","errors":[]}
+{"key":"ASABPrototype|admin|admin-overview|en|1280","status":"PASS","header":"Overview System Admin Overview Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Overview","errors":[]}
+{"key":"ASABPrototype|admin|admin-subscriptions|en|1280","status":"PASS","header":"Subscriptions System Admin Subscriptions Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Subscriptions","errors":[]}
+{"key":"ASABPrototype|admin|admin-branch-requests|en|1280","status":"PASS","header":"Branch Requests System Admin Branch Requests Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Branch Requests","errors":[]}
+{"key":"ASABPrototype|admin|admin-restaurants|en|1280","status":"PASS","header":"Restaurants & Branches System Admin Restaurants & Branches Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Restaurants & Branches","errors":[]}
+{"key":"ASABPrototype|admin|admin-packages|en|1280","status":"PASS","header":"Packages System Admin Packages Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Packages","errors":[]}
+{"key":"ASABPrototype|admin|admin-companies|en|1280","status":"PASS","header":"Company Subscriptions System Admin Company Subscriptions Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Company Subscriptions","errors":[]}
+{"key":"ASABPrototype|admin|admin-permissions|en|1280","status":"PASS","header":"Permissions System Admin Permissions Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Permissions","errors":[]}
+{"key":"ASABPrototype|admin|admin-reports|en|1280","status":"PASS","header":"Report Manager System Admin Report Manager Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Report Manager","errors":[]}
+{"key":"ASABPrototype|admin|admin-audit|en|1280","status":"PASS","header":"Activity Log System Admin Activity Log Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Activity Log","errors":[]}
+{"key":"ASABPrototype|admin|admin-erp|en|1280","status":"PASS","header":"ERP Export System Admin ERP Export Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"ERP Export","errors":[]}
+{"key":"ASABPrototype|branch|branch-employees|ar|390","status":"PASS","header":"الموظفون مدير فرع EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"الموظفون","errors":[]}
+{"key":"ASABPrototype|branch|branch-overview|ar|390","status":"PASS","header":"نظرة عامة مدير فرع EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"نظرة عامة","errors":[]}
+{"key":"ASABPrototype|admin|admin-settings|en|1280","status":"PASS","header":"System Settings System Admin System Settings Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"System Settings","errors":[]}
+{"key":"ASABPrototype|branch|branch-upload|ar|390","status":"PASS","header":"رفع البيانات مدير فرع EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"رفع البيانات","errors":[]}
+{"key":"ASABPrototype|branch|branch-items|ar|390","status":"PASS","header":"الأصناف مدير فرع EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"الأصناف","errors":[]}
+{"key":"ASABPrototype|branch|branch-suppliers|ar|390","status":"PASS","header":"الموردون مدير فرع EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"الموردون","errors":[]}
+{"key":"ASABPrototype|branch|branch-settings|ar|390","status":"PASS","header":"إعدادات الفرع مدير فرع EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"إعدادات الفرع","errors":[]}
+{"key":"ASABPrototype|branch|branch-overview|ar|820","status":"PASS","header":"نظرة عامة مدير فرع / نظرة عامة الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"نظرة عامة","errors":[]}
+{"key":"ASABPrototype|branch|branch-employees|ar|820","status":"PASS","header":"الموظفون مدير فرع / الموظفون الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"الموظفون","errors":[]}
+{"key":"ASABPrototype|branch|branch-items|ar|820","status":"PASS","header":"الأصناف مدير فرع / الأصناف الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"الأصناف","errors":[]}
+{"key":"ASABPrototype|branch|branch-upload|ar|820","status":"PASS","header":"رفع البيانات مدير فرع / رفع البيانات الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"رفع البيانات","errors":[]}
+{"key":"ASABPrototype|branch|branch-suppliers|ar|820","status":"PASS","header":"الموردون مدير فرع / الموردون الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"الموردون","errors":[]}
+{"key":"ASABPrototype|branch|branch-settings|ar|820","status":"PASS","header":"إعدادات الفرع مدير فرع / إعدادات الفرع الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"إعدادات الفرع","errors":[]}
+{"key":"ASABPrototype|branch|branch-employees|ar|1280","status":"PASS","header":"الموظفون مدير فرع الموظفون الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"الموظفون","errors":[]}
+{"key":"ASABPrototype|branch|branch-overview|ar|1280","status":"PASS","header":"نظرة عامة مدير فرع نظرة عامة الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"نظرة عامة","errors":[]}
+{"key":"ASABPrototype|branch|branch-items|ar|1280","status":"PASS","header":"الأصناف مدير فرع الأصناف الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"الأصناف","errors":[]}
+{"key":"ASABPrototype|branch|branch-suppliers|ar|1280","status":"PASS","header":"الموردون مدير فرع الموردون الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"الموردون","errors":[]}
+{"key":"ASABPrototype|branch|branch-upload|ar|1280","status":"PASS","header":"رفع البيانات مدير فرع رفع البيانات الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"رفع البيانات","errors":[]}
+{"key":"ASABPrototype|branch|branch-settings|ar|1280","status":"PASS","header":"إعدادات الفرع مدير فرع إعدادات الفرع الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"إعدادات الفرع","errors":[]}
+{"key":"ASABPrototype|branch|branch-employees|en|390","status":"PASS","header":"Employees Branch Manager عربي All This Month This Week Today","expected":"Employees","errors":[]}
+{"key":"ASABPrototype|branch|branch-overview|en|390","status":"PASS","header":"Overview Branch Manager عربي All This Month This Week Today","expected":"Overview","errors":[]}
+{"key":"ASABPrototype|branch|branch-items|en|390","status":"PASS","header":"Items Branch Manager عربي All This Month This Week Today","expected":"Items","errors":[]}
+{"key":"ASABPrototype|branch|branch-suppliers|en|390","status":"PASS","header":"Suppliers Branch Manager عربي All This Month This Week Today","expected":"Suppliers","errors":[]}
+{"key":"ASABPrototype|branch|branch-upload|en|390","status":"PASS","header":"Upload Data Branch Manager عربي All This Month This Week Today","expected":"Upload Data","errors":[]}
+{"key":"ASABPrototype|branch|branch-settings|en|390","status":"PASS","header":"Branch Settings Branch Manager عربي All This Month This Week Today","expected":"Branch Settings","errors":[]}
+{"key":"ASABPrototype|branch|branch-employees|en|820","status":"PASS","header":"Employees Branch Manager / Employees Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Employees","errors":[]}
+{"key":"ASABPrototype|branch|branch-overview|en|820","status":"PASS","header":"Overview Branch Manager / Overview Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Overview","errors":[]}
+{"key":"ASABPrototype|branch|branch-items|en|820","status":"PASS","header":"Items Branch Manager / Items Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Items","errors":[]}
+{"key":"ASABPrototype|branch|branch-suppliers|en|820","status":"PASS","header":"Suppliers Branch Manager / Suppliers Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Suppliers","errors":[]}
+{"key":"ASABPrototype|branch|branch-upload|en|820","status":"PASS","header":"Upload Data Branch Manager / Upload Data Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Upload Data","errors":[]}
+{"key":"ASABPrototype|branch|branch-settings|en|820","status":"PASS","header":"Branch Settings Branch Manager / Branch Settings Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Branch Settings","errors":[]}
+{"key":"ASABPrototype|branch|branch-employees|en|1280","status":"PASS","header":"Employees Branch Manager Employees Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Employees","errors":[]}
+{"key":"ASABPrototype|branch|branch-overview|en|1280","status":"PASS","header":"Overview Branch Manager Overview Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Overview","errors":[]}
+{"key":"ASABPrototype|branch|branch-items|en|1280","status":"PASS","header":"Items Branch Manager Items Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Items","errors":[]}
+{"key":"ASABPrototype|branch|branch-suppliers|en|1280","status":"PASS","header":"Suppliers Branch Manager Suppliers Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Suppliers","errors":[]}
+{"key":"ASABPrototype|branch|branch-upload|en|1280","status":"PASS","header":"Upload Data Branch Manager Upload Data Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Upload Data","errors":[]}
+{"key":"ASABPrototype|branch|branch-settings|en|1280","status":"PASS","header":"Branch Settings Branch Manager Branch Settings Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Branch Settings","errors":[]}
+{"key":"ASABPrototype|procurement|proc-new|ar|390","status":"PASS","header":"الطلبات الجديدة مدير المشتريات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"الطلبات الجديدة","errors":[]}
+{"key":"ASABPrototype|procurement|proc-overview|ar|390","status":"PASS","header":"لوحة التحكم مدير المشتريات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"لوحة التحكم","errors":[]}
+{"key":"ASABPrototype|procurement|proc-grouped|ar|390","status":"PASS","header":"الطلبات المجمعة مدير المشتريات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"الطلبات المجمعة","errors":[]}
+{"key":"ASABPrototype|procurement|proc-sent|ar|390","status":"PASS","header":"المرسلة للموردين مدير المشتريات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"المرسلة للموردين","errors":[]}
+{"key":"ASABPrototype|procurement|proc-items|ar|390","status":"PASS","header":"الأصناف مدير المشتريات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"الأصناف","errors":[]}
+{"key":"ASABPrototype|procurement|proc-suppliers|ar|390","status":"PASS","header":"الموردون مدير المشتريات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"الموردون","errors":[]}
+{"key":"ASABPrototype|procurement|proc-reports|ar|390","status":"PASS","header":"التقارير مدير المشتريات EN الكل هذا الشهر هذا الأسبوع اليوم","expected":"التقارير","errors":[]}
+{"key":"ASABPrototype|procurement|proc-overview|ar|820","status":"PASS","header":"لوحة التحكم مدير المشتريات / لوحة التحكم الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"لوحة التحكم","errors":[]}
+{"key":"ASABPrototype|procurement|proc-new|ar|820","status":"PASS","header":"الطلبات الجديدة مدير المشتريات / الطلبات الجديدة الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"الطلبات الجديدة","errors":[]}
+{"key":"ASABPrototype|procurement|proc-grouped|ar|820","status":"PASS","header":"الطلبات المجمعة مدير المشتريات / الطلبات المجمعة الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"الطلبات المجمعة","errors":[]}
+{"key":"ASABPrototype|procurement|proc-sent|ar|820","status":"PASS","header":"المرسلة للموردين مدير المشتريات / المرسلة للموردين الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"المرسلة للموردين","errors":[]}
+{"key":"ASABPrototype|procurement|proc-items|ar|820","status":"PASS","header":"الأصناف مدير المشتريات / الأصناف الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"الأصناف","errors":[]}
+{"key":"ASABPrototype|procurement|proc-suppliers|ar|820","status":"PASS","header":"الموردون مدير المشتريات / الموردون الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"الموردون","errors":[]}
+{"key":"ASABPrototype|procurement|proc-reports|ar|820","status":"PASS","header":"التقارير مدير المشتريات / التقارير الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم","expected":"التقارير","errors":[]}
+{"key":"ASABPrototype|procurement|proc-overview|ar|1280","status":"PASS","header":"لوحة التحكم مدير المشتريات لوحة التحكم الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"لوحة التحكم","errors":[]}
+{"key":"ASABPrototype|procurement|proc-new|ar|1280","status":"PASS","header":"الطلبات الجديدة مدير المشتريات الطلبات الجديدة الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"الطلبات الجديدة","errors":[]}
+{"key":"ASABPrototype|procurement|proc-grouped|ar|1280","status":"PASS","header":"الطلبات المجمعة مدير المشتريات الطلبات المجمعة الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"الطلبات المجمعة","errors":[]}
+{"key":"ASABPrototype|procurement|proc-sent|ar|1280","status":"PASS","header":"المرسلة للموردين مدير المشتريات المرسلة للموردين الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"المرسلة للموردين","errors":[]}
+{"key":"ASABPrototype|procurement|proc-items|ar|1280","status":"PASS","header":"الأصناف مدير المشتريات الأصناف الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"الأصناف","errors":[]}
+{"key":"ASABPrototype|procurement|proc-suppliers|ar|1280","status":"PASS","header":"الموردون مدير المشتريات الموردون الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"الموردون","errors":[]}
+{"key":"ASABPrototype|procurement|proc-reports|ar|1280","status":"PASS","header":"التقارير مدير المشتريات التقارير الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج","expected":"التقارير","errors":[]}
+{"key":"ASABPrototype|procurement|proc-overview|en|390","status":"PASS","header":"Dashboard Procurement Manager عربي All This Month This Week Today","expected":"Dashboard","errors":[]}
+{"key":"ASABPrototype|procurement|proc-new|en|390","status":"PASS","header":"New Orders Procurement Manager عربي All This Month This Week Today","expected":"New Orders","errors":[]}
+{"key":"ASABPrototype|procurement|proc-grouped|en|390","status":"PASS","header":"Grouped Orders Procurement Manager عربي All This Month This Week Today","expected":"Grouped Orders","errors":[]}
+{"key":"ASABPrototype|procurement|proc-suppliers|en|390","status":"PASS","header":"Suppliers Procurement Manager عربي All This Month This Week Today","expected":"Suppliers","errors":[]}
+{"key":"ASABPrototype|procurement|proc-items|en|390","status":"PASS","header":"Items Procurement Manager عربي All This Month This Week Today","expected":"Items","errors":[]}
+{"key":"ASABPrototype|procurement|proc-sent|en|390","status":"PASS","header":"Sent to Suppliers Procurement Manager عربي All This Month This Week Today","expected":"Sent to Suppliers","errors":[]}
+{"key":"ASABPrototype|procurement|proc-reports|en|390","status":"PASS","header":"Reports Procurement Manager عربي All This Month This Week Today","expected":"Reports","errors":[]}
+{"key":"ASABPrototype|procurement|proc-new|en|820","status":"PASS","header":"New Orders Procurement Manager / New Orders Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"New Orders","errors":[]}
+{"key":"ASABPrototype|procurement|proc-overview|en|820","status":"PASS","header":"Dashboard Procurement Manager / Dashboard Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Dashboard","errors":[]}
+{"key":"ASABPrototype|procurement|proc-grouped|en|820","status":"PASS","header":"Grouped Orders Procurement Manager / Grouped Orders Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Grouped Orders","errors":[]}
+{"key":"ASABPrototype|procurement|proc-sent|en|820","status":"PASS","header":"Sent to Suppliers Procurement Manager / Sent to Suppliers Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Sent to Suppliers","errors":[]}
+{"key":"ASABPrototype|procurement|proc-items|en|820","status":"PASS","header":"Items Procurement Manager / Items Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Items","errors":[]}
+{"key":"ASABPrototype|procurement|proc-suppliers|en|820","status":"PASS","header":"Suppliers Procurement Manager / Suppliers Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Suppliers","errors":[]}
+{"key":"ASABPrototype|procurement|proc-reports|en|820","status":"PASS","header":"Reports Procurement Manager / Reports Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Reports","errors":[]}
+{"key":"ASABPrototype|procurement|proc-overview|en|1280","status":"PASS","header":"Dashboard Procurement Manager Dashboard Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Dashboard","errors":[]}
+{"key":"ASABPrototype|procurement|proc-new|en|1280","status":"PASS","header":"New Orders Procurement Manager New Orders Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"New Orders","errors":[]}
+{"key":"ASABPrototype|procurement|proc-grouped|en|1280","status":"PASS","header":"Grouped Orders Procurement Manager Grouped Orders Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Grouped Orders","errors":[]}
+{"key":"ASABPrototype|procurement|proc-sent|en|1280","status":"PASS","header":"Sent to Suppliers Procurement Manager Sent to Suppliers Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Sent to Suppliers","errors":[]}
+{"key":"ASABPrototype|procurement|proc-items|en|1280","status":"PASS","header":"Items Procurement Manager Items Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Items","errors":[]}
+{"key":"ASABPrototype|procurement|proc-suppliers|en|1280","status":"PASS","header":"Suppliers Procurement Manager Suppliers Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Suppliers","errors":[]}
+{"key":"ASABPrototype|procurement|proc-reports|en|1280","status":"PASS","header":"Reports Procurement Manager Reports Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Reports","errors":[]}
+{"key":"ASABPrototype|supplier|sup-new|ar|390","status":"PASS","header":"الطلبات الجديدة مورد تجريبي معتمد EN بحث المورد غير متاح","expected":"الطلبات الجديدة","errors":[]}
+{"key":"ASABPrototype|supplier|sup-overview|ar|390","status":"PASS","header":"لوحة التحكم مورد تجريبي معتمد EN بحث المورد غير متاح","expected":"لوحة التحكم","errors":[]}
+{"key":"ASABPrototype|supplier|sup-accepted|ar|390","status":"PASS","header":"المقبولة مورد تجريبي معتمد EN بحث المورد غير متاح","expected":"المقبولة","errors":[]}
+{"key":"ASABPrototype|supplier|sup-rejected|ar|390","status":"PASS","header":"المرفوضة مورد تجريبي معتمد EN بحث المورد غير متاح","expected":"المرفوضة","errors":[]}
+{"key":"ASABPrototype|supplier|sup-items|ar|390","status":"PASS","header":"الأصناف والأسعار مورد تجريبي معتمد EN بحث المورد غير متاح","expected":"الأصناف والأسعار","errors":[]}
+{"key":"ASABPrototype|supplier|sup-reports|ar|390","status":"PASS","header":"تقارير المبيعات مورد تجريبي معتمد EN بحث المورد غير متاح","expected":"تقارير المبيعات","errors":[]}
+{"key":"ASABPrototype|supplier|sup-accepted|ar|820","status":"PASS","header":"المقبولة مورد تجريبي معتمد / المقبولة الاثنين، 2 نوفمبر 2026 EN الإشعارات غير متاحة خروج بحث المورد غير متاح بعقد الخادم الحالي","expected":"المقبولة","errors":[]}
+{"key":"ASABPrototype|supplier|sup-new|ar|820","status":"PASS","header":"الطلبات الجديدة مورد تجريبي معتمد / الطلبات الجديدة الاثنين، 2 نوفمبر 2026 EN الإشعارات غير متاحة خروج بحث المورد غير متاح بعقد الخادم الحالي","expected":"الطلبات الجديدة","errors":[]}
+{"key":"ASABPrototype|supplier|sup-overview|ar|820","status":"PASS","header":"لوحة التحكم مورد تجريبي معتمد / لوحة التحكم الاثنين، 2 نوفمبر 2026 EN الإشعارات غير متاحة خروج بحث المورد غير متاح بعقد الخادم الحالي","expected":"لوحة التحكم","errors":[]}
+{"key":"ASABPrototype|supplier|sup-reports|ar|820","status":"PASS","header":"تقارير المبيعات مورد تجريبي معتمد / تقارير المبيعات الاثنين، 2 نوفمبر 2026 EN الإشعارات غير متاحة خروج بحث المورد غير متاح بعقد الخادم الحالي","expected":"تقارير المبيعات","errors":[]}
+{"key":"ASABPrototype|supplier|sup-rejected|ar|820","status":"PASS","header":"المرفوضة مورد تجريبي معتمد / المرفوضة الاثنين، 2 نوفمبر 2026 EN الإشعارات غير متاحة خروج بحث المورد غير متاح بعقد الخادم الحالي","expected":"المرفوضة","errors":[]}
+{"key":"ASABPrototype|supplier|sup-items|ar|820","status":"PASS","header":"الأصناف والأسعار مورد تجريبي معتمد / الأصناف والأسعار الاثنين، 2 نوفمبر 2026 EN الإشعارات غير متاحة خروج بحث المورد غير متاح بعقد الخادم الحالي","expected":"الأصناف والأسعار","errors":[]}
+{"key":"ASABPrototype|supplier|sup-new|ar|1280","status":"PASS","header":"الطلبات الجديدة مورد تجريبي معتمد الطلبات الجديدة الاثنين، 2 نوفمبر 2026 بحث المورد غير متاح بعقد الخادم الحالي EN إشعارات المورد غير متاحة بعقد الخادم الحالي خروج","expected":"الطلبات الجديدة","errors":[]}
+{"key":"ASABPrototype|supplier|sup-overview|ar|1280","status":"PASS","header":"لوحة التحكم مورد تجريبي معتمد لوحة التحكم الاثنين، 2 نوفمبر 2026 بحث المورد غير متاح بعقد الخادم الحالي EN إشعارات المورد غير متاحة بعقد الخادم الحالي خروج","expected":"لوحة التحكم","errors":[]}
+{"key":"ASABPrototype|supplier|sup-accepted|ar|1280","status":"PASS","header":"المقبولة مورد تجريبي معتمد المقبولة الاثنين، 2 نوفمبر 2026 بحث المورد غير متاح بعقد الخادم الحالي EN إشعارات المورد غير متاحة بعقد الخادم الحالي خروج","expected":"المقبولة","errors":[]}
+{"key":"ASABPrototype|supplier|sup-rejected|ar|1280","status":"PASS","header":"المرفوضة مورد تجريبي معتمد المرفوضة الاثنين، 2 نوفمبر 2026 بحث المورد غير متاح بعقد الخادم الحالي EN إشعارات المورد غير متاحة بعقد الخادم الحالي خروج","expected":"المرفوضة","errors":[]}
+{"key":"ASABPrototype|supplier|sup-reports|ar|1280","status":"PASS","header":"تقارير المبيعات مورد تجريبي معتمد تقارير المبيعات الاثنين، 2 نوفمبر 2026 بحث المورد غير متاح بعقد الخادم الحالي EN إشعارات المورد غير متاحة بعقد الخادم الحالي خروج","expected":"تقارير المبيعات","errors":[]}
+{"key":"ASABPrototype|supplier|sup-items|ar|1280","status":"PASS","header":"الأصناف والأسعار مورد تجريبي معتمد الأصناف والأسعار الاثنين، 2 نوفمبر 2026 بحث المورد غير متاح بعقد الخادم الحالي EN إشعارات المورد غير متاحة بعقد الخادم الحالي خروج","expected":"الأصناف والأسعار","errors":[]}
+{"key":"ASABPrototype|supplier|sup-overview|en|390","status":"PASS","header":"Dashboard مورد تجريبي معتمد عربي Supplier search unavailable","expected":"Dashboard","errors":[]}
+{"key":"ASABPrototype|supplier|sup-new|en|390","status":"PASS","header":"New Orders مورد تجريبي معتمد عربي Supplier search unavailable","expected":"New Orders","errors":[]}
+{"key":"ASABPrototype|supplier|sup-accepted|en|390","status":"PASS","header":"Accepted مورد تجريبي معتمد عربي Supplier search unavailable","expected":"Accepted","errors":[]}
+{"key":"ASABPrototype|supplier|sup-items|en|390","status":"PASS","header":"Items & Prices مورد تجريبي معتمد عربي Supplier search unavailable","expected":"Items & Prices","errors":[]}
+{"key":"ASABPrototype|supplier|sup-reports|en|390","status":"PASS","header":"Sales Reports مورد تجريبي معتمد عربي Supplier search unavailable","expected":"Sales Reports","errors":[]}
+{"key":"ASABPrototype|supplier|sup-rejected|en|390","status":"PASS","header":"Rejected مورد تجريبي معتمد عربي Supplier search unavailable","expected":"Rejected","errors":[]}
+{"key":"ASABPrototype|supplier|sup-overview|en|820","status":"PASS","header":"Dashboard مورد تجريبي معتمد / Dashboard Monday, November 2, 2026 عربي Notifications unavailable Logout Supplier search requires an approved Backend contract","expected":"Dashboard","errors":[]}
+{"key":"ASABPrototype|supplier|sup-new|en|820","status":"PASS","header":"New Orders مورد تجريبي معتمد / New Orders Monday, November 2, 2026 عربي Notifications unavailable Logout Supplier search requires an approved Backend contract","expected":"New Orders","errors":[]}
+{"key":"ASABPrototype|supplier|sup-accepted|en|820","status":"PASS","header":"Accepted مورد تجريبي معتمد / Accepted Monday, November 2, 2026 عربي Notifications unavailable Logout Supplier search requires an approved Backend contract","expected":"Accepted","errors":[]}
+{"key":"ASABPrototype|supplier|sup-rejected|en|820","status":"PASS","header":"Rejected مورد تجريبي معتمد / Rejected Monday, November 2, 2026 عربي Notifications unavailable Logout Supplier search requires an approved Backend contract","expected":"Rejected","errors":[]}
+{"key":"ASABPrototype|supplier|sup-items|en|820","status":"PASS","header":"Items & Prices مورد تجريبي معتمد / Items & Prices Monday, November 2, 2026 عربي Notifications unavailable Logout Supplier search requires an approved Backend contract","expected":"Items & Prices","errors":[]}
+{"key":"ASABPrototype|supplier|sup-reports|en|820","status":"PASS","header":"Sales Reports مورد تجريبي معتمد / Sales Reports Monday, November 2, 2026 عربي Notifications unavailable Logout Supplier search requires an approved Backend contract","expected":"Sales Reports","errors":[]}
+{"key":"ASABPrototype|supplier|sup-overview|en|1280","status":"PASS","header":"Dashboard مورد تجريبي معتمد Dashboard Monday, November 2, 2026 Supplier search requires an approved Backend contract عربي Supplier notifications require an approved Backend contract Logout","expected":"Dashboard","errors":[]}
+{"key":"ASABPrototype|supplier|sup-new|en|1280","status":"PASS","header":"New Orders مورد تجريبي معتمد New Orders Monday, November 2, 2026 Supplier search requires an approved Backend contract عربي Supplier notifications require an approved Backend contract Logout","expected":"New Orders","errors":[]}
+{"key":"ASABPrototype|supplier|sup-accepted|en|1280","status":"PASS","header":"Accepted مورد تجريبي معتمد Accepted Monday, November 2, 2026 Supplier search requires an approved Backend contract عربي Supplier notifications require an approved Backend contract Logout","expected":"Accepted","errors":[]}
+{"key":"ASABPrototype|supplier|sup-rejected|en|1280","status":"PASS","header":"Rejected مورد تجريبي معتمد Rejected Monday, November 2, 2026 Supplier search requires an approved Backend contract عربي Supplier notifications require an approved Backend contract Logout","expected":"Rejected","errors":[]}
+{"key":"ASABPrototype|supplier|sup-reports|en|1280","status":"PASS","header":"Sales Reports مورد تجريبي معتمد Sales Reports Monday, November 2, 2026 Supplier search requires an approved Backend contract عربي Supplier notifications require an approved Backend contract Logout","expected":"Sales Reports","errors":[]}
+{"key":"ASABPrototype|supplier|sup-items|en|1280","status":"PASS","header":"Items & Prices مورد تجريبي معتمد Items & Prices Monday, November 2, 2026 Supplier search requires an approved Backend contract عربي Supplier notifications require an approved Backend contract Logout","expected":"Items & Prices","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-dashboard|ar|390","status":"PASS","header":"— الرئيسية 🏢 أدمن الشركة","expected":"الرئيسية","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-subscription|ar|390","status":"PASS","header":"— الاشتراك والخطة 🏢 أدمن الشركة","expected":"الاشتراك والخطة","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-users|ar|390","status":"PASS","header":"— إدارة المستخدمين 🏢 أدمن الشركة","expected":"إدارة المستخدمين","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-branches|ar|390","status":"PASS","header":"— العلامات والفروع 🏢 أدمن الشركة","expected":"العلامات والفروع","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-modules|ar|390","status":"PASS","header":"— الوحدات النشطة 🏢 أدمن الشركة","expected":"الوحدات النشطة","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-billing|ar|390","status":"PASS","header":"— الفواتير والمدفوعات 🏢 أدمن الشركة","expected":"الفواتير والمدفوعات","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-settings|ar|390","status":"PASS","header":"— إعدادات الشركة 🏢 أدمن الشركة","expected":"إعدادات الشركة","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-support|ar|390","status":"PASS","header":"— الدعم الفني 🏢 أدمن الشركة","expected":"الدعم الفني","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-dashboard|ar|820","status":"PASS","header":"— الرئيسية 🏢 أدمن الشركة","expected":"الرئيسية","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-subscription|ar|820","status":"PASS","header":"— الاشتراك والخطة 🏢 أدمن الشركة","expected":"الاشتراك والخطة","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-users|ar|820","status":"PASS","header":"— إدارة المستخدمين 🏢 أدمن الشركة","expected":"إدارة المستخدمين","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-branches|ar|820","status":"PASS","header":"— العلامات والفروع 🏢 أدمن الشركة","expected":"العلامات والفروع","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-modules|ar|820","status":"PASS","header":"— الوحدات النشطة 🏢 أدمن الشركة","expected":"الوحدات النشطة","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-billing|ar|820","status":"PASS","header":"— الفواتير والمدفوعات 🏢 أدمن الشركة","expected":"الفواتير والمدفوعات","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-settings|ar|820","status":"PASS","header":"— إعدادات الشركة 🏢 أدمن الشركة","expected":"إعدادات الشركة","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-support|ar|820","status":"PASS","header":"— الدعم الفني 🏢 أدمن الشركة","expected":"الدعم الفني","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-dashboard|ar|1280","status":"PASS","header":"— الرئيسية 🏢 أدمن الشركة","expected":"الرئيسية","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-subscription|ar|1280","status":"PASS","header":"— الاشتراك والخطة 🏢 أدمن الشركة","expected":"الاشتراك والخطة","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-users|ar|1280","status":"PASS","header":"— إدارة المستخدمين 🏢 أدمن الشركة","expected":"إدارة المستخدمين","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-branches|ar|1280","status":"PASS","header":"— العلامات والفروع 🏢 أدمن الشركة","expected":"العلامات والفروع","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-modules|ar|1280","status":"PASS","header":"— الوحدات النشطة 🏢 أدمن الشركة","expected":"الوحدات النشطة","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-billing|ar|1280","status":"PASS","header":"— الفواتير والمدفوعات 🏢 أدمن الشركة","expected":"الفواتير والمدفوعات","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-settings|ar|1280","status":"PASS","header":"— إعدادات الشركة 🏢 أدمن الشركة","expected":"إعدادات الشركة","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-support|ar|1280","status":"PASS","header":"— الدعم الفني 🏢 أدمن الشركة","expected":"الدعم الفني","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-dashboard|en|390","status":"PASS","header":"— Dashboard 🏢 Company Admin","expected":"Dashboard","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-subscription|en|390","status":"PASS","header":"— Plan & Subscription 🏢 Company Admin","expected":"Plan & Subscription","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-users|en|390","status":"PASS","header":"— User Management 🏢 Company Admin","expected":"User Management","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-branches|en|390","status":"PASS","header":"— Brands & Branches 🏢 Company Admin","expected":"Brands & Branches","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-modules|en|390","status":"PASS","header":"— Active Modules 🏢 Company Admin","expected":"Active Modules","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-billing|en|390","status":"PASS","header":"— Billing & Payments 🏢 Company Admin","expected":"Billing & Payments","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-settings|en|390","status":"PASS","header":"— Company Settings 🏢 Company Admin","expected":"Company Settings","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-support|en|390","status":"PASS","header":"— Technical Support 🏢 Company Admin","expected":"Technical Support","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-dashboard|en|820","status":"PASS","header":"— Dashboard 🏢 Company Admin","expected":"Dashboard","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-users|en|820","status":"PASS","header":"— User Management 🏢 Company Admin","expected":"User Management","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-subscription|en|820","status":"PASS","header":"— Plan & Subscription 🏢 Company Admin","expected":"Plan & Subscription","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-branches|en|820","status":"PASS","header":"— Brands & Branches 🏢 Company Admin","expected":"Brands & Branches","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-modules|en|820","status":"PASS","header":"— Active Modules 🏢 Company Admin","expected":"Active Modules","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-billing|en|820","status":"PASS","header":"— Billing & Payments 🏢 Company Admin","expected":"Billing & Payments","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-settings|en|820","status":"PASS","header":"— Company Settings 🏢 Company Admin","expected":"Company Settings","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-support|en|820","status":"PASS","header":"— Technical Support 🏢 Company Admin","expected":"Technical Support","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-subscription|en|1280","status":"PASS","header":"— Plan & Subscription 🏢 Company Admin","expected":"Plan & Subscription","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-dashboard|en|1280","status":"PASS","header":"— Dashboard 🏢 Company Admin","expected":"Dashboard","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-users|en|1280","status":"PASS","header":"— User Management 🏢 Company Admin","expected":"User Management","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-branches|en|1280","status":"PASS","header":"— Brands & Branches 🏢 Company Admin","expected":"Brands & Branches","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-modules|en|1280","status":"PASS","header":"— Active Modules 🏢 Company Admin","expected":"Active Modules","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-billing|en|1280","status":"PASS","header":"— Billing & Payments 🏢 Company Admin","expected":"Billing & Payments","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-support|en|1280","status":"PASS","header":"— Technical Support 🏢 Company Admin","expected":"Technical Support","errors":[]}
+{"key":"CompanyDashboard|company-admin|ca-settings|en|1280","status":"PASS","header":"— Company Settings 🏢 Company Admin","expected":"Company Settings","errors":[]}
+{"key":"CompanyDashboard|head|head-approved|ar|390","status":"PASS","header":"— المعتمدة نهائياً 👑 رئيس الحسابات","expected":"المعتمدة نهائياً","errors":[]}
+{"key":"CompanyDashboard|head|head-pending|ar|390","status":"PASS","header":"— بانتظار الاعتماد 👑 رئيس الحسابات","expected":"بانتظار الاعتماد","errors":[]}
+{"key":"CompanyDashboard|head|head-rejected|ar|390","status":"PASS","header":"— المرفوضة 👑 رئيس الحسابات","expected":"المرفوضة","errors":[]}
+{"key":"CompanyDashboard|head|head-sales|ar|390","status":"PASS","header":"— المبيعات 👑 رئيس الحسابات","expected":"المبيعات","errors":[]}
+{"key":"CompanyDashboard|head|head-purchases|ar|390","status":"PASS","header":"— المشتريات 👑 رئيس الحسابات","expected":"المشتريات","errors":[]}
+{"key":"CompanyDashboard|head|head-expenses|ar|390","status":"PASS","header":"— المصروفات 👑 رئيس الحسابات","expected":"المصروفات","errors":[]}
+{"key":"CompanyDashboard|head|head-inventory|ar|390","status":"PASS","header":"— المخزون 👑 رئيس الحسابات","expected":"المخزون","errors":[]}
+{"key":"CompanyDashboard|head|head-waste|ar|390","status":"PASS","header":"— الهدر والتالف 👑 رئيس الحسابات","expected":"الهدر والتالف","errors":[]}
+{"key":"CompanyDashboard|head|head-assets|ar|390","status":"PASS","header":"— الأصول الثابتة 👑 رئيس الحسابات","expected":"الأصول الثابتة","errors":[]}
+{"key":"CompanyDashboard|head|head-shifts|ar|390","status":"PASS","header":"— الشفتات 👑 رئيس الحسابات","expected":"الشفتات","errors":[]}
+{"key":"CompanyDashboard|head|head-employees|ar|390","status":"PASS","header":"— كشف حساب الموظفين 👑 رئيس الحسابات","expected":"كشف حساب الموظفين","errors":[]}
+{"key":"CompanyDashboard|head|head-cash|ar|390","status":"PASS","header":"— العهد النقدية 👑 رئيس الحسابات","expected":"العهد النقدية","errors":[]}
+{"key":"CompanyDashboard|head|head-accountants|ar|390","status":"PASS","header":"— أداء المحاسبين 👑 رئيس الحسابات","expected":"أداء المحاسبين","errors":[]}
+{"key":"CompanyDashboard|head|head-reminders|ar|390","status":"PASS","header":"— التذكيرات 👑 رئيس الحسابات","expected":"التذكيرات","errors":[]}
+{"key":"CompanyDashboard|head|head-erp|ar|390","status":"PASS","header":"— التصدير لـ ERP 👑 رئيس الحسابات","expected":"التصدير لـ ERP","errors":[]}
+{"key":"CompanyDashboard|head|head-reports|ar|390","status":"PASS","header":"— التقارير المالية 👑 رئيس الحسابات","expected":"التقارير المالية","errors":[]}
+{"key":"CompanyDashboard|head|head-approved|ar|820","status":"PASS","header":"— المعتمدة نهائياً 👑 رئيس الحسابات","expected":"المعتمدة نهائياً","errors":[]}
+{"key":"CompanyDashboard|head|head-pending|ar|820","status":"PASS","header":"— بانتظار الاعتماد 👑 رئيس الحسابات","expected":"بانتظار الاعتماد","errors":[]}
+{"key":"CompanyDashboard|head|head-rejected|ar|820","status":"PASS","header":"— المرفوضة 👑 رئيس الحسابات","expected":"المرفوضة","errors":[]}
+{"key":"CompanyDashboard|head|head-expenses|ar|820","status":"PASS","header":"— المصروفات 👑 رئيس الحسابات","expected":"المصروفات","errors":[]}
+{"key":"CompanyDashboard|head|head-sales|ar|820","status":"PASS","header":"— المبيعات 👑 رئيس الحسابات","expected":"المبيعات","errors":[]}
+{"key":"CompanyDashboard|head|head-purchases|ar|820","status":"PASS","header":"— المشتريات 👑 رئيس الحسابات","expected":"المشتريات","errors":[]}
+{"key":"CompanyDashboard|head|head-waste|ar|820","status":"PASS","header":"— الهدر والتالف 👑 رئيس الحسابات","expected":"الهدر والتالف","errors":[]}
+{"key":"CompanyDashboard|head|head-inventory|ar|820","status":"PASS","header":"— المخزون 👑 رئيس الحسابات","expected":"المخزون","errors":[]}
+{"key":"CompanyDashboard|head|head-employees|ar|820","status":"PASS","header":"— كشف حساب الموظفين 👑 رئيس الحسابات","expected":"كشف حساب الموظفين","errors":[]}
+{"key":"CompanyDashboard|head|head-assets|ar|820","status":"PASS","header":"— الأصول الثابتة 👑 رئيس الحسابات","expected":"الأصول الثابتة","errors":[]}
+{"key":"CompanyDashboard|head|head-shifts|ar|820","status":"PASS","header":"— الشفتات 👑 رئيس الحسابات","expected":"الشفتات","errors":[]}
+{"key":"CompanyDashboard|head|head-cash|ar|820","status":"PASS","header":"— العهد النقدية 👑 رئيس الحسابات","expected":"العهد النقدية","errors":[]}
+{"key":"CompanyDashboard|head|head-reminders|ar|820","status":"PASS","header":"— التذكيرات 👑 رئيس الحسابات","expected":"التذكيرات","errors":[]}
+{"key":"CompanyDashboard|head|head-accountants|ar|820","status":"PASS","header":"— أداء المحاسبين 👑 رئيس الحسابات","expected":"أداء المحاسبين","errors":[]}
+{"key":"CompanyDashboard|head|head-reports|ar|820","status":"PASS","header":"— التقارير المالية 👑 رئيس الحسابات","expected":"التقارير المالية","errors":[]}
+{"key":"CompanyDashboard|head|head-erp|ar|820","status":"PASS","header":"— التصدير لـ ERP 👑 رئيس الحسابات","expected":"التصدير لـ ERP","errors":[]}
+{"key":"CompanyDashboard|head|head-pending|ar|1280","status":"PASS","header":"— بانتظار الاعتماد 👑 رئيس الحسابات","expected":"بانتظار الاعتماد","errors":[]}
+{"key":"CompanyDashboard|head|head-approved|ar|1280","status":"PASS","header":"— المعتمدة نهائياً 👑 رئيس الحسابات","expected":"المعتمدة نهائياً","errors":[]}
+{"key":"CompanyDashboard|head|head-rejected|ar|1280","status":"PASS","header":"— المرفوضة 👑 رئيس الحسابات","expected":"المرفوضة","errors":[]}
+{"key":"CompanyDashboard|head|head-sales|ar|1280","status":"PASS","header":"— المبيعات 👑 رئيس الحسابات","expected":"المبيعات","errors":[]}
+{"key":"CompanyDashboard|head|head-expenses|ar|1280","status":"PASS","header":"— المصروفات 👑 رئيس الحسابات","expected":"المصروفات","errors":[]}
+{"key":"CompanyDashboard|head|head-inventory|ar|1280","status":"PASS","header":"— المخزون 👑 رئيس الحسابات","expected":"المخزون","errors":[]}
+{"key":"CompanyDashboard|head|head-purchases|ar|1280","status":"PASS","header":"— المشتريات 👑 رئيس الحسابات","expected":"المشتريات","errors":[]}
+{"key":"CompanyDashboard|head|head-assets|ar|1280","status":"PASS","header":"— الأصول الثابتة 👑 رئيس الحسابات","expected":"الأصول الثابتة","errors":[]}
+{"key":"CompanyDashboard|head|head-shifts|ar|1280","status":"PASS","header":"— الشفتات 👑 رئيس الحسابات","expected":"الشفتات","errors":[]}
+{"key":"CompanyDashboard|head|head-waste|ar|1280","status":"PASS","header":"— الهدر والتالف 👑 رئيس الحسابات","expected":"الهدر والتالف","errors":[]}
+{"key":"CompanyDashboard|head|head-employees|ar|1280","status":"PASS","header":"— كشف حساب الموظفين 👑 رئيس الحسابات","expected":"كشف حساب الموظفين","errors":[]}
+{"key":"CompanyDashboard|head|head-cash|ar|1280","status":"PASS","header":"— العهد النقدية 👑 رئيس الحسابات","expected":"العهد النقدية","errors":[]}
+{"key":"CompanyDashboard|head|head-reminders|ar|1280","status":"PASS","header":"— التذكيرات 👑 رئيس الحسابات","expected":"التذكيرات","errors":[]}
+{"key":"CompanyDashboard|head|head-accountants|ar|1280","status":"PASS","header":"— أداء المحاسبين 👑 رئيس الحسابات","expected":"أداء المحاسبين","errors":[]}
+{"key":"CompanyDashboard|head|head-reports|ar|1280","status":"PASS","header":"— التقارير المالية 👑 رئيس الحسابات","expected":"التقارير المالية","errors":[]}
+{"key":"CompanyDashboard|head|head-erp|ar|1280","status":"PASS","header":"— التصدير لـ ERP 👑 رئيس الحسابات","expected":"التصدير لـ ERP","errors":[]}
+{"key":"CompanyDashboard|head|head-rejected|en|390","status":"PASS","header":"— Rejected 👑 Head Accountant","expected":"Rejected","errors":[]}
+{"key":"CompanyDashboard|head|head-pending|en|390","status":"PASS","header":"— Awaiting Approval 👑 Head Accountant","expected":"Awaiting Approval","errors":[]}
+{"key":"CompanyDashboard|head|head-approved|en|390","status":"PASS","header":"— Final Approved 👑 Head Accountant","expected":"Final Approved","errors":[]}
+{"key":"CompanyDashboard|head|head-expenses|en|390","status":"PASS","header":"— Expenses 👑 Head Accountant","expected":"Expenses","errors":[]}
+{"key":"CompanyDashboard|head|head-purchases|en|390","status":"PASS","header":"— Purchases 👑 Head Accountant","expected":"Purchases","errors":[]}
+{"key":"CompanyDashboard|head|head-sales|en|390","status":"PASS","header":"— Sales 👑 Head Accountant","expected":"Sales","errors":[]}
+{"key":"CompanyDashboard|head|head-inventory|en|390","status":"PASS","header":"— Inventory 👑 Head Accountant","expected":"Inventory","errors":[]}
+{"key":"CompanyDashboard|head|head-assets|en|390","status":"PASS","header":"— Fixed Assets 👑 Head Accountant","expected":"Fixed Assets","errors":[]}
+{"key":"CompanyDashboard|head|head-waste|en|390","status":"PASS","header":"— Waste & Spoilage 👑 Head Accountant","expected":"Waste & Spoilage","errors":[]}
+{"key":"CompanyDashboard|head|head-employees|en|390","status":"PASS","header":"— Employee Accounts 👑 Head Accountant","expected":"Employee Accounts","errors":[]}
+{"key":"CompanyDashboard|head|head-shifts|en|390","status":"PASS","header":"— Shifts 👑 Head Accountant","expected":"Shifts","errors":[]}
+{"key":"CompanyDashboard|head|head-cash|en|390","status":"PASS","header":"— Cash Custody 👑 Head Accountant","expected":"Cash Custody","errors":[]}
+{"key":"CompanyDashboard|head|head-reminders|en|390","status":"PASS","header":"— Reminders 👑 Head Accountant","expected":"Reminders","errors":[]}
+{"key":"CompanyDashboard|head|head-accountants|en|390","status":"PASS","header":"— Accountant Performance 👑 Head Accountant","expected":"Accountant Performance","errors":[]}
+{"key":"CompanyDashboard|head|head-erp|en|390","status":"PASS","header":"— ERP Export 👑 Head Accountant","expected":"ERP Export","errors":[]}
+{"key":"CompanyDashboard|head|head-reports|en|390","status":"PASS","header":"— Financial Reports 👑 Head Accountant","expected":"Financial Reports","errors":[]}
+{"key":"CompanyDashboard|head|head-dashboard|en|820","status":"PASS","header":"— Dashboard 👑 Head Accountant","expected":"Dashboard","errors":[]}
+{"key":"CompanyDashboard|head|head-pending|en|820","status":"PASS","header":"— Awaiting Approval 👑 Head Accountant","expected":"Awaiting Approval","errors":[]}
+{"key":"CompanyDashboard|head|head-approved|en|820","status":"PASS","header":"— Final Approved 👑 Head Accountant","expected":"Final Approved","errors":[]}
+{"key":"CompanyDashboard|head|head-rejected|en|820","status":"PASS","header":"— Rejected 👑 Head Accountant","expected":"Rejected","errors":[]}
+{"key":"CompanyDashboard|head|head-sales|en|820","status":"PASS","header":"— Sales 👑 Head Accountant","expected":"Sales","errors":[]}
+{"key":"CompanyDashboard|head|head-expenses|en|820","status":"PASS","header":"— Expenses 👑 Head Accountant","expected":"Expenses","errors":[]}
+{"key":"CompanyDashboard|head|head-purchases|en|820","status":"PASS","header":"— Purchases 👑 Head Accountant","expected":"Purchases","errors":[]}
+{"key":"CompanyDashboard|head|head-inventory|en|820","status":"PASS","header":"— Inventory 👑 Head Accountant","expected":"Inventory","errors":[]}
+{"key":"CompanyDashboard|head|head-waste|en|820","status":"PASS","header":"— Waste & Spoilage 👑 Head Accountant","expected":"Waste & Spoilage","errors":[]}
+{"key":"CompanyDashboard|head|head-assets|en|820","status":"PASS","header":"— Fixed Assets 👑 Head Accountant","expected":"Fixed Assets","errors":[]}
+{"key":"CompanyDashboard|head|head-shifts|en|820","status":"PASS","header":"— Shifts 👑 Head Accountant","expected":"Shifts","errors":[]}
+{"key":"CompanyDashboard|head|head-employees|en|820","status":"PASS","header":"— Employee Accounts 👑 Head Accountant","expected":"Employee Accounts","errors":[]}
+{"key":"CompanyDashboard|head|head-cash|en|820","status":"PASS","header":"— Cash Custody 👑 Head Accountant","expected":"Cash Custody","errors":[]}
+{"key":"CompanyDashboard|head|head-reminders|en|820","status":"PASS","header":"— Reminders 👑 Head Accountant","expected":"Reminders","errors":[]}
+{"key":"CompanyDashboard|head|head-accountants|en|820","status":"PASS","header":"— Accountant Performance 👑 Head Accountant","expected":"Accountant Performance","errors":[]}
+{"key":"CompanyDashboard|head|head-erp|en|820","status":"PASS","header":"— ERP Export 👑 Head Accountant","expected":"ERP Export","errors":[]}
+{"key":"CompanyDashboard|head|head-reports|en|820","status":"PASS","header":"— Financial Reports 👑 Head Accountant","expected":"Financial Reports","errors":[]}
+{"key":"CompanyDashboard|head|head-dashboard|en|1280","status":"PASS","header":"— Dashboard 👑 Head Accountant","expected":"Dashboard","errors":[]}
+{"key":"CompanyDashboard|head|head-approved|en|1280","status":"PASS","header":"— Final Approved 👑 Head Accountant","expected":"Final Approved","errors":[]}
+{"key":"CompanyDashboard|head|head-pending|en|1280","status":"PASS","header":"— Awaiting Approval 👑 Head Accountant","expected":"Awaiting Approval","errors":[]}
+{"key":"CompanyDashboard|head|head-rejected|en|1280","status":"PASS","header":"— Rejected 👑 Head Accountant","expected":"Rejected","errors":[]}
+{"key":"CompanyDashboard|head|head-sales|en|1280","status":"PASS","header":"— Sales 👑 Head Accountant","expected":"Sales","errors":[]}
+{"key":"CompanyDashboard|head|head-expenses|en|1280","status":"PASS","header":"— Expenses 👑 Head Accountant","expected":"Expenses","errors":[]}
+{"key":"CompanyDashboard|head|head-purchases|en|1280","status":"PASS","header":"— Purchases 👑 Head Accountant","expected":"Purchases","errors":[]}
+{"key":"CompanyDashboard|head|head-inventory|en|1280","status":"PASS","header":"— Inventory 👑 Head Accountant","expected":"Inventory","errors":[]}
+{"key":"CompanyDashboard|head|head-waste|en|1280","status":"PASS","header":"— Waste & Spoilage 👑 Head Accountant","expected":"Waste & Spoilage","errors":[]}
+{"key":"CompanyDashboard|head|head-assets|en|1280","status":"PASS","header":"— Fixed Assets 👑 Head Accountant","expected":"Fixed Assets","errors":[]}
+{"key":"CompanyDashboard|head|head-employees|en|1280","status":"PASS","header":"— Employee Accounts 👑 Head Accountant","expected":"Employee Accounts","errors":[]}
+{"key":"CompanyDashboard|head|head-shifts|en|1280","status":"PASS","header":"— Shifts 👑 Head Accountant","expected":"Shifts","errors":[]}
+{"key":"CompanyDashboard|head|head-cash|en|1280","status":"PASS","header":"— Cash Custody 👑 Head Accountant","expected":"Cash Custody","errors":[]}
+{"key":"CompanyDashboard|head|head-reminders|en|1280","status":"PASS","header":"— Reminders 👑 Head Accountant","expected":"Reminders","errors":[]}
+{"key":"CompanyDashboard|head|head-accountants|en|1280","status":"PASS","header":"— Accountant Performance 👑 Head Accountant","expected":"Accountant Performance","errors":[]}
+{"key":"CompanyDashboard|head|head-erp|en|1280","status":"PASS","header":"— ERP Export 👑 Head Accountant","expected":"ERP Export","errors":[]}
+{"key":"CompanyDashboard|head|head-reports|en|1280","status":"PASS","header":"— Financial Reports 👑 Head Accountant","expected":"Financial Reports","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-dashboard|ar|390","status":"PASS","header":"— لوحة التحكم 📊 محاسب","expected":"لوحة التحكم","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-reminders|ar|390","status":"PASS","header":"— التذكيرات 📊 محاسب","expected":"التذكيرات","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-expenses|ar|390","status":"PASS","header":"— المصروفات 📊 محاسب","expected":"المصروفات","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-sales|ar|390","status":"PASS","header":"— المبيعات 📊 محاسب","expected":"المبيعات","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-purchases|ar|390","status":"PASS","header":"— المشتريات 📊 محاسب","expected":"المشتريات","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-inventory|ar|390","status":"PASS","header":"— المخزون 📊 محاسب","expected":"المخزون","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-waste|ar|390","status":"PASS","header":"— الهدر والتالف 📊 محاسب","expected":"الهدر والتالف","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-assets|ar|390","status":"PASS","header":"— الأصول الثابتة 📊 محاسب","expected":"الأصول الثابتة","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-shifts|ar|390","status":"PASS","header":"— إدارة الشفتات 📊 محاسب","expected":"إدارة الشفتات","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-employees|ar|390","status":"PASS","header":"— كشف حساب الموظفين 📊 محاسب","expected":"كشف حساب الموظفين","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-reports|ar|390","status":"PASS","header":"— التقارير 📊 محاسب","expected":"التقارير","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-reminders|ar|820","status":"PASS","header":"— التذكيرات 📊 محاسب","expected":"التذكيرات","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-dashboard|ar|820","status":"PASS","header":"— لوحة التحكم 📊 محاسب","expected":"لوحة التحكم","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-sales|ar|820","status":"PASS","header":"— المبيعات 📊 محاسب","expected":"المبيعات","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-expenses|ar|820","status":"PASS","header":"— المصروفات 📊 محاسب","expected":"المصروفات","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-purchases|ar|820","status":"PASS","header":"— المشتريات 📊 محاسب","expected":"المشتريات","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-inventory|ar|820","status":"PASS","header":"— المخزون 📊 محاسب","expected":"المخزون","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-waste|ar|820","status":"PASS","header":"— الهدر والتالف 📊 محاسب","expected":"الهدر والتالف","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-shifts|ar|820","status":"PASS","header":"— إدارة الشفتات 📊 محاسب","expected":"إدارة الشفتات","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-assets|ar|820","status":"PASS","header":"— الأصول الثابتة 📊 محاسب","expected":"الأصول الثابتة","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-employees|ar|820","status":"PASS","header":"— كشف حساب الموظفين 📊 محاسب","expected":"كشف حساب الموظفين","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-reports|ar|820","status":"PASS","header":"— التقارير 📊 محاسب","expected":"التقارير","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-dashboard|ar|1280","status":"PASS","header":"— لوحة التحكم 📊 محاسب","expected":"لوحة التحكم","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-reminders|ar|1280","status":"PASS","header":"— التذكيرات 📊 محاسب","expected":"التذكيرات","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-expenses|ar|1280","status":"PASS","header":"— المصروفات 📊 محاسب","expected":"المصروفات","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-sales|ar|1280","status":"PASS","header":"— المبيعات 📊 محاسب","expected":"المبيعات","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-purchases|ar|1280","status":"PASS","header":"— المشتريات 📊 محاسب","expected":"المشتريات","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-waste|ar|1280","status":"PASS","header":"— الهدر والتالف 📊 محاسب","expected":"الهدر والتالف","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-inventory|ar|1280","status":"PASS","header":"— المخزون 📊 محاسب","expected":"المخزون","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-assets|ar|1280","status":"PASS","header":"— الأصول الثابتة 📊 محاسب","expected":"الأصول الثابتة","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-employees|ar|1280","status":"PASS","header":"— كشف حساب الموظفين 📊 محاسب","expected":"كشف حساب الموظفين","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-shifts|ar|1280","status":"PASS","header":"— إدارة الشفتات 📊 محاسب","expected":"إدارة الشفتات","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-reports|ar|1280","status":"PASS","header":"— التقارير 📊 محاسب","expected":"التقارير","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-reminders|en|390","status":"PASS","header":"— Reminders 📊 Accountant","expected":"Reminders","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-dashboard|en|390","status":"PASS","header":"— Dashboard 📊 Accountant","expected":"Dashboard","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-expenses|en|390","status":"PASS","header":"— Expenses 📊 Accountant","expected":"Expenses","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-sales|en|390","status":"PASS","header":"— Sales 📊 Accountant","expected":"Sales","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-purchases|en|390","status":"PASS","header":"— Purchases 📊 Accountant","expected":"Purchases","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-waste|en|390","status":"PASS","header":"— Waste & Spoilage 📊 Accountant","expected":"Waste & Spoilage","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-assets|en|390","status":"PASS","header":"— Fixed Assets 📊 Accountant","expected":"Fixed Assets","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-inventory|en|390","status":"PASS","header":"— Inventory 📊 Accountant","expected":"Inventory","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-shifts|en|390","status":"PASS","header":"— Shift Management 📊 Accountant","expected":"Shift Management","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-reports|en|390","status":"PASS","header":"— Reports 📊 Accountant","expected":"Reports","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-employees|en|390","status":"PASS","header":"— Employee Accounts 📊 Accountant","expected":"Employee Accounts","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-reminders|en|820","status":"PASS","header":"— Reminders 📊 Accountant","expected":"Reminders","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-sales|en|820","status":"PASS","header":"— Sales 📊 Accountant","expected":"Sales","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-dashboard|en|820","status":"PASS","header":"— Dashboard 📊 Accountant","expected":"Dashboard","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-expenses|en|820","status":"PASS","header":"— Expenses 📊 Accountant","expected":"Expenses","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-inventory|en|820","status":"PASS","header":"— Inventory 📊 Accountant","expected":"Inventory","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-purchases|en|820","status":"PASS","header":"— Purchases 📊 Accountant","expected":"Purchases","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-waste|en|820","status":"PASS","header":"— Waste & Spoilage 📊 Accountant","expected":"Waste & Spoilage","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-shifts|en|820","status":"PASS","header":"— Shift Management 📊 Accountant","expected":"Shift Management","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-assets|en|820","status":"PASS","header":"— Fixed Assets 📊 Accountant","expected":"Fixed Assets","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-employees|en|820","status":"PASS","header":"— Employee Accounts 📊 Accountant","expected":"Employee Accounts","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-reports|en|820","status":"PASS","header":"— Reports 📊 Accountant","expected":"Reports","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-dashboard|en|1280","status":"PASS","header":"— Dashboard 📊 Accountant","expected":"Dashboard","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-reminders|en|1280","status":"PASS","header":"— Reminders 📊 Accountant","expected":"Reminders","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-expenses|en|1280","status":"PASS","header":"— Expenses 📊 Accountant","expected":"Expenses","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-sales|en|1280","status":"PASS","header":"— Sales 📊 Accountant","expected":"Sales","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-inventory|en|1280","status":"PASS","header":"— Inventory 📊 Accountant","expected":"Inventory","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-waste|en|1280","status":"PASS","header":"— Waste & Spoilage 📊 Accountant","expected":"Waste & Spoilage","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-purchases|en|1280","status":"PASS","header":"— Purchases 📊 Accountant","expected":"Purchases","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-shifts|en|1280","status":"PASS","header":"— Shift Management 📊 Accountant","expected":"Shift Management","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-assets|en|1280","status":"PASS","header":"— Fixed Assets 📊 Accountant","expected":"Fixed Assets","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-employees|en|1280","status":"PASS","header":"— Employee Accounts 📊 Accountant","expected":"Employee Accounts","errors":[]}
+{"key":"CompanyDashboard|branch|branch-overview|ar|390","status":"PASS","header":"— نظرة عامة 🏪 مدير فرع","expected":"نظرة عامة","errors":[]}
+{"key":"CompanyDashboard|accountant|acc-reports|en|1280","status":"PASS","header":"— Reports 📊 Accountant","expected":"Reports","errors":[]}
+{"key":"CompanyDashboard|branch|branch-upload|ar|390","status":"PASS","header":"— رفع البيانات 🏪 مدير فرع","expected":"رفع البيانات","errors":[]}
+{"key":"CompanyDashboard|branch|branch-employees|ar|390","status":"PASS","header":"— الموظفون 🏪 مدير فرع","expected":"الموظفون","errors":[]}
+{"key":"CompanyDashboard|branch|branch-requests|ar|390","status":"PASS","header":"— طلبات الشراء 🏪 مدير فرع","expected":"طلبات الشراء","errors":[]}
+{"key":"CompanyDashboard|branch|branch-shifts|ar|390","status":"PASS","header":"— شفتات الفرع 🏪 مدير فرع","expected":"شفتات الفرع","errors":[]}
+{"key":"CompanyDashboard|branch|branch-settings|ar|390","status":"PASS","header":"— إعدادات الفرع 🏪 مدير فرع","expected":"إعدادات الفرع","errors":[]}
+{"key":"CompanyDashboard|branch|branch-suppliers|ar|390","status":"PASS","header":"— الموردون 🏪 مدير فرع","expected":"الموردون","errors":[]}
+{"key":"CompanyDashboard|branch|branch-items|ar|390","status":"PASS","header":"— الأصناف 🏪 مدير فرع","expected":"الأصناف","errors":[]}
+{"key":"CompanyDashboard|branch|branch-upload|ar|820","status":"PASS","header":"— رفع البيانات 🏪 مدير فرع","expected":"رفع البيانات","errors":[]}
+{"key":"CompanyDashboard|branch|branch-shifts|ar|820","status":"PASS","header":"— شفتات الفرع 🏪 مدير فرع","expected":"شفتات الفرع","errors":[]}
+{"key":"CompanyDashboard|branch|branch-overview|ar|820","status":"PASS","header":"— نظرة عامة 🏪 مدير فرع","expected":"نظرة عامة","errors":[]}
+{"key":"CompanyDashboard|branch|branch-requests|ar|820","status":"PASS","header":"— طلبات الشراء 🏪 مدير فرع","expected":"طلبات الشراء","errors":[]}
+{"key":"CompanyDashboard|branch|branch-employees|ar|820","status":"PASS","header":"— الموظفون 🏪 مدير فرع","expected":"الموظفون","errors":[]}
+{"key":"CompanyDashboard|branch|branch-items|ar|820","status":"PASS","header":"— الأصناف 🏪 مدير فرع","expected":"الأصناف","errors":[]}
+{"key":"CompanyDashboard|branch|branch-suppliers|ar|820","status":"PASS","header":"— الموردون 🏪 مدير فرع","expected":"الموردون","errors":[]}
+{"key":"CompanyDashboard|branch|branch-settings|ar|820","status":"PASS","header":"— إعدادات الفرع 🏪 مدير فرع","expected":"إعدادات الفرع","errors":[]}
+{"key":"CompanyDashboard|branch|branch-overview|ar|1280","status":"PASS","header":"— نظرة عامة 🏪 مدير فرع","expected":"نظرة عامة","errors":[]}
+{"key":"CompanyDashboard|branch|branch-upload|ar|1280","status":"PASS","header":"— رفع البيانات 🏪 مدير فرع","expected":"رفع البيانات","errors":[]}
+{"key":"CompanyDashboard|branch|branch-requests|ar|1280","status":"PASS","header":"— طلبات الشراء 🏪 مدير فرع","expected":"طلبات الشراء","errors":[]}
+{"key":"CompanyDashboard|branch|branch-shifts|ar|1280","status":"PASS","header":"— شفتات الفرع 🏪 مدير فرع","expected":"شفتات الفرع","errors":[]}
+{"key":"CompanyDashboard|branch|branch-employees|ar|1280","status":"PASS","header":"— الموظفون 🏪 مدير فرع","expected":"الموظفون","errors":[]}
+{"key":"CompanyDashboard|branch|branch-items|ar|1280","status":"PASS","header":"— الأصناف 🏪 مدير فرع","expected":"الأصناف","errors":[]}
+{"key":"CompanyDashboard|branch|branch-suppliers|ar|1280","status":"PASS","header":"— الموردون 🏪 مدير فرع","expected":"الموردون","errors":[]}
+{"key":"CompanyDashboard|branch|branch-settings|ar|1280","status":"PASS","header":"— إعدادات الفرع 🏪 مدير فرع","expected":"إعدادات الفرع","errors":[]}
+{"key":"CompanyDashboard|branch|branch-overview|en|390","status":"PASS","header":"— Overview 🏪 Branch Manager","expected":"Overview","errors":[]}
+{"key":"CompanyDashboard|branch|branch-upload|en|390","status":"PASS","header":"— Upload Data 🏪 Branch Manager","expected":"Upload Data","errors":[]}
+{"key":"CompanyDashboard|branch|branch-shifts|en|390","status":"PASS","header":"— شفتات الفرع 🏪 Branch Manager","expected":"شفتات الفرع","errors":[]}
+{"key":"CompanyDashboard|branch|branch-employees|en|390","status":"PASS","header":"— Employees 🏪 Branch Manager","expected":"Employees","errors":[]}
+{"key":"CompanyDashboard|branch|branch-requests|en|390","status":"PASS","header":"— طلبات الشراء 🏪 Branch Manager","expected":"طلبات الشراء","errors":[]}
+{"key":"CompanyDashboard|branch|branch-items|en|390","status":"PASS","header":"— Items 🏪 Branch Manager","expected":"Items","errors":[]}
+{"key":"CompanyDashboard|branch|branch-suppliers|en|390","status":"PASS","header":"— Suppliers 🏪 Branch Manager","expected":"Suppliers","errors":[]}
+{"key":"CompanyDashboard|branch|branch-settings|en|390","status":"PASS","header":"— Branch Settings 🏪 Branch Manager","expected":"Branch Settings","errors":[]}
+{"key":"CompanyDashboard|branch|branch-overview|en|820","status":"PASS","header":"— Overview 🏪 Branch Manager","expected":"Overview","errors":[]}
+{"key":"CompanyDashboard|branch|branch-shifts|en|820","status":"PASS","header":"— شفتات الفرع 🏪 Branch Manager","expected":"شفتات الفرع","errors":[]}
+{"key":"CompanyDashboard|branch|branch-upload|en|820","status":"PASS","header":"— Upload Data 🏪 Branch Manager","expected":"Upload Data","errors":[]}
+{"key":"CompanyDashboard|branch|branch-requests|en|820","status":"PASS","header":"— طلبات الشراء 🏪 Branch Manager","expected":"طلبات الشراء","errors":[]}
+{"key":"CompanyDashboard|branch|branch-items|en|820","status":"PASS","header":"— Items 🏪 Branch Manager","expected":"Items","errors":[]}
+{"key":"CompanyDashboard|branch|branch-employees|en|820","status":"PASS","header":"— Employees 🏪 Branch Manager","expected":"Employees","errors":[]}
+{"key":"CompanyDashboard|branch|branch-suppliers|en|820","status":"PASS","header":"— Suppliers 🏪 Branch Manager","expected":"Suppliers","errors":[]}
+{"key":"CompanyDashboard|branch|branch-overview|en|1280","status":"PASS","header":"— Overview 🏪 Branch Manager","expected":"Overview","errors":[]}
+{"key":"CompanyDashboard|branch|branch-settings|en|820","status":"PASS","header":"— Branch Settings 🏪 Branch Manager","expected":"Branch Settings","errors":[]}
+{"key":"CompanyDashboard|branch|branch-shifts|en|1280","status":"PASS","header":"— شفتات الفرع 🏪 Branch Manager","expected":"شفتات الفرع","errors":[]}
+{"key":"CompanyDashboard|branch|branch-upload|en|1280","status":"PASS","header":"— Upload Data 🏪 Branch Manager","expected":"Upload Data","errors":[]}
+{"key":"CompanyDashboard|branch|branch-requests|en|1280","status":"PASS","header":"— طلبات الشراء 🏪 Branch Manager","expected":"طلبات الشراء","errors":[]}
+{"key":"CompanyDashboard|branch|branch-employees|en|1280","status":"PASS","header":"— Employees 🏪 Branch Manager","expected":"Employees","errors":[]}
+{"key":"CompanyDashboard|branch|branch-suppliers|en|1280","status":"PASS","header":"— Suppliers 🏪 Branch Manager","expected":"Suppliers","errors":[]}
+{"key":"CompanyDashboard|branch|branch-items|en|1280","status":"PASS","header":"— Items 🏪 Branch Manager","expected":"Items","errors":[]}
+{"key":"CompanyDashboard|branch|branch-settings|en|1280","status":"PASS","header":"— Branch Settings 🏪 Branch Manager","expected":"Branch Settings","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-overview|ar|390","status":"PASS","header":"— لوحة التحكم 🛒 مدير مشتريات","expected":"لوحة التحكم","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-new|ar|390","status":"PASS","header":"— الطلبات الجديدة 🛒 مدير مشتريات","expected":"الطلبات الجديدة","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-grouped|ar|390","status":"PASS","header":"— الطلبات المجمعة 🛒 مدير مشتريات","expected":"الطلبات المجمعة","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-sent|ar|390","status":"PASS","header":"— المرسلة للموردين 🛒 مدير مشتريات","expected":"المرسلة للموردين","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-items|ar|390","status":"PASS","header":"— الأصناف 🛒 مدير مشتريات","expected":"الأصناف","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-suppliers|ar|390","status":"PASS","header":"— الموردون 🛒 مدير مشتريات","expected":"الموردون","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-reports|ar|390","status":"PASS","header":"— التقارير 🛒 مدير مشتريات","expected":"التقارير","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-overview|ar|820","status":"PASS","header":"— لوحة التحكم 🛒 مدير مشتريات","expected":"لوحة التحكم","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-grouped|ar|820","status":"PASS","header":"— الطلبات المجمعة 🛒 مدير مشتريات","expected":"الطلبات المجمعة","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-new|ar|820","status":"PASS","header":"— الطلبات الجديدة 🛒 مدير مشتريات","expected":"الطلبات الجديدة","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-sent|ar|820","status":"PASS","header":"— المرسلة للموردين 🛒 مدير مشتريات","expected":"المرسلة للموردين","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-reports|ar|820","status":"PASS","header":"— التقارير 🛒 مدير مشتريات","expected":"التقارير","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-items|ar|820","status":"PASS","header":"— الأصناف 🛒 مدير مشتريات","expected":"الأصناف","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-suppliers|ar|820","status":"PASS","header":"— الموردون 🛒 مدير مشتريات","expected":"الموردون","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-overview|ar|1280","status":"PASS","header":"— لوحة التحكم 🛒 مدير مشتريات","expected":"لوحة التحكم","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-grouped|ar|1280","status":"PASS","header":"— الطلبات المجمعة 🛒 مدير مشتريات","expected":"الطلبات المجمعة","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-new|ar|1280","status":"PASS","header":"— الطلبات الجديدة 🛒 مدير مشتريات","expected":"الطلبات الجديدة","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-sent|ar|1280","status":"PASS","header":"— المرسلة للموردين 🛒 مدير مشتريات","expected":"المرسلة للموردين","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-items|ar|1280","status":"PASS","header":"— الأصناف 🛒 مدير مشتريات","expected":"الأصناف","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-suppliers|ar|1280","status":"PASS","header":"— الموردون 🛒 مدير مشتريات","expected":"الموردون","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-reports|ar|1280","status":"PASS","header":"— التقارير 🛒 مدير مشتريات","expected":"التقارير","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-overview|en|390","status":"PASS","header":"— Dashboard 🛒 Procurement Manager","expected":"Dashboard","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-new|en|390","status":"PASS","header":"— New Requests 🛒 Procurement Manager","expected":"New Requests","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-grouped|en|390","status":"PASS","header":"— Grouped Requests 🛒 Procurement Manager","expected":"Grouped Requests","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-sent|en|390","status":"PASS","header":"— Sent to Suppliers 🛒 Procurement Manager","expected":"Sent to Suppliers","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-items|en|390","status":"PASS","header":"— Items 🛒 Procurement Manager","expected":"Items","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-suppliers|en|390","status":"PASS","header":"— Suppliers 🛒 Procurement Manager","expected":"Suppliers","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-reports|en|390","status":"PASS","header":"— Reports 🛒 Procurement Manager","expected":"Reports","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-overview|en|820","status":"PASS","header":"— Dashboard 🛒 Procurement Manager","expected":"Dashboard","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-new|en|820","status":"PASS","header":"— New Requests 🛒 Procurement Manager","expected":"New Requests","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-sent|en|820","status":"PASS","header":"— Sent to Suppliers 🛒 Procurement Manager","expected":"Sent to Suppliers","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-grouped|en|820","status":"PASS","header":"— Grouped Requests 🛒 Procurement Manager","expected":"Grouped Requests","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-items|en|820","status":"PASS","header":"— Items 🛒 Procurement Manager","expected":"Items","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-reports|en|820","status":"PASS","header":"— Reports 🛒 Procurement Manager","expected":"Reports","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-suppliers|en|820","status":"PASS","header":"— Suppliers 🛒 Procurement Manager","expected":"Suppliers","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-overview|en|1280","status":"PASS","header":"— Dashboard 🛒 Procurement Manager","expected":"Dashboard","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-grouped|en|1280","status":"PASS","header":"— Grouped Requests 🛒 Procurement Manager","expected":"Grouped Requests","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-new|en|1280","status":"PASS","header":"— New Requests 🛒 Procurement Manager","expected":"New Requests","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-sent|en|1280","status":"PASS","header":"— Sent to Suppliers 🛒 Procurement Manager","expected":"Sent to Suppliers","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-items|en|1280","status":"PASS","header":"— Items 🛒 Procurement Manager","expected":"Items","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-suppliers|en|1280","status":"PASS","header":"— Suppliers 🛒 Procurement Manager","expected":"Suppliers","errors":[]}
+{"key":"CompanyDashboard|procurement|proc-reports|en|1280","status":"PASS","header":"— Reports 🛒 Procurement Manager","expected":"Reports","errors":[]}
+{"total":656,"pass":650,"fail":6}
+EXIT_CODE=1

@@ -138,7 +138,7 @@ export function SalesModule() {
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[850px] text-sm">
               <thead>
                 <tr className="bg-gray-50">
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 w-8">

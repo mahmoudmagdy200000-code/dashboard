@@ -47,9 +47,9 @@ export function OpRow({ op, onView, onApprove, onReject }: OpRowProps) {
           <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-100 flex-shrink-0">
             {op.moduleLabel}
           </span>
-          <span className="font-bold text-gray-800 text-sm truncate md:whitespace-normal md:break-words">{op.branch}</span>
+          <span className="font-bold text-gray-800 text-sm break-words">{op.branch}</span>
           {op.brandName && op.brandName !== "—" && op.brandName !== op.branch && (
-            <span className="text-xs text-gray-500 truncate md:whitespace-normal md:break-words">({op.brandName})</span>
+            <span className="text-xs text-gray-500 break-words">({op.brandName})</span>
           )}
         </div>
         <div className="font-extrabold text-gray-900 font-mono text-sm flex-shrink-0 tabular-nums pt-0.5">

@@ -1,0 +1,1546 @@
+{
+  "timestamp": "2026-11-02T16:07:55.729Z",
+  "testedCommit": "8ec147c9c92f3d0678d2c333f0518e6857eeb5a1",
+  "fixtureSha256": "8650f93bd1a2421d90d85558096ae5d14b931306fb1bde1756b0a9dabccc11ba",
+  "totalCases": 28,
+  "passCount": 28,
+  "failCount": 0,
+  "results": [
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-purchases",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "المشتريات محاسب EN الكل هذا الشهر هذا الأسبوع اليوم",
+      "expectedHeader": "المشتريات",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1313,
+        "clientHeight": 736,
+        "maxScroll": 577,
+        "middleScroll": 288,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 288,
+          "bottom": 577
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-purchases_ar_390_top.png",
+        "mid": "ASABPrototype_accountant_acc-purchases_ar_390_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-purchases_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-assets",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "الأصول الثابتة محاسب EN الكل هذا الشهر هذا الأسبوع اليوم",
+      "expectedHeader": "الأصول الثابتة",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1139,
+        "clientHeight": 736,
+        "maxScroll": 403,
+        "middleScroll": 201,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 201,
+          "bottom": 403
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-assets_ar_390_top.png",
+        "mid": "ASABPrototype_accountant_acc-assets_ar_390_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-assets_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-purchases",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "Purchases Accountant عربي All This Month This Week Today",
+      "expectedHeader": "Purchases",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1297,
+        "clientHeight": 736,
+        "maxScroll": 561,
+        "middleScroll": 280,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 280,
+          "bottom": 561
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-purchases_en_390_top.png",
+        "mid": "ASABPrototype_accountant_acc-purchases_en_390_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-purchases_en_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-purchases",
+      "lang": "en",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "568/568",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "Purchases Accountant / Purchases Monday, November 2, 2026 عربي Logout All This Month This Week Today",
+      "expectedHeader": "Purchases",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1108,
+        "clientHeight": 914,
+        "maxScroll": 194,
+        "middleScroll": 97,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 97,
+          "bottom": 194
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-purchases_en_820_top.png",
+        "mid": "ASABPrototype_accountant_acc-purchases_en_820_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-purchases_en_820_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "admin",
+      "screen": "admin-companies",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "اشتراكات الشركات أدمن النظام EN الكل هذا الشهر هذا الأسبوع اليوم",
+      "expectedHeader": "اشتراكات الشركات",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1016,
+        "clientHeight": 748,
+        "maxScroll": 268,
+        "middleScroll": 134,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 134,
+          "bottom": 268
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_admin_admin-companies_ar_390_top.png",
+        "mid": "ASABPrototype_admin_admin-companies_ar_390_mid.png",
+        "bottom": "ASABPrototype_admin_admin-companies_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "admin",
+      "screen": "admin-companies",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "Company Subscriptions System Admin عربي All This Month This Week Today",
+      "expectedHeader": "Company Subscriptions",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1064,
+        "clientHeight": 748,
+        "maxScroll": 316,
+        "middleScroll": 158,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 158,
+          "bottom": 316
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_admin_admin-companies_en_390_top.png",
+        "mid": "ASABPrototype_admin_admin-companies_en_390_mid.png",
+        "bottom": "ASABPrototype_admin_admin-companies_en_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "head",
+      "screen": "head-dashboard",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "لوحة التحكم رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم",
+      "expectedHeader": "لوحة التحكم",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 3631,
+        "clientHeight": 736,
+        "maxScroll": 2895,
+        "middleScroll": 1447,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 1447,
+          "bottom": 2895
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_head_head-dashboard_ar_390_top.png",
+        "mid": "ASABPrototype_head_head-dashboard_ar_390_mid.png",
+        "bottom": "ASABPrototype_head_head-dashboard_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "head",
+      "screen": "head-sales",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "المبيعات رئيس الحسابات EN الكل هذا الشهر هذا الأسبوع اليوم",
+      "expectedHeader": "المبيعات",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1879,
+        "clientHeight": 736,
+        "maxScroll": 1143,
+        "middleScroll": 571,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 571,
+          "bottom": 1143
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_head_head-sales_ar_390_top.png",
+        "mid": "ASABPrototype_head_head-sales_ar_390_mid.png",
+        "bottom": "ASABPrototype_head_head-sales_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "head",
+      "screen": "head-pending",
+      "lang": "ar",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "568/568",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "بانتظار الاعتماد رئيس الحسابات / بانتظار الاعتماد الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم",
+      "expectedHeader": "بانتظار الاعتماد",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1626,
+        "clientHeight": 914,
+        "maxScroll": 712,
+        "middleScroll": 356,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 356,
+          "bottom": 712
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_head_head-pending_ar_820_top.png",
+        "mid": "ASABPrototype_head_head-pending_ar_820_mid.png",
+        "bottom": "ASABPrototype_head_head-pending_ar_820_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "head",
+      "screen": "head-dashboard",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "Dashboard Head Accountant عربي All This Month This Week Today",
+      "expectedHeader": "Dashboard",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 3788,
+        "clientHeight": 736,
+        "maxScroll": 3052,
+        "middleScroll": 1526,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 1526,
+          "bottom": 3052
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_head_head-dashboard_en_390_top.png",
+        "mid": "ASABPrototype_head_head-dashboard_en_390_mid.png",
+        "bottom": "ASABPrototype_head_head-dashboard_en_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "head",
+      "screen": "head-sales",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "Sales Head Accountant عربي All This Month This Week Today",
+      "expectedHeader": "Sales",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1899,
+        "clientHeight": 736,
+        "maxScroll": 1163,
+        "middleScroll": 581,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 581,
+          "bottom": 1163
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_head_head-sales_en_390_top.png",
+        "mid": "ASABPrototype_head_head-sales_en_390_mid.png",
+        "bottom": "ASABPrototype_head_head-sales_en_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "head",
+      "screen": "head-pending",
+      "lang": "en",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "568/568",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "Pending Approval Head Accountant / Pending Approval Monday, November 2, 2026 عربي Logout All This Month This Week Today",
+      "expectedHeader": "Pending Approval",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1662,
+        "clientHeight": 914,
+        "maxScroll": 748,
+        "middleScroll": 374,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 374,
+          "bottom": 748
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_head_head-pending_en_820_top.png",
+        "mid": "ASABPrototype_head_head-pending_en_820_mid.png",
+        "bottom": "ASABPrototype_head_head-pending_en_820_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "head",
+      "screen": "head-dashboard",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "— لوحة التحكم 👑 رئيس الحسابات",
+      "expectedHeader": "لوحة التحكم",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1357,
+        "clientHeight": 738,
+        "maxScroll": 619,
+        "middleScroll": 309,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 309,
+          "bottom": 619
+        }
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_head_head-dashboard_ar_390_top.png",
+        "mid": "CompanyDashboard_head_head-dashboard_ar_390_mid.png",
+        "bottom": "CompanyDashboard_head_head-dashboard_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "head",
+      "screen": "head-dashboard",
+      "lang": "ar",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "580/580",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "— لوحة التحكم 👑 رئيس الحسابات",
+      "expectedHeader": "لوحة التحكم",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1028,
+        "clientHeight": 926,
+        "maxScroll": 102,
+        "middleScroll": 51,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 51,
+          "bottom": 102
+        }
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_head_head-dashboard_ar_820_top.png",
+        "mid": "CompanyDashboard_head_head-dashboard_ar_820_mid.png",
+        "bottom": "CompanyDashboard_head_head-dashboard_ar_820_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "head",
+      "screen": "head-dashboard",
+      "lang": "ar",
+      "width": 1280,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "1280/1280",
+      "mainWidths": "1040/1040",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "— لوحة التحكم 👑 رئيس الحسابات",
+      "expectedHeader": "لوحة التحكم",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 826,
+        "clientHeight": 734,
+        "maxScroll": 92,
+        "middleScroll": 46,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 46,
+          "bottom": 92
+        }
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_head_head-dashboard_ar_1280_top.png",
+        "mid": "CompanyDashboard_head_head-dashboard_ar_1280_mid.png",
+        "bottom": "CompanyDashboard_head_head-dashboard_ar_1280_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "head",
+      "screen": "head-dashboard",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [],
+      "cashAmounts": [],
+      "header": "— Dashboard 👑 Head Accountant",
+      "expectedHeader": "Dashboard",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1393,
+        "clientHeight": 738,
+        "maxScroll": 655,
+        "middleScroll": 327,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 327,
+          "bottom": 655
+        }
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_head_head-dashboard_en_390_top.png",
+        "mid": "CompanyDashboard_head_head-dashboard_en_390_mid.png",
+        "bottom": "CompanyDashboard_head_head-dashboard_en_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "إدارة العهد النقدية محاسب EN الكل هذا الشهر هذا الأسبوع اليوم",
+      "expectedHeader": "إدارة العهد النقدية",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1686,
+        "clientHeight": 736,
+        "maxScroll": 950,
+        "middleScroll": 475,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 475,
+          "bottom": 950
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-cash_ar_390_top.png",
+        "mid": "ASABPrototype_accountant_acc-cash_ar_390_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-cash_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "ar",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "568/568",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "إدارة العهد النقدية محاسب / إدارة العهد النقدية الاثنين، 2 نوفمبر 2026 EN خروج الكل هذا الشهر هذا الأسبوع اليوم",
+      "expectedHeader": "إدارة العهد النقدية",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1212,
+        "clientHeight": 914,
+        "maxScroll": 298,
+        "middleScroll": 149,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 149,
+          "bottom": 298
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-cash_ar_820_top.png",
+        "mid": "ASABPrototype_accountant_acc-cash_ar_820_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-cash_ar_820_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "ar",
+      "width": 1280,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "1280/1280",
+      "mainWidths": "1028/1028",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "إدارة العهد النقدية محاسب إدارة العهد النقدية الاثنين، 2 نوفمبر 2026 الكل هذا الشهر هذا الأسبوع اليوم EN خروج",
+      "expectedHeader": "إدارة العهد النقدية",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 917,
+        "clientHeight": 734,
+        "maxScroll": 183,
+        "middleScroll": 91,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 91,
+          "bottom": 183
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-cash_ar_1280_top.png",
+        "mid": "ASABPrototype_accountant_acc-cash_ar_1280_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-cash_ar_1280_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "Cash Custody Accountant عربي All This Month This Week Today",
+      "expectedHeader": "Cash Custody",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1621,
+        "clientHeight": 736,
+        "maxScroll": 885,
+        "middleScroll": 442,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 442,
+          "bottom": 885
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-cash_en_390_top.png",
+        "mid": "ASABPrototype_accountant_acc-cash_en_390_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-cash_en_390_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "en",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "568/568",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "Cash Custody Accountant / Cash Custody Monday, November 2, 2026 عربي Logout All This Month This Week Today",
+      "expectedHeader": "Cash Custody",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1185,
+        "clientHeight": 914,
+        "maxScroll": 271,
+        "middleScroll": 135,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 135,
+          "bottom": 271
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-cash_en_820_top.png",
+        "mid": "ASABPrototype_accountant_acc-cash_en_820_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-cash_en_820_bottom.png"
+      }
+    },
+    {
+      "surface": "ASABPrototype",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "en",
+      "width": 1280,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "1280/1280",
+      "mainWidths": "1028/1028",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "Cash Custody Accountant Cash Custody Monday, November 2, 2026 All This Month This Week Today عربي Logout",
+      "expectedHeader": "Cash Custody",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 917,
+        "clientHeight": 734,
+        "maxScroll": 183,
+        "middleScroll": 91,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 91,
+          "bottom": 183
+        }
+      },
+      "screenshots": {
+        "top": "ASABPrototype_accountant_acc-cash_en_1280_top.png",
+        "mid": "ASABPrototype_accountant_acc-cash_en_1280_mid.png",
+        "bottom": "ASABPrototype_accountant_acc-cash_en_1280_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "ar",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "— إدارة العهد النقدية 📊 محاسب",
+      "expectedHeader": "إدارة العهد النقدية",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1189,
+        "clientHeight": 738,
+        "maxScroll": 451,
+        "middleScroll": 225,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 225,
+          "bottom": 451
+        }
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-cash_ar_390_top.png",
+        "mid": "CompanyDashboard_accountant_acc-cash_ar_390_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-cash_ar_390_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "ar",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "580/580",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "— إدارة العهد النقدية 📊 محاسب",
+      "expectedHeader": "إدارة العهد النقدية",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 999,
+        "clientHeight": 926,
+        "maxScroll": 73,
+        "middleScroll": 36,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 36,
+          "bottom": 73
+        }
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-cash_ar_820_top.png",
+        "mid": "CompanyDashboard_accountant_acc-cash_ar_820_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-cash_ar_820_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "ar",
+      "width": 1280,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "1280/1280",
+      "mainWidths": "1040/1040",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "— إدارة العهد النقدية 📊 محاسب",
+      "expectedHeader": "إدارة العهد النقدية",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 904,
+        "clientHeight": 734,
+        "maxScroll": 170,
+        "middleScroll": 85,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 85,
+          "bottom": 170
+        }
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-cash_ar_1280_top.png",
+        "mid": "CompanyDashboard_accountant_acc-cash_ar_1280_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-cash_ar_1280_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "en",
+      "width": 390,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "390/390",
+      "mainWidths": "390/390",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "— Cash Custody Management 📊 Accountant",
+      "expectedHeader": "Cash Custody Management",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 1159,
+        "clientHeight": 738,
+        "maxScroll": 421,
+        "middleScroll": 210,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 210,
+          "bottom": 421
+        }
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-cash_en_390_top.png",
+        "mid": "CompanyDashboard_accountant_acc-cash_en_390_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-cash_en_390_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "en",
+      "width": 820,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "820/820",
+      "mainWidths": "580/580",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "— Cash Custody Management 📊 Accountant",
+      "expectedHeader": "Cash Custody Management",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 988,
+        "clientHeight": 926,
+        "maxScroll": 62,
+        "middleScroll": 31,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 31,
+          "bottom": 62
+        }
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-cash_en_820_top.png",
+        "mid": "CompanyDashboard_accountant_acc-cash_en_820_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-cash_en_820_bottom.png"
+      }
+    },
+    {
+      "surface": "CompanyDashboard",
+      "role": "accountant",
+      "screen": "acc-cash",
+      "lang": "en",
+      "width": 1280,
+      "status": "PASS",
+      "docOverflow": false,
+      "mainOverflow": false,
+      "docWidths": "1280/1280",
+      "mainWidths": "1040/1040",
+      "hasErrorBoundary": false,
+      "passesDistinctIdentity": true,
+      "hasValidKpis": true,
+      "kpiChecks": [
+        {
+          "labels": [
+            "عدد العهود النشطة",
+            "Active Custodies"
+          ],
+          "expected": "2",
+          "actual": "2",
+          "passed": true
+        },
+        {
+          "labels": [
+            "طلبات صرف معلقة",
+            "Pending Requests"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        },
+        {
+          "labels": [
+            "عهود قريبة من النفاد",
+            "Near Depletion"
+          ],
+          "expected": "1",
+          "actual": "1",
+          "passed": true
+        }
+      ],
+      "cashAmounts": [
+        {
+          "expected": "3200.00",
+          "passed": true
+        },
+        {
+          "expected": "500.00",
+          "passed": true
+        }
+      ],
+      "header": "— Cash Custody Management 📊 Accountant",
+      "expectedHeader": "Cash Custody Management",
+      "branchClipped": false,
+      "chatOverlap": false,
+      "consoleErrors": 0,
+      "scrollMeasurement": {
+        "totalHeight": 904,
+        "clientHeight": 734,
+        "maxScroll": 170,
+        "middleScroll": 85,
+        "scrollStatus": "SCROLLABLE",
+        "actualScrollOffsets": {
+          "top": 0,
+          "mid": 85,
+          "bottom": 170
+        }
+      },
+      "screenshots": {
+        "top": "CompanyDashboard_accountant_acc-cash_en_1280_top.png",
+        "mid": "CompanyDashboard_accountant_acc-cash_en_1280_mid.png",
+        "bottom": "CompanyDashboard_accountant_acc-cash_en_1280_bottom.png"
+      }
+    }
+  ]
+}

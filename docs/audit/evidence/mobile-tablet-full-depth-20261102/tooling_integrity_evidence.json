@@ -1,0 +1,209 @@
+{
+  "executedAt": "2026-11-02T16:15:30.341Z",
+  "totalNegativeTests": 6,
+  "allDefectsCaught": true,
+  "testResults": [
+    {
+      "id": "TOOL-NEG-01",
+      "passed": true,
+      "measured": {
+        "passed": false,
+        "expectedHeader": "Sales",
+        "header": "Subscriptions",
+        "headings": [
+          "Sales records"
+        ],
+        "hasErrorBoundary": false,
+        "isLoginScreen": false,
+        "passesDistinctIdentity": false,
+        "hasValidKpis": true,
+        "kpiChecks": [],
+        "cashAmounts": [],
+        "hasDocOverflow": false,
+        "hasMainOverflow": false,
+        "docScrollWidth": 390,
+        "docClientWidth": 390,
+        "mainScrollWidth": 374,
+        "mainClientWidth": 374,
+        "docDiff": 0,
+        "mainDiff": 0,
+        "isBranchClipped": false,
+        "totalScrollHeight": 65,
+        "clientHeight": 65,
+        "maxScroll": 0,
+        "middleScroll": 0,
+        "isScrollable": false
+      }
+    },
+    {
+      "id": "TOOL-NEG-02",
+      "passed": true,
+      "measured": {
+        "passed": false,
+        "expectedHeader": "Sales",
+        "header": "Sales",
+        "headings": [
+          "Sales records"
+        ],
+        "hasErrorBoundary": true,
+        "isLoginScreen": false,
+        "passesDistinctIdentity": true,
+        "hasValidKpis": true,
+        "kpiChecks": [],
+        "cashAmounts": [],
+        "hasDocOverflow": false,
+        "hasMainOverflow": false,
+        "docScrollWidth": 390,
+        "docClientWidth": 390,
+        "mainScrollWidth": 374,
+        "mainClientWidth": 374,
+        "docDiff": 0,
+        "mainDiff": 0,
+        "isBranchClipped": false,
+        "totalScrollHeight": 65,
+        "clientHeight": 65,
+        "maxScroll": 0,
+        "middleScroll": 0,
+        "isScrollable": false
+      }
+    },
+    {
+      "id": "TOOL-NEG-03",
+      "passed": true,
+      "measured": {
+        "passed": false,
+        "expectedHeader": "Sales",
+        "header": "Sales",
+        "headings": [
+          "Sales records"
+        ],
+        "hasErrorBoundary": false,
+        "isLoginScreen": false,
+        "passesDistinctIdentity": true,
+        "hasValidKpis": false,
+        "kpiChecks": [
+          {
+            "labels": [
+              "عدد العهود النشطة",
+              "Active Custodies"
+            ],
+            "expected": "2",
+            "actual": "",
+            "passed": false
+          },
+          {
+            "labels": [
+              "طلبات صرف معلقة",
+              "Pending Requests"
+            ],
+            "expected": "1",
+            "actual": "",
+            "passed": false
+          },
+          {
+            "labels": [
+              "عهود قريبة من النفاد",
+              "Near Depletion"
+            ],
+            "expected": "1",
+            "actual": "",
+            "passed": false
+          }
+        ],
+        "cashAmounts": [
+          {
+            "expected": "3200.00",
+            "passed": false
+          },
+          {
+            "expected": "500.00",
+            "passed": false
+          }
+        ],
+        "hasDocOverflow": false,
+        "hasMainOverflow": false,
+        "docScrollWidth": 390,
+        "docClientWidth": 390,
+        "mainScrollWidth": 374,
+        "mainClientWidth": 374,
+        "docDiff": 0,
+        "mainDiff": 0,
+        "isBranchClipped": false,
+        "totalScrollHeight": 65,
+        "clientHeight": 65,
+        "maxScroll": 0,
+        "middleScroll": 0,
+        "isScrollable": false
+      }
+    },
+    {
+      "id": "TOOL-NEG-04",
+      "passed": true,
+      "measured": {
+        "passed": false,
+        "expectedHeader": "Sales",
+        "header": "Sales",
+        "headings": [
+          "Sales records"
+        ],
+        "hasErrorBoundary": false,
+        "isLoginScreen": false,
+        "passesDistinctIdentity": true,
+        "hasValidKpis": true,
+        "kpiChecks": [],
+        "cashAmounts": [],
+        "hasDocOverflow": true,
+        "hasMainOverflow": false,
+        "docScrollWidth": 2008,
+        "docClientWidth": 390,
+        "mainScrollWidth": 374,
+        "mainClientWidth": 374,
+        "docDiff": 1618,
+        "mainDiff": 0,
+        "isBranchClipped": false,
+        "totalScrollHeight": 65,
+        "clientHeight": 65,
+        "maxScroll": 0,
+        "middleScroll": 0,
+        "isScrollable": false
+      }
+    },
+    {
+      "id": "TOOL-NEG-05",
+      "passed": true,
+      "measured": {
+        "passed": false,
+        "expectedHeader": "Sales",
+        "header": "Sales",
+        "headings": [
+          "Sales records"
+        ],
+        "hasErrorBoundary": false,
+        "isLoginScreen": true,
+        "passesDistinctIdentity": true,
+        "hasValidKpis": true,
+        "kpiChecks": [],
+        "cashAmounts": [],
+        "hasDocOverflow": false,
+        "hasMainOverflow": false,
+        "docScrollWidth": 390,
+        "docClientWidth": 390,
+        "mainScrollWidth": 374,
+        "mainClientWidth": 374,
+        "docDiff": 0,
+        "mainDiff": 0,
+        "isBranchClipped": false,
+        "totalScrollHeight": 65,
+        "clientHeight": 65,
+        "maxScroll": 0,
+        "middleScroll": 0,
+        "isScrollable": false
+      }
+    },
+    {
+      "id": "TOOL-NEG-06",
+      "passed": true,
+      "measured": "Real reconciler threw Unmatched delta key; original dataset unchanged"
+    }
+  ]
+}

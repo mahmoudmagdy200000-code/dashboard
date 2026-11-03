@@ -1866,7 +1866,7 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
           </header>
 
           {/* Content */}
-          <main className="flex-1 min-w-0 overflow-y-auto p-3 sm:p-5">
+          <main className="flex-1 min-w-0 overflow-y-auto p-3 sm:p-5 pb-24 sm:pb-24 md:pb-24">
             <PageRouter state={state} pageProps={pageProps} adminUsers={adminUsers} setAdminUsers={setAdminUsers} />
           </main>
         </div>

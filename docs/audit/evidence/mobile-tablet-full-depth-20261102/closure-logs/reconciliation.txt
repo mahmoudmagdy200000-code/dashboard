@@ -1,0 +1,2 @@
+{"total":684,"pass":684,"fail":0,"blocked":0,"notVerified":0,"delta":28,"smoke":656}
+EXIT_CODE=0

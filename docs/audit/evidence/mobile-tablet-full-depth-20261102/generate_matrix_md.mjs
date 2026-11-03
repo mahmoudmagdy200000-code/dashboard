@@ -1,0 +1,8 @@
+import fs from 'node:fs';
+const base='docs/audit/evidence/mobile-tablet-full-depth-20261102/';
+const data=JSON.parse(fs.readFileSync('artifacts/responsive-evidence/full-depth-114-reconciliation/full_114_coverage_metrics.json'));
+let md=`# ASSAB ERP — Evidence Closure Coverage Matrix\n\nBaseline: 53d2f575b57c28b40d4c2387639c8758c95d25ce. Execution parent: 8ec147c9c92f3d0678d2c333f0518e6857eeb5a1.\n\nScope: local Mock/Fixtures. **Screen identity/error smoke is distinct from full-depth responsive coverage.** Historical layout measurements are retained, not relabeled as fresh full-depth tests. Staging, Backend integration and physical devices: NOT RUN.\n\nPASS (MOCK): ${data.passCount}; FAIL: ${data.failCount}; BLOCKED: ${data.blockedCount}; NOT VERIFIED: ${data.notVerifiedCount}.\n\n| Surface | Role | Screen | Viewport | Language | Scroll coverage | Content verified | Interaction verified | Result | Raw evidence |\n|---|---|---|---|---|---|---|---|---|---|\n`;
+for(const r of data.coverage)md+=`| ${r.surface} | ${r.role} | ${r.screen} | ${r.width} | ${r.lang} | ${r.scrollCoverage} | ${r.verification.passesDistinctIdentity ? 'Screen identity / no render errors' : 'FAILED'} | ${r.interactionCoverage} | ${r.status} | ${r.verification.source} |\n`;
+md+='\nTargeted interaction evidence: artifacts/responsive-evidence/full-depth-114-reconciliation/horizontal_scroll_proofs.json (3 cases, Arabic 390px; not all interactions).\n';
+fs.writeFileSync(base+'MASTER_COVERAGE_MATRIX_114.md',md);
+console.log(`Generated ${data.coverage.length} rows from measured evidence, no hardcoded PASS totals.`);

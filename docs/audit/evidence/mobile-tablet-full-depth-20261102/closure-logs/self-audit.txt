@@ -1,0 +1,2 @@
+{"qualityLogsChecked":7,"applicationSourceTree":"95e1e0816cf5b47fed695863895b374959042d38","timestamp":"2026-11-02T16:23:19.430Z","inventory":114,"uniqueCombinations":684,"delta":28,"smoke":656,"screenshots":84,"negativeTests":6,"historicalLayoutPreserved":true,"applicationSourceUnchanged":true,"rule13Scope":"28 targeted full-depth cases, 656 identity/error smoke cases; historical remaining layout is partial","passed":true}
+EXIT_CODE=0

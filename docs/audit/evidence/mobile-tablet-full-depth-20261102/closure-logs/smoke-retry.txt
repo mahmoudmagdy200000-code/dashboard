@@ -1,0 +1,8 @@
+{"key":"ASABPrototype|accountant|acc-inventory-items|en|390","status":"PASS","header":"Select Daily Inventory Items Accountant عربي All This Month This Week Today","expected":"Select Daily Inventory Items","errors":[]}
+{"key":"ASABPrototype|accountant|acc-sales-detail|en|390","status":"PASS","header":"Sales Operation Details Accountant عربي All This Month This Week Today","expected":"Sales Operation Details","errors":[]}
+{"key":"ASABPrototype|accountant|acc-sales-detail|en|820","status":"PASS","header":"Sales Operation Details Accountant / Sales Operation Details Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Sales Operation Details","errors":[]}
+{"key":"ASABPrototype|accountant|acc-inventory-items|en|820","status":"PASS","header":"Select Daily Inventory Items Accountant / Select Daily Inventory Items Monday, November 2, 2026 عربي Logout All This Month This Week Today","expected":"Select Daily Inventory Items","errors":[]}
+{"key":"ASABPrototype|accountant|acc-inventory-items|en|1280","status":"PASS","header":"Select Daily Inventory Items Accountant Select Daily Inventory Items Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Select Daily Inventory Items","errors":[]}
+{"key":"ASABPrototype|accountant|acc-sales-detail|en|1280","status":"PASS","header":"Sales Operation Details Accountant Sales Operation Details Monday, November 2, 2026 All This Month This Week Today عربي Logout","expected":"Sales Operation Details","errors":[]}
+{"total":656,"pass":656,"fail":0}
+EXIT_CODE=0

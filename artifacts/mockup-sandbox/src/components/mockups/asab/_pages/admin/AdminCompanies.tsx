@@ -163,13 +163,15 @@ export function AdminCompanies({ navigate }: PageProps) {
             <Search size={13} className="text-gray-400 flex-shrink-0" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("بحث بالشركة أو المسؤول أو المدينة...", "Search by company, contact or city...")} className="flex-1 text-sm outline-none" />
           </div>
-          <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
-            {(["all", "Basic", "Professional", "Enterprise", "trial", "suspended"] as const).map(f => (
-              <button key={f} onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filter === f ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
-                {f === "all" ? t("الكل", "All") : f === "trial" ? t("تجريبي", "Trial") : f === "suspended" ? t("موقوف", "Suspended") : t(PLAN_NAMES_AR[f] || f, f)}
-              </button>
-            ))}
+          <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 overflow-x-auto max-w-full pb-1">
+            <div className="flex items-center gap-1 flex-nowrap min-w-max">
+              {(["all", "Basic", "Professional", "Enterprise", "trial", "suspended"] as const).map(f => (
+                <button key={f} onClick={() => setFilter(f)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filter === f ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+                  {f === "all" ? t("الكل", "All") : f === "trial" ? t("تجريبي", "Trial") : f === "suspended" ? t("موقوف", "Suspended") : t(PLAN_NAMES_AR[f] || f, f)}
+                </button>
+              ))}
+            </div>
           </div>
           <span className="text-xs text-gray-400">{shown.length} {t("نتيجة", "results")}</span>
         </div>

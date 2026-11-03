@@ -164,7 +164,8 @@ export function ExpensesModule() {
               </button>
             </div>
           </div>
-          <table className="w-full" dir="rtl">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[750px]" dir="rtl">
             <thead className="bg-gray-50">
               <tr className="text-xs text-gray-500 font-semibold">
                 <th className="px-5 py-3 text-right">
@@ -238,6 +239,7 @@ export function ExpensesModule() {
               })}
             </tbody>
           </table>
+          </div>
           <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
             <span className="text-xs text-gray-400">عرض 5 من 22 فاتورة</span>
             <div className="flex items-center gap-1">

@@ -448,7 +448,7 @@ function ExcelImportModal({
 
             {/* Table */}
             <div className="overflow-auto flex-1">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[700px] text-sm">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 font-semibold">
                     <th className="px-3 py-2.5 text-center w-8">✔</th>
@@ -1018,17 +1018,17 @@ export function AccAssets({ navigate }: PageProps) {
   return (
     <div className="space-y-5" dir={dir}>
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-800">الأصول الثابتة</h2>
           <p className="text-gray-400 text-sm mt-0.5">
             تسجيل وتتبع الأصول — سجل العهدة والنقل التاريخي بين الموظفين
           </p>
         </div>
-        <div className="flex flex-col gap-2 items-end flex-shrink-0">
+        <div className="flex flex-col gap-2 items-start sm:items-end flex-shrink-0 max-w-full">
           {/* Row 1: view toggle + export */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+          <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-1">
+            <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 flex-nowrap min-w-max">
               {(
                 [
                   ["list", "قائمة الأصول"],
@@ -1459,7 +1459,8 @@ export function AccAssets({ navigate }: PageProps) {
                       </p>
                     </div>
                   </div>
-                  <table className="w-full text-xs" dir={dir}>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[600px] text-xs" dir={dir}>
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-4 py-2.5 text-right font-semibold text-gray-600">
@@ -1550,6 +1551,7 @@ export function AccAssets({ navigate }: PageProps) {
                       })}
                     </tbody>
                   </table>
+                  </div>
                   {/* History panels */}
                   {brAssets
                     .filter((a) => expandedId === a.id)

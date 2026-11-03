@@ -1,0 +1,383 @@
+TAP version 13
+# Subtest: Backend scope rules accept valid hierarchy arrays and reject malformed grants
+ok 1 - Backend scope rules accept valid hierarchy arrays and reject malformed grants
+  ---
+  duration_ms: 11.18
+  type: 'test'
+  ...
+# Subtest: ambiguous repeated same-role assignments fail closed in either order
+ok 2 - ambiguous repeated same-role assignments fail closed in either order
+  ---
+  duration_ms: 2.0536
+  type: 'test'
+  ...
+# Subtest: actual preview path parser recognizes empty and unknown hash/path URLs for denial
+ok 3 - actual preview path parser recognizes empty and unknown hash/path URLs for denial
+  ---
+  duration_ms: 91.6065
+  type: 'test'
+  ...
+# Subtest: financial and shared cache cancellation preserves auth queries and ignores late responses
+ok 4 - financial and shared cache cancellation preserves auth queries and ignores late responses
+  ---
+  duration_ms: 35.6211
+  type: 'test'
+  ...
+# Subtest: financial purge increments generation immediately and aborts registered direct requests
+ok 5 - financial purge increments generation immediately and aborts registered direct requests
+  ---
+  duration_ms: 1.8598
+  type: 'test'
+  ...
+# Subtest: tenant client rotation isolates mounted QueryClientProvider from late query and mutation responses
+ok 6 - tenant client rotation isolates mounted QueryClientProvider from late query and mutation responses
+  ---
+  duration_ms: 53.971
+  type: 'test'
+  ...
+# Subtest: actual loadFreshDetail discards a late direct response after access invalidation
+ok 7 - actual loadFreshDetail discards a late direct response after access invalidation
+  ---
+  duration_ms: 1223.5458
+  type: 'test'
+  ...
+# Subtest: final approval does not mutate after a late detail response crosses access generation
+ok 8 - final approval does not mutate after a late detail response crosses access generation
+  ---
+  duration_ms: 836.5488
+  type: 'test'
+  ...
+# Subtest: bulk final approval and head return stop before mutation after access invalidation
+ok 9 - bulk final approval and head return stop before mutation after access invalidation
+  ---
+  duration_ms: 1986.4301
+  type: 'test'
+  ...
+# Subtest: scope fingerprints change on role order, grant narrowing and revocation
+ok 10 - scope fingerprints change on role order, grant narrowing and revocation
+  ---
+  duration_ms: 3.2824
+  type: 'test'
+  ...
+# Subtest: login landing, direct URL, refresh and Back/Forward decisions use /auth/me grants
+ok 11 - login landing, direct URL, refresh and Back/Forward decisions use /auth/me grants
+  ---
+  duration_ms: 2.8618
+  type: 'test'
+  ...
+# Subtest: pre-login role selection and internal role switching cannot invent grants
+ok 12 - pre-login role selection and internal role switching cannot invent grants
+  ---
+  duration_ms: 0.4517
+  type: 'test'
+  ...
+# Subtest: missing or malformed grants fail closed even if legacy fields claim accountant
+ok 13 - missing or malformed grants fail closed even if legacy fields claim accountant
+  ---
+  duration_ms: 2.8681
+  type: 'test'
+  ...
+# Subtest: role matrix permits history for head but configs only for accountant
+ok 14 - role matrix permits history for head but configs only for accountant
+  ---
+  duration_ms: 1.3847
+  type: 'test'
+  ...
+# Subtest: actual platform operations hook emits zero unauthorized API requests
+ok 15 - actual platform operations hook emits zero unauthorized API requests
+  ---
+  duration_ms: 1.1968
+  type: 'test'
+  ...
+# Subtest: isolated route and child-query mock blocks unauthorized mounts before requests
+ok 16 - isolated route and child-query mock blocks unauthorized mounts before requests
+  ---
+  duration_ms: 0.3716
+  type: 'test'
+  ...
+# Subtest: actual App route boundary blocks a dashboard mount before its mocked query runs
+ok 17 - actual App route boundary blocks a dashboard mount before its mocked query runs
+  ---
+  duration_ms: 135.0861
+  type: 'test'
+  ...
+# Subtest: actual head history components render with History and assigned branches, never Configs
+ok 18 - actual head history components render with History and assigned branches, never Configs
+  ---
+  duration_ms: 736.3347
+  type: 'test'
+  ...
+# Subtest: actual CompanyDashboard component boundary does not mount accountant draft query for head or company admin
+ok 19 - actual CompanyDashboard component boundary does not mount accountant draft query for head or company admin
+  ---
+  duration_ms: 437.3888
+  type: 'test'
+  ...
+# Subtest: actual CompanyDashboard operations hook suppresses cached financial rows and requests outside financial roles
+ok 20 - actual CompanyDashboard operations hook suppresses cached financial rows and requests outside financial roles
+  ---
+  duration_ms: 479.8847
+  type: 'test'
+  ...
+# Subtest: CompanyDashboard role switch hides populated ops and purges cache before selecting the next role
+ok 21 - CompanyDashboard role switch hides populated ops and purges cache before selecting the next role
+  ---
+  duration_ms: 499.8008
+  type: 'test'
+  ...
+# Subtest: ASABPrototype role switch clears local financial ops before the new role mounts
+ok 22 - ASABPrototype role switch clears local financial ops before the new role mounts
+  ---
+  duration_ms: 198.8329
+  type: 'test'
+  ...
+# Subtest: AuthContext grant narrowing blocks rendering until financial cache is purged
+ok 23 - AuthContext grant narrowing blocks rendering until financial cache is purged
+  ---
+  duration_ms: 50.4445
+  type: 'test'
+  ...
+# Subtest: AuthContext rotates the whole client for a company change and keeps targeted purge for role changes
+ok 24 - AuthContext rotates the whole client for a company change and keeps targeted purge for role changes
+  ---
+  duration_ms: 99.8666
+  type: 'test'
+  ...
+# Subtest: newer /auth/me response wins when overlapping refreshes resolve out of order
+ok 25 - newer /auth/me response wins when overlapping refreshes resolve out of order
+  ---
+  duration_ms: 36.3081
+  type: 'test'
+  ...
+# Subtest: an obsolete refresh rejection cannot replace the latest user or transition state
+ok 26 - an obsolete refresh rejection cannot replace the latest user or transition state
+  ---
+  duration_ms: 38.7714
+  type: 'test'
+  ...
+# Subtest: logout, forced logout and login session boundaries invalidate pending refresh responses
+ok 27 - logout, forced logout and login session boundaries invalidate pending refresh responses
+  ---
+  duration_ms: 159.2246
+  type: 'test'
+  ...
+# Subtest: bootstrap /auth/me response is discarded after a later session boundary
+ok 28 - bootstrap /auth/me response is discarded after a later session boundary
+  ---
+  duration_ms: 38.8574
+  type: 'test'
+  ...
+# Subtest: S1H-F06: role change cache isolation covers reports, audit-logs, attachments, platform/reminders, company, modules, exceptions, exports and preserves auth identity
+ok 29 - S1H-F06: role change cache isolation covers reports, audit-logs, attachments, platform/reminders, company, modules, exceptions, exports and preserves auth identity
+  ---
+  duration_ms: 6.5748
+  type: 'test'
+  ...
+# Subtest: S1H-F06-EXT-A: delayed in-flight audit-logs response cannot restore purged cache; auth/me preserved
+ok 30 - S1H-F06-EXT-A: delayed in-flight audit-logs response cannot restore purged cache; auth/me preserved
+  ---
+  duration_ms: 3.6609
+  type: 'test'
+  ...
+# Subtest: S1H-F06-EXT-B: delayed in-flight attachments response cannot restore purged cache; auth/me preserved
+ok 31 - S1H-F06-EXT-B: delayed in-flight attachments response cannot restore purged cache; auth/me preserved
+  ---
+  duration_ms: 6.0244
+  type: 'test'
+  ...
+# Subtest: GO-15 A01: LoginPage and ForgotPasswordPage bind programmatic labels to all inputs
+ok 32 - GO-15 A01: LoginPage and ForgotPasswordPage bind programmatic labels to all inputs
+  ---
+  duration_ms: 8.6271
+  type: 'test'
+  ...
+# Subtest: GO-15 A02: LoginPage password reveal button is keyboard accessible with trailing positioning and non-colliding padding
+ok 33 - GO-15 A02: LoginPage password reveal button is keyboard accessible with trailing positioning and non-colliding padding
+  ---
+  duration_ms: 4.9566
+  type: 'test'
+  ...
+# Subtest: Branch Manager positive grants: accepts populated parent Brand/Restaurant IDs and valid single-branch shapes
+ok 34 - Branch Manager positive grants: accepts populated parent Brand/Restaurant IDs and valid single-branch shapes
+  ---
+  duration_ms: 1.0267
+  type: 'test'
+  ...
+# Subtest: Branch Manager negative grants: rejects zero/multiple branches, inconsistent multi-hierarchy, invalid UUIDs, duplicates, and unauthorized roles
+ok 35 - Branch Manager negative grants: rejects zero/multiple branches, inconsistent multi-hierarchy, invalid UUIDs, duplicates, and unauthorized roles
+  ---
+  duration_ms: 2.58
+  type: 'test'
+  ...
+# Subtest: Branch Manager routing, stale EntrySelection fallback, default landing on branch-overview, and Admin denial
+ok 36 - Branch Manager routing, stale EntrySelection fallback, default landing on branch-overview, and Admin denial
+  ---
+  duration_ms: 582.1627
+  type: 'test'
+  ...
+# Subtest: Non-regression matrix: Accountant, Head Accountant, Company Admin, Procurement, and System Admin authorization remain intact
+ok 37 - Non-regression matrix: Accountant, Head Accountant, Company Admin, Procurement, and System Admin authorization remain intact
+  ---
+  duration_ms: 1.2582
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Contract 1]: parsePlansResponse accepts bare array of plans
+ok 38 - UI-NAV-01 [Contract 1]: parsePlansResponse accepts bare array of plans
+  ---
+  duration_ms: 12.9836
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Contract 2]: parsePlansResponse accepts standard backend envelope { data: [...] }
+ok 39 - UI-NAV-01 [Contract 2]: parsePlansResponse accepts standard backend envelope { data: [...] }
+  ---
+  duration_ms: 0.724
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Contract 3]: parsePlansResponse accepts alternative envelopes { plans: [...] } and { items: [...] }
+ok 40 - UI-NAV-01 [Contract 3]: parsePlansResponse accepts alternative envelopes { plans: [...] } and { items: [...] }
+  ---
+  duration_ms: 0.6633
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Contract 4]: parsePlansResponse handles null and undefined gracefully returning []
+ok 41 - UI-NAV-01 [Contract 4]: parsePlansResponse handles null and undefined gracefully returning []
+  ---
+  duration_ms: 10.5814
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Contract 5]: parseSubscriptionResponse parses active subscription
+ok 42 - UI-NAV-01 [Contract 5]: parseSubscriptionResponse parses active subscription
+  ---
+  duration_ms: 1.3234
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Contract 6]: parseSubscriptionResponse parses trialing subscription as active
+ok 43 - UI-NAV-01 [Contract 6]: parseSubscriptionResponse parses trialing subscription as active
+  ---
+  duration_ms: 4.9011
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Contract 7]: parseSubscriptionResponse returns null for NOT_FOUND / unprovisioned company
+ok 44 - UI-NAV-01 [Contract 7]: parseSubscriptionResponse returns null for NOT_FOUND / unprovisioned company
+  ---
+  duration_ms: 0.5202
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Contract 8]: hasActiveSubscription correctly distinguishes active vs inactive/null
+ok 45 - UI-NAV-01 [Contract 8]: hasActiveSubscription correctly distinguishes active vs inactive/null
+  ---
+  duration_ms: 0.2953
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Contract 9]: formatPlanPrice handles custom vs halala numeric amounts
+ok 46 - UI-NAV-01 [Contract 9]: formatPlanPrice handles custom vs halala numeric amounts
+  ---
+  duration_ms: 2.2211
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Contract 10]: formatQuota handles unlimited vs bounded storage
+ok 47 - UI-NAV-01 [Contract 10]: formatQuota handles unlimited vs bounded storage
+  ---
+  duration_ms: 1.9175
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Boundary 11]: ErrorBoundaryCore catches render exceptions and formats user-visible alert
+ok 48 - UI-NAV-01 [Boundary 11]: ErrorBoundaryCore catches render exceptions and formats user-visible alert
+  ---
+  duration_ms: 1.3008
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Boundary 12]: ErrorBoundary renders user-facing error UI when error occurs
+ok 49 - UI-NAV-01 [Boundary 12]: ErrorBoundary renders user-facing error UI when error occurs
+  ---
+  duration_ms: 2.4162
+  type: 'test'
+  ...
+# Subtest: Navigation Smoke [Pass 13]: All Company Admin page identifiers are defined and distinct
+ok 50 - Navigation Smoke [Pass 13]: All Company Admin page identifiers are defined and distinct
+  ---
+  duration_ms: 1.4762
+  type: 'test'
+  ...
+# Subtest: Navigation Smoke [Pass 14]: All Head Accountant page identifiers are defined and distinct
+ok 51 - Navigation Smoke [Pass 14]: All Head Accountant page identifiers are defined and distinct
+  ---
+  duration_ms: 1.0401
+  type: 'test'
+  ...
+# Subtest: Navigation Smoke [Pass 15]: All Branch Dashboard page identifiers are defined and distinct
+ok 52 - Navigation Smoke [Pass 15]: All Branch Dashboard page identifiers are defined and distinct
+  ---
+  duration_ms: 0.8369
+  type: 'test'
+  ...
+# Subtest: Navigation Smoke [Pass 16]: All Procurement page identifiers are defined and distinct
+ok 53 - Navigation Smoke [Pass 16]: All Procurement page identifiers are defined and distinct
+  ---
+  duration_ms: 0.9831
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Client Navigation 17]: Real DOM click on sidebar item 'الاشتراك والخطة' and dashboard button 'إدارة الاشتراك' triggers router transition to CASubscription without blank screen
+ok 54 - UI-NAV-01 [Client Navigation 17]: Real DOM click on sidebar item 'الاشتراك والخطة' and dashboard button 'إدارة الاشتراك' triggers router transition to CASubscription without blank screen
+  ---
+  duration_ms: 1187.5276
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [CSS Verification 17b]: _group.css file exists with theme styling and Vite bundles it safely
+ok 55 - UI-NAV-01 [CSS Verification 17b]: _group.css file exists with theme styling and Vite bundles it safely
+  ---
+  duration_ms: 23.1545
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Mounted CASubscription 18]: State 1 - Active subscription renders quotas and plan info in Arabic and English
+ok 56 - UI-NAV-01 [Mounted CASubscription 18]: State 1 - Active subscription renders quotas and plan info in Arabic and English
+  ---
+  duration_ms: 110.791
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Mounted CASubscription 19]: State 2 - No active subscription (404/NOT_FOUND) renders plans selection safely
+ok 57 - UI-NAV-01 [Mounted CASubscription 19]: State 2 - No active subscription (404/NOT_FOUND) renders plans selection safely
+  ---
+  duration_ms: 23.9553
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Mounted CASubscription 20]: State 3 - Empty plans list ([]) renders resilient empty state without crashing
+ok 58 - UI-NAV-01 [Mounted CASubscription 20]: State 3 - Empty plans list ([]) renders resilient empty state without crashing
+  ---
+  duration_ms: 15.0376
+  type: 'test'
+  ...
+# Subtest: UI-NAV-01 [Mounted CASubscription 21]: State 4 - Server error on plans renders role='alert' error box instead of white screen
+ok 59 - UI-NAV-01 [Mounted CASubscription 21]: State 4 - Server error on plans renders role='alert' error box instead of white screen
+  ---
+  duration_ms: 19.6139
+  type: 'test'
+  ...
+# Subtest: Navigation Smoke [Pass 22 - SSR Smoke Only]: All 8 Company Admin pages mount and render HTML output via PageRouter
+ok 60 - Navigation Smoke [Pass 22 - SSR Smoke Only]: All 8 Company Admin pages mount and render HTML output via PageRouter
+  ---
+  duration_ms: 165.6861
+  type: 'test'
+  ...
+# Subtest: Navigation Smoke [Pass 23 - SSR Smoke Only]: Bounded SSR smoke across all 52 authorized roles and routes via PageRouter
+ok 61 - Navigation Smoke [Pass 23 - SSR Smoke Only]: Bounded SSR smoke across all 52 authorized roles and routes via PageRouter
+  ---
+  duration_ms: 824.646
+  type: 'test'
+  ...
+# Subtest: Navigation Smoke [Pass 24 - Governance]: Staging Browser E2E marked NOT RUN (Node environment lacks headless browser engine; verified via 52/52 SSR Smoke and client-mounted interactive router)
+ok 62 - Navigation Smoke [Pass 24 - Governance]: Staging Browser E2E marked NOT RUN (Node environment lacks headless browser engine; verified via 52/52 SSR Smoke and client-mounted interactive router)
+  ---
+  duration_ms: 0.5744
+  type: 'test'
+  ...
+1..62
+# tests 62
+# suites 0
+# pass 62
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 12217.055
+EXIT_CODE=0

@@ -44,9 +44,9 @@ export function HeadApproved({ ops }: PageProps) {
           : approved.map(op => (
             <div key={op.id} className={`px-5 py-4 flex items-center gap-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 ${op.erpPosted ? "bg-indigo-50/30" : ""}`}>
               <Badge className="bg-purple-50 text-purple-700 border border-purple-100 text-xs font-bold">{op.moduleLabel}</Badge>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-gray-800">{op.branch}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-sm text-gray-800 break-words">{op.branch}</span>
                   <span className="text-xs font-mono text-gray-400">{op.id}</span>
                   {op.isCorrection && <Badge className="bg-amber-50 text-amber-700 border border-amber-200 text-xs">{t("تعديل على", "Correction on")} {op.correctiveRef}</Badge>}
                 </div>
