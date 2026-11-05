@@ -9,6 +9,7 @@ import {
   useDeleteNotification,
 } from "../../api/queries/notifications";
 import type { AppNotification } from "../../api/types";
+import { displayDigits, type DisplayLanguage } from "../mockups/asab/_shared/displayDigits";
 
 interface Props {
   role?: RoleKey;
@@ -20,15 +21,15 @@ interface Props {
   theme?: "light" | "dark";
 }
 
-function timeAgo(iso: string, t: (ar: string, en: string) => string): string {
+function timeAgo(iso: string, t: (ar: string, en: string) => string, language: DisplayLanguage): string {
   const date = new Date(iso);
   const now = Date.now();
   const diffMin = Math.max(1, Math.floor((now - date.getTime()) / 60000));
-  if (diffMin < 60) return `${t("منذ", "")} ${diffMin} ${t("دقيقة", "min ago")}`;
+  if (diffMin < 60) return displayDigits(`${t("منذ", "")} ${diffMin} ${t("دقيقة", "min ago")}`, language);
   const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `${t("منذ", "")} ${diffH} ${t("ساعة", "h ago")}`;
+  if (diffH < 24) return displayDigits(`${t("منذ", "")} ${diffH} ${t("ساعة", "h ago")}`, language);
   const diffD = Math.floor(diffH / 24);
-  return `${t("منذ", "")} ${diffD} ${t("يوم", "d ago")}`;
+  return displayDigits(`${t("منذ", "")} ${diffD} ${t("يوم", "d ago")}`, language);
 }
 
 export function NotificationBell({ t = (ar) => ar, theme = "light", role, pages = [], onNavigate }: Props) {
@@ -38,6 +39,7 @@ export function NotificationBell({ t = (ar) => ar, theme = "light", role, pages 
 
   const allowed = hasCompanySharedApi(role);
   const dir = t("rtl", "ltr") as "rtl" | "ltr";
+  const language: DisplayLanguage = dir === "rtl" ? "ar" : "en";
   const { data, isLoading, isError, refetch } = useNotifications(undefined, { enabled: allowed });
   const lock = useRef(false);
   const [busy, setBusy] = useState(false);
@@ -136,7 +138,7 @@ export function NotificationBell({ t = (ar) => ar, theme = "light", role, pages 
               lineHeight: 1,
             }}
           >
-            {unreadCount > 99 ? "99+" : unreadCount}
+            {displayDigits(unreadCount > 99 ? "99+" : unreadCount, language)}
           </span>
         )}
       </button>
@@ -185,7 +187,7 @@ export function NotificationBell({ t = (ar) => ar, theme = "light", role, pages 
                     fontWeight: 600,
                   }}
                 >
-                  ({unreadCount} {t("جديدة", "new")})
+                  ({displayDigits(unreadCount, language)} {t("جديدة", "new")})
                 </span>
               )}
             </div>
@@ -285,7 +287,7 @@ export function NotificationBell({ t = (ar) => ar, theme = "light", role, pages 
                       </div>
                     )}
                     <div style={{ fontSize: 10, color: "#94a3b8" }}>
-                      {timeAgo(n.createdAt, t)}
+                      {timeAgo(n.createdAt, t, language)}
                     </div>
                   </div>
                   <button

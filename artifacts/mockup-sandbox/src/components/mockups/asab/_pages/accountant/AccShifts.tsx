@@ -42,7 +42,7 @@ import { KpiCard } from "../../components/KpiCard";
 import { EmptyState } from "../../components/EmptyState";
 import { PageHeader } from "../../components/PageHeader";
 import { useLang } from "../../_shared/LangContext";
-import { fmtAmt } from "../../_shared/formatters";
+import { displayDigits } from "../../_shared/displayDigits";
 import { BRANCHES } from "../../_shared/filterOps";
 import type { PageProps } from "../../_shared/types";
 
@@ -96,14 +96,15 @@ export function ShiftRowCmp({ slot, idx, editState, onEditOpen, onEditChange, on
   onEditCommit: () => void;
   onEditCancel: () => void;
 }) {
+  const { lang } = useLang();
   const isEditing = editState?.idx === idx;
   return (
     <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${isEditing ? "bg-purple-50 border-purple-200 shadow-sm" : "bg-gray-50 border-gray-100 hover:border-gray-200"}`}>
-      <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-700 text-[10px] font-black flex items-center justify-center flex-shrink-0">{idx + 1}</div>
+      <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-700 text-[10px] font-black flex items-center justify-center flex-shrink-0">{displayDigits(idx + 1, lang)}</div>
       <div className="flex-1 min-w-0">
         <p className="text-xs font-bold text-gray-700">الشفت {slot.name}</p>
         {!isEditing
-          ? <p className="text-[10px] text-gray-400">{sFmtT(slot.start)} ← {sFmtT(slot.end)} · {slot.durH} ساعة</p>
+          ? <p className="text-[10px] text-gray-400">{displayDigits(sFmtT(slot.start), lang)} ← {displayDigits(sFmtT(slot.end), lang)} · {displayDigits(slot.durH, lang)} ساعة</p>
           : <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <div>
               <label className="text-[9px] text-purple-500 font-semibold block mb-0.5">بداية الشفت</label>
@@ -118,8 +119,8 @@ export function ShiftRowCmp({ slot, idx, editState, onEditOpen, onEditChange, on
                   value={S_DUR_OPTS.includes(editState!.tmpDurH) ? String(editState!.tmpDurH) : "__custom"}
                   onChange={e => { if (e.target.value !== "__custom") onEditChange(editState!.tmpStart, Number(e.target.value)); }}
                   className="text-xs border border-purple-200 rounded-lg px-2 py-1 bg-white">
-                  {S_DUR_OPTS.map(d => <option key={d} value={d}>{d} ساعة</option>)}
-                  {!S_DUR_OPTS.includes(editState!.tmpDurH) && <option value="__custom">{editState!.tmpDurH} ساعة</option>}
+                  {S_DUR_OPTS.map(d => <option key={d} value={d}>{displayDigits(d, lang)} ساعة</option>)}
+                  {!S_DUR_OPTS.includes(editState!.tmpDurH) && <option value="__custom">{displayDigits(editState!.tmpDurH, lang)} ساعة</option>}
                 </select>
                 <input type="number" min={1} max={24} step={1} value={editState!.tmpDurH} title="كتابة يدوية"
                   onChange={e => onEditChange(editState!.tmpStart, Math.min(24, Math.max(0, Number(e.target.value) || 0)))}
@@ -135,9 +136,9 @@ export function ShiftRowCmp({ slot, idx, editState, onEditOpen, onEditChange, on
       </div>
       {!isEditing && (
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-[10px] font-mono bg-white border border-gray-200 px-2 py-1 rounded-lg text-gray-700">{sFmtT(slot.start)}</span>
+          <span className="text-[10px] font-mono bg-white border border-gray-200 px-2 py-1 rounded-lg text-gray-700">{displayDigits(sFmtT(slot.start), lang)}</span>
           <span className="text-gray-300 text-[10px]">→</span>
-          <span className="text-[10px] font-mono bg-white border border-gray-200 px-2 py-1 rounded-lg text-gray-700">{sFmtT(slot.end)}</span>
+          <span className="text-[10px] font-mono bg-white border border-gray-200 px-2 py-1 rounded-lg text-gray-700">{displayDigits(sFmtT(slot.end), lang)}</span>
           <button onClick={() => onEditOpen(idx, slot.start, slot.durH)}
             className="w-7 h-7 rounded-lg border border-gray-200 bg-white text-gray-400 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 flex items-center justify-center transition-all ml-1">
             <Edit3 size={11} />
@@ -153,6 +154,7 @@ export function ShiftSmartPanel({ cfg, onNum, onDur, onStart, onGen }: {
   cfg: { numShifts: number; durH: number; firstStart: string };
   onNum: (n: number) => void; onDur: (d: number) => void; onStart: (s: string) => void; onGen: () => void;
 }) {
+  const { lang } = useLang();
   return (
     <div className="bg-gradient-to-l from-purple-50 to-blue-50 border border-purple-100 rounded-2xl p-4">
       <div className="flex items-center gap-2 mb-3">
@@ -160,12 +162,12 @@ export function ShiftSmartPanel({ cfg, onNum, onDur, onStart, onGen }: {
         <p className="text-sm font-bold text-purple-800">الإعداد الذكي للشفتات</p>
         <span className="text-[10px] text-purple-400 mr-auto">يتحدث الجدول تلقائياً عند تغيير القيم</span>
       </div>
-      <div className="grid grid-cols-3 gap-3 mb-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
         <div>
           <label className="text-[10px] font-bold text-gray-600 block mb-1.5">عدد الشفتات</label>
           <div className="flex items-center gap-1">
             <button onClick={() => onNum(Math.max(1, cfg.numShifts - 1))} className="w-8 h-8 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-red-50 hover:text-red-600 flex items-center justify-center text-lg font-bold select-none">−</button>
-            <span className="w-10 h-8 rounded-lg border border-purple-200 bg-white text-center text-sm font-black text-purple-700 flex items-center justify-center">{cfg.numShifts}</span>
+            <span className="w-10 h-8 rounded-lg border border-purple-200 bg-white text-center text-sm font-black text-purple-700 flex items-center justify-center">{displayDigits(cfg.numShifts, lang)}</span>
             <button onClick={() => onNum(Math.min(5, cfg.numShifts + 1))} className="w-8 h-8 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 flex items-center justify-center text-lg font-bold select-none">+</button>
           </div>
         </div>
@@ -177,8 +179,8 @@ export function ShiftSmartPanel({ cfg, onNum, onDur, onStart, onGen }: {
               value={S_DUR_OPTS.includes(cfg.durH) ? String(cfg.durH) : "__custom"}
               onChange={e => { if (e.target.value !== "__custom") onDur(Number(e.target.value)); }}
               className="flex-1 min-w-0 text-xs border border-gray-200 bg-white rounded-lg px-2 py-2">
-              {S_DUR_OPTS.map(d => <option key={d} value={d}>{d} ساعة</option>)}
-              {!S_DUR_OPTS.includes(cfg.durH) && <option value="__custom">{cfg.durH} ساعة (مخصص)</option>}
+              {S_DUR_OPTS.map(d => <option key={d} value={d}>{displayDigits(d, lang)} ساعة</option>)}
+              {!S_DUR_OPTS.includes(cfg.durH) && <option value="__custom">{displayDigits(cfg.durH, lang)} ساعة (مخصص)</option>}
             </select>
             <input type="number" min={1} max={24} step={1} value={cfg.durH} title="كتابة يدوية"
               onChange={e => onDur(Math.min(24, Math.max(0, Number(e.target.value) || 0)))}
@@ -197,10 +199,10 @@ export function ShiftSmartPanel({ cfg, onNum, onDur, onStart, onGen }: {
           const maxPerShift = Math.floor(24 / Math.max(1, cfg.numShifts));
           return (
             <p className={`text-[10px] ${over ? "text-red-500" : "text-gray-400"}`}>
-              {cfg.numShifts} شفت × {cfg.durH}س = <span className={`font-semibold ${over ? "text-red-600" : "text-gray-600"}`}>{total} ساعة/يوم</span>
+              {displayDigits(cfg.numShifts, lang)} شفت × {displayDigits(cfg.durH, lang)}س = <span className={`font-semibold ${over ? "text-red-600" : "text-gray-600"}`}>{displayDigits(total, lang)} ساعة/يوم</span>
               {over
-                ? <span className="font-bold"> · يتجاوز 24 ساعة — الحد الأقصى {maxPerShift} ساعة/شفت</span>
-                : <span> · متبقٍ {24 - total} ساعة · يبدأ {sFmtT(cfg.firstStart)}</span>}
+                ? <span className="font-bold"> · يتجاوز {displayDigits(24, lang)} ساعة — الحد الأقصى {displayDigits(maxPerShift, lang)} ساعة/شفت</span>
+                : <span> · متبقٍ {displayDigits(24 - total, lang)} ساعة · يبدأ {displayDigits(sFmtT(cfg.firstStart), lang)}</span>}
             </p>
           );
         })()}
@@ -212,7 +214,10 @@ export function ShiftSmartPanel({ cfg, onNum, onDur, onStart, onGen }: {
   );
 }
 
-export function AccShifts({ navigate, setModal }: PageProps) {
+export function AccShifts({ setModal, detailId, ops }: PageProps) {
+  const { lang, t } = useLang();
+  const selectedOp = detailId ? ops.find(op => op.moduleKey === "shifts" && (op.sourceId === detailId || op.id === detailId)) : undefined;
+  const selectedShiftId = selectedOp ? (selectedOp.sourceId ?? selectedOp.id) : undefined;
   const { data: shiftsLive } = useShiftsLive();
   const [historyDateFrom, setHistoryDateFrom] = useState("");
   const [historyDateTo, setHistoryDateTo] = useState("");
@@ -235,7 +240,8 @@ export function AccShifts({ navigate, setModal }: PageProps) {
   const saveShiftCfgMut = useSaveShiftConfig();
   const saveBranchShiftCfgMut = useSaveBranchShiftConfig();
   const exportShiftsMut = useExportShifts();
-  const [tab, setTab] = useState<"live" | "setup" | "close" | "history">("live");
+  const [tab, setTab] = useState<"live" | "setup" | "close" | "history">(selectedOp ? "history" : "live");
+  const [expandedHistoryShiftId, setExpandedHistoryShiftId] = useState<string | null>(null);
 
   // ─── Shift Setup state ─────────────────────────────────────────────────────
   // Real, accountant-scoped brands from GET /company/me/shifts/configs — no static seed.
@@ -260,15 +266,15 @@ export function AccShifts({ navigate, setModal }: PageProps) {
   const updRest = (brandId: string, restId: string, patch: Partial<RestShiftCfg>) =>
     setBrandCfgs(p => p.map(b => b.id === brandId ? { ...b, rests: b.rests.map(r => r.restId === restId ? { ...r, ...patch } : r) } : b));
 
-  const doAutoGen = (bId: string) => { const b = brandCfgs.find(x => x.id === bId)!; updBrand(bId, { shifts: sGenShifts(b.numShifts, b.durH, b.firstStart) }); setBrandEdit(null); toast.success(`تم إعادة توليد ${b.numShifts} شفت × ${b.durH} ساعة`); };
-  const doRestAutoGen = (bId: string, rId: string) => { const r = brandCfgs.find(x => x.id === bId)!.rests.find(x => x.restId === rId)!; updRest(bId, rId, { shifts: sGenShifts(r.numShifts, r.durH, r.firstStart) }); setRestEdits(p => ({ ...p, [rId]: null })); toast.success(`تم إعادة توليد ${r.numShifts} شفت × ${r.durH} ساعة`); };
+  const doAutoGen = (bId: string) => { const b = brandCfgs.find(x => x.id === bId)!; updBrand(bId, { shifts: sGenShifts(b.numShifts, b.durH, b.firstStart) }); setBrandEdit(null); toast.success(displayDigits(`تم إعادة توليد ${b.numShifts} شفت × ${b.durH} ساعة`, lang)); };
+  const doRestAutoGen = (bId: string, rId: string) => { const r = brandCfgs.find(x => x.id === bId)!.rests.find(x => x.restId === rId)!; updRest(bId, rId, { shifts: sGenShifts(r.numShifts, r.durH, r.firstStart) }); setRestEdits(p => ({ ...p, [rId]: null })); toast.success(displayDigits(`تم إعادة توليد ${r.numShifts} شفت × ${r.durH} ساعة`, lang)); };
   const doSave = (bId: string) => {
     const b = brandCfgs.find(x => x.id === bId); if (!b) return;
     // A schedule can't exceed a 24-hour day; the backend rejects it with
     // SHIFT_SCHEDULE_OVERFLOW. Validate client-side so the 4th window never
     // silently wraps onto the 1st ("dashboard 4 shifts, app shows 3").
     if (b.numShifts * b.durH > 24) {
-      toast.error(`عدد الورديات (${b.numShifts}) × مدة الوردية (${b.durH} ساعة) = ${b.numShifts * b.durH} ساعة، وهو أكبر من اليوم (24 ساعة).`);
+      toast.error(displayDigits(`عدد الورديات (${b.numShifts}) × مدة الوردية (${b.durH} ساعة) = ${b.numShifts * b.durH} ساعة، وهو أكبر من اليوم (24 ساعة).`, lang));
       return;
     }
     const config = { numShifts: b.numShifts, durationHours: b.durH, firstShiftStart: b.firstStart, openingFloatHalalas: Math.round((b.openingFloat || 0) * 100) };
@@ -300,13 +306,15 @@ export function AccShifts({ navigate, setModal }: PageProps) {
   const shiftHistory = historyBusy || historyQuery.isError ? [] : shiftsHistoryPage?.data ?? [];
 
   const shiftDurHrs = (s: { startedAt: string }) => Math.max(0, (Date.now() - new Date(s.startedAt).getTime()) / 36e5);
-  const fmtTime = (iso?: string | null) => iso ? new Date(iso).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" }) : "—";
-  const fmtDate = (iso?: string | null) => iso ? new Date(iso).toLocaleDateString("ar-SA") : "—";
+  const fmtTime = (iso?: string | null) => iso ? new Date(iso).toLocaleTimeString(lang === "ar" ? "ar-SA-u-nu-arab" : "en-US-u-nu-latn", { hour: "2-digit", minute: "2-digit" }) : "—";
+  const fmtDate = (iso?: string | null) => iso ? new Date(iso).toLocaleDateString(lang === "ar" ? "ar-SA-u-nu-arab" : "en-US-u-nu-latn") : "—";
+  const isSelectedShift = (shift: { id: string; reportReview?: { operation_id?: string | null; public_id?: string | null } | null }) =>
+    Boolean(selectedShiftId && (shift.id === selectedShiftId || shift.reportReview?.operation_id === selectedShiftId || shift.reportReview?.public_id === selectedShiftId || shift.reportReview?.public_id === selectedOp?.id));
 
   return (
-    <div className="space-y-5" dir="rtl">
+    <div className="space-y-5 pb-24 lg:pb-0" dir={lang === "ar" ? "rtl" : "ltr"}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-xl font-bold text-gray-800">إدارة الشفتات</h2>
           <p className="text-gray-400 text-sm mt-0.5">الوقت الفعلي · إعداد الشفتات · السجل التاريخي</p>
@@ -318,14 +326,14 @@ export function AccShifts({ navigate, setModal }: PageProps) {
 
       {/* KPIs (T08 §3 — 4 tiles from live.kpis) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KpiCard label="مفتوح الآن" value={String(kpis?.openNow ?? liveShifts.length)} sub="شفت نشط" icon={<span className="w-2 h-2 rounded-full bg-emerald-500" />} accent="emerald" />
-        <KpiCard label="مغلقة اليوم" value={String(kpis?.closedToday ?? 0)} sub="شفت مغلق" icon={<CheckCircle2 size={18} className="text-blue-600" />} accent="blue" />
-        <KpiCard label="مبيعات اليوم" value={formatShiftHalalas(kpis?.todaySalesHalalas)} sub="ر.س" icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
-        <KpiCard label="فروق كاش للمراجعة" value={String(kpis?.cashGapsPendingReview ?? 0)} sub="تحتاج مراجعة" icon={<AlertTriangle size={18} className="text-amber-600" />} accent="amber" />
+        <KpiCard label="مفتوح الآن" value={displayDigits(kpis?.openNow ?? liveShifts.length, lang)} sub="شفت نشط" icon={<span className="w-2 h-2 rounded-full bg-emerald-500" />} accent="emerald" />
+        <KpiCard label="مغلقة اليوم" value={displayDigits(kpis?.closedToday ?? 0, lang)} sub="شفت مغلق" icon={<CheckCircle2 size={18} className="text-blue-600" />} accent="blue" />
+        <KpiCard label="مبيعات اليوم" value={formatShiftHalalas(kpis?.todaySalesHalalas, lang)} sub="ر.س" icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
+        <KpiCard label="فروق كاش للمراجعة" value={displayDigits(kpis?.cashGapsPendingReview ?? 0, lang)} sub="تحتاج مراجعة" icon={<AlertTriangle size={18} className="text-amber-600" />} accent="amber" />
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200">
+      <div className="grid grid-cols-2 sm:flex gap-1 border-b border-gray-200 max-w-full">
         {([
           { id: "live" as const, label: "🟢 مباشر" },
           { id: "setup" as const, label: "⚙️ إعداد الشفتات" },
@@ -333,7 +341,7 @@ export function AccShifts({ navigate, setModal }: PageProps) {
           { id: "history" as const, label: "📋 السجل التاريخي" },
         ] as { id: "live" | "setup" | "close" | "history"; label: string }[]).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${tab === t.id ? "border-purple-600 text-purple-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+            className={`px-2 sm:px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors sm:-mb-px ${tab === t.id ? "border-purple-600 text-purple-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
             {t.label}
           </button>
         ))}
@@ -346,7 +354,7 @@ export function AccShifts({ navigate, setModal }: PageProps) {
             <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 flex items-start gap-3" dir="rtl">
               <AlertTriangle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-bold text-red-800">⚠️ تنبيه: {overdueShifts.length} شفت متأخر — انتهى وقته ولم يُغلق الصندوق بعد</p>
+                 <p className="text-sm font-bold text-red-800">⚠️ تنبيه: {displayDigits(overdueShifts.length, lang)} شفت متأخر — انتهى وقته ولم يُغلق الصندوق بعد</p>
                 <p className="text-xs text-red-700 mt-1">
                   {overdueShifts.map(s => `${s.cashierName} (${s.branchName})`).join(" · ")} — يُرجى إغلاق الشفت فوراً.
                 </p>
@@ -354,15 +362,15 @@ export function AccShifts({ navigate, setModal }: PageProps) {
             </div>
           )}
           {liveShifts.length === 0 && <p className="text-center text-gray-400 text-sm py-8">لا توجد شفتات مفتوحة حالياً</p>}
-          <div className="grid grid-cols-2 gap-4">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {liveShifts.map(sh => {
               const durHrs = shiftDurHrs(sh);
               const late = sh.status === "late" || sh.isLate;
-              const evidence = getShiftCountEvidence(sh);
-              const statusDisplay = getShiftStatusDisplay(sh.status);
+               const evidence = getShiftCountEvidence(sh, lang);
+               const statusDisplay = getShiftStatusDisplay(sh.status, lang);
               return (
                 <div key={sh.id} className={`bg-white rounded-xl border shadow-sm p-4 ${durHrs > 8 ? "border-red-300 bg-red-50/20" : late ? "border-amber-300 bg-amber-50/20" : "border-gray-100"}`}>
-                  {durHrs > 8 && <div className="flex items-center gap-2 text-red-700 text-xs font-semibold mb-3 bg-red-100 rounded-lg px-3 py-2"><AlertTriangle size={13} /> شفت متأخر — {durHrs.toFixed(0)} ساعة بدون إغلاق! يتجاوز الحد المسموح به</div>}
+                   {durHrs > 8 && <div className="flex items-center gap-2 text-red-700 text-xs font-semibold mb-3 bg-red-100 rounded-lg px-3 py-2"><AlertTriangle size={13} /> شفت متأخر — {displayDigits(durHrs.toFixed(0), lang)} ساعة بدون إغلاق! يتجاوز الحد المسموح به</div>}
                   {durHrs <= 8 && late && <div className="flex items-center gap-2 text-amber-700 text-xs font-semibold mb-3 bg-amber-100 rounded-lg px-3 py-2"><AlertTriangle size={13} /> {sh.lateBannerAr ?? "انتهى وقت الشفت — لم يُغلق الصندوق بعد"}</div>}
                   <div className="flex items-center gap-3 mb-3">
                     <div className="relative">
@@ -373,7 +381,7 @@ export function AccShifts({ navigate, setModal }: PageProps) {
                     <Badge className={statusDisplay.cls}>{sh.statusLabelAr ?? statusDisplay.label}</Badge>
                   </div>
                   <div className="grid grid-cols-3 gap-2 mb-3 text-center">
-                    {[{ label: "بداية الشفت", val: fmtTime(sh.startedAt) }, { label: "المدة", val: `${durHrs.toFixed(1)} ساعة` }, { label: "الطلبات", val: evidence.ordersCount }].map((s, j) => (
+                     {[{ label: "بداية الشفت", val: fmtTime(sh.startedAt) }, { label: "المدة", val: `${displayDigits(durHrs.toFixed(1), lang)} ساعة` }, { label: "الطلبات", val: evidence.ordersCount }].map((s, j) => (
                       <div key={j} className="bg-gray-50 rounded-lg p-2"><p className="text-[10px] text-gray-400">{s.label}</p><p className="text-sm font-bold text-gray-800">{s.val}</p></div>
                     ))}
                   </div>
@@ -431,7 +439,7 @@ export function AccShifts({ navigate, setModal }: PageProps) {
                 style={selBrandId === b.id ? { background: b.color, borderColor: b.color } : {}}>
                 <span className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black text-white" style={{ background: b.color }}>{b.name[0]}</span>
                 {b.name}
-                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${selBrandId === b.id ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>{b.numShifts} شفت</span>
+                 <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${selBrandId === b.id ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>{displayDigits(b.numShifts, lang)} شفت</span>
                 {b.saved && <span className="text-[9px] text-emerald-400">✓</span>}
               </button>
             ))}
@@ -446,7 +454,7 @@ export function AccShifts({ navigate, setModal }: PageProps) {
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-black" style={{ background: selBrand.color }}>{selBrand.name[0]}</div>
                   <div>
                     <p className="font-bold text-gray-800 text-sm">{selBrand.name}</p>
-                    <p className={`text-[10px] ${selBrand.numShifts * selBrand.durH > 24 ? "text-red-500 font-bold" : "text-gray-400"}`}>{selBrand.numShifts} شفت · {selBrand.durH} ساعة/شفت · يبدأ {sFmtT(selBrand.firstStart)}{selBrand.numShifts * selBrand.durH > 24 ? ` · يتجاوز 24 ساعة!` : ""}</p>
+                     <p className={`text-[10px] ${selBrand.numShifts * selBrand.durH > 24 ? "text-red-500 font-bold" : "text-gray-400"}`}>{displayDigits(selBrand.numShifts, lang)} شفت · {displayDigits(selBrand.durH, lang)} ساعة/شفت · يبدأ {displayDigits(sFmtT(selBrand.firstStart), lang)}{selBrand.numShifts * selBrand.durH > 24 ? displayDigits(` · يتجاوز 24 ساعة!`, lang) : ""}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -504,11 +512,11 @@ export function AccShifts({ navigate, setModal }: PageProps) {
                     <div className="mt-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
                       <p className="text-[10px] text-gray-500 text-center">
                         يغطي الجدول{" "}
-                        <span className="font-bold text-gray-700">{selBrand.numShifts * selBrand.durH} ساعة</span> يومياً
+                         <span className="font-bold text-gray-700">{displayDigits(selBrand.numShifts * selBrand.durH, lang)} ساعة</span> يومياً
                         {" "}·{" "}من{" "}
-                        <span className="font-bold text-gray-700">{sFmtT(selBrand.firstStart)}</span>
+                         <span className="font-bold text-gray-700">{displayDigits(sFmtT(selBrand.firstStart), lang)}</span>
                         {" "}إلى{" "}
-                        <span className="font-bold text-gray-700">{selBrand.shifts.length > 0 ? sFmtT(selBrand.shifts[selBrand.shifts.length - 1].end) : "—"}</span>
+                         <span className="font-bold text-gray-700">{selBrand.shifts.length > 0 ? displayDigits(sFmtT(selBrand.shifts[selBrand.shifts.length - 1].end), lang) : "—"}</span>
                       </p>
                     </div>
                   </div>
@@ -523,7 +531,7 @@ export function AccShifts({ navigate, setModal }: PageProps) {
                         <p className="text-xs font-bold text-gray-600">تخصيص حسب المطعم (اختياري)</p>
                         <p className="text-[10px] text-gray-400 mt-0.5">يمكن تجاوز إعداد العلامة لمطعم محدد</p>
                       </div>
-                      <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-1 rounded-lg font-semibold">{selBrand.rests.filter(r => r.useOverride).length} مخصص من {selBrand.rests.length}</span>
+                       <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-1 rounded-lg font-semibold">{displayDigits(selBrand.rests.filter(r => r.useOverride).length, lang)} مخصص من {displayDigits(selBrand.rests.length, lang)}</span>
                     </div>
 
                     {/* Restaurant search filter */}
@@ -553,8 +561,8 @@ export function AccShifts({ navigate, setModal }: PageProps) {
                             <div className="flex-1">
                               <p className="text-xs font-bold text-gray-800">{rest.restName}</p>
                               {rest.useOverride
-                                ? <p className="text-[10px] text-purple-600">{rest.numShifts} شفت مخصص · {rest.durH} ساعة · من {sFmtT(rest.firstStart)}</p>
-                                : <p className="text-[10px] text-gray-400">يستخدم إعداد العلامة ({selBrand.numShifts} شفت × {selBrand.durH}س)</p>
+                                 ? <p className="text-[10px] text-purple-600">{displayDigits(rest.numShifts, lang)} شفت مخصص · {displayDigits(rest.durH, lang)} ساعة · من {displayDigits(sFmtT(rest.firstStart), lang)}</p>
+                                 : <p className="text-[10px] text-gray-400">يستخدم إعداد العلامة ({displayDigits(selBrand.numShifts, lang)} شفت × {displayDigits(selBrand.durH, lang)}س)</p>
                               }
                             </div>
                             <div className="flex items-center gap-2">
@@ -619,22 +627,25 @@ export function AccShifts({ navigate, setModal }: PageProps) {
       {/* ── TAB: HISTORY (T08 §3/§7 — canonical shape + Excel export) ──────────── */}
       {tab === "history" && (
         <Card title="سجل الشفتات السابقة">
-          <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-end">
+          {selectedOp && <div className="px-4 pe-20 lg:pe-4 py-2.5 border-b border-purple-100 bg-purple-50 text-xs text-purple-800" data-testid="selected-shift-operation">
+            العملية المحددة: <bdi>{selectedOp?.id ?? detailId}</bdi>{!historyBusy && !historyQuery.isError && !shiftHistory.some(isSelectedShift) && " — لا تظهر في صفحة السجل الحالية؛ استخدم المرشحات أو التنقل بين الصفحات."}
+          </div>}
+          <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-start">
             <button onClick={() => exportShiftsMut.mutate({})} disabled={exportShiftsMut.isPending}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 disabled:opacity-50">
               <FileText size={11} /> {exportShiftsMut.isPending ? "جارٍ التصدير..." : "تصدير Excel"}
             </button>
           </div>
-          <div className="px-4 py-3 flex flex-wrap items-end gap-3 text-xs">
-            <label>من تاريخ الإغلاق<input type="date" value={historyDateFrom}
+           <div className="px-4 py-3 flex flex-wrap items-end gap-3 text-xs">
+             <label className="min-w-[130px] flex-1 sm:flex-none">من تاريخ الإغلاق<input type="date" value={historyDateFrom}
               onChange={e => { setHistoryDateFrom(e.target.value); setHistoryPageNum(1); }}
-              className="block mt-1 rounded-lg border border-gray-200 px-2 py-1.5" /></label>
-            <label>إلى تاريخ الإغلاق<input type="date" value={historyDateTo}
+               className="block mt-1 w-full min-w-0 rounded-lg border border-gray-200 px-2 py-1.5" /></label>
+             <label className="min-w-[130px] flex-1 sm:flex-none">إلى تاريخ الإغلاق<input type="date" value={historyDateTo}
               onChange={e => { setHistoryDateTo(e.target.value); setHistoryPageNum(1); }}
-              className="block mt-1 rounded-lg border border-gray-200 px-2 py-1.5" /></label>
-            <label>الفرع<select value={historyBranchId}
+               className="block mt-1 w-full min-w-0 rounded-lg border border-gray-200 px-2 py-1.5" /></label>
+             <label className="min-w-[170px] flex-1 sm:flex-none">الفرع<select value={historyBranchId}
               onChange={e => { setHistoryBranchId(e.target.value); setHistoryPageNum(1); }}
-              className="block mt-1 rounded-lg border border-gray-200 px-2 py-1.5">
+               className="block mt-1 w-full min-w-0 rounded-lg border border-gray-200 px-2 py-1.5">
               <option value="">كل الفروع المعيّنة</option>
               {historyBranches.map(branch => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
             </select></label>
@@ -645,8 +656,55 @@ export function AccShifts({ navigate, setModal }: PageProps) {
           </p>}
           {!historyBusy && !historyQuery.isError && shiftHistory.length === 0 && <p className="text-center text-gray-400 text-sm py-8">لا يوجد سجل لهذه المرشحات</p>}
           {!historyBusy && !historyQuery.isError && shiftHistory.length > 0 && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" dir="rtl">
+            <>
+            <div className="space-y-3 px-3 py-3 lg:hidden" data-testid="shift-history-cards">
+              {shiftHistory.map((sh, index) => {
+                const evidence = getShiftCountEvidence(sh, lang);
+                const statusDisplay = getShiftStatusDisplay(sh.status, lang);
+                const expanded = expandedHistoryShiftId === sh.id;
+                const detailsId = `shift-history-details-${index}`;
+                return <article key={sh.id} data-selected-shift={isSelectedShift(sh) ? "true" : undefined}
+                  className={`min-w-0 rounded-xl border bg-white p-3 shadow-sm ${isSelectedShift(sh) ? "border-purple-400 ring-2 ring-purple-100" : "border-gray-200"}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="break-words text-sm font-bold text-gray-800">{sh.branchName}</p>
+                      <p className="break-words text-xs text-gray-500">{sh.cashierName}</p>
+                    </div>
+                    <Badge className={statusDisplay.cls}>{lang === "ar" ? (sh.statusLabelAr ?? statusDisplay.label) : statusDisplay.label}</Badge>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <div className="min-w-0"><p className="text-gray-500">{t("التاريخ", "Date")}</p><p className="font-semibold text-gray-800">{fmtDate(sh.endedAt)}</p></div>
+                    <div className="min-w-0"><p className="text-gray-500">{t("نوع الشفت", "Shift type")}</p><p className="break-words font-semibold text-gray-800">{sh.shiftType}</p></div>
+                    <div className="min-w-0"><p className="text-gray-500">{t("المبيعات", "Sales")}</p><p className="break-words font-semibold text-purple-700"><bdi>{evidence.sales}</bdi> {t("ر.س", "SAR")}</p></div>
+                    <div className="min-w-0"><p className="text-gray-500">{t("الفرق", "Variance")}</p><p className={`break-words font-semibold ${evidence.variance.cls}`}><bdi>{evidence.variance.text}</bdi></p></div>
+                  </div>
+                  <button type="button" aria-expanded={expanded} aria-controls={detailsId}
+                    onClick={() => setExpandedHistoryShiftId(expanded ? null : sh.id)}
+                    className="mt-3 min-h-11 w-[calc(100%_-_80px)] rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-sm font-semibold text-purple-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600">
+                    {expanded ? t("إخفاء التفاصيل", "Hide details") : t("عرض التفاصيل", "View details")}
+                  </button>
+                  {expanded && <div id={detailsId} className="mt-3 min-w-0 space-y-2 border-t border-gray-100 pe-16 pt-3 text-xs sm:pe-0">
+                    {[
+                      [t("الفرع", "Branch"), sh.branchName],
+                      [t("الكاشير", "Cashier"), sh.cashierName],
+                      [t("نوع الشفت", "Shift type"), sh.shiftType],
+                      [t("التاريخ", "Date"), fmtDate(sh.endedAt)],
+                      [t("بداية الشفت", "Start"), fmtTime(sh.startedAt)],
+                      [t("نهاية الشفت", "End"), fmtTime(sh.endedAt)],
+                      [t("الطلبات", "Orders"), evidence.ordersCount],
+                      [t("المبيعات", "Sales"), `${evidence.sales} ${t("ر.س", "SAR")}`],
+                      [t("الفرق", "Variance"), evidence.variance.text],
+                      [t("نقد وارد معلق (خارج الفرق)", "Pending incoming cash (excluded from variance)"), `${evidence.pendingIncoming} ${t("ر.س", "SAR")}`],
+                      [t("حالة المراجعة", "Review status"), lang === "ar" ? (sh.statusLabelAr ?? statusDisplay.label) : statusDisplay.label],
+                    ].map(([label, value]) => <div key={label} className="flex min-w-0 justify-between gap-3 border-b border-gray-50 pb-1 last:border-0">
+                      <span className="min-w-0 flex-1 break-words text-gray-500">{label}</span><bdi className="min-w-0 flex-1 break-words text-end font-semibold text-gray-800">{value}</bdi>
+                    </div>)}
+                  </div>}
+                </article>;
+              })}
+            </div>
+            <div className="hidden overflow-x-auto lg:block" data-testid="shift-history-table">
+              <table className="w-full text-sm" dir={lang === "ar" ? "rtl" : "ltr"}>
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr className="text-xs text-gray-500">
                     <th className="px-4 py-3 text-right">الفرع / الكاشير</th>
@@ -661,10 +719,10 @@ export function AccShifts({ navigate, setModal }: PageProps) {
                 </thead>
                 <tbody>
                   {shiftHistory.map(sh => {
-                    const evidence = getShiftCountEvidence(sh);
-                    const statusDisplay = getShiftStatusDisplay(sh.status);
+                    const evidence = getShiftCountEvidence(sh, lang);
+                    const statusDisplay = getShiftStatusDisplay(sh.status, lang);
                     return (
-                      <tr key={sh.id} className="border-b border-gray-50 hover:bg-gray-50/60 last:border-0">
+                      <tr key={sh.id} data-selected-shift={isSelectedShift(sh) ? "true" : undefined} className={`border-b border-gray-50 hover:bg-gray-50/60 last:border-0 ${isSelectedShift(sh) ? "bg-purple-50 ring-2 ring-inset ring-purple-400" : ""}`}>
                         <td className="px-4 py-3"><p className="font-semibold text-gray-800 text-xs">{sh.branchName}</p><p className="text-[10px] text-gray-400">{sh.cashierName}</p></td>
                         <td className="px-4 py-3 text-center"><Badge className="bg-gray-100 text-gray-600 text-[10px]">{sh.shiftType}</Badge></td>
                         <td className="px-4 py-3 text-center text-gray-500 text-xs">{fmtDate(sh.endedAt)}</td>
@@ -684,15 +742,16 @@ export function AccShifts({ navigate, setModal }: PageProps) {
                   <tr>
                     <td className="px-4 py-2.5 font-bold text-gray-700 text-xs" colSpan={4}>إجمالي هذه الصفحة</td>
                     <td className="px-4 py-2.5 text-center font-bold text-gray-400" title="عدد الطلبات الفعلي غير متاح">—</td>
-                    <td className="px-4 py-2.5 text-center font-mono font-black text-purple-700"><bdi>{formatShiftSalesTotal(shiftHistory)}</bdi> ر.س</td>
+                    <td className="px-4 py-2.5 text-center font-mono font-black text-purple-700"><bdi>{formatShiftSalesTotal(shiftHistory, lang)}</bdi> ر.س</td>
                     <td colSpan={2} />
                   </tr>
                 </tfoot>
               </table>
             </div>
+            </>
           )}
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-xs">
-            <span>الصفحة {historyShownPage} / {historyMeta?.totalPages ?? "—"}</span>
+           <div className="px-4 pe-20 lg:pe-4 py-3 border-t border-gray-100 flex items-center justify-between gap-2 text-xs">
+             <span>الصفحة {displayDigits(historyShownPage, lang)} / {historyMeta?.totalPages == null ? "—" : displayDigits(historyMeta.totalPages, lang)}</span>
             <div className="flex gap-2">
               <button disabled={historyBusy || historyQuery.isError || historyPageTarget(historyMeta, historyPageNum, -1) === historyPageNum}
                 onClick={() => changeHistoryPage(-1)} className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-50">السابق</button>

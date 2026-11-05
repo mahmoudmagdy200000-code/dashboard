@@ -1,6 +1,8 @@
-export const fmtAmt = (n: number | null | undefined): string => {
+import { displayDigits, type DisplayLanguage } from "./displayDigits";
+
+export const fmtAmt = (n: number | null | undefined, language: DisplayLanguage = "ar"): string => {
   if (n == null || isNaN(n)) return "—";
-  return n.toLocaleString("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString(language === "ar" ? "ar-SA-u-nu-arab" : "en-US-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
 // Destination for the "View" action on an inbox row — routed by the op's module so a
@@ -24,12 +26,12 @@ export const EN_WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursda
 /** "الاثنين، 14 أكتوبر 2025" / "Monday, October 14, 2025" from the real clock. */
 export const formatTodayLong = (lang: "ar" | "en", d: Date = new Date()) =>
   lang === "ar"
-    ? `${AR_WEEKDAYS[d.getDay()]}، ${d.getDate()} ${AR_MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`
+    ? displayDigits(`${AR_WEEKDAYS[d.getDay()]}، ${d.getDate()} ${AR_MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`, lang)
     : `${EN_WEEKDAYS[d.getDay()]}, ${EN_MONTHS_LONG[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 
 /** "أكتوبر 2025" / "October 2025" for the current month. */
 export const formatMonthLong = (lang: "ar" | "en", d: Date = new Date()) =>
-  lang === "ar" ? `${AR_MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}` : `${EN_MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
+  lang === "ar" ? displayDigits(`${AR_MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`, lang) : `${EN_MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
 
 /** "14 أكتوبر 2025" / "October 14, 2025" — no weekday. Returns "" for a bad/empty date. */
 export const formatDateLong = (lang: "ar" | "en", iso?: string | null) => {
@@ -37,7 +39,7 @@ export const formatDateLong = (lang: "ar" | "en", iso?: string | null) => {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "";
   return lang === "ar"
-    ? `${d.getDate()} ${AR_MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`
+    ? displayDigits(`${d.getDate()} ${AR_MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`, lang)
     : `${EN_MONTHS_LONG[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 };
 

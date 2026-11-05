@@ -19,6 +19,7 @@ import { Btn } from "../../components/Btn";
 import { EmptyState } from "../../components/EmptyState";
 import { useLang } from "../../_shared/LangContext";
 import { formatTodayLong, opDetailPage } from "../../_shared/formatters";
+import { displayDigits } from "../../_shared/displayDigits";
 import { STATUS_CFG, EN_STATUS_CFG } from "../../_shared/displayConfig";
 import { applyFilters, BRANCHES } from "../../_shared/filterOps";
 import { PipelineOverview } from "../../_shared/PipelineOverview";
@@ -40,6 +41,7 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
   const apiModules = dashData?.modules;
   const [filters, setFilters] = useState<Filters>({ branch: "", status: "pending", match: "", search: "" });
   const [period, setPeriod] = useState<"today" | "week" | "month">("today");
+  const [showAllOperations, setShowAllOperations] = useState(false);
 
   const pending = ops.filter(o => o.status === "pending");
   const approved = ops.filter(o => o.status === "approved");
@@ -86,12 +88,12 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-gray-800 font-bold text-lg sm:text-xl">{t("ملخص — ", "Summary — ")}{formatTodayLong(lang)}</h2>
-          <p className="text-gray-400 text-xs sm:text-sm mt-0.5">{t("الفروع المخصصة: 1–50 | الموديولات: التسعة", "Assigned branches: 1–50 | Modules: All nine")}</p>
+          <p className="text-gray-400 text-xs sm:text-sm mt-0.5">{displayDigits(t("الفروع المخصصة: 1–50 | الموديولات: التسعة", "Assigned branches: 1–50 | Modules: All nine"), lang)}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {overdueCount > 0 && (
             <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg">
-              <AlertTriangle size={12} /> {overdueCount} {t("عملية متأخرة >يومين", "operations overdue >2 days")}
+              <AlertTriangle size={12} /> {displayDigits(overdueCount, lang)} {displayDigits(t("عملية متأخرة >يومين", "operations overdue >2 days"), lang)}
             </div>
           )}
           <div className="flex bg-gray-100 rounded-lg p-1 gap-0.5">
@@ -107,12 +109,12 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="relative">
-          <KpiCard label={t("تنتظر مراجعتي", "Awaiting My Review")} value={String(awaitingReviewCount)} sub={t("📱 رُفعت من الفروع", "📱 Uploaded from branches")} icon={<Clock size={20} className="text-amber-600" />} accent="amber" />
-          {overdueCount > 0 && <span className="absolute top-2.5 end-2.5 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">{overdueCount} {t("متأخر", "overdue")}</span>}
+          <KpiCard label={t("تنتظر مراجعتي", "Awaiting My Review")} value={displayDigits(awaitingReviewCount, lang)} sub={t("📱 رُفعت من الفروع", "📱 Uploaded from branches")} icon={<Clock size={20} className="text-amber-600" />} accent="amber" />
+          {overdueCount > 0 && <span className="absolute top-2.5 end-2.5 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">{displayDigits(overdueCount, lang)} {t("متأخر", "overdue")}</span>}
         </div>
-        <KpiCard label={t("وافقت عليها", "I Approved")} value={String(iApprovedCount)} sub={t("بانتظار الاعتماد النهائي", "Awaiting final approval")} icon={<CheckCircle2 size={20} className="text-sky-600" />} accent="blue" />
-        <KpiCard label={t("معتمدة نهائياً", "Final Approved")} value={String(finalApprovedCount)} sub={t("مُغلقة — تنتظر ERP أو مُرحَّلة", "Closed — awaiting ERP or posted")} icon={<Lock size={20} className="text-emerald-600" />} accent="emerald" />
-        <KpiCard label={t("معدل الموافقة", "Approval Rate")} value={`${approvalRate}%`} sub={`${t("هذا", "This")} ${period === "today" ? t("اليوم", "Day") : period === "week" ? t("الأسبوع", "Week") : t("الشهر", "Month")}`} icon={<TrendingUp size={20} className="text-purple-600" />} accent="purple" />
+        <KpiCard label={t("وافقت عليها", "I Approved")} value={displayDigits(iApprovedCount, lang)} sub={t("بانتظار الاعتماد النهائي", "Awaiting final approval")} icon={<CheckCircle2 size={20} className="text-sky-600" />} accent="blue" />
+        <KpiCard label={t("معتمدة نهائياً", "Final Approved")} value={displayDigits(finalApprovedCount, lang)} sub={t("مُغلقة — تنتظر ERP أو مُرحَّلة", "Closed — awaiting ERP or posted")} icon={<Lock size={20} className="text-emerald-600" />} accent="emerald" />
+        <KpiCard label={t("معدل الموافقة", "Approval Rate")} value={displayDigits(`${approvalRate}%`, lang)} sub={`${t("هذا", "This")} ${period === "today" ? t("اليوم", "Day") : period === "week" ? t("الأسبوع", "Week") : t("الشهر", "Month")}`} icon={<TrendingUp size={20} className="text-purple-600" />} accent="purple" />
       </div>
 
       {/* Daily progress bar */}
@@ -146,12 +148,12 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
               <div key={label} className="bg-gray-50/50 sm:bg-transparent p-2.5 sm:p-0 rounded-lg">
                 <div className="flex justify-between text-[11px] mb-1.5">
                   <span className="font-semibold text-gray-600">{label}</span>
-                  <span className={`font-bold ${pct === 100 ? "text-emerald-600" : "text-gray-500"}`}>{done}/{total} {pct === 100 ? "✅" : ""}</span>
+                  <span className={`font-bold ${pct === 100 ? "text-emerald-600" : "text-gray-500"}`}>{displayDigits(`${done}/${total}`, lang)} {pct === 100 ? "✅" : ""}</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2">
                   <div className={`h-2 rounded-full ${color} transition-all`} style={{ width: `${pct}%` }} />
                 </div>
-                <p className="text-[10px] text-gray-400 mt-1 text-left ltr:text-right">{pct}%</p>
+                <p className="text-[10px] text-gray-400 mt-1 text-left ltr:text-right">{displayDigits(`${pct}%`, lang)}</p>
               </div>
             );
           })}
@@ -177,8 +179,8 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
                     <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-base sm:text-lg text-white ${m.color}`}>{m.icon}</div>
                     <span className="text-xs font-medium text-gray-700 text-center leading-tight line-clamp-1">{m.label}</span>
                     <div className="flex items-center gap-1">
-                      {mod_pending > 0 && <span className="bg-red-100 text-red-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{mod_pending}</span>}
-                      {mod_total > 0 && <><span className="text-gray-300 text-[10px]">/</span><span className="text-gray-500 text-[10px]">{mod_total}</span></>}
+                      {mod_pending > 0 && <span className="bg-red-100 text-red-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{displayDigits(mod_pending, lang)}</span>}
+                      {mod_total > 0 && <><span className="text-gray-300 text-[10px]">/</span><span className="text-gray-500 text-[10px]">{displayDigits(mod_total, lang)}</span></>}
                     </div>
                   </button>
                 );
@@ -218,22 +220,22 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
 
       <Card title={t("قائمة العمليات", "Operations List")} actions={
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-gray-400">{displayed.length} {t("عملية", "operations")}</span>
-          {pendingIds.length > 0 && <Btn size="sm" variant="success" onClick={() => bulkApprove(pendingIds)}>✓ {t("موافقة جماعية", "Bulk Approve")} ({pendingIds.length})</Btn>}
+          <span className="text-xs text-gray-400">{displayDigits(displayed.length, lang)} {t("عملية", "operations")}</span>
+          {pendingIds.length > 0 && <Btn size="sm" variant="success" onClick={() => bulkApprove(pendingIds)}>✓ {t("موافقة جماعية", "Bulk Approve")} ({displayDigits(pendingIds.length, lang)})</Btn>}
         </div>
       }>
         {displayed.length === 0
           ? <EmptyState icon="✅" title={t("لا توجد عمليات", "No Operations")} desc={t("تم معالجة جميع العمليات أو لا تطابق الفلاتر المحددة", "All operations processed or no matches for the selected filters")} />
-          : displayed.slice(0, 8).map(op => (
+          : (showAllOperations ? displayed : displayed.slice(0, 8)).map(op => (
             <OpRow key={op.id} op={op}
-              onView={() => { setDetailId(op.id); navigate(opDetailPage(op.moduleKey) as PageId); }}
+              onView={() => { setDetailId(op.moduleKey === "shifts" ? (op.sourceId ?? op.id) : op.id); navigate(opDetailPage(op.moduleKey) as PageId); }}
               onApprove={() => approveOp(op.id)}
               onReject={() => { setDetailId(op.id); setModal("reject"); }} />
           ))
         }
-        {displayed.length > 8 && (
+        {displayed.length > 8 && !showAllOperations && (
           <div className="px-5 py-3 text-center">
-            <button onClick={() => navigate("acc-sales")} className="text-xs text-purple-600 hover:underline">{t("عرض كل", "View all")} {displayed.length} {t("عملية", "operations")}</button>
+            <button onClick={() => setShowAllOperations(true)} className="text-xs text-purple-600 hover:underline">{t("عرض كل", "View all")} {displayDigits(displayed.length, lang)} {t("عملية", "operations")}</button>
           </div>
         )}
       </Card>

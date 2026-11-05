@@ -4,6 +4,7 @@ import { Badge } from "../components/Badge";
 import { Btn } from "../components/Btn";
 import { useLang } from "./LangContext";
 import { fmtAmt } from "./formatters";
+import { displayDigits } from "./displayDigits";
 import { OpStagePill } from "./PipelineOverview";
 import type { Op } from "./types";
 import {
@@ -53,7 +54,7 @@ export function OpRow({ op, onView, onApprove, onReject }: OpRowProps) {
           )}
         </div>
         <div className="font-extrabold text-gray-900 font-mono text-sm flex-shrink-0 tabular-nums pt-0.5">
-          {fmtAmt(op.amount)} <span className="text-xs font-sans font-normal text-gray-600">{t("ر.س", "SAR")}</span>
+          {fmtAmt(op.amount, lang)} <span className="text-xs font-sans font-normal text-gray-600">{t("ر.س", "SAR")}</span>
         </div>
       </div>
 
@@ -76,7 +77,7 @@ export function OpRow({ op, onView, onApprove, onReject }: OpRowProps) {
           <span className="hidden lg:inline text-gray-200">·</span>
           <span className="text-xs text-gray-500 font-mono tracking-tight break-all select-all">{op.id}</span>
           <span className="text-gray-300">·</span>
-          <span className="text-xs text-gray-500 whitespace-nowrap">⏰ {op.timeAgo}</span>
+          <span className="text-xs text-gray-500 whitespace-nowrap">⏰ {displayDigits(op.timeAgo, lang)}</span>
           <Badge className={`${ORIGIN_CFG[op.origin].cls} border text-[9px] whitespace-nowrap`}>
             {ORIGIN_CFG[op.origin].icon} {originLabel}
           </Badge>
@@ -90,11 +91,11 @@ export function OpRow({ op, onView, onApprove, onReject }: OpRowProps) {
           </Badge>
           {op.diff && (
             <span className="text-xs text-red-600 font-semibold bg-red-50 border border-red-200 px-2 py-0.5 rounded-full whitespace-nowrap">
-              ⚠ {op.diff}
+              ⚠ {displayDigits(op.diff, lang)}
             </span>
           )}
           <span className="flex items-center gap-1 text-xs text-gray-400 whitespace-nowrap">
-            <Paperclip size={10} /> {op.attachments}
+            <Paperclip size={10} /> {displayDigits(op.attachments, lang)}
           </span>
           <Badge className={`${statusCfg.cls} border ${isLocked ? "border-slate-200" : ""}`}>
             {isLocked && <Lock size={10} />}
@@ -118,13 +119,13 @@ export function OpRow({ op, onView, onApprove, onReject }: OpRowProps) {
           <div className="flex items-center gap-2 mt-1.5 flex-wrap text-[11px]">
             {op.salesBreakdown ? (
               <>
-                <span className="text-gray-500">💵 {t("نقدي", "Cash")}: <span className="font-mono text-gray-700">{fmtAmt(op.salesBreakdown.cashHalalas / 100)}</span></span>
-                <span className="text-gray-500">🏦 {t("كارت", "Card")}: <span className="font-mono text-gray-700">{fmtAmt(op.salesBreakdown.cardHalalas / 100)}</span></span>
-                <span className="text-gray-500">🛵 {t("تطبيقات", "Apps")}: <span className="font-mono text-gray-700">{fmtAmt(op.salesBreakdown.appsHalalas / 100)}</span></span>
+                <span className="text-gray-500">💵 {t("نقدي", "Cash")}: <span className="font-mono text-gray-700">{fmtAmt(op.salesBreakdown.cashHalalas / 100, lang)}</span></span>
+                <span className="text-gray-500">🏦 {t("كارت", "Card")}: <span className="font-mono text-gray-700">{fmtAmt(op.salesBreakdown.cardHalalas / 100, lang)}</span></span>
+                <span className="text-gray-500">🛵 {t("تطبيقات", "Apps")}: <span className="font-mono text-gray-700">{fmtAmt(op.salesBreakdown.appsHalalas / 100, lang)}</span></span>
                 <span className="text-gray-300">·</span>
-                <span className="text-gray-500">{t("محصّل", "Collected")}: <span className="font-mono text-gray-700">{fmtAmt(op.salesBreakdown.collectedHalalas / 100)}</span></span>
+                <span className="text-gray-500">{t("محصّل", "Collected")}: <span className="font-mono text-gray-700">{fmtAmt(op.salesBreakdown.collectedHalalas / 100, lang)}</span></span>
                 <span className={`font-mono font-bold ${op.salesBreakdown.varianceHalalas === 0 ? "text-emerald-600" : "text-red-600"}`}>
-                  {op.salesBreakdown.varianceHalalas === 0 ? "✓ 0" : `${op.salesBreakdown.varianceHalalas > 0 ? "+" : ""}${fmtAmt(op.salesBreakdown.varianceHalalas / 100)}`}
+                  {op.salesBreakdown.varianceHalalas === 0 ? displayDigits("✓ 0", lang) : `${op.salesBreakdown.varianceHalalas > 0 ? "+" : ""}${fmtAmt(op.salesBreakdown.varianceHalalas / 100, lang)}`}
                 </span>
               </>
             ) : (
@@ -136,7 +137,7 @@ export function OpRow({ op, onView, onApprove, onReject }: OpRowProps) {
 
       {/* Desktop Amount */}
       <div className="hidden lg:block font-extrabold text-gray-800 font-mono text-sm flex-shrink-0 tabular-nums">
-        {fmtAmt(op.amount)} {t("ر.س", "SAR")}
+        {fmtAmt(op.amount, lang)} {t("ر.س", "SAR")}
       </div>
 
       {/* Action Buttons: Responsive touch targets, safe spacing */}

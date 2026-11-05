@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { CheckCircle2, AlertTriangle, ChevronsRight } from "lucide-react";
 import { useLang, type Lang } from "./LangContext";
 import { fmtAmt } from "./formatters";
+import { displayDigits } from "./displayDigits";
 import type { Op, PageId, ExceptionItem } from "./types";
 import {
   EXCEPTION_SEV_CFG,
@@ -36,8 +37,8 @@ export function deriveExceptions(ops: Op[], forRole: "accountant" | "head", lang
         ? `${EN_EXCEPTION_ITEMS.stuck.agePrefix}${oldestAge}${EN_EXCEPTION_ITEMS.stuck.ageSuffix}`
         : `أطول تأخير: ${oldestAge} — تجاوز الحد المقبول`,
       impact: en
-        ? `${totalAmt != null ? fmtAmt(totalAmt) : "—"}${EN_EXCEPTION_ITEMS.stuck.impactSuffix}`
-        : `${fmtAmt(totalAmt)} ر.س لم تدخل دورة الاعتماد — تعطل التجميع الشهري`,
+        ? `${totalAmt != null ? fmtAmt(totalAmt, lang) : "—"}${EN_EXCEPTION_ITEMS.stuck.impactSuffix}`
+        : `${fmtAmt(totalAmt, lang)} ر.س لم تدخل دورة الاعتماد — تعطل التجميع الشهري`,
       navTarget,
       navLabel: en
         ? (forRole === "head" ? EN_EXCEPTION_ITEMS.stuck.navLabelHead : EN_EXCEPTION_ITEMS.stuck.navLabelAcc)
@@ -61,8 +62,8 @@ export function deriveExceptions(ops: Op[], forRole: "accountant" | "head", lang
       action: en ? EN_EXCEPTION_ITEMS.diffs.action : "راجع الفرق، أصدر عملية تعديل، أو احتسب الفرق وأقفل البيان",
       age: diffs.map(o => o.timeAgo).join(" · "),
       impact: en
-        ? `${fmtAmt(totalDiff)}${EN_EXCEPTION_ITEMS.diffs.impactSuffix}`
-        : `${fmtAmt(totalDiff)} ر.س في بيانات مع فروق — لا يمكن تجميعها حتى تُحل`,
+        ? `${fmtAmt(totalDiff, lang)}${EN_EXCEPTION_ITEMS.diffs.impactSuffix}`
+        : `${fmtAmt(totalDiff, lang)} ر.س في بيانات مع فروق — لا يمكن تجميعها حتى تُحل`,
       navTarget,
       navLabel: en ? EN_EXCEPTION_ITEMS.diffs.navLabel : "عرض البيانات المُختلفة",
       detail: diffs.map(o => o.diff || "").filter(Boolean).slice(0, 2).join(" | "),
@@ -82,8 +83,8 @@ export function deriveExceptions(ops: Op[], forRole: "accountant" | "head", lang
         action: en ? EN_EXCEPTION_ITEMS.pendingErp.action : "انتقل إلى التصدير لـ ERP وأنشئ دفعة ترحيل لهذه العمليات",
         age: en ? EN_EXCEPTION_ITEMS.pendingErp.age : "مُعتمدة — في انتظار الدفعة",
         impact: en
-          ? `${fmtAmt(pendingAmt)}${EN_EXCEPTION_ITEMS.pendingErp.impactSuffix}`
-          : `${fmtAmt(pendingAmt)} ر.س غائبة عن ERP — تقارير المالك ناقصة`,
+          ? `${fmtAmt(pendingAmt, lang)}${EN_EXCEPTION_ITEMS.pendingErp.impactSuffix}`
+          : `${fmtAmt(pendingAmt, lang)} ر.س غائبة عن ERP — تقارير المالك ناقصة`,
         navTarget: "head-erp",
         navLabel: en ? EN_EXCEPTION_ITEMS.pendingErp.navLabel : "فتح صفحة التصدير لـ ERP",
       });
@@ -129,8 +130,8 @@ export function deriveExceptions(ops: Op[], forRole: "accountant" | "head", lang
       action: en ? EN_EXCEPTION_ITEMS.problemBranches.action : "تواصل مع مدير الفرع لتحديد سبب الأخطاء المتكررة وتصحيح منهجية الرفع",
       age: en ? EN_EXCEPTION_ITEMS.problemBranches.age : "نمط متكرر — ليس حادثة معزولة",
       impact: en
-        ? `${fmtAmt(totalRejected)}${EN_EXCEPTION_ITEMS.problemBranches.impactSuffix}`
-        : `${fmtAmt(totalRejected)} ر.س في بيانات مرفوضة — مؤشر على مشكلة هيكلية`,
+        ? `${fmtAmt(totalRejected, lang)}${EN_EXCEPTION_ITEMS.problemBranches.impactSuffix}`
+        : `${fmtAmt(totalRejected, lang)} ر.س في بيانات مرفوضة — مؤشر على مشكلة هيكلية`,
       navTarget: forRole === "head" ? "head-rejected" : "acc-sales" as PageId,
       navLabel: en ? EN_EXCEPTION_ITEMS.problemBranches.navLabel : "عرض المرفوضة",
       detail: problemBranches.map(([b, v]) => `${b} (${v.count} ${en ? "rejected" : "مرفوضة"})`).join(" | "),
@@ -175,10 +176,10 @@ export function ExceptionPanel({ ops, forRole, navigate }: { ops: Op[]; forRole:
           <AlertTriangle size={15} className={criticalCount > 0 ? "text-red-500" : "text-amber-500"} />
           <span className="font-bold text-gray-900 text-sm">{eui.panelTitle}</span>
           <div className="flex items-center gap-1.5">
-            {criticalCount > 0 && <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-200">{criticalCount} {lang === "en" ? "Critical" : "حرج"}</span>}
-            {highCount > 0 && <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200">{highCount} {lang === "en" ? "High" : "عالي"}</span>}
+             {criticalCount > 0 && <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-200">{displayDigits(criticalCount, lang)} {lang === "en" ? "Critical" : "حرج"}</span>}
+             {highCount > 0 && <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200">{displayDigits(highCount, lang)} {lang === "en" ? "High" : "عالي"}</span>}
             {exceptions.filter(e => e.severity === "medium").length > 0 &&
-              <span className="bg-sky-100 text-sky-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-sky-200">{exceptions.filter(e => e.severity === "medium").length} {lang === "en" ? "Medium" : "متوسط"}</span>}
+               <span className="bg-sky-100 text-sky-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-sky-200">{displayDigits(exceptions.filter(e => e.severity === "medium").length, lang)} {lang === "en" ? "Medium" : "متوسط"}</span>}
           </div>
         </div>
         <span className="text-[11px] text-gray-400 font-medium">{open ? eui.collapse : eui.expand}</span>
@@ -200,7 +201,7 @@ export function ExceptionPanel({ ops, forRole, navigate }: { ops: Op[]; forRole:
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <span className={`font-bold text-sm ${sev.titleCls}`}>{ex.label}</span>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${sev.badgeCls}`}>{sevLabel}</span>
-                      <span className={`font-mono font-extrabold text-base ${sev.titleCls}`}>{ex.count}</span>
+                      <span className={`font-mono font-extrabold text-base ${sev.titleCls}`}>{displayDigits(ex.count, lang)}</span>
                     </div>
                     <div className="flex items-center gap-4 flex-wrap text-[11px]">
                       <span className="flex items-center gap-1 text-gray-600">
@@ -210,7 +211,7 @@ export function ExceptionPanel({ ops, forRole, navigate }: { ops: Op[]; forRole:
                       <span className="text-gray-300">·</span>
                       <span className="flex items-center gap-1 text-gray-600">
                         <span className="font-semibold text-gray-500">{eui.since}</span>
-                        <span>{ex.age}</span>
+                        <span>{displayDigits(ex.age, lang)}</span>
                       </span>
                     </div>
                   </div>
@@ -235,7 +236,7 @@ export function ExceptionPanel({ ops, forRole, navigate }: { ops: Op[]; forRole:
                         </div>
                         <div>
                           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-0.5">{eui.financialImpact}</p>
-                          <p className="text-sm text-gray-700">{ex.impact}</p>
+                           <p className="text-sm text-gray-700">{displayDigits(ex.impact, lang)}</p>
                         </div>
                       </div>
                       {ex.detail && (
