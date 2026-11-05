@@ -32,6 +32,7 @@ import {
   brandOptionsFromOps,
 } from "../../_shared/filterOps";
 import { OpRow } from "../../_shared/OpRow";
+import { ShiftSalesSection } from "./ShiftSalesSection";
 import type { PageProps, Filters, OpStatus, PageId } from "../../_shared/types";
 
 export function AccSalesPage({
@@ -208,6 +209,8 @@ export function AccSalesPage({
           </div>
         </div>
       )}
+
+      <ShiftSalesSection operations={ops} />
 
       <div
         className="bg-white rounded-xl border border-gray-100 shadow-sm p-4"
