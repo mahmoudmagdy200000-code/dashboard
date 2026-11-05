@@ -1,6 +1,7 @@
 import React from "react";
 import { Badge } from "../components/Badge";
 import { useLang } from "./LangContext";
+import { displayDigits } from "./displayDigits";
 import type { Op, PageId } from "./types";
 import {
   PIPELINE_STAGES,
@@ -29,7 +30,7 @@ export function PipelineBar({ op }: { op: Op }) {
         {isRejected
           ? <Badge className="bg-red-50 text-red-700 border border-red-200 text-xs">✕ {t("مرفوض", "Rejected")}{op.rejectReason ? ` — ${op.rejectReason}` : ""}</Badge>
           : <Badge className={`${PIPELINE_STAGES[stage]?.bg} ${PIPELINE_STAGES[stage]?.text} border ${PIPELINE_STAGES[stage]?.border} text-xs font-bold`}>
-            {t(`المرحلة ${stage + 1}/6 · ${PIPELINE_STAGES[stage]?.label}`, `Stage ${stage + 1}/6 · ${EN_PIPELINE[PIPELINE_STAGES[stage]?.id]?.label || PIPELINE_STAGES[stage]?.label}`)}
+            {displayDigits(t(`المرحلة ${stage + 1}/6 · ${PIPELINE_STAGES[stage]?.label}`, `Stage ${stage + 1}/6 · ${EN_PIPELINE[PIPELINE_STAGES[stage]?.id]?.label || PIPELINE_STAGES[stage]?.label}`), lang)}
           </Badge>
         }
       </div>
@@ -75,7 +76,7 @@ export function OpStagePill({ op }: { op: Op }) {
   const shortLabel = lang === "ar" ? s.labelShort : (EN_PIPELINE[s.id]?.labelShort || s.labelShort);
   return (
     <Badge className={`${s.bg} ${s.text} border ${s.border} text-[10px] font-semibold`}>
-      {s.icon} {lang === "ar" ? `م${idx + 1}` : `S${idx + 1}`} · {shortLabel}
+      {s.icon} {displayDigits(lang === "ar" ? `م${idx + 1}` : `S${idx + 1}`, lang)} · {shortLabel}
     </Badge>
   );
 }
@@ -93,7 +94,7 @@ export function PipelineOverview({ ops, navigate }: { ops: Op[]; navigate: (p: P
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="px-4 sm:px-5 py-3 sm:py-3.5 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between flex-wrap gap-2">
         <h3 className="font-bold text-gray-900 text-sm tracking-tight">{t("مسار العمليات — رؤية شاملة للخط الزمني", "Operations Pipeline — Full Timeline View")}</h3>
-        <span className="text-xs text-gray-400">{ops.length} {t("عملية إجمالاً", "operations total")}</span>
+        <span className="text-xs text-gray-400">{displayDigits(ops.length, lang)} {t("عملية إجمالاً", "operations total")}</span>
       </div>
       <div data-testid="pipeline-overview-grid" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 lg:gap-0 p-3 sm:p-4 lg:p-0 lg:divide-x lg:divide-x-reverse divide-gray-100">
         {stageCounts.map((s, i) => {
@@ -103,7 +104,7 @@ export function PipelineOverview({ ops, navigate }: { ops: Op[]; navigate: (p: P
               ${isAspirational ? "bg-slate-50/60" : "hover:bg-gray-50/80 bg-white"}`}>
               <div className="flex items-center justify-center gap-1.5 mb-1">
                 <span className="text-lg">{s.icon}</span>
-                <span className="text-[10px] font-bold text-gray-400">{lang === "ar" ? `م${i + 1}` : `S${i + 1}`}</span>
+                <span className="text-[10px] font-bold text-gray-400">{displayDigits(lang === "ar" ? `م${i + 1}` : `S${i + 1}`, lang)}</span>
               </div>
               {isAspirational ? (
                 <>
@@ -113,7 +114,7 @@ export function PipelineOverview({ ops, navigate }: { ops: Op[]; navigate: (p: P
                 </>
               ) : (
                 <>
-                  <p className={`text-xl sm:text-2xl font-extrabold font-mono ${s.count > 0 ? s.text : "text-gray-200"}`}>{s.count}</p>
+                  <p className={`text-xl sm:text-2xl font-extrabold font-mono ${s.count > 0 ? s.text : "text-gray-200"}`}>{displayDigits(s.count, lang)}</p>
                   <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{s.shortLabel}</p>
                   {i < 4 && (
                     <div className={`mx-auto mt-2 h-1 w-6 rounded-full ${s.count > 0 ? s.fill : "bg-gray-100"}`} />
@@ -126,10 +127,10 @@ export function PipelineOverview({ ops, navigate }: { ops: Op[]; navigate: (p: P
       </div>
       <div className="px-4 sm:px-5 py-2.5 border-t border-gray-100 bg-slate-50/30 flex items-center justify-between flex-wrap gap-2 text-xs">
         {rejected > 0 && (
-          <span className="text-xs text-red-500 font-medium">✕ {rejected} {t("مرفوضة — خارج المسار", "rejected — off pipeline")}</span>
+          <span className="text-xs text-red-500 font-medium">✕ {displayDigits(rejected, lang)} {t("مرفوضة — خارج المسار", "rejected — off pipeline")}</span>
         )}
         <span className="text-[10px] text-slate-400 ms-auto">
-          {t("م1–م5: مدارة بواسطة آلة الحالة · م6 (تقارير ERP): بيانات مرجعية مُستوردة — مرحلة مستقبلية", "S1–S5: Managed by state machine · S6 (ERP Reports): Imported reference data — Future stage")}
+          {displayDigits(t("م1–م5: مدارة بواسطة آلة الحالة · م6 (تقارير ERP): بيانات مرجعية مُستوردة — مرحلة مستقبلية", "S1–S5: Managed by state machine · S6 (ERP Reports): Imported reference data — Future stage"), lang)}
         </span>
       </div>
     </div>

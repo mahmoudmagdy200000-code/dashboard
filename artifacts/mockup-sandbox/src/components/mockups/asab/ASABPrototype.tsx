@@ -375,6 +375,7 @@ import { historyBranchOptions, historyPageTarget } from "../../../api/queries/sh
 import { formatShiftHalalas, formatShiftSalesTotal, getShiftCountEvidence, getShiftStatusDisplay } from "./shiftCountEvidence";
 import { api, APP_BASE_URL } from "../../../api/client";
 import { NotificationBell } from "../../shared/NotificationBell";
+import { displayDigits } from "./_shared/displayDigits";
 import { GlobalSearch } from "../../shared/GlobalSearch";
 import { ClarifyModal } from "../../shared/ClarifyModal";
 
@@ -406,6 +407,7 @@ type ModuleKey = "sales" | "expenses" | "purchases" | "inventory" | "shifts" | "
 
 interface Op {
   id: string;
+  sourceId?: string;
   branch: string;
   moduleKey: ModuleKey;
   moduleLabel: string;
@@ -1456,7 +1458,7 @@ function Sidebar({ role, ops, page, navigate, logout, collapsed, setCollapsed, m
               <span className={`flex-shrink-0 ${active ? "text-[#00D9FF]" : ""}`}>{entry.icon}</span>
               {!collapsed && (<>
                 <span className="text-[13px] font-medium flex-1 leading-tight">{lang === "ar" ? entry.label : (EN_NAV_LABELS[entry.id] || entry.label)}</span>
-                {badge ? <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center ${entry.id === "acc-assets" ? "bg-purple-500 text-white" : (entry as NavItem).badgeColor === "yellow" ? "bg-amber-500 text-white" : "bg-red-500 text-white"}`}>{badge}</span> : null}
+                {badge ? <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center ${entry.id === "acc-assets" ? "bg-purple-500 text-white" : (entry as NavItem).badgeColor === "yellow" ? "bg-amber-500 text-white" : "bg-red-500 text-white"}`}>{displayDigits(badge, lang)}</span> : null}
               </>)}
             </button>
           );
@@ -2082,6 +2084,7 @@ function mapApiOpToOp(a: any): Op {
   };
   return {
     id: a.publicId ?? a.id ?? "",
+    sourceId: typeof a.sourceId === "string" ? a.sourceId : undefined,
     reportReview: a.reportReview,
     // Display the name only — the backend now always sends branchName ("" for a
     // deleted branch). branchId is kept below for filtering/links, never shown as
