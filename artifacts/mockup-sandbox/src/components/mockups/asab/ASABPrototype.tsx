@@ -2347,6 +2347,7 @@ export function ASABPrototype() {
   const erpBatchMut = useCreateERPBatch();
 
   const approveOp = async (id: string) => {
+    if (inFlightOps.current.has(id)) return;
     const targetOp = typeof currentSalesOps !== "undefined" && currentSalesOps?.current
       ? currentSalesOps.current.find(o => o.id === id)
       : undefined;
@@ -2382,10 +2383,8 @@ export function ASABPrototype() {
           void salesQueryClient.invalidateQueries({ queryKey: queryKeys.operations() });
         }
       }
-    ).catch(err => {
-      const msg = (err as any)?.response?.data?.message || (err as any)?.message || "فشل اعتماد العملية";
-      if (typeof toast !== "undefined") toast.error(msg);
-      throw err;
+    ).catch(() => {
+      // The approval mutation displays the error. The row stays pending on failure.
     });
   };
 
