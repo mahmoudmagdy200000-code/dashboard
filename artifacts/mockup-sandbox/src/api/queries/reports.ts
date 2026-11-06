@@ -13,14 +13,68 @@ export interface ReportCatalogItem {
   availableFormats: ("pdf" | "xlsx" | "csv")[];
 }
 
+type ReportCatalogEntry = ReportCatalogItem | {
+  key: string;
+  labelAr: string;
+  labelEn: string;
+  category: "core" | "specialized";
+};
+
 export function useReports() {
   return useQuery({
     queryKey: queryKeys.reports,
     queryFn: async () => {
-      const res = await api.get<ReportCatalogItem[]>("/company/me/reports");
-      return res.data;
+      const { data } = await api.get<ReportCatalogEntry[] | { data: ReportCatalogEntry[] }>(
+        "/company/me/reports",
+      );
+      const reports = Array.isArray(data) ? data : data.data;
+      return reports.map((report): ReportCatalogItem => {
+        if ("title" in report) return report;
+        return {
+          key: report.key,
+          title: report.labelAr,
+          titleEn: report.labelEn,
+          description: "",
+          category: "financial",
+          availableFormats: ["pdf", "xlsx"],
+        };
+      });
     },
     staleTime: 60_000,
+  });
+}
+
+export function useAccountantReportBranches() {
+  return useQuery({
+    queryKey: [...queryKeys.reports, "accountant-branches"],
+    queryFn: async ({ signal }) => {
+      const { data } = await api.get<{ data: { id: string | number }[] }>(
+        "/company/me/lookups/branches",
+        { signal },
+      );
+      return data.data.map(({ id }) => String(id));
+    },
+  });
+}
+
+interface ReportScope {
+  branchIds: string[];
+  from: string;
+  to: string;
+}
+
+export function usePreviewReport() {
+  return useMutation({
+    mutationFn: async ({ key, scope }: { key: string; scope: ReportScope }) => {
+      const { data } = await api.get<Blob>(
+        `/company/me/reports/${encodeURIComponent(key)}/download`,
+        { params: { ...scope, format: "pdf" }, responseType: "blob" },
+      );
+      if (data.type !== "application/pdf" || data.size === 0) {
+        throw new Error("Invalid report PDF");
+      }
+      return data;
+    },
   });
 }
 
@@ -81,15 +135,17 @@ export function useDownloadReport() {
       key,
       format = "pdf",
       filename,
+      scope,
     }: {
       key: string;
       format?: "pdf" | "xlsx" | "csv";
       filename?: string;
+      scope?: ReportScope;
     }) => {
       await downloadBlob(
-        `/company/me/reports/${key}/download`,
+        `/company/me/reports/${encodeURIComponent(key)}/download`,
         filename ?? `${key}.${format}`,
-        { format },
+        { ...scope, format },
       );
     },
     onError: (e) => toast.error(getErrorMessage(e, "ar")),
