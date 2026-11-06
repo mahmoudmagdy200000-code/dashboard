@@ -1,6 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isErrorBody, ApiError } from './errors.ts';
+import { isErrorBody, ApiError, getErrorMessage } from './errors.ts';
+
+test('missing workday membership has an actionable Arabic message across error envelopes', () => {
+  const code = 'REPORT_WORKDAY_MEMBERSHIP_REQUIRED';
+  const message = 'تعذر اعتماد الوردية. تحقّق من إرسال تقرير يوم العمل من تطبيق مدير الفرع. إذا سبق إرساله، يلزم مراجعة ربط الوردية بالتقرير.';
+  for (const body of [
+    { message: code },
+    { success: false as const, message: code, errors: { code } },
+    { error: { code, message: code } },
+  ]) {
+    const error = new ApiError(body, 409);
+    assert.equal(error.code, code);
+    assert.equal(getErrorMessage(error, 'ar'), message);
+  }
+});
 
 test('isErrorBody detects all three error envelopes and rejects non-errors', () => {
   // Shape 1: Legacy envelope

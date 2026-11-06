@@ -20,7 +20,7 @@ const REVIEW_ERROR_AR: Record<string, string> = {
   "REPORT_IN_HEAD_REVIEW": "التقرير قيد مراجعة رئيس الحسابات",
   "REPORT_FINAL_APPROVED": "التقرير مغلق نهائيًا ولا يمكن تعديله",
   "REPORT_CURRENT_EVIDENCE_REQUIRED": "بيانات المراجعة الحالية غير مكتملة",
-  "REPORT_WORKDAY_MEMBERSHIP_REQUIRED": "تنقص بيانات ربط الوردية بيوم العمل؛ يلزم مراجعة الحالة التاريخية",
+  "REPORT_WORKDAY_MEMBERSHIP_REQUIRED": "تعذر اعتماد الوردية. تحقّق من إرسال تقرير يوم العمل من تطبيق مدير الفرع. إذا سبق إرساله، يلزم مراجعة ربط الوردية بالتقرير.",
   "REPORT_SOURCE_MAPPING_REQUIRED": "تعذر ربط التقرير بمصدر الوردية",
   "REPORT_OPERATION_MAPPING_REQUIRED": "تعذر ربط التقرير بالعملية",
   "REPORT_SOURCE_CHANGED": "تغير مصدر التقرير؛ حدّث البيانات وأعد المراجعة",
@@ -77,8 +77,9 @@ export class ApiError extends Error {
     // Preserve existing structured-envelope codes. For bare {message}, accept only code-shaped values.
     const bareCode = !legacy && !body.errors && IS_ERROR_CODE.test(message) ? message : null;
     this.code = legacy?.code ?? body.errors?.code ?? bareCode ?? "UNKNOWN";
-    // Legacy messageAr takes priority; known bare codes receive an Arabic explanation.
-    this.messageAr = legacy?.messageAr || (bareCode ? REVIEW_ERROR_AR[bareCode] : undefined) || message;
+    // A supplied Arabic message wins; known review codes work in every envelope.
+    const reviewMessage = IS_ERROR_CODE.test(this.code) ? REVIEW_ERROR_AR[this.code] : undefined;
+    this.messageAr = legacy?.messageAr || reviewMessage || message;
     this.details = legacy?.details ?? body.errors;
     this.requestId = body.requestId;
     this.status = status;
