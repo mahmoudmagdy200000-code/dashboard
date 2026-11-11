@@ -7609,7 +7609,7 @@ function AccCompanyEmployees() {
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <div className="bg-gray-50 rounded-xl p-2.5 text-center border border-gray-200">
                           <p className="text-[10px] text-gray-500 font-semibold">{t("رصيد أول المدة", "Opening Balance")}</p>
-                          <p className={`font-mono font-bold text-xs ${balColor(custodyStatement.balances.opening_balance ?? 0)}`}>
+                          <p data-testid="custody-opening-balance" className={`font-mono font-bold text-xs ${balColor(custodyStatement.balances.opening_balance ?? 0)}`}>
                             {fmtH(custodyStatement.balances.opening_balance ?? 0)}
                           </p>
                         </div>
@@ -7627,7 +7627,7 @@ function AccCompanyEmployees() {
                         </div>
                         <div className="bg-purple-50 rounded-xl p-2.5 text-center border-2 border-purple-200">
                           <p className="text-[10px] text-purple-700 font-bold">{t("رصيد آخر المدة", "Closing Balance")}</p>
-                          <p className={`font-mono font-black text-sm ${balColor(custodyStatement.balances.closing_balance ?? 0)}`}>
+                          <p data-testid="custody-closing-balance" className={`font-mono font-black text-sm ${balColor(custodyStatement.balances.closing_balance ?? 0)}`}>
                             {fmtH(custodyStatement.balances.closing_balance ?? 0)}
                           </p>
                         </div>
