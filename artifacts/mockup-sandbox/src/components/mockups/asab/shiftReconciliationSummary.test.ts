@@ -232,6 +232,22 @@ test("MT-03 / MTG-REC-02: Revision matching verification (matching, differing, a
   assert.equal(missingLiabilitySummary.currentResponsibility.formatted, "غير متاح");
   assert.equal(missingLiabilitySummary.unassignedAmount.amountHalalas, 2000);
   assert.equal(missingLiabilitySummary.allocationCompleteIndicator.isComplete, false);
+
+  // 5. Explicit check: reportRevision: 1, liability.version: 1, but liability.reportRevision is missing:
+  // MUST NOT use version as fallback. Returns missing_revision / "غير متاح"
+  const versionFallbackAttemptSource: ShiftReconciliationSource = {
+    ...baseShortage,
+    reportRevision: 1,
+    liability: {
+      version: 1, // allocation version is 1, but NO reportRevision link from backend!
+      shares: [{ type: "cashier", id: "emp-101", amountHalalas: 2000 }],
+    },
+  };
+  const fallbackSummary = getShiftReconciliationSummary(versionFallbackAttemptSource, "ar");
+  assert.equal(fallbackSummary.currentResponsibility.isAvailable, false);
+  assert.equal(fallbackSummary.currentResponsibility.status, "missing_revision");
+  assert.equal(fallbackSummary.currentResponsibility.formatted, "غير متاح");
+  assert.equal(fallbackSummary.allocationCompleteIndicator.isComplete, false);
 });
 
 test("MT-05: Sales 115, cards 50, apps 25, opening 10, count 30 -> Expected 50, shortage 20, sales 115 (never 125)", () => {

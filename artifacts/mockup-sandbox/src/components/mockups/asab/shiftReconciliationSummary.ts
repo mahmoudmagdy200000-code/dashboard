@@ -230,8 +230,8 @@ export function getShiftReconciliationSummary(
       shares: [],
     };
   } else {
-    // Check revision consistency: both reportRevision and liability reportRevision must be present and match
-    const liabilityRevision = rawLiability.reportRevision ?? rawLiability.version;
+    // Check revision consistency: liability reportRevision must be present and match reportRevision
+    const liabilityRevision = rawLiability.reportRevision;
     const hasReportRev = typeof reportRevision === "number" && Number.isSafeInteger(reportRevision);
     const hasLiabilityRev = typeof liabilityRevision === "number" && Number.isSafeInteger(liabilityRevision);
 
