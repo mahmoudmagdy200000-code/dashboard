@@ -145,3 +145,34 @@ test("G2-C5: Tab state model isolates dues & deductions from shift custody", () 
   activeTab = "dues";
   assert.equal(activeTab, "dues");
 });
+
+test("G2-C6: Late-posted receipt distinguishes business_date from posting date (event_at)", () => {
+  const lateEntry: CustodyEntry = {
+    source_type: "cashier_custody",
+    source_id: "entry-late-01",
+    event_at: "2026-11-03T14:30:00Z",
+    business_date: "2026-11-01",
+    branch: { id: "b-01", name: "فرع العليا" },
+    transaction_type: "Handover Received",
+    classification: "handover_received",
+    label_ar: "استلام من كاشير",
+    label_en: "Received from cashier",
+    source_shift_id: "shift-01",
+    receiving_shift_id: "shift-02",
+    receipt_id: "REC-LATE-01",
+    counterparty: { type: "cashier", id: "c-01", name: "كاشير 1" },
+    cash_in: 420000,
+    cash_out: 0,
+    running_balance: 420000,
+    confirmation_state: "confirmed",
+    lineage_key: null,
+    reversal_id: null,
+  };
+
+  const postDate = lateEntry.event_at ? lateEntry.event_at.slice(0, 10) : "";
+  const isDifferent = Boolean(lateEntry.business_date && postDate && lateEntry.business_date !== postDate);
+
+  assert.equal(lateEntry.business_date, "2026-11-01");
+  assert.equal(postDate, "2026-11-03");
+  assert.equal(isDifferent, true);
+});

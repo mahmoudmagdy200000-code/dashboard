@@ -7766,8 +7766,26 @@ function AccCompanyEmployees() {
                         {!isCustodyLoading && (custodyStatement?.entries ?? []).map(entry => (
                           <tr key={entry.source_id} data-testid="custody-entry-row" className="hover:bg-gray-50">
                             <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                              <span className="font-medium text-gray-800">{entry.business_date ?? entry.event_at.slice(0, 10)}</span>
-                              <span className="block text-[10px] text-gray-400">{entry.event_at ? new Date(entry.event_at).toLocaleTimeString(dir==="rtl"?"ar-SA":"en-US", {hour:"2-digit", minute:"2-digit"}) : ""}</span>
+                              {(() => {
+                                const postDate = entry.event_at ? entry.event_at.slice(0, 10) : "";
+                                const postTime = entry.event_at ? new Date(entry.event_at).toLocaleTimeString(dir === "rtl" ? "ar-SA" : "en-US", { hour: "2-digit", minute: "2-digit" }) : "";
+                                const isDiff = Boolean(entry.business_date && postDate && entry.business_date !== postDate);
+                                return (
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-semibold text-gray-800" data-testid="custody-entry-business-date">{entry.business_date ?? postDate}</span>
+                                      {isDiff && (
+                                        <span data-testid="late-posting-badge" className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold border border-amber-200">
+                                          {t("ترحيل متأخر", "Late post")}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="block text-[10px] text-gray-400 font-mono" data-testid="custody-entry-posting-time">
+                                      {t("الترحيل", "Posted")}: {postDate} {postTime}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td className="px-3 py-3 font-medium text-gray-800">
                               <span>{entry.label_ar}</span>
