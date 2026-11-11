@@ -2,6 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
+import {
+  getShiftCorrectionEvidence,
+  getShiftCorrectionIneligibilityReason,
+} from "./shiftReportCorrection.ts";
 
 // Transpile shifts.ts functions cleanly without bundler dependencies
 const shiftsPath = new URL("../../../api/queries/shifts.ts", import.meta.url);
@@ -374,6 +378,123 @@ test("MT-20: CompanyDashboard AccCompanySales computes counters from filtered sc
   assert.match(code, /عمليات المبيعات — تمت الموافقة/);
   assert.match(code, /عمليات المبيعات — مرفوضة/);
 
-  // 5. AccountantRoot passes onOpenReport to AccCompanySales
-  assert.match(code, /AccCompanySales\s+ops=\{ops\}[^>]*onOpenReport=\{\(shiftId,\s*opId\)\s*=>\s*navigate\(["']acc-shifts["']\)\}/);
+  // 5. AccountantRoot captures selectedShiftTarget and routes to AccCompanyShifts
+  assert.match(code, /setSelectedShiftTarget\(\{\s*shiftId,\s*opId\s*\}\)/);
+  assert.match(code, /<AccCompanyShifts[^>]*selectedShiftTarget=\{selectedShiftTarget\}/);
+});
+
+test("MT-20: Opening chosen shift report from sales screen captures shiftId and opId, and selects report for accountant review", () => {
+  // Test opening 2 distinct shifts from accountant sales view
+  const openedReports: Array<{ shiftId: string; opId?: string }> = [];
+  const handleOpenReport = (shiftId: string, opId?: string) => {
+    openedReports.push({ shiftId, opId });
+  };
+
+  // Shift 1: shift-a-1 with op-shift-a-1
+  const shift1 = fixtureShifts[0]; // shift-a-1, op-shift-a-1
+  assert.equal(shift1.id, "shift-a-1");
+  handleOpenReport(shift1.id, shift1.reportReview?.operation_id);
+
+  // Shift 2: shift-a-2 with op-shift-a-2
+  const shift2 = fixtureShifts[1]; // shift-a-2, op-shift-a-2
+  assert.equal(shift2.id, "shift-a-2");
+  handleOpenReport(shift2.id, shift2.reportReview?.operation_id);
+
+  // Assert both shiftId and opId were captured correctly
+  assert.equal(openedReports.length, 2);
+  assert.deepEqual(openedReports[0], { shiftId: "shift-a-1", opId: "op-shift-a-1" });
+  assert.deepEqual(openedReports[1], { shiftId: "shift-a-2", opId: "op-shift-a-2" });
+
+  // Simulate routing to AccCompanyShifts with selectedShiftTarget
+  const target1 = openedReports[0];
+  const selectedTab = target1 ? "close" : "live";
+  assert.equal(selectedTab, "close", "Opens close review tab");
+  const selectedExpandedId = target1.opId;
+  assert.equal(selectedExpandedId, "op-shift-a-1", "Expands selected shift report operation");
+
+  // Verify eligibility check with shift detail
+  const eligibleDetail = {
+    id: "op-shift-a-1",
+    moduleKey: "shifts",
+    status: "pending",
+    reportRevision: 1,
+    reportReview: { phase: "accountant_review" },
+    payload: { shiftId: "shift-a-1", reportRevision: 1, pkg6Review: { phase: "accountant_review" } },
+  };
+  const eligibleOp = { id: "op-shift-a-1", module: "shifts", branchId: "branch-a", status: "pending" };
+  const eligibleEvidence = getShiftCorrectionEvidence(eligibleOp, eligibleDetail, "accountant");
+  assert.ok(eligibleEvidence, "Eligible shift report displays correction form");
+  assert.equal(getShiftCorrectionIneligibilityReason(eligibleOp, eligibleDetail, "accountant", "ar"), null);
+
+  // Ineligible detail (e.g. status already approved)
+  const ineligibleDetail = { ...eligibleDetail, status: "approved" };
+  const ineligibleOp = { ...eligibleOp, status: "approved" };
+  const ineligibleEvidence = getShiftCorrectionEvidence(ineligibleOp, ineligibleDetail, "accountant");
+  assert.equal(ineligibleEvidence, null, "Ineligible shift report hides correction form");
+  const reasonAr = getShiftCorrectionIneligibilityReason(ineligibleOp, ineligibleDetail, "accountant", "ar");
+  assert.match(reasonAr!, /حالة التقرير ليست معلقة/, "Displays clear ineligibility reason");
+});
+
+test("MT-20: Status filter scope includes final-approved and rejected (zero-result case)", () => {
+  // 1. Status mapping in ShiftSalesSection
+  function mapHistoryStatus(filterStatus: string) {
+    return filterStatus === "pending"
+      ? "pending_review"
+      : filterStatus === "approved" || filterStatus === "final-approved"
+      ? "closed"
+      : filterStatus === "rejected"
+      ? "rejected"
+      : undefined;
+  }
+
+  assert.equal(mapHistoryStatus("pending"), "pending_review");
+  assert.equal(mapHistoryStatus("approved"), "closed");
+  assert.equal(mapHistoryStatus("final-approved"), "closed");
+  assert.equal(mapHistoryStatus("rejected"), "rejected");
+  assert.equal(mapHistoryStatus("all"), undefined);
+
+  // 2. Querying backend with status="rejected" returns zero results (meta.total = 0, data = [])
+  function queryBackendShifts(filters: { branchId?: string; status?: string; role?: string; page?: number; pageSize?: number }) {
+    let q = fixtureShifts;
+    if (filters.status && filters.status !== "all") {
+      q = q.filter(s => s.status === filters.status);
+    }
+    if (filters.role === "cashier") {
+      q = q.filter(s => s.role === "cashier");
+    }
+    if (filters.branchId && filters.branchId !== "all") {
+      q = q.filter(s => s.branchId === filters.branchId);
+    }
+    const total = q.length;
+    const pageSize = filters.pageSize ?? 5;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const page = Math.min(Math.max(1, filters.page ?? 1), totalPages);
+    const start = (page - 1) * pageSize;
+    const data = q.slice(start, start + pageSize);
+    return { data, meta: { total, totalPages, page, pageSize } };
+  }
+
+  // Filter with status=rejected -> 0 shifts found (zero-result case)
+  const rejectedRes = queryBackendShifts({ status: "rejected", role: "cashier" });
+  assert.equal(rejectedRes.meta.total, 0, "Rejected status returns meta.total = 0");
+  assert.equal(rejectedRes.data.length, 0, "Rejected status returns 0 data rows");
+  assert.equal(rejectedRes.meta.totalPages, 1);
+
+  // Filter with status=closed (which final-approved maps to) across Branch A (pageSize=1 -> multi-page)
+  const finalApprovedP1 = queryBackendShifts({ status: "closed", role: "cashier", branchId: "branch-a", pageSize: 1, page: 1 });
+  assert.equal(finalApprovedP1.meta.total, 2, "Branch A closed cashier shifts = 2");
+  assert.equal(finalApprovedP1.meta.totalPages, 2);
+  assert.equal(finalApprovedP1.data.length, 1);
+  assert.equal(finalApprovedP1.data[0].id, "shift-a-1");
+
+  const finalApprovedP2 = queryBackendShifts({ status: "closed", role: "cashier", branchId: "branch-a", pageSize: 1, page: 2 });
+  assert.equal(finalApprovedP2.meta.total, 2);
+  assert.equal(finalApprovedP2.data.length, 1);
+  assert.equal(finalApprovedP2.data[0].id, "shift-a-2");
+
+  // Filter Branch B with status=closed
+  const finalApprovedBranchB = queryBackendShifts({ status: "closed", role: "cashier", branchId: "branch-b", pageSize: 1, page: 1 });
+  assert.equal(finalApprovedBranchB.meta.total, 1, "Branch B closed cashier shifts = 1");
+  assert.equal(finalApprovedBranchB.data.length, 1);
+  assert.equal(finalApprovedBranchB.data[0].id, "shift-b-1");
 });

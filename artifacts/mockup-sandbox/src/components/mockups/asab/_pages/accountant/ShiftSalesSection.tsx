@@ -377,8 +377,10 @@ export function ShiftSalesSection({
   const historyStatus =
     filterStatus === "pending"
       ? ("pending_review" as const)
-      : filterStatus === "approved"
+      : filterStatus === "approved" || filterStatus === "final-approved"
       ? ("closed" as const)
+      : filterStatus === "rejected"
+      ? ("rejected" as const)
       : undefined;
 
   // MT-20: Apply branch, date, status, and cashier-only scope on the query BEFORE pagination
@@ -417,15 +419,23 @@ export function ShiftSalesSection({
         return false;
       }
       if (
-        filterStatus === "approved" &&
+        (filterStatus === "approved" || filterStatus === "final-approved") &&
         st !== "closed" &&
         st !== "approved"
       ) {
         return false;
       }
       if (
+        filterStatus === "rejected" &&
+        st !== "rejected"
+      ) {
+        return false;
+      }
+      if (
         filterStatus !== "pending" &&
         filterStatus !== "approved" &&
+        filterStatus !== "final-approved" &&
+        filterStatus !== "rejected" &&
         st !== filterStatus
       ) {
         return false;

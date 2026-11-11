@@ -155,6 +155,85 @@ test("MT-03: Assign 15 only -> Unassigned 5, allocation incomplete; Stale alloca
   assert.equal(staleSummary.allocationCompleteIndicator.isComplete, false);
 });
 
+test("MT-03 / MTG-REC-02: Revision matching verification (matching, differing, and missing report/liability revision individually)", () => {
+  const baseShortage: ShiftReconciliationSource = {
+    id: "shift-rev-test",
+    salesHalalas: 10000,
+    cashExpectedHalalas: 4000,
+    cashActualHalalas: 2000,
+    cashCountState: "counted",
+    varianceHalalas: -2000, // 20.00 SAR shortage
+  };
+
+  // 1. Matching revisions (reportRevision: 2, liability.reportRevision: 2) -> Verified responsibility
+  const matchingSource: ShiftReconciliationSource = {
+    ...baseShortage,
+    reportRevision: 2,
+    liability: {
+      reportRevision: 2,
+      managerApprovalStatus: "approved",
+      shares: [{ type: "cashier", id: "emp-101", amountHalalas: 2000 }],
+    },
+  };
+  const matchingSummary = getShiftReconciliationSummary(matchingSource, "ar");
+  assert.equal(matchingSummary.currentResponsibility.isAvailable, true);
+  assert.equal(matchingSummary.currentResponsibility.status, "approved");
+  assert.equal(matchingSummary.currentResponsibility.assignedHalalas, 2000);
+  assert.equal(matchingSummary.unassignedAmount.amountHalalas, 0);
+  assert.equal(matchingSummary.allocationCompleteIndicator.isComplete, true);
+
+  // 2. Differing revisions (reportRevision: 2, liability.reportRevision: 1) -> stale_revision
+  const differingSource: ShiftReconciliationSource = {
+    ...baseShortage,
+    reportRevision: 2,
+    liability: {
+      reportRevision: 1,
+      shares: [{ type: "cashier", id: "emp-101", amountHalalas: 2000 }],
+    },
+  };
+  const differingSummary = getShiftReconciliationSummary(differingSource, "ar");
+  assert.equal(differingSummary.currentResponsibility.isAvailable, false);
+  assert.equal(differingSummary.currentResponsibility.status, "stale_revision");
+  assert.equal(differingSummary.currentResponsibility.assignedHalalas, 0);
+  assert.match(differingSummary.currentResponsibility.formatted, /قديمة/);
+  // Full shortage remains unassigned
+  assert.equal(differingSummary.unassignedAmount.amountHalalas, 2000);
+  assert.equal(differingSummary.allocationCompleteIndicator.isComplete, false);
+
+  // 3. Missing reportRevision (reportRevision undefined, liability has version 1) -> missing_revision
+  const missingReportRevSource: ShiftReconciliationSource = {
+    ...baseShortage,
+    reportRevision: undefined,
+    liability: {
+      reportRevision: 1,
+      shares: [{ type: "cashier", id: "emp-101", amountHalalas: 2000 }],
+    },
+  };
+  const missingReportSummary = getShiftReconciliationSummary(missingReportRevSource, "ar");
+  assert.equal(missingReportSummary.currentResponsibility.isAvailable, false);
+  assert.equal(missingReportSummary.currentResponsibility.status, "missing_revision");
+  assert.equal(missingReportSummary.currentResponsibility.assignedHalalas, 0);
+  assert.equal(missingReportSummary.currentResponsibility.formatted, "غير متاح");
+  assert.equal(missingReportSummary.unassignedAmount.amountHalalas, 2000);
+  assert.equal(missingReportSummary.allocationCompleteIndicator.isComplete, false);
+
+  // 4. Missing liabilityRevision (reportRevision is 1, liability has no reportRevision or version) -> missing_revision
+  const missingLiabilityRevSource: ShiftReconciliationSource = {
+    ...baseShortage,
+    reportRevision: 1,
+    liability: {
+      shares: [{ type: "cashier", id: "emp-101", amountHalalas: 2000 }],
+    },
+  };
+  const missingLiabilitySummary = getShiftReconciliationSummary(missingLiabilityRevSource, "ar");
+  assert.equal(missingLiabilitySummary.currentResponsibility.isAvailable, false);
+  assert.equal(missingLiabilitySummary.currentResponsibility.status, "missing_revision");
+  assert.equal(missingLiabilitySummary.currentResponsibility.assignedHalalas, 0);
+  assert.equal(missingLiabilitySummary.currentResponsibility.formatted, "غير متاح");
+  assert.equal(missingLiabilitySummary.unassignedAmount.amountHalalas, 2000);
+  assert.equal(missingLiabilitySummary.allocationCompleteIndicator.isComplete, false);
+});
+
 test("MT-05: Sales 115, cards 50, apps 25, opening 10, count 30 -> Expected 50, shortage 20, sales 115 (never 125)", () => {
   // Sales 115, non-cash 75 (cards 50 + apps 25), opening 10 -> Expected = (115 - 75) + 10 = 50.
   // Counted = 30 -> Variance = 30 - 50 = -20 (shortage 20).

@@ -88,7 +88,7 @@ import {
 } from "../../../api/queries";
 import { apiOpToCOp, sumCOpAmounts, type COp, type COpStatus, type CMatch, type CModKey } from "./operationMapping";
 import { formatShiftHalalas, getShiftCountEvidence, getShiftStatusDisplay } from "./shiftCountEvidence";
-import { getShiftCorrectionEvidence, initialShiftCorrectionDraft, prepareShiftCorrectionRequest, runShiftReportCorrection, type ShiftCorrectionDraft, type ShiftCorrectionShareDraft } from "./shiftReportCorrection";
+import { getShiftCorrectionEvidence, getShiftCorrectionIneligibilityReason, initialShiftCorrectionDraft, prepareShiftCorrectionRequest, runShiftReportCorrection, type ShiftCorrectionDraft, type ShiftCorrectionShareDraft } from "./shiftReportCorrection";
 import type {
   Asset, ExpenseInvoiceRow,
   PurchaseLine, PurchasesBlock, Supplier, PurchaseReturn, PurchaseEnumsCatalogue,
@@ -1779,6 +1779,12 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
       {allocationEvidence && <ShiftAllocationForm op={op} shortageHalalas={allocationEvidence.shortageHalalas}/>}
       {!forHead && op?.branchId && getShiftCorrectionEvidence(op,detail,"accountant") &&
         <ShiftReportCorrectionForm key={`${detail.id}:${detail.reportRevision ?? "missing"}`} op={op} detail={detail}/>}
+      {!forHead && op?.branchId && !getShiftCorrectionEvidence(op,detail,"accountant") && (
+        <div className="rounded-lg bg-amber-50/80 border border-amber-200 p-2.5 text-xs text-amber-800" data-testid="correction-ineligibility-reason">
+          <span className="font-semibold block mb-0.5">{t("أهلية تصحيح التقرير:","Correction eligibility:")}</span>
+          <p>{getShiftCorrectionIneligibilityReason(op, detail, "accountant", lang)}</p>
+        </div>
+      )}
       <div className="text-xs space-y-1">
         <h4 className="font-bold">{t("توزيع المسؤولية الحالي","Current liability allocation")}</h4>
         {liability ? <>
@@ -6395,14 +6401,16 @@ function ShiftConfigCard({ cfg }:{ cfg:ShiftConfig }) {
   );
 }
 
-function AccCompanyShifts({ approve, reject, requestClarification, page, setPage }:{
+function AccCompanyShifts({ approve, reject, requestClarification, page, setPage, selectedShiftTarget, onClearSelectedShift }:{
   approve:(id:string)=>void; reject:(id:string)=>void; requestClarification?:(id:string)=>void;
   page:number; setPage:(page:number)=>void;
+  selectedShiftTarget?: { shiftId: string; opId?: string } | null;
+  onClearSelectedShift?: () => void;
 }) {
   const { t, dir, lang } = useCLang();
   type ShiftTab = "live"|"setup"|"close"|"history";
-  const [tab,          setTab]          = useState<ShiftTab>("live");
-  const [expandedId, setExpandedId] = useState<string|null>(null);
+  const [tab,          setTab]          = useState<ShiftTab>(selectedShiftTarget ? "close" : "live");
+  const [expandedId, setExpandedId] = useState<string|null>(selectedShiftTarget?.opId ?? null);
   const [contactShift, setContactShift] = useState<Shift|null>(null);
   const [historyDateFrom, setHistoryDateFrom] = useState("");
   const [historyDateTo, setHistoryDateTo] = useState("");
@@ -6410,6 +6418,17 @@ function AccCompanyShifts({ approve, reject, requestClarification, page, setPage
   const [historyPageNum, setHistoryPageNum] = useState(1);
   const operationsQuery = useOperations({ moduleKey:"shifts", pageSize:100, page });
   const shiftOps = shfReviewRows(operationsQuery.data).map(op => apiOpToCOp(op, BRANDS));
+  const selectedDetailQuery = useOperation(selectedShiftTarget?.opId ?? null);
+  const selectedDetail = selectedDetailQuery.data;
+
+  useEffect(() => {
+    if (selectedShiftTarget) {
+      setTab("close");
+      if (selectedShiftTarget.opId) {
+        setExpandedId(selectedShiftTarget.opId);
+      }
+    }
+  }, [selectedShiftTarget]);
   const meta = operationsQuery.data?.meta;
   const totalPages = meta && Number.isSafeInteger(meta.totalPages) && meta.totalPages > 0 ? meta.totalPages : undefined;
   const shownPage = meta && Number.isSafeInteger(meta.page) && meta.page > 0 ? meta.page : page;
@@ -6539,6 +6558,50 @@ function AccCompanyShifts({ approve, reject, requestClarification, page, setPage
       {/* Accountant SHF operation review; the native close flow is not used here. */}
       {tab==="close" && (
         <div className="space-y-4">
+          {selectedShiftTarget && (
+            <div className="bg-white rounded-xl border border-indigo-200 shadow-sm p-4 space-y-3" data-testid="selected-shift-report">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <div>
+                  <h3 className="font-bold text-sm text-gray-900">{t("تقرير الوردية المختارة من شاشة المبيعات", "Selected Shift Report from Sales Screen")}</h3>
+                  <p className="text-xs text-gray-500 font-mono">
+                    <span data-testid="selected-shift-id">{t("معرّف الوردية", "Shift ID")}: {selectedShiftTarget.shiftId}</span>
+                    {selectedShiftTarget.opId && <span className="mx-2">·</span>}
+                    {selectedShiftTarget.opId && <span data-testid="selected-report-id">{t("معرّف العملية", "Operation/Report ID")}: {selectedShiftTarget.opId}</span>}
+                  </p>
+                </div>
+                {onClearSelectedShift && (
+                  <button
+                    type="button"
+                    onClick={onClearSelectedShift}
+                    className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+                  >
+                    {t("إغلاق التقرير المختار", "Close selected report")}
+                  </button>
+                )}
+              </div>
+              {(() => {
+                const targetedOp = selectedShiftTarget?.opId ? shiftOps.find(o => o.id === selectedShiftTarget.opId) : undefined;
+                const opForPanel: COp | undefined = targetedOp ?? (selectedDetail ? apiOpToCOp(selectedDetail, BRANDS) : undefined);
+
+                if (selectedDetailQuery.isLoading) {
+                  return <p className="text-xs text-gray-500">{t("جارٍ تحميل تفاصيل التقرير…", "Loading report details…")}</p>;
+                }
+
+                if (opForPanel) {
+                  return (
+                    <ShiftOpPanel
+                      op={opForPanel}
+                      detail={selectedDetail}
+                      forHead={false}
+                      loading={selectedDetailQuery.isLoading}
+                      error={selectedDetailQuery.isError}
+                    />
+                  );
+                }
+                return <p className="text-xs text-gray-400">{t("تفاصيل الوردية غير متاحة", "Shift details unavailable")}</p>;
+              })()}
+            </div>
+          )}
           <div className="flex items-center justify-between gap-3 text-xs text-gray-600">
             <p>{t("الصفحة","Page")} {shownPage}{totalPages ? ` / ${totalPages}` : ""} · {t("عمليات هذه الصفحة","Operations on this page")}: {reviewLoading || operationsQuery.isError ? "—" : shiftOps.length}</p>
             <div className="flex gap-2">
@@ -8298,14 +8361,16 @@ type SharedOpsProps = {
 };
 
 function AccountantRoot({ page, navigate, ops, approve, reject, requestClarification, bulkApprove, shiftReviewPage, setShiftReviewPage }:{ page:string; navigate:(p:string)=>void } & SharedOpsProps) {
+  const [selectedShiftTarget, setSelectedShiftTarget] = useState<{ shiftId: string; opId?: string } | null>(null);
+
   if(page==="acc-dashboard")  return <AccDashboard navigate={navigate} ops={ops}/>;
-  if(page==="acc-sales")      return <AccCompanySales ops={ops} approve={approve} reject={reject} requestClarification={requestClarification} bulkApprove={bulkApprove} onOpenReport={(shiftId, opId) => navigate("acc-shifts")}/>;
+  if(page==="acc-sales")      return <AccCompanySales ops={ops} approve={approve} reject={reject} requestClarification={requestClarification} bulkApprove={bulkApprove} onOpenReport={(shiftId, opId) => { setSelectedShiftTarget({ shiftId, opId }); navigate("acc-shifts"); }}/>;
   if(page==="acc-expenses")   return <AccCompanyExpenses ops={ops} approve={approve} reject={reject} bulkApprove={bulkApprove}/>;
   if(page==="acc-purchases")  return <AccCompanyPurchases ops={ops} approve={approve} reject={reject} bulkApprove={bulkApprove} requestClarification={requestClarification}/>;
   if(page==="acc-inventory")  return <AccCompanyInventory navigate={navigate} ops={ops} approve={approve} reject={reject}/>;
   if(page==="acc-waste")      return <AccCompanyWaste/>;
   if(page==="acc-assets")     return <AccCompanyAssets/>;
-  if(page==="acc-shifts")     return <AccCompanyShifts approve={approve} reject={reject} requestClarification={requestClarification} page={shiftReviewPage} setPage={setShiftReviewPage}/>;
+  if(page==="acc-shifts")     return <AccCompanyShifts approve={approve} reject={reject} requestClarification={requestClarification} page={shiftReviewPage} setPage={setShiftReviewPage} selectedShiftTarget={selectedShiftTarget} onClearSelectedShift={() => setSelectedShiftTarget(null)}/>;
   if(page==="acc-employees")  return <AccCompanyEmployees/>;
   if(page==="acc-cash")       return <AccCompanyCash/>;
   if(page==="acc-reminders")  return <AccCompanyReminders/>;

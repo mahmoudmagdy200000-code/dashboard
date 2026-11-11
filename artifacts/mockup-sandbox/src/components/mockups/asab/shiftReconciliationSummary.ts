@@ -64,7 +64,7 @@ export type ReconciliationVariance = {
 export type ReconciliationResponsibility = {
   assignedHalalas: number;
   formatted: string;
-  status: "approved" | "pending" | "awaiting_allocation" | "stale_revision" | "none";
+  status: "approved" | "pending" | "awaiting_allocation" | "stale_revision" | "missing_revision" | "none";
   label: string;
   isApplicable: boolean;
   isAvailable: boolean;
@@ -230,13 +230,22 @@ export function getShiftReconciliationSummary(
       shares: [],
     };
   } else {
-    // Check revision consistency: if liability specifies reportRevision, it must match
-    const liabilityRevision = rawLiability.reportRevision;
-    if (
-      typeof liabilityRevision === "number" &&
-      typeof reportRevision === "number" &&
-      liabilityRevision !== reportRevision
-    ) {
+    // Check revision consistency: both reportRevision and liability reportRevision must be present and match
+    const liabilityRevision = rawLiability.reportRevision ?? rawLiability.version;
+    const hasReportRev = typeof reportRevision === "number" && Number.isSafeInteger(reportRevision);
+    const hasLiabilityRev = typeof liabilityRevision === "number" && Number.isSafeInteger(liabilityRevision);
+
+    if (!hasReportRev || !hasLiabilityRev) {
+      currentResponsibility = {
+        assignedHalalas: 0,
+        formatted: unavailableText,
+        status: "missing_revision",
+        label: language === "ar" ? "نسخة غير مؤكدة" : "Unconfirmed revision",
+        isApplicable: true,
+        isAvailable: false,
+        shares: [],
+      };
+    } else if (liabilityRevision !== reportRevision) {
       currentResponsibility = {
         assignedHalalas: 0,
         formatted: language === "ar" ? "نسخة توزيع قديمة غير مطابقة للتقرير" : "Stale allocation revision",
