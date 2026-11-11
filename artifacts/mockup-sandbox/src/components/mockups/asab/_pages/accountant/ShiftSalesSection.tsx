@@ -365,6 +365,15 @@ export function ShiftSalesSection({
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // MT-20: Reset page to 1 when any filter changes so pagination starts fresh
+  const filterKey = `${filterBranch ?? ""}|${filterStatus ?? ""}|${filterDate ?? ""}|${filterSearch ?? ""}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
+    setPage(1);
+    setExpandedId(null);
+  }
+
   const historyStatus =
     filterStatus === "pending"
       ? ("pending_review" as const)
@@ -372,26 +381,31 @@ export function ShiftSalesSection({
       ? ("closed" as const)
       : undefined;
 
-  const history = useShiftsHistory({
-    page,
-    pageSize: 5,
-    branchId: filterBranch || undefined,
-    status: historyStatus,
-    dateFrom: filterDate || undefined,
-    dateTo: filterDate || undefined,
-    search: filterSearch || undefined,
-  });
+  // MT-20: Apply branch, date, status, and cashier-only scope on the query BEFORE pagination
+  const history = useShiftsHistory(
+    {
+      page,
+      pageSize: 5,
+      branchId: filterBranch || undefined,
+      status: historyStatus,
+      dateFrom: filterDate || undefined,
+      dateTo: filterDate || undefined,
+      search: filterSearch || undefined,
+      role: "cashier",
+    },
+    { allowStatus: true, allowRole: true },
+  );
 
-  const rawShifts =
-    history.data?.data.filter(
-      (shift) => !shift.role || shift.role === "cashier",
-    ) ?? [];
-
+  // Backend filters cashier role, branch, date, and status prior to pagination.
+  // Safety filter retains fallback compliance if mock/offline data is unpaginated.
+  const rawShifts = history.data?.data ?? [];
   const shifts = rawShifts.filter((shift) => {
-    if (filterBranch && shift.branchId !== filterBranch) return false;
+    if (shift.role && shift.role !== "cashier") return false;
+    if (filterBranch && shift.branchId && shift.branchId !== filterBranch) return false;
     if (filterDate) {
       const sDate = (shift.startedAt ?? "").slice(0, 10);
-      if (sDate && sDate !== filterDate) return false;
+      const eDate = (shift.endedAt ?? "").slice(0, 10);
+      if (sDate !== filterDate && eDate !== filterDate) return false;
     }
     if (filterStatus && filterStatus !== "all") {
       const st = String(shift.status);
@@ -416,13 +430,6 @@ export function ShiftSalesSection({
       ) {
         return false;
       }
-    }
-    if (filterSearch) {
-      const q = filterSearch.toLowerCase();
-      const match =
-        (shift.branchName ?? "").toLowerCase().includes(q) ||
-        (shift.cashierName ?? "").toLowerCase().includes(q);
-      if (!match) return false;
     }
     return true;
   });

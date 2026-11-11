@@ -65,7 +65,6 @@ export function AccSalesPage({
 
   const brandOpts = brandOptionsFromOps(ops);
   const mOps = ops.filter((o) => o.moduleKey === "sales");
-  const pending = mOps.filter((o) => o.status === "pending");
   const queryClient = useQueryClient();
   const filtered = applyFilters(ops, filters, "sales")
     .filter(
@@ -73,6 +72,33 @@ export function AccSalesPage({
     )
     .filter((o) => !brand || o.brandId === brand);
   const filteredPending = filtered.filter((o) => o.status === "pending");
+
+  // MT-20: Scope sales operations counters to the same date, branch, and status filters as the table
+  const baseScopedOps = mOps
+    .filter((o) => !filters.branch || o.branchId === filters.branch)
+    .filter((o) => !salesDate || (o.operationDate ?? "").slice(0, 10) === salesDate)
+    .filter((o) => !brand || o.brandId === brand)
+    .filter((o) => {
+      if (!filters.search) return true;
+      const q = filters.search.toLowerCase();
+      return (
+        (o.branch ?? "").toLowerCase().includes(q) ||
+        (o.id ?? "").toLowerCase().includes(q)
+      );
+    });
+
+  const isStatusFiltered = Boolean(filters.status && filters.status !== "all");
+  const salesOpsTotal = isStatusFiltered ? filtered.length : baseScopedOps.length;
+  const salesOpsPending = isStatusFiltered
+    ? filtered.filter((o) => o.status === "pending").length
+    : baseScopedOps.filter((o) => o.status === "pending").length;
+  const salesOpsApproved = isStatusFiltered
+    ? filtered.filter((o) => o.status === "approved" || o.status === "final-approved").length
+    : baseScopedOps.filter((o) => o.status === "approved" || o.status === "final-approved").length;
+  const salesOpsRejected = isStatusFiltered
+    ? filtered.filter((o) => o.status === "rejected").length
+    : baseScopedOps.filter((o) => o.status === "rejected").length;
+
   const bulkSalesIds = salesBulkApprovalIds(
     filtered,
     filteredPending.map((op) => op.id),
@@ -88,10 +114,10 @@ export function AccSalesPage({
             {t("موديول المبيعات", "Sales Module")}
           </h2>
           <p className="text-gray-400 text-sm mt-0.5">
-            {pending.length}{" "}
+            {salesOpsPending}{" "}
             {t(
-              "بيان معلق بانتظار مراجعتك",
-              "pending entries awaiting your review",
+              "بيان معلق بانتظار مراجعتك (ضمن النطاق المحدد)",
+              "pending entries awaiting your review (within active scope)",
             )}
           </p>
         </div>
@@ -109,33 +135,33 @@ export function AccSalesPage({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard
           label={t("عمليات المبيعات — الإجمالي", "Sales Operations — Total")}
-          value={String(mOps.length)}
-          sub={t("كل حالات عمليات المبيعات", "All sales operation statuses")}
+          value={String(salesOpsTotal)}
+          sub={
+            isStatusFiltered
+              ? t("مطابق لفلاتر التاريخ والفرع والحالة", "Matching date, branch, and status filters")
+              : t("مطابق لفلاتر التاريخ والفرع", "Matching date and branch filters")
+          }
           icon={<FileText size={18} className="text-purple-600" />}
           accent="purple"
         />
         <KpiCard
           label={t("عمليات المبيعات — قيد المراجعة", "Sales Operations — Under Review")}
-          value={String(pending.length)}
-          sub={t("عمليات رُفعت من الفروع", "Operations uploaded from branches")}
+          value={String(salesOpsPending)}
+          sub={t("عمليات رُفعت من الفروع في هذا النطاق", "Operations uploaded from branches in this scope")}
           icon={<Clock size={18} className="text-amber-600" />}
           accent="amber"
         />
         <KpiCard
           label={t("عمليات المبيعات — تمت الموافقة", "Sales Operations — Approved")}
-          value={String(
-            mOps.filter(
-              (o) => o.status === "approved" || o.status === "final-approved",
-            ).length,
-          )}
-          sub={t("موافق + معتمد نهائياً", "Approved + Final-approved")}
+          value={String(salesOpsApproved)}
+          sub={t("موافق + معتمد نهائياً في هذا النطاق", "Approved + Final-approved in this scope")}
           icon={<CheckCircle2 size={18} className="text-sky-600" />}
           accent="blue"
         />
         <KpiCard
           label={t("عمليات المبيعات — مرفوضة / مُعادة", "Sales Operations — Rejected / Returned")}
-          value={String(mOps.filter((o) => o.status === "rejected").length)}
-          sub={t("تحتاج إعادة رفع أو تصحيح", "Needs re-upload or correction")}
+          value={String(salesOpsRejected)}
+          sub={t("تحتاج إعادة رفع أو تصحيح في هذا النطاق", "Needs re-upload or correction in this scope")}
           icon={<XCircle size={18} className="text-red-600" />}
           accent="red"
         />

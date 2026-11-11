@@ -29,15 +29,45 @@ export function useShiftsLive() {
 }
 
 // ─── Closed-shift history (T08 §3) — paginated ───────────────────────────────
-export function historyRequestParams(filter: ShiftFilter): ShiftFilter {
-  const params: ShiftFilter = {};
-  for (const key of ["dateFrom","dateTo","branchId","status","shiftType","search"] as const) {
-    const value = filter[key];
-    if (typeof value === "string" && value !== "" && value !== "all") (params as Record<string, unknown>)[key] = value;
+export interface HistoryRequestOptions {
+  allowStatus?: boolean;
+  allowRole?: boolean;
+}
+
+export function historyRequestParams(
+  filter: ShiftFilter & { role?: string; cashierOnly?: boolean },
+  options?: HistoryRequestOptions,
+): ShiftFilter & { role?: string; cashierOnly?: boolean } {
+  const params: ShiftFilter & { role?: string; cashierOnly?: boolean } = {};
+  const allowedKeys: Array<keyof ShiftFilter | "role" | "cashierOnly"> = [
+    "dateFrom",
+    "dateTo",
+    "branchId",
+    "shiftType",
+    "search",
+  ];
+  if (options?.allowStatus) {
+    allowedKeys.push("status");
   }
-  params.page = Number.isSafeInteger(filter.page) && (filter.page ?? 0) > 0 ? filter.page : 1;
-  params.pageSize = Number.isSafeInteger(filter.pageSize) && (filter.pageSize ?? 0) > 0
-    ? Math.min(filter.pageSize!,100) : 20;
+  if (options?.allowRole) {
+    allowedKeys.push("role", "cashierOnly");
+  }
+  for (const key of allowedKeys) {
+    const value = (filter as Record<string, unknown>)[key];
+    if (typeof value === "string" && value !== "" && value !== "all") {
+      (params as Record<string, unknown>)[key] = value;
+    } else if (typeof value === "boolean") {
+      (params as Record<string, unknown>)[key] = value;
+    }
+  }
+  params.page =
+    Number.isSafeInteger(filter.page) && (filter.page ?? 0) > 0
+      ? filter.page
+      : 1;
+  params.pageSize =
+    Number.isSafeInteger(filter.pageSize) && (filter.pageSize ?? 0) > 0
+      ? Math.min(filter.pageSize!, 100)
+      : 20;
   return params;
 }
 
@@ -61,8 +91,11 @@ export function historyBranchOptions(configs: readonly ShiftConfig[]): Array<{id
   });
 }
 
-export function useShiftsHistory(filter: ShiftFilter = {}) {
-  const params = historyRequestParams(filter);
+export function useShiftsHistory(
+  filter: ShiftFilter & { role?: string; cashierOnly?: boolean } = {},
+  options?: HistoryRequestOptions,
+) {
+  const params = historyRequestParams(filter, options);
   return useQuery({
     queryKey: queryKeys.shifts(params),
     queryFn: async () => {
