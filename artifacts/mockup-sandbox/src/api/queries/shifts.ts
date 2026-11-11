@@ -31,9 +31,9 @@ export function useShiftsLive() {
 // ─── Closed-shift history (T08 §3) — paginated ───────────────────────────────
 export function historyRequestParams(filter: ShiftFilter): ShiftFilter {
   const params: ShiftFilter = {};
-  for (const key of ["dateFrom","dateTo","branchId","shiftType","search"] as const) {
+  for (const key of ["dateFrom","dateTo","branchId","status","shiftType","search"] as const) {
     const value = filter[key];
-    if (typeof value === "string" && value !== "" && value !== "all") params[key] = value;
+    if (typeof value === "string" && value !== "" && value !== "all") (params as Record<string, unknown>)[key] = value;
   }
   params.page = Number.isSafeInteger(filter.page) && (filter.page ?? 0) > 0 ? filter.page : 1;
   params.pageSize = Number.isSafeInteger(filter.pageSize) && (filter.pageSize ?? 0) > 0

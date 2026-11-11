@@ -12,6 +12,8 @@ import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRow
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT, HEAD_EXPENSE_EVIDENCE_HINT } from "./headReviewGuards";
 import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocationHalalas, runShfAllocationCorrection, type ShfAllocationRow } from "./shiftAllocationCorrection";
 import { hasEmployeeDebitWarning } from "./_shared/formatters";
+import { ShiftReconciliationSummaryView } from "./ShiftReconciliationSummary.tsx";
+import { LangContext } from "./_shared/LangContext.tsx";
 import { api, generateCommandId } from "../../../api/client";
 import { toast } from "sonner";
 import { ErrorBoundary } from "../../ErrorBoundary.tsx";
@@ -328,7 +330,9 @@ export function CLangProvider({ children }:{ children:ReactNode }) {
   const dir = lang==="ar" ? "rtl" : "ltr";
   return (
     <CLangContext.Provider value={{ lang, setLang, t, dir }}>
-      {children}
+      <LangContext.Provider value={{ lang, setLang, t: <T,>(ar: T, en: T): T => (lang === "ar" ? ar : en), dir }}>
+        {children}
+      </LangContext.Provider>
     </CLangContext.Provider>
   );
 }
@@ -1498,7 +1502,7 @@ function ShiftAllocationForm({ op, shortageHalalas }:{ op:COp; shortageHalalas:n
   </div>;
 }
 
-function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation }) {
+export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation }) {
   const { t, lang } = useCLang();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -1733,6 +1737,7 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
   );
   return (
     <section aria-label={t("تفاصيل وردية الكاشير","Cashier shift details")} className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
+      <ShiftReconciliationSummaryView source={detail ?? op} />
       <div className="flex justify-between text-xs"><span>{t("حالة الجرد","Count state")}</span>
         <strong>{count === "counted" ? t("مجرود فعلياً","Physically counted") : count === "unknown" ? t("غير مجرود — لا يُعتمد كدليل","Not counted — not evidence") : "—"}</strong>
       </div>

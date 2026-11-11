@@ -108,21 +108,21 @@ export function AccSalesPage({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard
-          label={t("إجمالي البيانات المرفوعة", "Total Uploaded")}
+          label={t("عمليات المبيعات — الإجمالي", "Sales Operations — Total")}
           value={String(mOps.length)}
-          sub={t("كل الحالات", "All statuses")}
+          sub={t("كل حالات عمليات المبيعات", "All sales operation statuses")}
           icon={<FileText size={18} className="text-purple-600" />}
           accent="purple"
         />
         <KpiCard
-          label={t("قيد المراجعة", "Under Review")}
+          label={t("عمليات المبيعات — قيد المراجعة", "Sales Operations — Under Review")}
           value={String(pending.length)}
-          sub={t("رُفعت من الفروع", "Uploaded from branches")}
+          sub={t("عمليات رُفعت من الفروع", "Operations uploaded from branches")}
           icon={<Clock size={18} className="text-amber-600" />}
           accent="amber"
         />
         <KpiCard
-          label={t("تمت الموافقة", "Approved")}
+          label={t("عمليات المبيعات — تمت الموافقة", "Sales Operations — Approved")}
           value={String(
             mOps.filter(
               (o) => o.status === "approved" || o.status === "final-approved",
@@ -133,9 +133,9 @@ export function AccSalesPage({
           accent="blue"
         />
         <KpiCard
-          label={t("مرفوضة", "Rejected")}
+          label={t("عمليات المبيعات — مرفوضة / مُعادة", "Sales Operations — Rejected / Returned")}
           value={String(mOps.filter((o) => o.status === "rejected").length)}
-          sub={t("تحتاج إعادة رفع", "Needs re-upload")}
+          sub={t("تحتاج إعادة رفع أو تصحيح", "Needs re-upload or correction")}
           icon={<XCircle size={18} className="text-red-600" />}
           accent="red"
         />
@@ -210,7 +210,19 @@ export function AccSalesPage({
         </div>
       )}
 
-      <ShiftSalesSection operations={ops} />
+      <ShiftSalesSection
+        operations={ops}
+        filterBranch={filters.branch}
+        filterStatus={filters.status}
+        filterDate={salesDate}
+        filterSearch={filters.search}
+        onOpenReport={(shiftId, opId) => {
+          if (opId) {
+            setDetailId(opId);
+            navigate(opDetailPage("shifts") as PageId);
+          }
+        }}
+      />
 
       <div
         className="bg-white rounded-xl border border-gray-100 shadow-sm p-4"
