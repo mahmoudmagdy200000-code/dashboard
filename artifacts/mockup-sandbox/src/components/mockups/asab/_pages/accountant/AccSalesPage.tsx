@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -18,6 +18,7 @@ import {
   useSalesDayCompleteness,
   useSalesKpis,
 } from "../../../../../api/queries";
+import { useShiftConfigs, historyBranchOptions } from "../../../../../api/queries/shifts";
 import { salesBulkApprovalIds } from "../../salesActionGuards";
 import { KpiCard } from "../../components/KpiCard";
 import { Card } from "../../components/Card";
@@ -28,7 +29,6 @@ import { fmtAmt, opDetailPage } from "../../_shared/formatters";
 import { STATUS_CFG, EN_STATUS_CFG } from "../../_shared/displayConfig";
 import {
   applyFilters,
-  BRANCHES,
   brandOptionsFromOps,
 } from "../../_shared/filterOps";
 import { OpRow } from "../../_shared/OpRow";
@@ -57,6 +57,22 @@ export function AccSalesPage({
   const [brand, setBrand] = useState("");
   const [selectedDay, setSelectedDay] = useState("all");
 
+  // Accountant branch options from permissions & shift configs (MT-20)
+  const { data: historyBranchConfigs = [] } = useShiftConfigs("branch");
+  const historyBranches = historyBranchOptions(historyBranchConfigs);
+  const branchOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const b of historyBranches) {
+      if (b.id && !map.has(b.id)) map.set(b.id, b.name);
+    }
+    for (const op of ops) {
+      if (op.branchId && !map.has(op.branchId)) {
+        map.set(op.branchId, op.branch || op.branchId);
+      }
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [historyBranches, ops]);
+
   // Live day-completeness pills (T04 §3) + sales KPIs (T04 §2).
   const { data: dayRows = [] } = useSalesDayCompleteness(7);
   const salesDate = selectedDay !== "all" ? selectedDay : undefined;
@@ -75,7 +91,7 @@ export function AccSalesPage({
 
   // MT-20: Scope sales operations counters to the same date, branch, and status filters as the table
   const baseScopedOps = mOps
-    .filter((o) => !filters.branch || o.branchId === filters.branch)
+    .filter((o) => !filters.branch || o.branchId === filters.branch || o.branch === filters.branch)
     .filter((o) => !salesDate || (o.operationDate ?? "").slice(0, 10) === salesDate)
     .filter((o) => !brand || o.brandId === brand)
     .filter((o) => {
@@ -246,6 +262,9 @@ export function AccSalesPage({
           if (opId) {
             setDetailId(opId);
             navigate(opDetailPage("shifts") as PageId);
+          } else if (shiftId) {
+            setDetailId(shiftId);
+            navigate(opDetailPage("shifts") as PageId);
           }
         }}
       />
@@ -264,15 +283,15 @@ export function AccSalesPage({
               onChange={(e) =>
                 setFilters((p) => ({
                   ...p,
-                  branch:
-                    e.target.value === t("الكل", "All") ? "" : e.target.value,
+                  branch: e.target.value,
                 }))
               }
               className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2"
             >
-              {[t("الكل", "All"), ...BRANCHES].map((b) => (
-                <option key={b} value={b === t("الكل", "All") ? "" : b}>
-                  {b}
+              <option value="">{t("الكل", "All")}</option>
+              {branchOptions.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
                 </option>
               ))}
             </select>

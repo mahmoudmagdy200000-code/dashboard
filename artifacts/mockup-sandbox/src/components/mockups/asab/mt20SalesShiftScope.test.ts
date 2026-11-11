@@ -327,7 +327,7 @@ test("MT-20: ShiftSalesSection UI source code contains required scoping, separat
   assert.match(code, /onOpenReport\(shift\.id,\s*report\.id\)/);
 });
 
-test("MT-20: AccSalesPage UI source code computes counters from the filtered sales scope", () => {
+test("MT-20: AccSalesPage UI source code computes counters from the filtered sales scope and uses accountant branch permissions", () => {
   const code = readFileSync(new URL("./_pages/accountant/AccSalesPage.tsx", import.meta.url), "utf8");
 
   // 1. Scoped operations counters using active filters
@@ -340,4 +340,40 @@ test("MT-20: AccSalesPage UI source code computes counters from the filtered sal
   // 2. Clear sub labels for active filter scope
   assert.match(code, /مطابق لفلاتر التاريخ والفرع والحالة/);
   assert.match(code, /مطابق لفلاتر التاريخ والفرع/);
+
+  // 3. Accountant branch permissions
+  assert.match(code, /useShiftConfigs\(["']branch["']\)/);
+  assert.match(code, /historyBranchOptions/);
+  assert.match(code, /branchOptions/);
+
+  // 4. Mounts ShiftSalesSection with scope and onOpenReport callback
+  assert.match(code, /<ShiftSalesSection/);
+  assert.match(code, /onOpenReport/);
+});
+
+test("MT-20: CompanyDashboard AccCompanySales computes counters from filtered scope and mounts ShiftSalesSection", () => {
+  const code = readFileSync(new URL("./CompanyDashboard.tsx", import.meta.url), "utf8");
+
+  // 1. AccCompanySales mounts ShiftSalesSection with active filters
+  assert.match(code, /function AccCompanySales/);
+  assert.match(code, /<ShiftSalesSection\s+operations=\{ops as any\}\s+filterBranch=\{branchFilter\}\s+filterStatus=\{statusFilter\}\s+filterDate=\{salesDate\}\s+filterSearch=\{search\}\s+onOpenReport=\{onOpenReport\}\s*\/>/);
+
+  // 2. Uses accountant branch options from useShiftConfigs + historyBranchOptions
+  assert.match(code, /useShiftConfigs\(["']branch["']\)/);
+  assert.match(code, /historyBranchOptions/);
+
+  // 3. Scopes sales operations counters to the same filtered dataset
+  assert.match(code, /salesOpsTotal\s*=\s*isStatusFiltered\s*\?\s*shown\.length/);
+  assert.match(code, /salesOpsPending/);
+  assert.match(code, /salesOpsApproved/);
+  assert.match(code, /salesOpsRejected/);
+
+  // 4. Clear labels separating sales operations from shift reports
+  assert.match(code, /عمليات المبيعات — الإجمالي/);
+  assert.match(code, /عمليات المبيعات — قيد المراجعة/);
+  assert.match(code, /عمليات المبيعات — تمت الموافقة/);
+  assert.match(code, /عمليات المبيعات — مرفوضة/);
+
+  // 5. AccountantRoot passes onOpenReport to AccCompanySales
+  assert.match(code, /AccCompanySales\s+ops=\{ops\}[^>]*onOpenReport=\{\(shiftId,\s*opId\)\s*=>\s*navigate\(["']acc-shifts["']\)\}/);
 });

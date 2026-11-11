@@ -198,7 +198,17 @@ export function getShiftReconciliationSummary(
     | undefined;
 
   let currentResponsibility: ReconciliationResponsibility;
-  if (originalVariance.kind !== "shortage") {
+  if (originalVariance.kind === "unavailable" || !originalVariance.isAvailable) {
+    currentResponsibility = {
+      assignedHalalas: 0,
+      formatted: unavailableText,
+      status: "none",
+      label: unavailableText,
+      isApplicable: false,
+      isAvailable: false,
+      shares: [],
+    };
+  } else if (originalVariance.kind !== "shortage") {
     // No physical shortage => no responsibility allocation needed
     currentResponsibility = {
       assignedHalalas: 0,
@@ -212,7 +222,7 @@ export function getShiftReconciliationSummary(
   } else if (!rawLiability || !Array.isArray(rawLiability.shares) || rawLiability.shares.length === 0) {
     currentResponsibility = {
       assignedHalalas: 0,
-      formatted: language === "ar" ? "بانتظار الإسناد والاعتماد" : "Awaiting assignment & approval",
+      formatted: language === "ar" ? "بانتظار الاعتماد" : "Awaiting approval",
       status: "awaiting_allocation",
       label: language === "ar" ? "غير مسند بعد" : "Not yet assigned",
       isApplicable: true,
@@ -272,21 +282,43 @@ export function getShiftReconciliationSummary(
     }
   }
 
-  // 6. UNASSIGNED Amount (MTG-REC-02)
+  // 6. UNASSIGNED Amount (MTG-REC-02 & MT-06)
+  // When variance is unavailable or uncounted, unassigned must display "غير متاح", NEVER 0.
+  // 0 is only displayed when verified by positive data (matched, surplus, or 100% assigned shortage).
   let unassignedAmount: ReconciliationItem;
-  if (originalVariance.kind !== "shortage") {
+  if (originalVariance.kind === "unavailable" || !originalVariance.isAvailable) {
+    unassignedAmount = {
+      amountHalalas: null,
+      formatted: unavailableText,
+      isAvailable: false,
+    };
+  } else if (originalVariance.kind === "matched" || originalVariance.kind === "surplus") {
     unassignedAmount = {
       amountHalalas: 0,
       formatted: `${formatShiftHalalas(0, language)} ${sarSuffix}`,
       isAvailable: true,
     };
-  } else {
+  } else if (originalVariance.kind === "shortage") {
     const shortageHalalas = Math.abs(originalVariance.amountHalalas!);
-    const unassignedHalalas = Math.max(0, shortageHalalas - currentResponsibility.assignedHalalas);
+    if (!currentResponsibility.isAvailable) {
+      unassignedAmount = {
+        amountHalalas: shortageHalalas,
+        formatted: `${formatShiftHalalas(shortageHalalas, language)} ${sarSuffix}`,
+        isAvailable: true,
+      };
+    } else {
+      const unassignedHalalas = Math.max(0, shortageHalalas - currentResponsibility.assignedHalalas);
+      unassignedAmount = {
+        amountHalalas: unassignedHalalas,
+        formatted: `${formatShiftHalalas(unassignedHalalas, language)} ${sarSuffix}`,
+        isAvailable: true,
+      };
+    }
+  } else {
     unassignedAmount = {
-      amountHalalas: unassignedHalalas,
-      formatted: `${formatShiftHalalas(unassignedHalalas, language)} ${sarSuffix}`,
-      isAvailable: currentResponsibility.isAvailable,
+      amountHalalas: null,
+      formatted: unavailableText,
+      isAvailable: false,
     };
   }
 

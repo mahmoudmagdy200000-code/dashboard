@@ -211,6 +211,13 @@ test("MT-06: Missing count/revision/identity evidence -> Returns 'غير متا�
   assert.equal(summary.originalVariance.formatted, "غير متاح");
   assert.equal(summary.originalVariance.isAvailable, false);
 
+  // MT-06: When variance is missing or uncounted, unassigned must return "غير متاح", NEVER 0
+  assert.equal(summary.unassignedAmount.amountHalalas, null);
+  assert.equal(summary.unassignedAmount.formatted, "غير متاح");
+  assert.equal(summary.unassignedAmount.isAvailable, false);
+  assert.equal(summary.currentResponsibility.formatted, "غير متاح");
+  assert.equal(summary.currentResponsibility.isAvailable, false);
+
   // When source is null/undefined
   const emptySummary = getShiftReconciliationSummary(null, "ar");
   assert.equal(emptySummary.originalSales.formatted, "غير متاح");

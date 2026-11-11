@@ -13,6 +13,7 @@ import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_
 import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocationHalalas, runShfAllocationCorrection, type ShfAllocationRow } from "./shiftAllocationCorrection";
 import { hasEmployeeDebitWarning } from "./_shared/formatters";
 import { ShiftReconciliationSummaryView } from "./ShiftReconciliationSummary.tsx";
+import { ShiftSalesSection } from "./_pages/accountant/ShiftSalesSection";
 import { LangContext } from "./_shared/LangContext.tsx";
 import { api, generateCommandId } from "../../../api/client";
 import { toast } from "sonner";
@@ -4732,7 +4733,7 @@ function AccDashboard({ navigate, ops }:{ navigate:(p:string)=>void; ops:COp[] }
 // ═══════════════════════════════════════════════════
 // ACCOUNTANT — SALES MODULE (Full Featured)
 // ═══════════════════════════════════════════════════
-function AccCompanySales({ ops, approve, reject, requestClarification, bulkApprove }:{ ops:COp[]; approve:(id:string)=>void; reject:(id:string)=>void; requestClarification?:(id:string)=>void; bulkApprove:(ids:string[])=>void }) {
+function AccCompanySales({ ops, approve, reject, requestClarification, bulkApprove, onOpenReport }:{ ops:COp[]; approve:(id:string)=>void; reject:(id:string)=>void; requestClarification?:(id:string)=>void; bulkApprove:(ids:string[])=>void; onOpenReport?:(shiftId:string, opId?:string)=>void }) {
   const { t, dir } = useCLang();
   const queryClient = useQueryClient();
   const exportOpsMut = useExportOperations();
@@ -4745,8 +4746,26 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
   const [expandedId,   setExpandedId]   = useState<string|null>(null);
 
   const mOps = ops.filter(o=>o.module==="sales");
-  const pending = mOps.filter(o=>o.status==="pending");
   const brandNames = cBrandNamesFromOps(ops);
+
+  // Accountant branch options from permissions & shift configs (MT-20)
+  const { data: historyBranchConfigs = [] } = useShiftConfigs("branch");
+  const historyBranches = historyBranchOptions(historyBranchConfigs);
+  const branchOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const b of historyBranches) {
+      if (b.id && !map.has(b.id)) map.set(b.id, b.name);
+    }
+    for (const b of ALL_BRANCHES) {
+      if (b.id && !map.has(b.id)) map.set(b.id, b.name);
+    }
+    for (const op of ops) {
+      if (op.branchId && !map.has(op.branchId)) {
+        map.set(op.branchId, op.branch || op.branchId);
+      }
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [historyBranches, ops]);
 
   // Live day-completeness pills (T04 §3) + sales KPIs (T04 §2).
   const { data: dayRows = [] } = useSalesDayCompleteness(7);
@@ -4755,14 +4774,49 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
   const selectedDay = dayRows.find(r=>r.date===dateFilter);
 
   const shown = mOps.filter(op=>{
-    if(branchFilter && !op.branch.includes(branchFilter)) return false;
-    if(statusFilter && op.status!==statusFilter) return false;
-    if(matchFilter && op.match!==matchFilter) return false;
-    if(brandFilter!=="الكل" && op.brandName!==brandFilter) return false;
-    if(salesDate && op.date.slice(0,10)!==salesDate) return false;
-    if(search && !op.branch.includes(search) && !op.submittedBy.includes(search) && !op.refNum.includes(search)) return false;
+    if (branchFilter) {
+      const selectedBranch = branchOptions.find(b => b.id === branchFilter);
+      const branchName = selectedBranch ? selectedBranch.name : "";
+      const matchesId = op.branchId ? op.branchId === branchFilter : false;
+      const matchesName = branchName ? op.branch.includes(branchName) : op.branch.includes(branchFilter);
+      if (!matchesId && !matchesName) return false;
+    }
+    if (statusFilter && op.status !== statusFilter) return false;
+    if (matchFilter && op.match !== matchFilter) return false;
+    if (brandFilter !== "الكل" && op.brandName !== brandFilter) return false;
+    if (salesDate && op.date.slice(0,10) !== salesDate) return false;
+    if (search && !op.branch.includes(search) && !op.submittedBy.includes(search) && !op.refNum.includes(search)) return false;
     return true;
   });
+
+  // MT-20: Scope sales operations counters to the same date, branch, and status filters as the table
+  const isStatusFiltered = Boolean(statusFilter);
+  const baseScopedOps = mOps.filter(op => {
+    if (branchFilter) {
+      const selectedBranch = branchOptions.find(b => b.id === branchFilter);
+      const branchName = selectedBranch ? selectedBranch.name : "";
+      const matchesId = op.branchId ? op.branchId === branchFilter : false;
+      const matchesName = branchName ? op.branch.includes(branchName) : op.branch.includes(branchFilter);
+      if (!matchesId && !matchesName) return false;
+    }
+    if (matchFilter && op.match !== matchFilter) return false;
+    if (brandFilter !== "الكل" && op.brandName !== brandFilter) return false;
+    if (salesDate && op.date.slice(0,10) !== salesDate) return false;
+    if (search && !op.branch.includes(search) && !op.submittedBy.includes(search) && !op.refNum.includes(search)) return false;
+    return true;
+  });
+
+  const salesOpsTotal = isStatusFiltered ? shown.length : baseScopedOps.length;
+  const salesOpsPending = isStatusFiltered
+    ? shown.filter(o => o.status === "pending").length
+    : baseScopedOps.filter(o => o.status === "pending").length;
+  const salesOpsApproved = isStatusFiltered
+    ? shown.filter(o => o.status === "approved" || o.status === "final-approved").length
+    : baseScopedOps.filter(o => o.status === "approved" || o.status === "final-approved").length;
+  const salesOpsRejected = isStatusFiltered
+    ? shown.filter(o => o.status === "rejected").length
+    : baseScopedOps.filter(o => o.status === "rejected").length;
+
   const shownPending = shown.filter(o=>o.status==="pending");
   const bulkSalesIds = salesBulkApprovalIds(shown, shownPending.map(op => op.id), "accountant",
     op => queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)));
@@ -4773,15 +4827,43 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-gray-800">{t("موديول المبيعات","Sales Module")}</h2><p className="text-gray-400 text-sm mt-0.5">{pending.length} {t("بيان معلق بانتظار مراجعتك","pending statements awaiting your review")}</p></div>
+        <div><h2 className="text-xl font-bold text-gray-800">{t("موديول المبيعات","Sales Module")}</h2><p className="text-gray-400 text-sm mt-0.5">{salesOpsPending} {t("بيان معلق بانتظار مراجعتك (ضمن النطاق المحدد)","pending statements awaiting your review (within active scope)")}</p></div>
         {bulkSalesIds.length>0 && <Btn variant="success" size="sm" onClick={()=>bulkApprove(bulkSalesIds)}>✓ {t("موافقة على الكل","Approve All")} ({bulkSalesIds.length})</Btn>}
-        {pending.some(isPkg6SalesReport) && <p className="text-xs text-amber-700">{t("تقارير اليوم تُعتمد فرديًا","Day reports are approved individually")}</p>}
+        {salesOpsPending > 0 && shownPending.some(isPkg6SalesReport) && <p className="text-xs text-amber-700">{t("تقارير اليوم تُعتمد فرديًا","Day reports are approved individually")}</p>}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KpiCard label={t("إجمالي البيانات المرفوعة","Total Uploaded")} value={String(mOps.length)} sub={t("كل الحالات","All statuses")}          icon={<FileText size={18} className="text-purple-600"/>} accent="purple"/>
-        <KpiCard label={t("قيد المراجعة","Under Review")}               value={String(pending.length)} sub={t("رُفعت من الفروع","Uploaded from branches")} icon={<Clock size={18} className="text-amber-600"/>} accent="amber"/>
-        <KpiCard label={t("تمت الموافقة","Approved")}                   value={String(mOps.filter(o=>o.status==="approved"||o.status==="final-approved").length)} sub={t("موافق + معتمد نهائياً","Approved + Final")} icon={<CheckCircle2 size={18} className="text-sky-600"/>} accent="blue"/>
-        <KpiCard label={t("مرفوضة","Rejected")}                         value={String(mOps.filter(o=>o.status==="rejected").length)} sub={t("تحتاج إعادة رفع","Needs re-upload")} icon={<XCircle size={18} className="text-red-600"/>} accent="red"/>
+        <KpiCard
+          label={t("عمليات المبيعات — الإجمالي","Sales Operations — Total")}
+          value={String(salesOpsTotal)}
+          sub={
+            isStatusFiltered
+              ? t("مطابق لفلاتر التاريخ والفرع والحالة","Matching date, branch, and status filters")
+              : t("مطابق لفلاتر التاريخ والفرع","Matching date and branch filters")
+          }
+          icon={<FileText size={18} className="text-purple-600"/>}
+          accent="purple"
+        />
+        <KpiCard
+          label={t("عمليات المبيعات — قيد المراجعة","Sales Operations — Under Review")}
+          value={String(salesOpsPending)}
+          sub={t("عمليات رُفعت من الفروع في هذا النطاق","Operations uploaded from branches in this scope")}
+          icon={<Clock size={18} className="text-amber-600"/>}
+          accent="amber"
+        />
+        <KpiCard
+          label={t("عمليات المبيعات — تمت الموافقة","Sales Operations — Approved")}
+          value={String(salesOpsApproved)}
+          sub={t("موافق + معتمد نهائياً في هذا النطاق","Approved + Final in this scope")}
+          icon={<CheckCircle2 size={18} className="text-sky-600"/>}
+          accent="blue"
+        />
+        <KpiCard
+          label={t("عمليات المبيعات — مرفوضة","Sales Operations — Rejected")}
+          value={String(salesOpsRejected)}
+          sub={t("تحتاج إعادة رفع في هذا النطاق","Needs re-upload in this scope")}
+          icon={<XCircle size={18} className="text-red-600"/>}
+          accent="red"
+        />
       </div>
 
       {/* Sales financial KPIs (T04 §2) — live from GET /company/me/sales/kpis */}
@@ -4811,6 +4893,15 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
         </div>
       )}
 
+      <ShiftSalesSection
+        operations={ops as any}
+        filterBranch={branchFilter}
+        filterStatus={statusFilter}
+        filterDate={salesDate}
+        filterSearch={search}
+        onOpenReport={onOpenReport}
+      />
+
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3" dir={dir}>
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={()=>setDateFilter("الكل")}
@@ -4830,7 +4921,7 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع","Branch")}</label>
             <select value={branchFilter} onChange={e=>setBranchFilter(e.target.value)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
               <option value="">{t("الكل","All")}</option>
-              {ALL_BRANCHES.map(b=><option key={b.id} value={b.name}>{b.name}</option>)}
+              {branchOptions.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الحالة","Status")}</label>
@@ -8208,7 +8299,7 @@ type SharedOpsProps = {
 
 function AccountantRoot({ page, navigate, ops, approve, reject, requestClarification, bulkApprove, shiftReviewPage, setShiftReviewPage }:{ page:string; navigate:(p:string)=>void } & SharedOpsProps) {
   if(page==="acc-dashboard")  return <AccDashboard navigate={navigate} ops={ops}/>;
-  if(page==="acc-sales")      return <AccCompanySales ops={ops} approve={approve} reject={reject} requestClarification={requestClarification} bulkApprove={bulkApprove}/>;
+  if(page==="acc-sales")      return <AccCompanySales ops={ops} approve={approve} reject={reject} requestClarification={requestClarification} bulkApprove={bulkApprove} onOpenReport={(shiftId, opId) => navigate("acc-shifts")}/>;
   if(page==="acc-expenses")   return <AccCompanyExpenses ops={ops} approve={approve} reject={reject} bulkApprove={bulkApprove}/>;
   if(page==="acc-purchases")  return <AccCompanyPurchases ops={ops} approve={approve} reject={reject} bulkApprove={bulkApprove} requestClarification={requestClarification}/>;
   if(page==="acc-inventory")  return <AccCompanyInventory navigate={navigate} ops={ops} approve={approve} reject={reject}/>;
