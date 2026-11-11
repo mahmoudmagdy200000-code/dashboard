@@ -67,6 +67,114 @@ export function useEmployeeMovements(
   });
 }
 
+// ─── A2-b. Shift Custody Statement — GET /company/me/employees/{id}/shift-custody-statement (P2 / G2) ──
+export type ShiftCustodyIdentityLinkState = "linked" | "unlinked";
+
+export interface ShiftCustodyStatementEntry {
+  source_type: "cashier_custody" | "personal_ledger" | string;
+  source_id: string;
+  event_at: string;
+  business_date: string | null;
+  branch: {
+    id: string | null;
+    name: string | null;
+  };
+  transaction_type: string;
+  classification: string;
+  label_ar: string;
+  label_en: string;
+  source_shift_id: string | null;
+  receiving_shift_id: string | null;
+  receipt_id: string | null;
+  counterparty: {
+    type: string | null;
+    id: string | null;
+    name: string | null;
+  };
+  cash_in: number;
+  cash_out: number;
+  running_balance: number;
+  confirmation_state: string;
+  lineage_key: string | null;
+  reversal_id: string | null;
+}
+
+export interface ShiftCustodyPendingItem {
+  request_type: string;
+  request_id: string;
+  created_at: string;
+  business_date: string | null;
+  amount: number;
+  counterparty: {
+    type: string | null;
+    id: string | null;
+    name: string | null;
+  };
+  source_shift_id: string | null;
+  status: string;
+}
+
+export interface ShiftCustodyStatement {
+  unit: "halala";
+  identity_link_state: ShiftCustodyIdentityLinkState;
+  identity: {
+    employee_id: string;
+    name: string;
+    role: string;
+    linked_type: string | null;
+    linked_id: string | null;
+    branch_id: string | null;
+    branch_name: string | null;
+  };
+  period: {
+    from: string | null;
+    to: string | null;
+  };
+  balances: {
+    is_available: boolean;
+    opening_balance: number | null;
+    closing_balance: number | null;
+    total_cash_in: number | null;
+    total_cash_out: number | null;
+    net_period_change: number | null;
+  };
+  entries: ShiftCustodyStatementEntry[];
+  pending: ShiftCustodyPendingItem[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface ShiftCustodyStatementParams {
+  from?: string;
+  to?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export function useShiftCustodyStatement(
+  employeeId: string | null | undefined,
+  params: ShiftCustodyStatementParams = {},
+) {
+  const clean = Object.fromEntries(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== ""),
+  );
+  return useQuery({
+    queryKey: queryKeys.shiftCustodyStatement(employeeId ?? "", params),
+    enabled: Boolean(employeeId),
+    queryFn: async () => {
+      const res = await api.get<ShiftCustodyStatement>(
+        `/company/me/employees/${employeeId}/shift-custody-statement`,
+        { params: clean },
+      );
+      return res.data;
+    },
+  });
+}
+
 // ─── A3. Add movement — POST /accountant/employees/{id}/movements ───────────────
 // category is required and must be a manual key; system keys → 422.
 export function useCreateEmployeeMovement() {

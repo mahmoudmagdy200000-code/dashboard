@@ -38,7 +38,7 @@ import {
   useWaste, usePatchWasteProduct, usePutWasteAllocations, useApproveWaste, useRejectWaste,
   useBulkApproveWaste, useExportWaste,
   useShiftsLive, useShiftsHistory, useShiftConfigs, useSaveShiftConfig, useExportShifts, useShiftVarianceAllocations, useAccountantShiftReportCorrection,
-  useEmployees, useEmployeeMovements, useCreateEmployeeMovement, useSettleEmployeeBalance,
+  useEmployees, useEmployeeMovements, useShiftCustodyStatement, useCreateEmployeeMovement, useSettleEmployeeBalance,
   useApproveEmployeeSettlement, useRejectEmployeeSettlement,
   useExportEmployeeStatement, useExportPayroll,
   useCashCustody, useCashTransactions, useCreateCashTransaction, useApproveCashTxn,
@@ -7360,6 +7360,22 @@ function AccCompanyEmployees() {
 
   const { data: employeesPage } = useEmployees({ q: searchTerm || undefined, branchId: branchFilter || undefined });
   const { data: statement } = useEmployeeMovements(selectedEmp, month || undefined);
+
+  type EmpAccountTab = "dues" | "custody";
+  const [activeTab, setActiveTab] = useState<EmpAccountTab>("dues");
+  const [custodyPage, setCustodyPage] = useState(1);
+  const [custodyFrom, setCustodyFrom] = useState("");
+  const [custodyTo, setCustodyTo] = useState("");
+
+  const custodyQuery = useShiftCustodyStatement(selectedEmp, {
+    from: custodyFrom || undefined,
+    to: custodyTo || undefined,
+    page: custodyPage,
+    pageSize: 10,
+  });
+  const custodyStatement = custodyQuery.data;
+  const isCustodyLoading = custodyQuery.isLoading;
+  const isCustodyError = custodyQuery.isError;
   const { user, isRole } = useAuth();
   const isHead = isRole("head");
   const settleMut         = useSettleEmployeeBalance();
@@ -7437,7 +7453,7 @@ function AccCompanyEmployees() {
           {employees.length===0 && <p className="text-center text-gray-400 text-sm py-8">{t("لا يوجد موظفون","No employees")}</p>}
           {employees.map(e=>(
             <div key={e.id}
-              onClick={()=>{ setSelectedEmp(selectedEmp===e.id?null:e.id); setMonth(""); }}
+              onClick={()=>{ setSelectedEmp(selectedEmp===e.id?null:e.id); setMonth(""); setCustodyPage(1); }}
               className={`flex items-center gap-3 px-4 py-3.5 border-b border-gray-50 last:border-0 cursor-pointer transition-all ${selectedEmp===e.id?"bg-purple-50 border-r-4 border-r-purple-500":"hover:bg-gray-50/70"} ${e.status!=="active"?"opacity-60":""}`}>
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">{e.name[0]}</div>
               <div className="flex-1 min-w-0">
@@ -7476,105 +7492,351 @@ function AccCompanyEmployees() {
                       </Badge>
                     )}
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <button onClick={()=>setShowAdd(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold hover:bg-purple-100"><Plus size={10}/> {t("إضافة حركة","Add")}</button>
-                    <button
-                      onClick={() => setShowSettle(true)}
-                      disabled={settleMut.isPending || (statement?.balanceHalalas ?? selectedRow.balanceHalalas) === 0 || selectedRow.settlementStatus === "under_review"}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold hover:bg-emerald-100 disabled:opacity-40"
-                    >
-                      <Check size={10} /> {t("تسوية الرصيد", "Settle")}
-                    </button>
-                    {isHead && (selectedRow.settlementStatus === "under_review" || statement?.settlementStatus === "under_review") && (
-                      <div className="flex gap-1 mt-1">
-                        <button
-                          onClick={() => setHeadAction({ action: "approve", open: true })}
-                          disabled={approveSettlementMut.isPending}
-                          className="px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold hover:bg-emerald-700 disabled:opacity-50"
-                        >
-                          {t("اعتماد التسوية", "Approve")}
-                        </button>
-                        <button
-                          onClick={() => setHeadAction({ action: "reject", open: true })}
-                          disabled={rejectSettlementMut.isPending}
-                          className="px-2 py-1 rounded bg-red-600 text-white text-[10px] font-bold hover:bg-red-700 disabled:opacity-50"
-                        >
-                          {t("رفض", "Reject")}
-                        </button>
+                  {activeTab === "dues" && (
+                    <div className="flex flex-col gap-1.5">
+                      <button onClick={()=>setShowAdd(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold hover:bg-purple-100"><Plus size={10}/> {t("إضافة حركة","Add")}</button>
+                      <button
+                        onClick={() => setShowSettle(true)}
+                        disabled={settleMut.isPending || (statement?.balanceHalalas ?? selectedRow.balanceHalalas) === 0 || selectedRow.settlementStatus === "under_review"}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold hover:bg-emerald-100 disabled:opacity-40"
+                      >
+                        <Check size={10} /> {t("تسوية الرصيد", "Settle")}
+                      </button>
+                      {isHead && (selectedRow.settlementStatus === "under_review" || statement?.settlementStatus === "under_review") && (
+                        <div className="flex gap-1 mt-1">
+                          <button
+                            onClick={() => setHeadAction({ action: "approve", open: true })}
+                            disabled={approveSettlementMut.isPending}
+                            className="px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold hover:bg-emerald-700 disabled:opacity-50"
+                          >
+                            {t("اعتماد التسوية", "Approve")}
+                          </button>
+                          <button
+                            onClick={() => setHeadAction({ action: "reject", open: true })}
+                            disabled={rejectSettlementMut.isPending}
+                            className="px-2 py-1 rounded bg-red-600 text-white text-[10px] font-bold hover:bg-red-700 disabled:opacity-50"
+                          >
+                            {t("رفض", "Reject")}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Tabs Switcher: Dues & Deductions vs Shift Custody */}
+                <div className="flex items-center gap-2 border-b border-gray-100 pt-3 mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("dues")}
+                    data-testid="tab-emp-dues"
+                    className={`flex items-center gap-1.5 pb-2 px-3 text-xs font-bold border-b-2 transition-all ${
+                      activeTab === "dues"
+                        ? "border-purple-600 text-purple-700 font-extrabold"
+                        : "border-transparent text-gray-400 hover:text-gray-700"
+                    }`}
+                  >
+                    <Wallet size={13} />
+                    {t("المستحقات والخصومات", "Dues & Deductions")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("custody")}
+                    data-testid="tab-emp-custody"
+                    className={`flex items-center gap-1.5 pb-2 px-3 text-xs font-bold border-b-2 transition-all ${
+                      activeTab === "custody"
+                        ? "border-purple-600 text-purple-700 font-extrabold"
+                        : "border-transparent text-gray-400 hover:text-gray-700"
+                    }`}
+                  >
+                    <ArrowLeftRight size={13} />
+                    {t("عهدة الشيفتات", "Shift Custody")}
+                  </button>
+                </div>
+
+                {/* DUES TAB CONTENT */}
+                {activeTab === "dues" && (
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
+                      <div className="bg-blue-50 rounded-xl p-2.5 text-center">
+                        <p className="text-[10px] text-blue-600 font-semibold">{t("الراتب","Salary")}</p>
+                        <p className="font-mono font-bold text-blue-800 text-xs">{fmtH(selectedRow.monthlySalary)}</p>
+                      </div>
+                      <div className="bg-emerald-50 rounded-xl p-2.5 text-center">
+                        <p className="text-[10px] text-emerald-600 font-semibold">{t("إجمالي دائن","Total credit")}</p>
+                        <p className="font-mono font-bold text-emerald-800 text-xs">{fmtH(statement?.totalCredit ?? 0)}</p>
+                      </div>
+                      <div className="bg-red-50 rounded-xl p-2.5 text-center">
+                        <p className="text-[10px] text-red-600 font-semibold">{t("إجمالي مدين","Total debit")}</p>
+                        <p className="font-mono font-bold text-red-800 text-xs">{fmtH(statement?.totalDebit ?? 0)}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-2.5 text-center border-2 border-gray-200">
+                        <p className="text-[10px] text-gray-600 font-semibold">{t("الرصيد","Balance")}</p>
+                        <p className={`font-mono font-black text-sm ${balColor(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}`}>{fmtH(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}</p>
+                      </div>
+                    </div>
+                    {hasEmployeeDebitWarning(statement) && (
+                      <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+                        <AlertTriangle size={13} className="text-amber-600 flex-shrink-0"/>
+                        <p className="text-[11px] text-amber-800 font-semibold">{t("رصيد مدين مسجل في كشف الحساب للتسوية وفق سياسة المنشأة","Debit balance recorded on employee statement for settlement per company policy")}</p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* CUSTODY TAB HEADER / KPIS */}
+                {activeTab === "custody" && (
+                  <div className="space-y-3 mt-3">
+                    {custodyStatement?.identity_link_state === "unlinked" && (
+                      <div data-testid="custody-unlinked-state" className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2.5">
+                        <AlertTriangle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-bold text-xs text-amber-900">{t("الحساب غير مرتبط بعهدة شيفتات", "Account is not linked to shift custody")}</p>
+                          <p className="text-[11px] text-amber-700 mt-0.5">{t("الموظف ليس لديه حساب كاشير أو مدير فرع مرتبط؛ رصيد العهدة التشغيلية غير متاح.", "Employee has no linked cashier or branch manager account; operational shift custody is unavailable.")}</p>
+                        </div>
+                      </div>
+                    )}
+                    {isCustodyError && (
+                      <div data-testid="custody-error-state" className="p-3 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5">
+                        <AlertCircle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-bold text-xs text-red-900">{t("تعذر تحميل كشف عهدة الشيفتات", "Failed to load shift custody statement")}</p>
+                          <p className="text-[11px] text-red-700 mt-0.5">{t("يرجى المحاولة مرة أخرى لاحقاً.", "Please try again later.")}</p>
+                        </div>
+                      </div>
+                    )}
+                    {custodyStatement?.balances?.is_available && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div className="bg-gray-50 rounded-xl p-2.5 text-center border border-gray-200">
+                          <p className="text-[10px] text-gray-500 font-semibold">{t("رصيد أول المدة", "Opening Balance")}</p>
+                          <p className={`font-mono font-bold text-xs ${balColor(custodyStatement.balances.opening_balance ?? 0)}`}>
+                            {fmtH(custodyStatement.balances.opening_balance ?? 0)}
+                          </p>
+                        </div>
+                        <div className="bg-emerald-50 rounded-xl p-2.5 text-center border border-emerald-100">
+                          <p className="text-[10px] text-emerald-600 font-semibold">{t("إجمالي الوارد (نقد)", "Cash In")}</p>
+                          <p className="font-mono font-bold text-emerald-800 text-xs">
+                            {fmtH(custodyStatement.balances.total_cash_in ?? 0)}
+                          </p>
+                        </div>
+                        <div className="bg-red-50 rounded-xl p-2.5 text-center border border-red-100">
+                          <p className="text-[10px] text-red-600 font-semibold">{t("إجمالي الصادر (نقد)", "Cash Out")}</p>
+                          <p className="font-mono font-bold text-red-800 text-xs">
+                            {fmtH(custodyStatement.balances.total_cash_out ?? 0)}
+                          </p>
+                        </div>
+                        <div className="bg-purple-50 rounded-xl p-2.5 text-center border-2 border-purple-200">
+                          <p className="text-[10px] text-purple-700 font-bold">{t("رصيد آخر المدة", "Closing Balance")}</p>
+                          <p className={`font-mono font-black text-sm ${balColor(custodyStatement.balances.closing_balance ?? 0)}`}>
+                            {fmtH(custodyStatement.balances.closing_balance ?? 0)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {custodyStatement?.pending && custodyStatement.pending.length > 0 && (
+                      <div data-testid="custody-pending-section" className="p-3 bg-purple-50/70 border border-purple-200 rounded-xl space-y-2">
+                        <div className="flex items-center gap-2 text-purple-900 font-bold text-xs">
+                          <Clock size={14} className="text-purple-600" />
+                          <span>{t("طلبات تسليم معلقة خارج الرصيد", "Pending handover requests (outside balance)")} ({custodyStatement.pending.length})</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {custodyStatement.pending.map(p => (
+                            <div key={p.request_id} data-testid="custody-pending-item" className="bg-white rounded-lg p-2.5 border border-purple-100 flex items-center justify-between text-xs">
+                              <div className="space-y-0.5">
+                                <span className="font-semibold text-gray-800">
+                                  {p.request_type === "handover_sent" ? t("تسليم بانتظار التأكيد", "Handover sent (pending)") : t("استلام بانتظار التأكيد", "Handover received (pending)")}
+                                </span>
+                                <p className="text-[10px] text-gray-400">
+                                  {p.counterparty.name ? `${t("الطرف المقابل", "Counterparty")}: ${p.counterparty.name}` : ""}
+                                  {p.source_shift_id ? ` · ${t("وردية", "Shift")}: ${p.source_shift_id.slice(0, 8)}` : ""}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <span className="font-mono font-bold text-amber-600">{fmtH(p.amount)}</span>
+                                <Badge className="block text-[9px] bg-amber-50 text-amber-700 border border-amber-200 mt-0.5">{t("معلق", "Pending")}</Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
-                  <div className="bg-blue-50 rounded-xl p-2.5 text-center">
-                    <p className="text-[10px] text-blue-600 font-semibold">{t("الراتب","Salary")}</p>
-                    <p className="font-mono font-bold text-blue-800 text-xs">{fmtH(selectedRow.monthlySalary)}</p>
-                  </div>
-                  <div className="bg-emerald-50 rounded-xl p-2.5 text-center">
-                    <p className="text-[10px] text-emerald-600 font-semibold">{t("إجمالي دائن","Total credit")}</p>
-                    <p className="font-mono font-bold text-emerald-800 text-xs">{fmtH(statement?.totalCredit ?? 0)}</p>
-                  </div>
-                  <div className="bg-red-50 rounded-xl p-2.5 text-center">
-                    <p className="text-[10px] text-red-600 font-semibold">{t("إجمالي مدين","Total debit")}</p>
-                    <p className="font-mono font-bold text-red-800 text-xs">{fmtH(statement?.totalDebit ?? 0)}</p>
-                  </div>
-                  <div className="bg-gray-50 rounded-xl p-2.5 text-center border-2 border-gray-200">
-                    <p className="text-[10px] text-gray-600 font-semibold">{t("الرصيد","Balance")}</p>
-                    <p className={`font-mono font-black text-sm ${balColor(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}`}>{fmtH(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}</p>
-                  </div>
-                </div>
-                {hasEmployeeDebitWarning(statement) && (
-                  <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
-                    <AlertTriangle size={13} className="text-amber-600 flex-shrink-0"/>
-                    <p className="text-[11px] text-amber-800 font-semibold">{t("رصيد مدين مسجل في كشف الحساب للتسوية وفق سياسة المنشأة","Debit balance recorded on employee statement for settlement per company policy")}</p>
-                  </div>
                 )}
               </div>
-              <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between gap-3">
-                <p className="font-bold text-gray-700 text-xs">{t("سجل الحركات المالية","Financial movements")}</p>
-                <div className="flex items-center gap-2">
-                  <input type="month" value={month} onChange={e=>setMonth(e.target.value)} className="text-[11px] border border-gray-200 rounded-lg px-2 py-1 focus:outline-none"/>
-                  {month && <button onClick={()=>setMonth("")} className="text-[10px] text-purple-600 hover:underline">{t("كل الفترات","All")}</button>}
-                  <button onClick={()=>selectedEmp&&exportStatementMut.mutate({ employeeId:selectedEmp, month:month||undefined })} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold hover:bg-emerald-100"><FileText size={10}/> Excel</button>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[500px] text-xs">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-3 py-2.5 text-right font-semibold text-gray-600">{t("التاريخ","Date")}</th>
-                      <th className="px-3 py-2.5 text-right font-semibold text-gray-600">{t("البيان","Description")}</th>
-                      <th className="px-3 py-2.5 text-center font-semibold text-gray-600">{t("المرجع","Ref")}</th>
-                      <th className="px-3 py-2.5 text-center font-semibold text-gray-600">{t("دائن","Credit")}</th>
-                      <th className="px-3 py-2.5 text-center font-semibold text-gray-600">{t("مدين","Debit")}</th>
-                      <th className="px-3 py-2.5 text-center font-semibold text-gray-600">{t("الرصيد","Balance")}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {(statement?.movements ?? []).length===0 && (
-                      <tr><td colSpan={6} className="text-center text-gray-400 py-6">{t("لا توجد حركات في هذه الفترة","No movements in this period")}</td></tr>
-                    )}
-                    {(statement?.movements ?? []).map(m=>(
-                      <tr key={m.id} className="hover:bg-gray-50">
-                        <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{new Date(m.movementDate).toLocaleDateString("ar-SA")}</td>
-                        <td className="px-3 py-3 font-medium text-gray-800">{m.description}<span className="block text-[9px] text-gray-400">{m.categoryLabelAr}</span></td>
-                        <td className="px-3 py-3 text-center font-mono text-gray-400 text-[10px]">{m.ref}</td>
-                        <td className="px-3 py-3 text-center font-mono font-bold text-emerald-600">{m.movementType==="credit"?fmtH(m.amountHalalas):"—"}</td>
-                        <td className="px-3 py-3 text-center font-mono font-bold text-red-600">{m.movementType==="debit"?fmtH(m.amountHalalas):"—"}</td>
-                        <td className={`px-3 py-3 text-center font-mono font-bold ${balColor(m.runningBalanceHalalas)}`}>{fmtH(m.runningBalanceHalalas)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-gray-50 border-t-2 border-gray-200">
-                    <tr>
-                      <td colSpan={2} className="px-3 py-2.5 font-bold text-gray-700">{month?t("رصيد أول المدة","Opening"):t("الرصيد الحالي","Current balance")}</td>
-                      <td className="px-3 py-2.5 text-center font-mono text-gray-500">{month?fmtH(statement?.openingBalanceHalalas ?? 0):""}</td>
-                      <td colSpan={2} className="px-3 py-2.5 font-bold text-gray-700 text-left">{t("رصيد آخر المدة","Closing")}</td>
-                      <td className={`px-3 py-2.5 text-center font-mono font-black ${balColor(statement?.closingBalanceHalalas ?? 0)}`}>{fmtH(statement?.closingBalanceHalalas ?? 0)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+
+              {/* DUES TAB TABLE */}
+              {activeTab === "dues" && (
+                <>
+                  <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between gap-3">
+                    <p className="font-bold text-gray-700 text-xs">{t("سجل الحركات المالية","Financial movements")}</p>
+                    <div className="flex items-center gap-2">
+                      <input type="month" value={month} onChange={e=>setMonth(e.target.value)} className="text-[11px] border border-gray-200 rounded-lg px-2 py-1 focus:outline-none"/>
+                      {month && <button onClick={()=>setMonth("")} className="text-[10px] text-purple-600 hover:underline">{t("كل الفترات","All")}</button>}
+                      <button onClick={()=>selectedEmp&&exportStatementMut.mutate({ employeeId:selectedEmp, month:month||undefined })} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold hover:bg-emerald-100"><FileText size={10}/> Excel</button>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[500px] text-xs">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2.5 text-right font-semibold text-gray-600">{t("التاريخ","Date")}</th>
+                          <th className="px-3 py-2.5 text-right font-semibold text-gray-600">{t("البيان","Description")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold text-gray-600">{t("المرجع","Ref")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold text-gray-600">{t("دائن","Credit")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold text-gray-600">{t("مدين","Debit")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold text-gray-600">{t("الرصيد","Balance")}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {(statement?.movements ?? []).length===0 && (
+                          <tr><td colSpan={6} className="text-center text-gray-400 py-6">{t("لا توجد حركات في هذه الفترة","No movements in this period")}</td></tr>
+                        )}
+                        {(statement?.movements ?? []).map(m=>(
+                          <tr key={m.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{new Date(m.movementDate).toLocaleDateString("ar-SA")}</td>
+                            <td className="px-3 py-3 font-medium text-gray-800">{m.description}<span className="block text-[9px] text-gray-400">{m.categoryLabelAr}</span></td>
+                            <td className="px-3 py-3 text-center font-mono text-gray-400 text-[10px]">{m.ref}</td>
+                            <td className="px-3 py-3 text-center font-mono font-bold text-emerald-600">{m.movementType==="credit"?fmtH(m.amountHalalas):"—"}</td>
+                            <td className="px-3 py-3 text-center font-mono font-bold text-red-600">{m.movementType==="debit"?fmtH(m.amountHalalas):"—"}</td>
+                            <td className={`px-3 py-3 text-center font-mono font-bold ${balColor(m.runningBalanceHalalas)}`}>{fmtH(m.runningBalanceHalalas)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+                        <tr>
+                          <td colSpan={2} className="px-3 py-2.5 font-bold text-gray-700">{month?t("رصيد أول المدة","Opening"):t("الرصيد الحالي","Current balance")}</td>
+                          <td className="px-3 py-2.5 text-center font-mono text-gray-500">{month?fmtH(statement?.openingBalanceHalalas ?? 0):""}</td>
+                          <td colSpan={2} className="px-3 py-2.5 font-bold text-gray-700 text-left">{t("رصيد آخر المدة","Closing")}</td>
+                          <td className={`px-3 py-2.5 text-center font-mono font-black ${balColor(statement?.closingBalanceHalalas ?? 0)}`}>{fmtH(statement?.closingBalanceHalalas ?? 0)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {/* CUSTODY TAB TABLE */}
+              {activeTab === "custody" && (
+                <>
+                  <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-center justify-between gap-3">
+                    <p className="font-bold text-gray-700 text-xs flex items-center gap-1.5">
+                      <ArrowLeftRight size={13} className="text-purple-600" />
+                      <span>{t("سجل حركات عهدة النقد", "Shift Cash Custody Movements")}</span>
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-1 text-[11px] text-gray-500">
+                        <span>{t("من", "From")}:</span>
+                        <input type="date" value={custodyFrom} onChange={e => { setCustodyFrom(e.target.value); setCustodyPage(1); }} className="text-[11px] border border-gray-200 rounded px-1.5 py-0.5 bg-white outline-none" />
+                      </div>
+                      <div className="flex items-center gap-1 text-[11px] text-gray-500">
+                        <span>{t("إلى", "To")}:</span>
+                        <input type="date" value={custodyTo} onChange={e => { setCustodyTo(e.target.value); setCustodyPage(1); }} className="text-[11px] border border-gray-200 rounded px-1.5 py-0.5 bg-white outline-none" />
+                      </div>
+                      {(custodyFrom || custodyTo) && (
+                        <button type="button" onClick={() => { setCustodyFrom(""); setCustodyTo(""); setCustodyPage(1); }} className="text-[10px] text-purple-600 hover:underline">
+                          {t("إعادة ضبط", "Reset")}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[650px] text-xs">
+                      <thead className="bg-gray-50 text-gray-600">
+                        <tr>
+                          <th className="px-3 py-2.5 text-right font-semibold">{t("تاريخ العمل / الوقت", "Date / Event At")}</th>
+                          <th className="px-3 py-2.5 text-right font-semibold">{t("نوع الحركة والبيان", "Description & Type")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold">{t("الإيصال / المرجع", "Receipt / Ref")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold">{t("الطرف المقابل", "Counterparty")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold">{t("وارد (نقد)", "Cash In")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold">{t("صادر (نقد)", "Cash Out")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold">{t("الرصيد", "Balance")}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {isCustodyLoading && (
+                          <tr><td colSpan={7} className="text-center text-gray-400 py-8">{t("جارٍ تحميل كشف العهدة…", "Loading custody statement…")}</td></tr>
+                        )}
+                        {!isCustodyLoading && (custodyStatement?.entries ?? []).length === 0 && (
+                          <tr><td colSpan={7} className="text-center text-gray-400 py-8" data-testid="custody-empty-state">
+                            {custodyStatement?.identity_link_state === "unlinked"
+                              ? t("الحساب غير مرتبط بعهدة شيفتات", "Account is not linked to shift custody")
+                              : t("لا توجد حركات عهدة شيفتات في هذه الفترة", "No shift custody movements in this period")}
+                          </td></tr>
+                        )}
+                        {!isCustodyLoading && (custodyStatement?.entries ?? []).map(entry => (
+                          <tr key={entry.source_id} data-testid="custody-entry-row" className="hover:bg-gray-50">
+                            <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
+                              <span className="font-medium text-gray-800">{entry.business_date ?? entry.event_at.slice(0, 10)}</span>
+                              <span className="block text-[10px] text-gray-400">{entry.event_at ? new Date(entry.event_at).toLocaleTimeString(dir==="rtl"?"ar-SA":"en-US", {hour:"2-digit", minute:"2-digit"}) : ""}</span>
+                            </td>
+                            <td className="px-3 py-3 font-medium text-gray-800">
+                              <span>{entry.label_ar}</span>
+                              <span className="block text-[10px] text-gray-400">{entry.label_en} · {entry.transaction_type}</span>
+                              {entry.source_shift_id && (
+                                <span className="block text-[9px] text-gray-400">
+                                  {t("وردية المصدر", "Source shift")}: {entry.source_shift_id.slice(0, 8)}
+                                  {entry.receiving_shift_id && ` → ${t("المستلم", "Recv")}: ${entry.receiving_shift_id.slice(0, 8)}`}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-center font-mono text-gray-500 text-[10px]">
+                              {entry.receipt_id ? (
+                                <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                  {entry.receipt_id.slice(0, 8)}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                              {entry.reversal_id && (
+                                <span className="block text-[9px] text-amber-600 mt-0.5 font-sans">{t("حركة عكس", "Reversal")}</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-center text-gray-700">
+                              {entry.counterparty.name ? (
+                                <span className="font-semibold text-xs">{entry.counterparty.name}</span>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-center font-mono font-bold text-emerald-600">
+                              {entry.cash_in > 0 ? fmtH(entry.cash_in) : "—"}
+                            </td>
+                            <td className="px-3 py-3 text-center font-mono font-bold text-red-600">
+                              {entry.cash_out > 0 ? fmtH(entry.cash_out) : "—"}
+                            </td>
+                            <td className={`px-3 py-3 text-center font-mono font-bold ${balColor(entry.running_balance)}`}>
+                              {fmtH(entry.running_balance)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {custodyStatement && custodyStatement.pagination.totalPages > 1 && (
+                    <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between text-xs">
+                      <button
+                        type="button"
+                        disabled={custodyPage <= 1}
+                        onClick={() => setCustodyPage(p => Math.max(1, p - 1))}
+                        className="px-2.5 py-1 rounded border border-gray-200 bg-white text-gray-700 font-semibold disabled:opacity-40 hover:bg-gray-100"
+                      >
+                        {t("السابق", "Previous")}
+                      </button>
+                      <span className="text-gray-500 font-medium text-[11px]">
+                        {t("صفحة", "Page")} {custodyStatement.pagination.page} {t("من", "of")} {custodyStatement.pagination.totalPages} ({custodyStatement.pagination.total} {t("حركة", "records")})
+                      </span>
+                      <button
+                        type="button"
+                        disabled={custodyPage >= custodyStatement.pagination.totalPages}
+                        onClick={() => setCustodyPage(p => p + 1)}
+                        className="px-2.5 py-1 rounded border border-gray-200 bg-white text-gray-700 font-semibold disabled:opacity-40 hover:bg-gray-100"
+                      >
+                        {t("التالي", "Next")}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>

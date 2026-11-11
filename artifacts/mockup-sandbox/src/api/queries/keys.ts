@@ -76,6 +76,8 @@ export const queryKeys = {
     ["employees", { filter }] as const,
   employeeMovements: (employeeId: string, month?: string) =>
     ["employees", employeeId, "movements", month ?? "all"] as const,
+  shiftCustodyStatement: (employeeId: string, params?: { from?: string; to?: string; page?: number; pageSize?: number }) =>
+    ["employees", employeeId, "shift-custody-statement", params ?? {}] as const,
 
   // Cash custody (T09-B)
   cashCustody: (filter?: CashFilter) =>
