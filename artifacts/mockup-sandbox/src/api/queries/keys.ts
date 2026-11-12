@@ -76,6 +76,8 @@ export const queryKeys = {
     ["employees", { filter }] as const,
   employeeMovements: (employeeId: string, month?: string) =>
     ["employees", employeeId, "movements", month ?? "all"] as const,
+  shiftCustodyStatement: (employeeId: string, params?: { from?: string; to?: string; page?: number; pageSize?: number }) =>
+    ["employees", employeeId, "shift-custody-statement", params ?? {}] as const,
 
   // Cash custody (T09-B)
   cashCustody: (filter?: CashFilter) =>
@@ -374,7 +376,7 @@ export interface AssetFilter {
 
 export interface ShiftFilter {
   branchId?: string;
-  status?: "active" | "late" | "pending_review" | "closed" | "all";
+  status?: "active" | "late" | "pending_review" | "closed" | "rejected" | "final-approved" | "all";
   shiftType?: string;
   search?: string;
   dateFrom?: string;

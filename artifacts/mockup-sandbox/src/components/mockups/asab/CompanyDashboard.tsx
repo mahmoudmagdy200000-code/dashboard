@@ -12,6 +12,9 @@ import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRow
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT, HEAD_EXPENSE_EVIDENCE_HINT } from "./headReviewGuards";
 import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocationHalalas, runShfAllocationCorrection, type ShfAllocationRow } from "./shiftAllocationCorrection";
 import { hasEmployeeDebitWarning } from "./_shared/formatters";
+import { ShiftReconciliationSummaryView } from "./ShiftReconciliationSummary.tsx";
+import { ShiftSalesSection } from "./_pages/accountant/ShiftSalesSection";
+import { LangContext } from "./_shared/LangContext.tsx";
 import { api, generateCommandId } from "../../../api/client";
 import { toast } from "sonner";
 import { ErrorBoundary } from "../../ErrorBoundary.tsx";
@@ -35,7 +38,7 @@ import {
   useWaste, usePatchWasteProduct, usePutWasteAllocations, useApproveWaste, useRejectWaste,
   useBulkApproveWaste, useExportWaste,
   useShiftsLive, useShiftsHistory, useShiftConfigs, useSaveShiftConfig, useExportShifts, useShiftVarianceAllocations, useAccountantShiftReportCorrection,
-  useEmployees, useEmployeeMovements, useCreateEmployeeMovement, useSettleEmployeeBalance,
+  useEmployees, useEmployeeMovements, useShiftCustodyStatement, useCreateEmployeeMovement, useSettleEmployeeBalance,
   useApproveEmployeeSettlement, useRejectEmployeeSettlement,
   useExportEmployeeStatement, useExportPayroll,
   useCashCustody, useCashTransactions, useCreateCashTransaction, useApproveCashTxn,
@@ -85,7 +88,7 @@ import {
 } from "../../../api/queries";
 import { apiOpToCOp, sumCOpAmounts, type COp, type COpStatus, type CMatch, type CModKey } from "./operationMapping";
 import { formatShiftHalalas, getShiftCountEvidence, getShiftStatusDisplay } from "./shiftCountEvidence";
-import { getShiftCorrectionEvidence, initialShiftCorrectionDraft, prepareShiftCorrectionRequest, runShiftReportCorrection, type ShiftCorrectionDraft, type ShiftCorrectionShareDraft } from "./shiftReportCorrection";
+import { getShiftCorrectionEvidence, getShiftCorrectionIneligibilityReason, initialShiftCorrectionDraft, prepareShiftCorrectionRequest, runShiftReportCorrection, type ShiftCorrectionDraft, type ShiftCorrectionShareDraft } from "./shiftReportCorrection";
 import type {
   Asset, ExpenseInvoiceRow,
   PurchaseLine, PurchasesBlock, Supplier, PurchaseReturn, PurchaseEnumsCatalogue,
@@ -328,7 +331,9 @@ export function CLangProvider({ children }:{ children:ReactNode }) {
   const dir = lang==="ar" ? "rtl" : "ltr";
   return (
     <CLangContext.Provider value={{ lang, setLang, t, dir }}>
-      {children}
+      <LangContext.Provider value={{ lang, setLang, t: <T,>(ar: T, en: T): T => (lang === "ar" ? ar : en), dir }}>
+        {children}
+      </LangContext.Provider>
     </CLangContext.Provider>
   );
 }
@@ -1498,7 +1503,7 @@ function ShiftAllocationForm({ op, shortageHalalas }:{ op:COp; shortageHalalas:n
   </div>;
 }
 
-function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation }) {
+export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation }) {
   const { t, lang } = useCLang();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -1733,6 +1738,7 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
   );
   return (
     <section aria-label={t("تفاصيل وردية الكاشير","Cashier shift details")} className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
+      <ShiftReconciliationSummaryView source={detail ?? op} />
       <div className="flex justify-between text-xs"><span>{t("حالة الجرد","Count state")}</span>
         <strong>{count === "counted" ? t("مجرود فعلياً","Physically counted") : count === "unknown" ? t("غير مجرود — لا يُعتمد كدليل","Not counted — not evidence") : "—"}</strong>
       </div>
@@ -1773,6 +1779,12 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
       {allocationEvidence && <ShiftAllocationForm op={op} shortageHalalas={allocationEvidence.shortageHalalas}/>}
       {!forHead && op?.branchId && getShiftCorrectionEvidence(op,detail,"accountant") &&
         <ShiftReportCorrectionForm key={`${detail.id}:${detail.reportRevision ?? "missing"}`} op={op} detail={detail}/>}
+      {!forHead && op?.branchId && !getShiftCorrectionEvidence(op,detail,"accountant") && (
+        <div className="rounded-lg bg-amber-50/80 border border-amber-200 p-2.5 text-xs text-amber-800" data-testid="correction-ineligibility-reason">
+          <span className="font-semibold block mb-0.5">{t("أهلية تصحيح التقرير:","Correction eligibility:")}</span>
+          <p>{getShiftCorrectionIneligibilityReason(op, detail, "accountant", lang)}</p>
+        </div>
+      )}
       <div className="text-xs space-y-1">
         <h4 className="font-bold">{t("توزيع المسؤولية الحالي","Current liability allocation")}</h4>
         {liability ? <>
@@ -4727,7 +4739,7 @@ function AccDashboard({ navigate, ops }:{ navigate:(p:string)=>void; ops:COp[] }
 // ═══════════════════════════════════════════════════
 // ACCOUNTANT — SALES MODULE (Full Featured)
 // ═══════════════════════════════════════════════════
-function AccCompanySales({ ops, approve, reject, requestClarification, bulkApprove }:{ ops:COp[]; approve:(id:string)=>void; reject:(id:string)=>void; requestClarification?:(id:string)=>void; bulkApprove:(ids:string[])=>void }) {
+function AccCompanySales({ ops, approve, reject, requestClarification, bulkApprove, onOpenReport }:{ ops:COp[]; approve:(id:string)=>void; reject:(id:string)=>void; requestClarification?:(id:string)=>void; bulkApprove:(ids:string[])=>void; onOpenReport?:(shiftId:string, opId?:string)=>void }) {
   const { t, dir } = useCLang();
   const queryClient = useQueryClient();
   const exportOpsMut = useExportOperations();
@@ -4740,8 +4752,26 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
   const [expandedId,   setExpandedId]   = useState<string|null>(null);
 
   const mOps = ops.filter(o=>o.module==="sales");
-  const pending = mOps.filter(o=>o.status==="pending");
   const brandNames = cBrandNamesFromOps(ops);
+
+  // Accountant branch options from permissions & shift configs (MT-20)
+  const { data: historyBranchConfigs = [] } = useShiftConfigs("branch");
+  const historyBranches = historyBranchOptions(historyBranchConfigs);
+  const branchOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const b of historyBranches) {
+      if (b.id && !map.has(b.id)) map.set(b.id, b.name);
+    }
+    for (const b of ALL_BRANCHES) {
+      if (b.id && !map.has(b.id)) map.set(b.id, b.name);
+    }
+    for (const op of ops) {
+      if (op.branchId && !map.has(op.branchId)) {
+        map.set(op.branchId, op.branch || op.branchId);
+      }
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [historyBranches, ops]);
 
   // Live day-completeness pills (T04 §3) + sales KPIs (T04 §2).
   const { data: dayRows = [] } = useSalesDayCompleteness(7);
@@ -4750,14 +4780,49 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
   const selectedDay = dayRows.find(r=>r.date===dateFilter);
 
   const shown = mOps.filter(op=>{
-    if(branchFilter && !op.branch.includes(branchFilter)) return false;
-    if(statusFilter && op.status!==statusFilter) return false;
-    if(matchFilter && op.match!==matchFilter) return false;
-    if(brandFilter!=="الكل" && op.brandName!==brandFilter) return false;
-    if(salesDate && op.date.slice(0,10)!==salesDate) return false;
-    if(search && !op.branch.includes(search) && !op.submittedBy.includes(search) && !op.refNum.includes(search)) return false;
+    if (branchFilter) {
+      const selectedBranch = branchOptions.find(b => b.id === branchFilter);
+      const branchName = selectedBranch ? selectedBranch.name : "";
+      const matchesId = op.branchId ? op.branchId === branchFilter : false;
+      const matchesName = branchName ? op.branch.includes(branchName) : op.branch.includes(branchFilter);
+      if (!matchesId && !matchesName) return false;
+    }
+    if (statusFilter && op.status !== statusFilter) return false;
+    if (matchFilter && op.match !== matchFilter) return false;
+    if (brandFilter !== "الكل" && op.brandName !== brandFilter) return false;
+    if (salesDate && op.date.slice(0,10) !== salesDate) return false;
+    if (search && !op.branch.includes(search) && !op.submittedBy.includes(search) && !op.refNum.includes(search)) return false;
     return true;
   });
+
+  // MT-20: Scope sales operations counters to the same date, branch, and status filters as the table
+  const isStatusFiltered = Boolean(statusFilter);
+  const baseScopedOps = mOps.filter(op => {
+    if (branchFilter) {
+      const selectedBranch = branchOptions.find(b => b.id === branchFilter);
+      const branchName = selectedBranch ? selectedBranch.name : "";
+      const matchesId = op.branchId ? op.branchId === branchFilter : false;
+      const matchesName = branchName ? op.branch.includes(branchName) : op.branch.includes(branchFilter);
+      if (!matchesId && !matchesName) return false;
+    }
+    if (matchFilter && op.match !== matchFilter) return false;
+    if (brandFilter !== "الكل" && op.brandName !== brandFilter) return false;
+    if (salesDate && op.date.slice(0,10) !== salesDate) return false;
+    if (search && !op.branch.includes(search) && !op.submittedBy.includes(search) && !op.refNum.includes(search)) return false;
+    return true;
+  });
+
+  const salesOpsTotal = isStatusFiltered ? shown.length : baseScopedOps.length;
+  const salesOpsPending = isStatusFiltered
+    ? shown.filter(o => o.status === "pending").length
+    : baseScopedOps.filter(o => o.status === "pending").length;
+  const salesOpsApproved = isStatusFiltered
+    ? shown.filter(o => o.status === "approved" || o.status === "final-approved").length
+    : baseScopedOps.filter(o => o.status === "approved" || o.status === "final-approved").length;
+  const salesOpsRejected = isStatusFiltered
+    ? shown.filter(o => o.status === "rejected").length
+    : baseScopedOps.filter(o => o.status === "rejected").length;
+
   const shownPending = shown.filter(o=>o.status==="pending");
   const bulkSalesIds = salesBulkApprovalIds(shown, shownPending.map(op => op.id), "accountant",
     op => queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)));
@@ -4768,15 +4833,43 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-gray-800">{t("موديول المبيعات","Sales Module")}</h2><p className="text-gray-400 text-sm mt-0.5">{pending.length} {t("بيان معلق بانتظار مراجعتك","pending statements awaiting your review")}</p></div>
+        <div><h2 className="text-xl font-bold text-gray-800">{t("موديول المبيعات","Sales Module")}</h2><p className="text-gray-400 text-sm mt-0.5">{salesOpsPending} {t("بيان معلق بانتظار مراجعتك (ضمن النطاق المحدد)","pending statements awaiting your review (within active scope)")}</p></div>
         {bulkSalesIds.length>0 && <Btn variant="success" size="sm" onClick={()=>bulkApprove(bulkSalesIds)}>✓ {t("موافقة على الكل","Approve All")} ({bulkSalesIds.length})</Btn>}
-        {pending.some(isPkg6SalesReport) && <p className="text-xs text-amber-700">{t("تقارير اليوم تُعتمد فرديًا","Day reports are approved individually")}</p>}
+        {salesOpsPending > 0 && shownPending.some(isPkg6SalesReport) && <p className="text-xs text-amber-700">{t("تقارير اليوم تُعتمد فرديًا","Day reports are approved individually")}</p>}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KpiCard label={t("إجمالي البيانات المرفوعة","Total Uploaded")} value={String(mOps.length)} sub={t("كل الحالات","All statuses")}          icon={<FileText size={18} className="text-purple-600"/>} accent="purple"/>
-        <KpiCard label={t("قيد المراجعة","Under Review")}               value={String(pending.length)} sub={t("رُفعت من الفروع","Uploaded from branches")} icon={<Clock size={18} className="text-amber-600"/>} accent="amber"/>
-        <KpiCard label={t("تمت الموافقة","Approved")}                   value={String(mOps.filter(o=>o.status==="approved"||o.status==="final-approved").length)} sub={t("موافق + معتمد نهائياً","Approved + Final")} icon={<CheckCircle2 size={18} className="text-sky-600"/>} accent="blue"/>
-        <KpiCard label={t("مرفوضة","Rejected")}                         value={String(mOps.filter(o=>o.status==="rejected").length)} sub={t("تحتاج إعادة رفع","Needs re-upload")} icon={<XCircle size={18} className="text-red-600"/>} accent="red"/>
+        <KpiCard
+          label={t("عمليات المبيعات — الإجمالي","Sales Operations — Total")}
+          value={String(salesOpsTotal)}
+          sub={
+            isStatusFiltered
+              ? t("مطابق لفلاتر التاريخ والفرع والحالة","Matching date, branch, and status filters")
+              : t("مطابق لفلاتر التاريخ والفرع","Matching date and branch filters")
+          }
+          icon={<FileText size={18} className="text-purple-600"/>}
+          accent="purple"
+        />
+        <KpiCard
+          label={t("عمليات المبيعات — قيد المراجعة","Sales Operations — Under Review")}
+          value={String(salesOpsPending)}
+          sub={t("عمليات رُفعت من الفروع في هذا النطاق","Operations uploaded from branches in this scope")}
+          icon={<Clock size={18} className="text-amber-600"/>}
+          accent="amber"
+        />
+        <KpiCard
+          label={t("عمليات المبيعات — تمت الموافقة","Sales Operations — Approved")}
+          value={String(salesOpsApproved)}
+          sub={t("موافق + معتمد نهائياً في هذا النطاق","Approved + Final in this scope")}
+          icon={<CheckCircle2 size={18} className="text-sky-600"/>}
+          accent="blue"
+        />
+        <KpiCard
+          label={t("عمليات المبيعات — مرفوضة","Sales Operations — Rejected")}
+          value={String(salesOpsRejected)}
+          sub={t("تحتاج إعادة رفع في هذا النطاق","Needs re-upload in this scope")}
+          icon={<XCircle size={18} className="text-red-600"/>}
+          accent="red"
+        />
       </div>
 
       {/* Sales financial KPIs (T04 §2) — live from GET /company/me/sales/kpis */}
@@ -4806,6 +4899,15 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
         </div>
       )}
 
+      <ShiftSalesSection
+        operations={ops as any}
+        filterBranch={branchFilter}
+        filterStatus={statusFilter}
+        filterDate={salesDate}
+        filterSearch={search}
+        onOpenReport={onOpenReport}
+      />
+
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3" dir={dir}>
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={()=>setDateFilter("الكل")}
@@ -4825,7 +4927,7 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع","Branch")}</label>
             <select value={branchFilter} onChange={e=>setBranchFilter(e.target.value)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
               <option value="">{t("الكل","All")}</option>
-              {ALL_BRANCHES.map(b=><option key={b.id} value={b.name}>{b.name}</option>)}
+              {branchOptions.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الحالة","Status")}</label>
@@ -6299,14 +6401,16 @@ function ShiftConfigCard({ cfg }:{ cfg:ShiftConfig }) {
   );
 }
 
-function AccCompanyShifts({ approve, reject, requestClarification, page, setPage }:{
+function AccCompanyShifts({ approve, reject, requestClarification, page, setPage, selectedShiftTarget, onClearSelectedShift }:{
   approve:(id:string)=>void; reject:(id:string)=>void; requestClarification?:(id:string)=>void;
   page:number; setPage:(page:number)=>void;
+  selectedShiftTarget?: { shiftId: string; opId?: string } | null;
+  onClearSelectedShift?: () => void;
 }) {
   const { t, dir, lang } = useCLang();
   type ShiftTab = "live"|"setup"|"close"|"history";
-  const [tab,          setTab]          = useState<ShiftTab>("live");
-  const [expandedId, setExpandedId] = useState<string|null>(null);
+  const [tab,          setTab]          = useState<ShiftTab>(selectedShiftTarget ? "close" : "live");
+  const [expandedId, setExpandedId] = useState<string|null>(selectedShiftTarget?.opId ?? null);
   const [contactShift, setContactShift] = useState<Shift|null>(null);
   const [historyDateFrom, setHistoryDateFrom] = useState("");
   const [historyDateTo, setHistoryDateTo] = useState("");
@@ -6314,6 +6418,17 @@ function AccCompanyShifts({ approve, reject, requestClarification, page, setPage
   const [historyPageNum, setHistoryPageNum] = useState(1);
   const operationsQuery = useOperations({ moduleKey:"shifts", pageSize:100, page });
   const shiftOps = shfReviewRows(operationsQuery.data).map(op => apiOpToCOp(op, BRANDS));
+  const selectedDetailQuery = useOperation(selectedShiftTarget?.opId ?? null);
+  const selectedDetail = selectedDetailQuery.data;
+
+  useEffect(() => {
+    if (selectedShiftTarget) {
+      setTab("close");
+      if (selectedShiftTarget.opId) {
+        setExpandedId(selectedShiftTarget.opId);
+      }
+    }
+  }, [selectedShiftTarget]);
   const meta = operationsQuery.data?.meta;
   const totalPages = meta && Number.isSafeInteger(meta.totalPages) && meta.totalPages > 0 ? meta.totalPages : undefined;
   const shownPage = meta && Number.isSafeInteger(meta.page) && meta.page > 0 ? meta.page : page;
@@ -6443,6 +6558,50 @@ function AccCompanyShifts({ approve, reject, requestClarification, page, setPage
       {/* Accountant SHF operation review; the native close flow is not used here. */}
       {tab==="close" && (
         <div className="space-y-4">
+          {selectedShiftTarget && (
+            <div className="bg-white rounded-xl border border-indigo-200 shadow-sm p-4 space-y-3" data-testid="selected-shift-report">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <div>
+                  <h3 className="font-bold text-sm text-gray-900">{t("تقرير الوردية المختارة من شاشة المبيعات", "Selected Shift Report from Sales Screen")}</h3>
+                  <p className="text-xs text-gray-500 font-mono">
+                    <span data-testid="selected-shift-id">{t("معرّف الوردية", "Shift ID")}: {selectedShiftTarget.shiftId}</span>
+                    {selectedShiftTarget.opId && <span className="mx-2">·</span>}
+                    {selectedShiftTarget.opId && <span data-testid="selected-report-id">{t("معرّف العملية", "Operation/Report ID")}: {selectedShiftTarget.opId}</span>}
+                  </p>
+                </div>
+                {onClearSelectedShift && (
+                  <button
+                    type="button"
+                    onClick={onClearSelectedShift}
+                    className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+                  >
+                    {t("إغلاق التقرير المختار", "Close selected report")}
+                  </button>
+                )}
+              </div>
+              {(() => {
+                const targetedOp = selectedShiftTarget?.opId ? shiftOps.find(o => o.id === selectedShiftTarget.opId) : undefined;
+                const opForPanel: COp | undefined = targetedOp ?? (selectedDetail ? apiOpToCOp(selectedDetail, BRANDS) : undefined);
+
+                if (selectedDetailQuery.isLoading) {
+                  return <p className="text-xs text-gray-500">{t("جارٍ تحميل تفاصيل التقرير…", "Loading report details…")}</p>;
+                }
+
+                if (opForPanel) {
+                  return (
+                    <ShiftOpPanel
+                      op={opForPanel}
+                      detail={selectedDetail}
+                      forHead={false}
+                      loading={selectedDetailQuery.isLoading}
+                      error={selectedDetailQuery.isError}
+                    />
+                  );
+                }
+                return <p className="text-xs text-gray-400">{t("تفاصيل الوردية غير متاحة", "Shift details unavailable")}</p>;
+              })()}
+            </div>
+          )}
           <div className="flex items-center justify-between gap-3 text-xs text-gray-600">
             <p>{t("الصفحة","Page")} {shownPage}{totalPages ? ` / ${totalPages}` : ""} · {t("عمليات هذه الصفحة","Operations on this page")}: {reviewLoading || operationsQuery.isError ? "—" : shiftOps.length}</p>
             <div className="flex gap-2">
@@ -7201,6 +7360,22 @@ function AccCompanyEmployees() {
 
   const { data: employeesPage } = useEmployees({ q: searchTerm || undefined, branchId: branchFilter || undefined });
   const { data: statement } = useEmployeeMovements(selectedEmp, month || undefined);
+
+  type EmpAccountTab = "dues" | "custody";
+  const [activeTab, setActiveTab] = useState<EmpAccountTab>("dues");
+  const [custodyPage, setCustodyPage] = useState(1);
+  const [custodyFrom, setCustodyFrom] = useState("");
+  const [custodyTo, setCustodyTo] = useState("");
+
+  const custodyQuery = useShiftCustodyStatement(selectedEmp, {
+    from: custodyFrom || undefined,
+    to: custodyTo || undefined,
+    page: custodyPage,
+    pageSize: 10,
+  });
+  const custodyStatement = custodyQuery.data;
+  const isCustodyLoading = custodyQuery.isLoading;
+  const isCustodyError = custodyQuery.isError;
   const { user, isRole } = useAuth();
   const isHead = isRole("head");
   const settleMut         = useSettleEmployeeBalance();
@@ -7278,7 +7453,7 @@ function AccCompanyEmployees() {
           {employees.length===0 && <p className="text-center text-gray-400 text-sm py-8">{t("لا يوجد موظفون","No employees")}</p>}
           {employees.map(e=>(
             <div key={e.id}
-              onClick={()=>{ setSelectedEmp(selectedEmp===e.id?null:e.id); setMonth(""); }}
+              onClick={()=>{ setSelectedEmp(selectedEmp===e.id?null:e.id); setMonth(""); setCustodyPage(1); }}
               className={`flex items-center gap-3 px-4 py-3.5 border-b border-gray-50 last:border-0 cursor-pointer transition-all ${selectedEmp===e.id?"bg-purple-50 border-r-4 border-r-purple-500":"hover:bg-gray-50/70"} ${e.status!=="active"?"opacity-60":""}`}>
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">{e.name[0]}</div>
               <div className="flex-1 min-w-0">
@@ -7317,105 +7492,369 @@ function AccCompanyEmployees() {
                       </Badge>
                     )}
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <button onClick={()=>setShowAdd(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold hover:bg-purple-100"><Plus size={10}/> {t("إضافة حركة","Add")}</button>
-                    <button
-                      onClick={() => setShowSettle(true)}
-                      disabled={settleMut.isPending || (statement?.balanceHalalas ?? selectedRow.balanceHalalas) === 0 || selectedRow.settlementStatus === "under_review"}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold hover:bg-emerald-100 disabled:opacity-40"
-                    >
-                      <Check size={10} /> {t("تسوية الرصيد", "Settle")}
-                    </button>
-                    {isHead && (selectedRow.settlementStatus === "under_review" || statement?.settlementStatus === "under_review") && (
-                      <div className="flex gap-1 mt-1">
-                        <button
-                          onClick={() => setHeadAction({ action: "approve", open: true })}
-                          disabled={approveSettlementMut.isPending}
-                          className="px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold hover:bg-emerald-700 disabled:opacity-50"
-                        >
-                          {t("اعتماد التسوية", "Approve")}
-                        </button>
-                        <button
-                          onClick={() => setHeadAction({ action: "reject", open: true })}
-                          disabled={rejectSettlementMut.isPending}
-                          className="px-2 py-1 rounded bg-red-600 text-white text-[10px] font-bold hover:bg-red-700 disabled:opacity-50"
-                        >
-                          {t("رفض", "Reject")}
-                        </button>
+                  {activeTab === "dues" && (
+                    <div className="flex flex-col gap-1.5">
+                      <button onClick={()=>setShowAdd(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold hover:bg-purple-100"><Plus size={10}/> {t("إضافة حركة","Add")}</button>
+                      <button
+                        onClick={() => setShowSettle(true)}
+                        disabled={settleMut.isPending || (statement?.balanceHalalas ?? selectedRow.balanceHalalas) === 0 || selectedRow.settlementStatus === "under_review"}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold hover:bg-emerald-100 disabled:opacity-40"
+                      >
+                        <Check size={10} /> {t("تسوية الرصيد", "Settle")}
+                      </button>
+                      {isHead && (selectedRow.settlementStatus === "under_review" || statement?.settlementStatus === "under_review") && (
+                        <div className="flex gap-1 mt-1">
+                          <button
+                            onClick={() => setHeadAction({ action: "approve", open: true })}
+                            disabled={approveSettlementMut.isPending}
+                            className="px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold hover:bg-emerald-700 disabled:opacity-50"
+                          >
+                            {t("اعتماد التسوية", "Approve")}
+                          </button>
+                          <button
+                            onClick={() => setHeadAction({ action: "reject", open: true })}
+                            disabled={rejectSettlementMut.isPending}
+                            className="px-2 py-1 rounded bg-red-600 text-white text-[10px] font-bold hover:bg-red-700 disabled:opacity-50"
+                          >
+                            {t("رفض", "Reject")}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Tabs Switcher: Dues & Deductions vs Shift Custody */}
+                <div className="flex items-center gap-2 border-b border-gray-100 pt-3 mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("dues")}
+                    data-testid="tab-emp-dues"
+                    className={`flex items-center gap-1.5 pb-2 px-3 text-xs font-bold border-b-2 transition-all ${
+                      activeTab === "dues"
+                        ? "border-purple-600 text-purple-700 font-extrabold"
+                        : "border-transparent text-gray-400 hover:text-gray-700"
+                    }`}
+                  >
+                    <Wallet size={13} />
+                    {t("المستحقات والخصومات", "Dues & Deductions")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("custody")}
+                    data-testid="tab-emp-custody"
+                    className={`flex items-center gap-1.5 pb-2 px-3 text-xs font-bold border-b-2 transition-all ${
+                      activeTab === "custody"
+                        ? "border-purple-600 text-purple-700 font-extrabold"
+                        : "border-transparent text-gray-400 hover:text-gray-700"
+                    }`}
+                  >
+                    <ArrowLeftRight size={13} />
+                    {t("عهدة الشيفتات", "Shift Custody")}
+                  </button>
+                </div>
+
+                {/* DUES TAB CONTENT */}
+                {activeTab === "dues" && (
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
+                      <div className="bg-blue-50 rounded-xl p-2.5 text-center">
+                        <p className="text-[10px] text-blue-600 font-semibold">{t("الراتب","Salary")}</p>
+                        <p className="font-mono font-bold text-blue-800 text-xs">{fmtH(selectedRow.monthlySalary)}</p>
+                      </div>
+                      <div className="bg-emerald-50 rounded-xl p-2.5 text-center">
+                        <p className="text-[10px] text-emerald-600 font-semibold">{t("إجمالي دائن","Total credit")}</p>
+                        <p className="font-mono font-bold text-emerald-800 text-xs">{fmtH(statement?.totalCredit ?? 0)}</p>
+                      </div>
+                      <div className="bg-red-50 rounded-xl p-2.5 text-center">
+                        <p className="text-[10px] text-red-600 font-semibold">{t("إجمالي مدين","Total debit")}</p>
+                        <p className="font-mono font-bold text-red-800 text-xs">{fmtH(statement?.totalDebit ?? 0)}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-2.5 text-center border-2 border-gray-200">
+                        <p className="text-[10px] text-gray-600 font-semibold">{t("الرصيد","Balance")}</p>
+                        <p className={`font-mono font-black text-sm ${balColor(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}`}>{fmtH(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}</p>
+                      </div>
+                    </div>
+                    {hasEmployeeDebitWarning(statement) && (
+                      <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+                        <AlertTriangle size={13} className="text-amber-600 flex-shrink-0"/>
+                        <p className="text-[11px] text-amber-800 font-semibold">{t("رصيد مدين مسجل في كشف الحساب للتسوية وفق سياسة المنشأة","Debit balance recorded on employee statement for settlement per company policy")}</p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* CUSTODY TAB HEADER / KPIS */}
+                {activeTab === "custody" && (
+                  <div className="space-y-3 mt-3">
+                    {custodyStatement?.identity_link_state === "unlinked" && (
+                      <div data-testid="custody-unlinked-state" className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2.5">
+                        <AlertTriangle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-bold text-xs text-amber-900">{t("الحساب غير مرتبط بعهدة شيفتات", "Account is not linked to shift custody")}</p>
+                          <p className="text-[11px] text-amber-700 mt-0.5">{t("الموظف ليس لديه حساب كاشير أو مدير فرع مرتبط؛ رصيد العهدة التشغيلية غير متاح.", "Employee has no linked cashier or branch manager account; operational shift custody is unavailable.")}</p>
+                        </div>
+                      </div>
+                    )}
+                    {isCustodyError && (
+                      <div data-testid="custody-error-state" className="p-3 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2.5">
+                        <AlertCircle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-bold text-xs text-red-900">{t("تعذر تحميل كشف عهدة الشيفتات", "Failed to load shift custody statement")}</p>
+                          <p className="text-[11px] text-red-700 mt-0.5">{t("يرجى المحاولة مرة أخرى لاحقاً.", "Please try again later.")}</p>
+                        </div>
+                      </div>
+                    )}
+                    {custodyStatement?.balances?.is_available && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div className="bg-gray-50 rounded-xl p-2.5 text-center border border-gray-200">
+                          <p className="text-[10px] text-gray-500 font-semibold">{t("رصيد أول المدة", "Opening Balance")}</p>
+                          <p data-testid="custody-opening-balance" className={`font-mono font-bold text-xs ${balColor(custodyStatement.balances.opening_balance ?? 0)}`}>
+                            {fmtH(custodyStatement.balances.opening_balance ?? 0)}
+                          </p>
+                        </div>
+                        <div className="bg-emerald-50 rounded-xl p-2.5 text-center border border-emerald-100">
+                          <p className="text-[10px] text-emerald-600 font-semibold">{t("إجمالي الوارد (نقد)", "Cash In")}</p>
+                          <p className="font-mono font-bold text-emerald-800 text-xs">
+                            {fmtH(custodyStatement.balances.total_cash_in ?? 0)}
+                          </p>
+                        </div>
+                        <div className="bg-red-50 rounded-xl p-2.5 text-center border border-red-100">
+                          <p className="text-[10px] text-red-600 font-semibold">{t("إجمالي الصادر (نقد)", "Cash Out")}</p>
+                          <p className="font-mono font-bold text-red-800 text-xs">
+                            {fmtH(custodyStatement.balances.total_cash_out ?? 0)}
+                          </p>
+                        </div>
+                        <div className="bg-purple-50 rounded-xl p-2.5 text-center border-2 border-purple-200">
+                          <p className="text-[10px] text-purple-700 font-bold">{t("رصيد آخر المدة", "Closing Balance")}</p>
+                          <p data-testid="custody-closing-balance" className={`font-mono font-black text-sm ${balColor(custodyStatement.balances.closing_balance ?? 0)}`}>
+                            {fmtH(custodyStatement.balances.closing_balance ?? 0)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {custodyStatement?.pending && custodyStatement.pending.length > 0 && (
+                      <div data-testid="custody-pending-section" className="p-3 bg-purple-50/70 border border-purple-200 rounded-xl space-y-2">
+                        <div className="flex items-center gap-2 text-purple-900 font-bold text-xs">
+                          <Clock size={14} className="text-purple-600" />
+                          <span>{t("طلبات تسليم معلقة خارج الرصيد", "Pending handover requests (outside balance)")} ({custodyStatement.pending.length})</span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {custodyStatement.pending.map(p => (
+                            <div key={p.request_id} data-testid="custody-pending-item" className="bg-white rounded-lg p-2.5 border border-purple-100 flex items-center justify-between text-xs">
+                              <div className="space-y-0.5">
+                                <span className="font-semibold text-gray-800">
+                                  {p.request_type === "handover_sent" ? t("تسليم بانتظار التأكيد", "Handover sent (pending)") : t("استلام بانتظار التأكيد", "Handover received (pending)")}
+                                </span>
+                                <p className="text-[10px] text-gray-400">
+                                  {p.counterparty.name ? `${t("الطرف المقابل", "Counterparty")}: ${p.counterparty.name}` : ""}
+                                  {p.source_shift_id ? ` · ${t("وردية", "Shift")}: ${p.source_shift_id.slice(0, 8)}` : ""}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <span className="font-mono font-bold text-amber-600">{fmtH(p.amount)}</span>
+                                <Badge className="block text-[9px] bg-amber-50 text-amber-700 border border-amber-200 mt-0.5">{t("معلق", "Pending")}</Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
-                  <div className="bg-blue-50 rounded-xl p-2.5 text-center">
-                    <p className="text-[10px] text-blue-600 font-semibold">{t("الراتب","Salary")}</p>
-                    <p className="font-mono font-bold text-blue-800 text-xs">{fmtH(selectedRow.monthlySalary)}</p>
-                  </div>
-                  <div className="bg-emerald-50 rounded-xl p-2.5 text-center">
-                    <p className="text-[10px] text-emerald-600 font-semibold">{t("إجمالي دائن","Total credit")}</p>
-                    <p className="font-mono font-bold text-emerald-800 text-xs">{fmtH(statement?.totalCredit ?? 0)}</p>
-                  </div>
-                  <div className="bg-red-50 rounded-xl p-2.5 text-center">
-                    <p className="text-[10px] text-red-600 font-semibold">{t("إجمالي مدين","Total debit")}</p>
-                    <p className="font-mono font-bold text-red-800 text-xs">{fmtH(statement?.totalDebit ?? 0)}</p>
-                  </div>
-                  <div className="bg-gray-50 rounded-xl p-2.5 text-center border-2 border-gray-200">
-                    <p className="text-[10px] text-gray-600 font-semibold">{t("الرصيد","Balance")}</p>
-                    <p className={`font-mono font-black text-sm ${balColor(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}`}>{fmtH(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}</p>
-                  </div>
-                </div>
-                {hasEmployeeDebitWarning(statement) && (
-                  <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
-                    <AlertTriangle size={13} className="text-amber-600 flex-shrink-0"/>
-                    <p className="text-[11px] text-amber-800 font-semibold">{t("رصيد مدين مسجل في كشف الحساب للتسوية وفق سياسة المنشأة","Debit balance recorded on employee statement for settlement per company policy")}</p>
-                  </div>
                 )}
               </div>
-              <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between gap-3">
-                <p className="font-bold text-gray-700 text-xs">{t("سجل الحركات المالية","Financial movements")}</p>
-                <div className="flex items-center gap-2">
-                  <input type="month" value={month} onChange={e=>setMonth(e.target.value)} className="text-[11px] border border-gray-200 rounded-lg px-2 py-1 focus:outline-none"/>
-                  {month && <button onClick={()=>setMonth("")} className="text-[10px] text-purple-600 hover:underline">{t("كل الفترات","All")}</button>}
-                  <button onClick={()=>selectedEmp&&exportStatementMut.mutate({ employeeId:selectedEmp, month:month||undefined })} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold hover:bg-emerald-100"><FileText size={10}/> Excel</button>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[500px] text-xs">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-3 py-2.5 text-right font-semibold text-gray-600">{t("التاريخ","Date")}</th>
-                      <th className="px-3 py-2.5 text-right font-semibold text-gray-600">{t("البيان","Description")}</th>
-                      <th className="px-3 py-2.5 text-center font-semibold text-gray-600">{t("المرجع","Ref")}</th>
-                      <th className="px-3 py-2.5 text-center font-semibold text-gray-600">{t("دائن","Credit")}</th>
-                      <th className="px-3 py-2.5 text-center font-semibold text-gray-600">{t("مدين","Debit")}</th>
-                      <th className="px-3 py-2.5 text-center font-semibold text-gray-600">{t("الرصيد","Balance")}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {(statement?.movements ?? []).length===0 && (
-                      <tr><td colSpan={6} className="text-center text-gray-400 py-6">{t("لا توجد حركات في هذه الفترة","No movements in this period")}</td></tr>
-                    )}
-                    {(statement?.movements ?? []).map(m=>(
-                      <tr key={m.id} className="hover:bg-gray-50">
-                        <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{new Date(m.movementDate).toLocaleDateString("ar-SA")}</td>
-                        <td className="px-3 py-3 font-medium text-gray-800">{m.description}<span className="block text-[9px] text-gray-400">{m.categoryLabelAr}</span></td>
-                        <td className="px-3 py-3 text-center font-mono text-gray-400 text-[10px]">{m.ref}</td>
-                        <td className="px-3 py-3 text-center font-mono font-bold text-emerald-600">{m.movementType==="credit"?fmtH(m.amountHalalas):"—"}</td>
-                        <td className="px-3 py-3 text-center font-mono font-bold text-red-600">{m.movementType==="debit"?fmtH(m.amountHalalas):"—"}</td>
-                        <td className={`px-3 py-3 text-center font-mono font-bold ${balColor(m.runningBalanceHalalas)}`}>{fmtH(m.runningBalanceHalalas)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-gray-50 border-t-2 border-gray-200">
-                    <tr>
-                      <td colSpan={2} className="px-3 py-2.5 font-bold text-gray-700">{month?t("رصيد أول المدة","Opening"):t("الرصيد الحالي","Current balance")}</td>
-                      <td className="px-3 py-2.5 text-center font-mono text-gray-500">{month?fmtH(statement?.openingBalanceHalalas ?? 0):""}</td>
-                      <td colSpan={2} className="px-3 py-2.5 font-bold text-gray-700 text-left">{t("رصيد آخر المدة","Closing")}</td>
-                      <td className={`px-3 py-2.5 text-center font-mono font-black ${balColor(statement?.closingBalanceHalalas ?? 0)}`}>{fmtH(statement?.closingBalanceHalalas ?? 0)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+
+              {/* DUES TAB TABLE */}
+              {activeTab === "dues" && (
+                <>
+                  <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between gap-3">
+                    <p className="font-bold text-gray-700 text-xs">{t("سجل الحركات المالية","Financial movements")}</p>
+                    <div className="flex items-center gap-2">
+                      <input type="month" value={month} onChange={e=>setMonth(e.target.value)} className="text-[11px] border border-gray-200 rounded-lg px-2 py-1 focus:outline-none"/>
+                      {month && <button onClick={()=>setMonth("")} className="text-[10px] text-purple-600 hover:underline">{t("كل الفترات","All")}</button>}
+                      <button onClick={()=>selectedEmp&&exportStatementMut.mutate({ employeeId:selectedEmp, month:month||undefined })} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold hover:bg-emerald-100"><FileText size={10}/> Excel</button>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[500px] text-xs">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2.5 text-right font-semibold text-gray-600">{t("التاريخ","Date")}</th>
+                          <th className="px-3 py-2.5 text-right font-semibold text-gray-600">{t("البيان","Description")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold text-gray-600">{t("المرجع","Ref")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold text-gray-600">{t("دائن","Credit")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold text-gray-600">{t("مدين","Debit")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold text-gray-600">{t("الرصيد","Balance")}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {(statement?.movements ?? []).length===0 && (
+                          <tr><td colSpan={6} className="text-center text-gray-400 py-6">{t("لا توجد حركات في هذه الفترة","No movements in this period")}</td></tr>
+                        )}
+                        {(statement?.movements ?? []).map(m=>(
+                          <tr key={m.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{new Date(m.movementDate).toLocaleDateString("ar-SA")}</td>
+                            <td className="px-3 py-3 font-medium text-gray-800">{m.description}<span className="block text-[9px] text-gray-400">{m.categoryLabelAr}</span></td>
+                            <td className="px-3 py-3 text-center font-mono text-gray-400 text-[10px]">{m.ref}</td>
+                            <td className="px-3 py-3 text-center font-mono font-bold text-emerald-600">{m.movementType==="credit"?fmtH(m.amountHalalas):"—"}</td>
+                            <td className="px-3 py-3 text-center font-mono font-bold text-red-600">{m.movementType==="debit"?fmtH(m.amountHalalas):"—"}</td>
+                            <td className={`px-3 py-3 text-center font-mono font-bold ${balColor(m.runningBalanceHalalas)}`}>{fmtH(m.runningBalanceHalalas)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+                        <tr>
+                          <td colSpan={2} className="px-3 py-2.5 font-bold text-gray-700">{month?t("رصيد أول المدة","Opening"):t("الرصيد الحالي","Current balance")}</td>
+                          <td className="px-3 py-2.5 text-center font-mono text-gray-500">{month?fmtH(statement?.openingBalanceHalalas ?? 0):""}</td>
+                          <td colSpan={2} className="px-3 py-2.5 font-bold text-gray-700 text-left">{t("رصيد آخر المدة","Closing")}</td>
+                          <td className={`px-3 py-2.5 text-center font-mono font-black ${balColor(statement?.closingBalanceHalalas ?? 0)}`}>{fmtH(statement?.closingBalanceHalalas ?? 0)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {/* CUSTODY TAB TABLE */}
+              {activeTab === "custody" && (
+                <>
+                  <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-center justify-between gap-3">
+                    <p className="font-bold text-gray-700 text-xs flex items-center gap-1.5">
+                      <ArrowLeftRight size={13} className="text-purple-600" />
+                      <span>{t("سجل حركات عهدة النقد", "Shift Cash Custody Movements")}</span>
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-1 text-[11px] text-gray-500">
+                        <span>{t("من", "From")}:</span>
+                        <input type="date" value={custodyFrom} onChange={e => { setCustodyFrom(e.target.value); setCustodyPage(1); }} className="text-[11px] border border-gray-200 rounded px-1.5 py-0.5 bg-white outline-none" />
+                      </div>
+                      <div className="flex items-center gap-1 text-[11px] text-gray-500">
+                        <span>{t("إلى", "To")}:</span>
+                        <input type="date" value={custodyTo} onChange={e => { setCustodyTo(e.target.value); setCustodyPage(1); }} className="text-[11px] border border-gray-200 rounded px-1.5 py-0.5 bg-white outline-none" />
+                      </div>
+                      {(custodyFrom || custodyTo) && (
+                        <button type="button" onClick={() => { setCustodyFrom(""); setCustodyTo(""); setCustodyPage(1); }} className="text-[10px] text-purple-600 hover:underline">
+                          {t("إعادة ضبط", "Reset")}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[650px] text-xs">
+                      <thead className="bg-gray-50 text-gray-600">
+                        <tr>
+                          <th className="px-3 py-2.5 text-right font-semibold">{t("تاريخ العمل / الوقت", "Date / Event At")}</th>
+                          <th className="px-3 py-2.5 text-right font-semibold">{t("نوع الحركة والبيان", "Description & Type")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold">{t("الإيصال / المرجع", "Receipt / Ref")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold">{t("الطرف المقابل", "Counterparty")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold">{t("وارد (نقد)", "Cash In")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold">{t("صادر (نقد)", "Cash Out")}</th>
+                          <th className="px-3 py-2.5 text-center font-semibold">{t("الرصيد", "Balance")}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {isCustodyLoading && (
+                          <tr><td colSpan={7} className="text-center text-gray-400 py-8">{t("جارٍ تحميل كشف العهدة…", "Loading custody statement…")}</td></tr>
+                        )}
+                        {!isCustodyLoading && (custodyStatement?.entries ?? []).length === 0 && (
+                          <tr><td colSpan={7} className="text-center text-gray-400 py-8" data-testid="custody-empty-state">
+                            {custodyStatement?.identity_link_state === "unlinked"
+                              ? t("الحساب غير مرتبط بعهدة شيفتات", "Account is not linked to shift custody")
+                              : t("لا توجد حركات عهدة شيفتات في هذه الفترة", "No shift custody movements in this period")}
+                          </td></tr>
+                        )}
+                        {!isCustodyLoading && (custodyStatement?.entries ?? []).map(entry => (
+                          <tr key={entry.source_id} data-testid="custody-entry-row" className="hover:bg-gray-50">
+                            <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
+                              {(() => {
+                                const postDate = entry.event_at ? entry.event_at.slice(0, 10) : "";
+                                const postTime = entry.event_at ? new Date(entry.event_at).toLocaleTimeString(dir === "rtl" ? "ar-SA" : "en-US", { hour: "2-digit", minute: "2-digit" }) : "";
+                                const isDiff = Boolean(entry.business_date && postDate && entry.business_date !== postDate);
+                                return (
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-semibold text-gray-800" data-testid="custody-entry-business-date">{entry.business_date ?? postDate}</span>
+                                      {isDiff && (
+                                        <span data-testid="late-posting-badge" className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold border border-amber-200">
+                                          {t("ترحيل متأخر", "Late post")}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="block text-[10px] text-gray-400 font-mono" data-testid="custody-entry-posting-time">
+                                      {t("الترحيل", "Posted")}: {postDate} {postTime}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
+                            </td>
+                            <td className="px-3 py-3 font-medium text-gray-800">
+                              <span>{entry.label_ar}</span>
+                              <span className="block text-[10px] text-gray-400">{entry.label_en} · {entry.transaction_type}</span>
+                              {entry.source_shift_id && (
+                                <span className="block text-[9px] text-gray-400">
+                                  {t("وردية المصدر", "Source shift")}: {entry.source_shift_id.slice(0, 8)}
+                                  {entry.receiving_shift_id && ` → ${t("المستلم", "Recv")}: ${entry.receiving_shift_id.slice(0, 8)}`}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-center font-mono text-gray-500 text-[10px]">
+                              {entry.receipt_id ? (
+                                <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                  {entry.receipt_id.slice(0, 8)}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                              {entry.reversal_id && (
+                                <span className="block text-[9px] text-amber-600 mt-0.5 font-sans">{t("حركة عكس", "Reversal")}</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-center text-gray-700">
+                              {entry.counterparty.name ? (
+                                <span className="font-semibold text-xs">{entry.counterparty.name}</span>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-center font-mono font-bold text-emerald-600">
+                              {entry.cash_in > 0 ? fmtH(entry.cash_in) : "—"}
+                            </td>
+                            <td className="px-3 py-3 text-center font-mono font-bold text-red-600">
+                              {entry.cash_out > 0 ? fmtH(entry.cash_out) : "—"}
+                            </td>
+                            <td className={`px-3 py-3 text-center font-mono font-bold ${balColor(entry.running_balance)}`}>
+                              {fmtH(entry.running_balance)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {custodyStatement && custodyStatement.pagination.totalPages > 1 && (
+                    <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between text-xs">
+                      <button
+                        type="button"
+                        disabled={custodyPage <= 1}
+                        onClick={() => setCustodyPage(p => Math.max(1, p - 1))}
+                        className="px-2.5 py-1 rounded border border-gray-200 bg-white text-gray-700 font-semibold disabled:opacity-40 hover:bg-gray-100"
+                      >
+                        {t("السابق", "Previous")}
+                      </button>
+                      <span className="text-gray-500 font-medium text-[11px]">
+                        {t("صفحة", "Page")} {custodyStatement.pagination.page} {t("من", "of")} {custodyStatement.pagination.totalPages} ({custodyStatement.pagination.total} {t("حركة", "records")})
+                      </span>
+                      <button
+                        type="button"
+                        disabled={custodyPage >= custodyStatement.pagination.totalPages}
+                        onClick={() => setCustodyPage(p => p + 1)}
+                        className="px-2.5 py-1 rounded border border-gray-200 bg-white text-gray-700 font-semibold disabled:opacity-40 hover:bg-gray-100"
+                      >
+                        {t("التالي", "Next")}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>
@@ -8202,14 +8641,16 @@ type SharedOpsProps = {
 };
 
 function AccountantRoot({ page, navigate, ops, approve, reject, requestClarification, bulkApprove, shiftReviewPage, setShiftReviewPage }:{ page:string; navigate:(p:string)=>void } & SharedOpsProps) {
+  const [selectedShiftTarget, setSelectedShiftTarget] = useState<{ shiftId: string; opId?: string } | null>(null);
+
   if(page==="acc-dashboard")  return <AccDashboard navigate={navigate} ops={ops}/>;
-  if(page==="acc-sales")      return <AccCompanySales ops={ops} approve={approve} reject={reject} requestClarification={requestClarification} bulkApprove={bulkApprove}/>;
+  if(page==="acc-sales")      return <AccCompanySales ops={ops} approve={approve} reject={reject} requestClarification={requestClarification} bulkApprove={bulkApprove} onOpenReport={(shiftId, opId) => { setSelectedShiftTarget({ shiftId, opId }); navigate("acc-shifts"); }}/>;
   if(page==="acc-expenses")   return <AccCompanyExpenses ops={ops} approve={approve} reject={reject} bulkApprove={bulkApprove}/>;
   if(page==="acc-purchases")  return <AccCompanyPurchases ops={ops} approve={approve} reject={reject} bulkApprove={bulkApprove} requestClarification={requestClarification}/>;
   if(page==="acc-inventory")  return <AccCompanyInventory navigate={navigate} ops={ops} approve={approve} reject={reject}/>;
   if(page==="acc-waste")      return <AccCompanyWaste/>;
   if(page==="acc-assets")     return <AccCompanyAssets/>;
-  if(page==="acc-shifts")     return <AccCompanyShifts approve={approve} reject={reject} requestClarification={requestClarification} page={shiftReviewPage} setPage={setShiftReviewPage}/>;
+  if(page==="acc-shifts")     return <AccCompanyShifts approve={approve} reject={reject} requestClarification={requestClarification} page={shiftReviewPage} setPage={setShiftReviewPage} selectedShiftTarget={selectedShiftTarget} onClearSelectedShift={() => setSelectedShiftTarget(null)}/>;
   if(page==="acc-employees")  return <AccCompanyEmployees/>;
   if(page==="acc-cash")       return <AccCompanyCash/>;
   if(page==="acc-reminders")  return <AccCompanyReminders/>;

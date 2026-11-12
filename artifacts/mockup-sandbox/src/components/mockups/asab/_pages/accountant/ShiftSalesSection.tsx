@@ -15,6 +15,13 @@ import {
   getShiftCountEvidence,
   getShiftStatusDisplay,
 } from "../../shiftCountEvidence";
+import { ShiftReconciliationSummaryView } from "../../ShiftReconciliationSummary.tsx";
+import { ShiftReportCorrectionForm } from "../../CompanyDashboard.tsx";
+import {
+  getShiftCorrectionEvidence,
+  getShiftCorrectionIneligibilityReason,
+} from "../../shiftReportCorrection";
+import { apiOpToCOp } from "../../operationMapping";
 
 const dateFormats = {
   ar: new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-arab", {
@@ -72,9 +79,11 @@ function ShiftField({
 function ShiftSalesDetails({
   shift,
   operationId,
+  onOpenReport,
 }: {
   shift: Shift;
   operationId?: string;
+  onOpenReport?: (shiftId: string, operationId?: string) => void;
 }) {
   const { lang, t } = useLang();
   const reportQuery = useOperation(operationId);
@@ -91,6 +100,9 @@ function ShiftSalesDetails({
 
   return (
     <div className="space-y-4 border-t border-gray-100 bg-gray-50/80 p-4">
+      {/* Shared Reconciliation Summary Component (Requirement G1.1 & G1.2) */}
+      <ShiftReconciliationSummaryView source={report ?? shift} className="mb-4" />
+
       <dl className="grid grid-cols-1 gap-4 min-[400px]:grid-cols-2 lg:grid-cols-4">
         <ShiftField label={t("النقد المجرود", "Counted cash")}>
           {shift.cashCountState === "unknown" ? (
@@ -192,6 +204,56 @@ function ShiftSalesDetails({
           </ul>
         </div>
       ) : null}
+
+      {/* Requirement G1.3: Open full shift report / reuse ShiftReportCorrectionForm or display clear ineligibility reason */}
+      {report && (
+        <div className="space-y-3 pt-3 border-t border-gray-200">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-xs font-bold text-gray-900">
+              {t("إجراءات المحاسب وتصحيح التقرير", "Accountant Actions & Report Correction")}
+            </h4>
+            {onOpenReport && (
+              <button
+                type="button"
+                onClick={() => onOpenReport(shift.id, report.id)}
+                className="rounded-lg bg-purple-50 border border-purple-200 px-2.5 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-100"
+              >
+                {t("عرض في صفحة التقارير الكاملة ↗", "View in full reports page ↗")}
+              </button>
+            )}
+          </div>
+          {getShiftCorrectionEvidence(apiOpToCOp(report), report, "accountant") ? (
+            <ShiftReportCorrectionForm op={apiOpToCOp(report)} detail={report} />
+          ) : (
+            <div className="rounded-lg bg-amber-50/80 border border-amber-200 p-2.5 text-xs text-amber-800">
+              <span className="font-semibold block mb-0.5">
+                {t("أهلية تصحيح التقرير:", "Correction eligibility:")}
+              </span>
+              <p>
+                {getShiftCorrectionIneligibilityReason(
+                  apiOpToCOp(report),
+                  report,
+                  "accountant",
+                  lang,
+                )}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+      {!report && operationId && !reportQuery.isPending && (
+        <div className="rounded-lg bg-amber-50/60 border border-amber-200 p-2.5 text-xs text-amber-800">
+          <span className="font-semibold block mb-0.5">
+            {t("أهلية تصحيح التقرير:", "Correction eligibility:")}
+          </span>
+          <p>
+            {t(
+              "تقرير الوردية غير متاح للمراجعة والتصحيح بعد.",
+              "Shift report is not available for review and correction yet.",
+            )}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -201,11 +263,13 @@ function ShiftSalesRow({
   linkedOperation,
   expanded,
   toggle,
+  onOpenReport,
 }: {
   shift: Shift;
   linkedOperation?: Op;
   expanded: boolean;
   toggle: () => void;
+  onOpenReport?: (shiftId: string, operationId?: string) => void;
 }) {
   const { lang, t } = useLang();
   const detailId = useId();
@@ -271,7 +335,11 @@ function ShiftSalesRow({
       </div>
       <div id={detailId} hidden={!expanded}>
         {expanded && (
-          <ShiftSalesDetails shift={shift} operationId={operationId} />
+          <ShiftSalesDetails
+            shift={shift}
+            operationId={operationId}
+            onOpenReport={onOpenReport}
+          />
         )}
       </div>
     </li>
@@ -280,20 +348,110 @@ function ShiftSalesRow({
 
 export function ShiftSalesSection({
   operations,
+  filterBranch,
+  filterStatus,
+  filterDate,
+  filterSearch,
+  onOpenReport,
 }: {
   operations: readonly Op[];
+  filterBranch?: string;
+  filterStatus?: string;
+  filterDate?: string;
+  filterSearch?: string;
+  onOpenReport?: (shiftId: string, operationId?: string) => void;
 }) {
   const { lang, t } = useLang();
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const history = useShiftsHistory({ page, pageSize: 5 });
-  const shifts =
-    history.data?.data.filter(
-      (shift) => !shift.role || shift.role === "cashier",
-    ) ?? [];
+
+  // MT-20: Reset page to 1 when any filter changes so pagination starts fresh
+  const filterKey = `${filterBranch ?? ""}|${filterStatus ?? ""}|${filterDate ?? ""}|${filterSearch ?? ""}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
+    setPage(1);
+    setExpandedId(null);
+  }
+
+  const historyStatus =
+    filterStatus === "pending"
+      ? ("pending_review" as const)
+      : filterStatus === "approved" || filterStatus === "final-approved"
+      ? ("closed" as const)
+      : filterStatus === "rejected"
+      ? ("rejected" as const)
+      : undefined;
+
+  // MT-20: Apply branch, date, status, and cashier-only scope on the query BEFORE pagination
+  const history = useShiftsHistory(
+    {
+      page,
+      pageSize: 5,
+      branchId: filterBranch || undefined,
+      status: historyStatus,
+      dateFrom: filterDate || undefined,
+      dateTo: filterDate || undefined,
+      search: filterSearch || undefined,
+      role: "cashier",
+    },
+    { allowStatus: true, allowRole: true },
+  );
+
+  // Backend filters cashier role, branch, date, and status prior to pagination.
+  // Safety filter retains fallback compliance if mock/offline data is unpaginated.
+  const rawShifts = history.data?.data ?? [];
+  const shifts = rawShifts.filter((shift) => {
+    if (shift.role && shift.role !== "cashier") return false;
+    if (filterBranch && shift.branchId && shift.branchId !== filterBranch) return false;
+    if (filterDate) {
+      const sDate = (shift.startedAt ?? "").slice(0, 10);
+      const eDate = (shift.endedAt ?? "").slice(0, 10);
+      if (sDate !== filterDate && eDate !== filterDate) return false;
+    }
+    if (filterStatus && filterStatus !== "all") {
+      const st = String(shift.status);
+      if (
+        filterStatus === "pending" &&
+        st !== "pending_review" &&
+        st !== "pending"
+      ) {
+        return false;
+      }
+      if (
+        (filterStatus === "approved" || filterStatus === "final-approved") &&
+        st !== "closed" &&
+        st !== "approved"
+      ) {
+        return false;
+      }
+      if (
+        filterStatus === "rejected" &&
+        st !== "rejected"
+      ) {
+        return false;
+      }
+      if (
+        filterStatus !== "pending" &&
+        filterStatus !== "approved" &&
+        filterStatus !== "final-approved" &&
+        filterStatus !== "rejected" &&
+        st !== filterStatus
+      ) {
+        return false;
+      }
+    }
+    return true;
+  });
+
   const meta = history.data?.meta;
   const prev = historyPageTarget(meta, page, -1);
   const next = historyPageTarget(meta, page, 1);
+
+  const pageSalesHalalas = shifts.reduce(
+    (sum, s) => sum + (typeof s.salesHalalas === "number" ? s.salesHalalas : 0),
+    0,
+  );
 
   function changePage(target: number) {
     setExpandedId(null);
@@ -302,13 +460,52 @@ export function ShiftSalesSection({
 
   return (
     <Card title={t("مبيعات الورديات", "Shift sales")}>
-      <div className="space-y-3 p-4 sm:p-5">
+      <div className="space-y-4 p-4 sm:p-5">
         <p className="text-sm text-gray-600">
           {t(
             "الورديات المقفلة من السجل التاريخي. الأوقات بتوقيت السعودية.",
             "Closed shifts from shift history. All times are shown in Saudi local time.",
           )}
         </p>
+
+        {/* Distinct shift reports counters (Requirement G1.4: never present page totals as global totals; no double counting) */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-purple-100 bg-purple-50/50 p-3">
+            <span className="block text-xs font-medium text-purple-700">
+              {t("تقارير الورديات (كاشير)", "Shift Reports (Cashier)")}
+            </span>
+            <span className="mt-1 block text-lg font-bold text-purple-950 font-mono">
+              {displayDigits(String(meta?.total ?? shifts.length), lang)}
+            </span>
+            <span className="mt-0.5 block text-[11px] text-purple-600">
+              {t("العدد الإجمالي المطابق للفلاتر", "Total matching filters")}
+            </span>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-3">
+            <span className="block text-xs font-medium text-gray-700">
+              {t("ورديات الصفحة المعروضة", "Shifts on This Page")}
+            </span>
+            <span className="mt-1 block text-lg font-bold text-gray-900 font-mono">
+              {displayDigits(String(shifts.length), lang)}
+            </span>
+            <span className="mt-0.5 block text-[11px] text-gray-500">
+              {t("معروضة حالياً في هذا الجدول", "Currently shown in table")}
+            </span>
+          </div>
+
+          <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3">
+            <span className="block text-xs font-medium text-amber-800">
+              {t("مبيعات الصفحة الحالية فقط", "Current Page Sales Only")}
+            </span>
+            <span className="mt-1 block text-lg font-bold text-amber-950 font-mono">
+              <bdi>{formatShiftHalalas(pageSalesHalalas, lang)}</bdi> {t("ر.س", "SAR")}
+            </span>
+            <span className="mt-0.5 block text-[11px] text-amber-700 font-medium">
+              {t("تنبيه: مجموع هذه الصفحة فقط (لا يمثل إجمالي مبيعات كلي)", "Notice: page sum only (not a global sales total)")}
+            </span>
+          </div>
+        </div>
         {history.isPending && (
           <p role="status" className="text-sm text-gray-500">
             {t("جارٍ تحميل الورديات…", "Loading shifts…")}
@@ -366,6 +563,7 @@ export function ShiftSalesSection({
                   toggle={() =>
                     setExpandedId((id) => (id === shift.id ? null : shift.id))
                   }
+                  onOpenReport={onOpenReport}
                 />
               );
             })}

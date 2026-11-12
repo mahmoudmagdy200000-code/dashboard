@@ -3,7 +3,7 @@ import type { Op, Filters, ModuleKey, PageId } from "./types";
 export function applyFilters(ops: Op[], f: Filters, moduleKey?: ModuleKey): Op[] {
   return ops.filter(op => {
     if (moduleKey && op.moduleKey !== moduleKey) return false;
-    if (f.branch && op.branch !== f.branch) return false;
+    if (f.branch && op.branch !== f.branch && op.branchId !== f.branch) return false;
     if (f.status && op.status !== f.status) return false;
     if (f.match && op.match !== f.match) return false;
     if (f.search && !op.branch.includes(f.search) && !op.id.includes(f.search) && !op.moduleLabel.includes(f.search) && !(op.supplierName ?? "").includes(f.search) && !(op.brandName ?? "").includes(f.search)) return false;

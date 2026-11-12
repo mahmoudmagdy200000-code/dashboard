@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -18,6 +18,7 @@ import {
   useSalesDayCompleteness,
   useSalesKpis,
 } from "../../../../../api/queries";
+import { useShiftConfigs, historyBranchOptions } from "../../../../../api/queries/shifts";
 import { salesBulkApprovalIds } from "../../salesActionGuards";
 import { KpiCard } from "../../components/KpiCard";
 import { Card } from "../../components/Card";
@@ -28,7 +29,6 @@ import { fmtAmt, opDetailPage } from "../../_shared/formatters";
 import { STATUS_CFG, EN_STATUS_CFG } from "../../_shared/displayConfig";
 import {
   applyFilters,
-  BRANCHES,
   brandOptionsFromOps,
 } from "../../_shared/filterOps";
 import { OpRow } from "../../_shared/OpRow";
@@ -57,6 +57,22 @@ export function AccSalesPage({
   const [brand, setBrand] = useState("");
   const [selectedDay, setSelectedDay] = useState("all");
 
+  // Accountant branch options from permissions & shift configs (MT-20)
+  const { data: historyBranchConfigs = [] } = useShiftConfigs("branch");
+  const historyBranches = historyBranchOptions(historyBranchConfigs);
+  const branchOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const b of historyBranches) {
+      if (b.id && !map.has(b.id)) map.set(b.id, b.name);
+    }
+    for (const op of ops) {
+      if (op.branchId && !map.has(op.branchId)) {
+        map.set(op.branchId, op.branch || op.branchId);
+      }
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [historyBranches, ops]);
+
   // Live day-completeness pills (T04 §3) + sales KPIs (T04 §2).
   const { data: dayRows = [] } = useSalesDayCompleteness(7);
   const salesDate = selectedDay !== "all" ? selectedDay : undefined;
@@ -65,7 +81,6 @@ export function AccSalesPage({
 
   const brandOpts = brandOptionsFromOps(ops);
   const mOps = ops.filter((o) => o.moduleKey === "sales");
-  const pending = mOps.filter((o) => o.status === "pending");
   const queryClient = useQueryClient();
   const filtered = applyFilters(ops, filters, "sales")
     .filter(
@@ -73,6 +88,33 @@ export function AccSalesPage({
     )
     .filter((o) => !brand || o.brandId === brand);
   const filteredPending = filtered.filter((o) => o.status === "pending");
+
+  // MT-20: Scope sales operations counters to the same date, branch, and status filters as the table
+  const baseScopedOps = mOps
+    .filter((o) => !filters.branch || o.branchId === filters.branch || o.branch === filters.branch)
+    .filter((o) => !salesDate || (o.operationDate ?? "").slice(0, 10) === salesDate)
+    .filter((o) => !brand || o.brandId === brand)
+    .filter((o) => {
+      if (!filters.search) return true;
+      const q = filters.search.toLowerCase();
+      return (
+        (o.branch ?? "").toLowerCase().includes(q) ||
+        (o.id ?? "").toLowerCase().includes(q)
+      );
+    });
+
+  const isStatusFiltered = Boolean(filters.status && filters.status !== "all");
+  const salesOpsTotal = isStatusFiltered ? filtered.length : baseScopedOps.length;
+  const salesOpsPending = isStatusFiltered
+    ? filtered.filter((o) => o.status === "pending").length
+    : baseScopedOps.filter((o) => o.status === "pending").length;
+  const salesOpsApproved = isStatusFiltered
+    ? filtered.filter((o) => o.status === "approved" || o.status === "final-approved").length
+    : baseScopedOps.filter((o) => o.status === "approved" || o.status === "final-approved").length;
+  const salesOpsRejected = isStatusFiltered
+    ? filtered.filter((o) => o.status === "rejected").length
+    : baseScopedOps.filter((o) => o.status === "rejected").length;
+
   const bulkSalesIds = salesBulkApprovalIds(
     filtered,
     filteredPending.map((op) => op.id),
@@ -88,10 +130,10 @@ export function AccSalesPage({
             {t("موديول المبيعات", "Sales Module")}
           </h2>
           <p className="text-gray-400 text-sm mt-0.5">
-            {pending.length}{" "}
+            {salesOpsPending}{" "}
             {t(
-              "بيان معلق بانتظار مراجعتك",
-              "pending entries awaiting your review",
+              "بيان معلق بانتظار مراجعتك (ضمن النطاق المحدد)",
+              "pending entries awaiting your review (within active scope)",
             )}
           </p>
         </div>
@@ -108,34 +150,34 @@ export function AccSalesPage({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard
-          label={t("إجمالي البيانات المرفوعة", "Total Uploaded")}
-          value={String(mOps.length)}
-          sub={t("كل الحالات", "All statuses")}
+          label={t("عمليات المبيعات — الإجمالي", "Sales Operations — Total")}
+          value={String(salesOpsTotal)}
+          sub={
+            isStatusFiltered
+              ? t("مطابق لفلاتر التاريخ والفرع والحالة", "Matching date, branch, and status filters")
+              : t("مطابق لفلاتر التاريخ والفرع", "Matching date and branch filters")
+          }
           icon={<FileText size={18} className="text-purple-600" />}
           accent="purple"
         />
         <KpiCard
-          label={t("قيد المراجعة", "Under Review")}
-          value={String(pending.length)}
-          sub={t("رُفعت من الفروع", "Uploaded from branches")}
+          label={t("عمليات المبيعات — قيد المراجعة", "Sales Operations — Under Review")}
+          value={String(salesOpsPending)}
+          sub={t("عمليات رُفعت من الفروع في هذا النطاق", "Operations uploaded from branches in this scope")}
           icon={<Clock size={18} className="text-amber-600" />}
           accent="amber"
         />
         <KpiCard
-          label={t("تمت الموافقة", "Approved")}
-          value={String(
-            mOps.filter(
-              (o) => o.status === "approved" || o.status === "final-approved",
-            ).length,
-          )}
-          sub={t("موافق + معتمد نهائياً", "Approved + Final-approved")}
+          label={t("عمليات المبيعات — تمت الموافقة", "Sales Operations — Approved")}
+          value={String(salesOpsApproved)}
+          sub={t("موافق + معتمد نهائياً في هذا النطاق", "Approved + Final-approved in this scope")}
           icon={<CheckCircle2 size={18} className="text-sky-600" />}
           accent="blue"
         />
         <KpiCard
-          label={t("مرفوضة", "Rejected")}
-          value={String(mOps.filter((o) => o.status === "rejected").length)}
-          sub={t("تحتاج إعادة رفع", "Needs re-upload")}
+          label={t("عمليات المبيعات — مرفوضة / مُعادة", "Sales Operations — Rejected / Returned")}
+          value={String(salesOpsRejected)}
+          sub={t("تحتاج إعادة رفع أو تصحيح في هذا النطاق", "Needs re-upload or correction in this scope")}
           icon={<XCircle size={18} className="text-red-600" />}
           accent="red"
         />
@@ -210,7 +252,22 @@ export function AccSalesPage({
         </div>
       )}
 
-      <ShiftSalesSection operations={ops} />
+      <ShiftSalesSection
+        operations={ops}
+        filterBranch={filters.branch}
+        filterStatus={filters.status}
+        filterDate={salesDate}
+        filterSearch={filters.search}
+        onOpenReport={(shiftId, opId) => {
+          if (opId) {
+            setDetailId(opId);
+            navigate(opDetailPage("shifts") as PageId);
+          } else if (shiftId) {
+            setDetailId(shiftId);
+            navigate(opDetailPage("shifts") as PageId);
+          }
+        }}
+      />
 
       <div
         className="bg-white rounded-xl border border-gray-100 shadow-sm p-4"
@@ -226,15 +283,15 @@ export function AccSalesPage({
               onChange={(e) =>
                 setFilters((p) => ({
                   ...p,
-                  branch:
-                    e.target.value === t("الكل", "All") ? "" : e.target.value,
+                  branch: e.target.value,
                 }))
               }
               className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2"
             >
-              {[t("الكل", "All"), ...BRANCHES].map((b) => (
-                <option key={b} value={b === t("الكل", "All") ? "" : b}>
-                  {b}
+              <option value="">{t("الكل", "All")}</option>
+              {branchOptions.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
                 </option>
               ))}
             </select>

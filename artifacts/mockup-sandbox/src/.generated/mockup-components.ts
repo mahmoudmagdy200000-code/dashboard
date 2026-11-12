@@ -19,6 +19,7 @@ export const modules: ModuleMap = {
   "./components/mockups/asab/ReportsManager.tsx": () => import("../components/mockups/asab/ReportsManager.tsx"),
   "./components/mockups/asab/SalesModule.tsx": () => import("../components/mockups/asab/SalesModule.tsx"),
   "./components/mockups/asab/SalesOperationDetail.tsx": () => import("../components/mockups/asab/SalesOperationDetail.tsx"),
+  "./components/mockups/asab/ShiftReconciliationSummary.tsx": () => import("../components/mockups/asab/ShiftReconciliationSummary.tsx"),
   "./components/mockups/asab/ShiftsModule.tsx": () => import("../components/mockups/asab/ShiftsModule.tsx"),
   "./components/mockups/asab/SupplierDashboard.tsx": () => import("../components/mockups/asab/SupplierDashboard.tsx"),
   "./components/mockups/asab/components/Badge.tsx": () => import("../components/mockups/asab/components/Badge.tsx"),

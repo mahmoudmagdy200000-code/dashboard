@@ -99,6 +99,68 @@ export function getShiftCorrectionEvidence(
   return { shiftId: payload.shiftId.trim(), reportRevision, allocationVersion };
 }
 
+export function getShiftCorrectionIneligibilityReason(
+  operation: ShiftCorrectionOperation | undefined,
+  detail: ShiftCorrectionOperation | undefined,
+  role: string | null | undefined,
+  language: "ar" | "en" = "ar"
+): string | null {
+  if (getShiftCorrectionEvidence(operation, detail, role)) return null;
+
+  if (role !== "accountant") {
+    return language === "ar"
+      ? "التصحيح متاح فقط لحساب المحاسب المصرح له"
+      : "Correction is only available to authorized accountants";
+  }
+  if (!operation || !detail || !operation.id || detail.id !== operation.id) {
+    return language === "ar"
+      ? "بيانات العملية غير مكتملة أو غير محملة"
+      : "Operation data is incomplete or not loaded";
+  }
+  if ((operation.moduleKey ?? operation.module) !== "shifts" || (detail.moduleKey ?? detail.module) !== "shifts") {
+    return language === "ar"
+      ? "العملية ليست تقرير وردية شفت"
+      : "Operation is not a shift report";
+  }
+  if (operation.status !== "pending" || detail.status !== "pending") {
+    const st = operation.status ?? detail.status ?? "unknown";
+    return language === "ar"
+      ? `حالة التقرير ليست معلقة (الحالة الحالية: ${st})`
+      : `Report status is not pending (current status: ${st})`;
+  }
+  if (!reviewAllowsCorrection(operation.reportReview) || !reviewAllowsCorrection(detail.reportReview)
+    || !reviewAllowsCorrection(detail.payload?.pkg6Review)) {
+    const rawRev = (detail.payload?.pkg6Review ?? detail.reportReview) as Record<string, unknown> | undefined;
+    const phase = typeof rawRev?.phase === "string" ? rawRev.phase : "غير محدد";
+    return language === "ar"
+      ? `مرحلة مراجعة التقرير ليست عند المحاسب (المرحلة الحالية: ${phase})`
+      : `Report review stage is not with accountant (current stage: ${phase})`;
+  }
+  const payload = detail.payload;
+  if (typeof payload?.shiftId !== "string" || !payload.shiftId.trim()) {
+    return language === "ar"
+      ? "معرّف الوردية غير متاح في بيانات التقرير"
+      : "Shift ID is unavailable in report data";
+  }
+  const reportRevision = readConsistentVersion([detail.reportRevision, payload.reportRevision], true);
+  if (!isPositiveVersion(reportRevision)) {
+    return language === "ar"
+      ? "رقم نسخة التقرير (revision) غير متسق أو مفقود"
+      : "Report revision is inconsistent or missing";
+  }
+  const hasLiability = detail.liability != null;
+  const allocationVersion = readConsistentVersion(
+    [detail.allocationVersion, payload.allocationVersion, detail.liability?.version], hasLiability,
+  );
+  if (allocationVersion === undefined || (hasLiability && !isPositiveVersion(allocationVersion))
+    || (!hasLiability && allocationVersion !== null)) {
+    return language === "ar"
+      ? "نسخة توزيع المسؤولية (allocation version) غير متسقة أو مفقودة"
+      : "Allocation version is inconsistent or missing";
+  }
+  return language === "ar" ? "التقرير غير مؤهل للتصحيح حالياً" : "Report is currently ineligible for correction";
+}
+
 function halalasToSar(value: unknown): string | null {
   if (!isSafeHalalas(value)) return null;
   const amount = BigInt(value);
