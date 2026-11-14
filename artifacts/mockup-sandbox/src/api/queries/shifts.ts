@@ -107,6 +107,43 @@ export function useShiftsHistory(
   });
 }
 
+export async function loadEmployeeClosedShifts(
+  employeeId: string,
+  branchId: string,
+  loadPage: (page: number) => Promise<Page<Shift>>,
+) {
+  const matches = new Map<string, Shift>();
+  for (let page = 1; ; page++) {
+    const { data, meta } = await loadPage(page);
+    if (meta.page !== page || !Number.isSafeInteger(meta.totalPages) || meta.totalPages < 0) {
+      throw new Error("Invalid shift history pagination");
+    }
+    for (const shift of data) {
+      if (shift.cashierEmployeeId === employeeId && shift.branchId === branchId
+        && shift.role === "cashier" && shift.endedAt
+        && (shift.status === "pending_review" || shift.status === "closed")) {
+        matches.set(shift.id, shift);
+      }
+    }
+    if (page >= meta.totalPages) return [...matches.values()];
+    if (!data.length) throw new Error("Missing shift history page");
+  }
+}
+
+export function useEmployeeClosedShifts(employeeId: string, branchId: string) {
+  return useQuery({
+    queryKey: ["shifts", "employee-closed", employeeId, branchId],
+    enabled: Boolean(employeeId && branchId),
+    refetchInterval: 15_000,
+    queryFn: ({ signal }) => loadEmployeeClosedShifts(employeeId, branchId, async page => {
+      const response = await api.get<Page<Shift>>("/accountant/shifts/history", {
+        params: { branchId, role: "cashier", pageSize: 100, page }, signal,
+      });
+      return response.data;
+    }),
+  });
+}
+
 export async function summarizeCashierShiftSales(
   loadPage: (page: number) => Promise<Page<Shift>>,
 ) {

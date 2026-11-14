@@ -14,6 +14,7 @@ import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocation
 import { hasEmployeeDebitWarning } from "./_shared/formatters";
 import { ShiftReconciliationSummaryView } from "./ShiftReconciliationSummary.tsx";
 import { ShiftSalesOverview, ShiftSalesSection } from "./_pages/accountant/ShiftSalesSection";
+import { EmployeeClosedShiftSales } from "./_pages/accountant/EmployeeClosedShiftSales";
 import { LangContext } from "./_shared/LangContext.tsx";
 import { api, generateCommandId } from "../../../api/client";
 import { toast } from "sonner";
@@ -7539,6 +7540,14 @@ function AccCompanyEmployees() {
                     </div>
                   )}
                 </div>
+
+                {selectedRow.role === "cashier" && (
+                  <EmployeeClosedShiftSales
+                    key={`${selectedRow.id}:${selectedRow.branchId}`}
+                    employee={selectedRow}
+                    identity={custodyStatement?.identity}
+                  />
+                )}
 
                 {/* Tabs Switcher: Dues & Deductions vs Shift Custody */}
                 <div className="flex items-center gap-2 border-b border-gray-100 pt-3 mt-3">
