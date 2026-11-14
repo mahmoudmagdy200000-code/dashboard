@@ -2,14 +2,9 @@ import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
-  CheckCircle2,
-  Clock,
   FileText,
-  Lock,
   RotateCcw,
   Search,
-  TrendingUp,
-  XCircle,
 } from "lucide-react";
 import type { Operation as ApiOperation } from "../../../../../api/types";
 import { queryKeys } from "../../../../../api/queries/keys";
@@ -20,7 +15,6 @@ import {
 } from "../../../../../api/queries";
 import { useShiftConfigs, historyBranchOptions } from "../../../../../api/queries/shifts";
 import { salesBulkApprovalIds } from "../../salesActionGuards";
-import { KpiCard } from "../../components/KpiCard";
 import { Card } from "../../components/Card";
 import { Btn } from "../../components/Btn";
 import { EmptyState } from "../../components/EmptyState";
@@ -89,7 +83,7 @@ export function AccSalesPage({
     .filter((o) => !brand || o.brandId === brand);
   const filteredPending = filtered.filter((o) => o.status === "pending");
 
-  // MT-20: Scope sales operations counters to the same date, branch, and status filters as the table
+  // Keep the pending statement count scoped to the active filters.
   const baseScopedOps = mOps
     .filter((o) => !filters.branch || o.branchId === filters.branch || o.branch === filters.branch)
     .filter((o) => !salesDate || (o.operationDate ?? "").slice(0, 10) === salesDate)
@@ -104,16 +98,9 @@ export function AccSalesPage({
     });
 
   const isStatusFiltered = Boolean(filters.status && filters.status !== "all");
-  const salesOpsTotal = isStatusFiltered ? filtered.length : baseScopedOps.length;
   const salesOpsPending = isStatusFiltered
     ? filtered.filter((o) => o.status === "pending").length
     : baseScopedOps.filter((o) => o.status === "pending").length;
-  const salesOpsApproved = isStatusFiltered
-    ? filtered.filter((o) => o.status === "approved" || o.status === "final-approved").length
-    : baseScopedOps.filter((o) => o.status === "approved" || o.status === "final-approved").length;
-  const salesOpsRejected = isStatusFiltered
-    ? filtered.filter((o) => o.status === "rejected").length
-    : baseScopedOps.filter((o) => o.status === "rejected").length;
 
   const bulkSalesIds = salesBulkApprovalIds(
     filtered,
@@ -149,79 +136,6 @@ export function AccSalesPage({
       </div>
 
       <ShiftSalesOverview filterBranch={filters.branch} filterStatus={filters.status} filterDate={salesDate} filterSearch={filters.search} />
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KpiCard
-          label={t("عمليات المبيعات — الإجمالي", "Sales Operations — Total")}
-          value={String(salesOpsTotal)}
-          sub={
-            isStatusFiltered
-              ? t("مطابق لفلاتر التاريخ والفرع والحالة", "Matching date, branch, and status filters")
-              : t("مطابق لفلاتر التاريخ والفرع", "Matching date and branch filters")
-          }
-          icon={<FileText size={18} className="text-purple-600" />}
-          accent="purple"
-        />
-        <KpiCard
-          label={t("عمليات المبيعات — قيد المراجعة", "Sales Operations — Under Review")}
-          value={String(salesOpsPending)}
-          sub={t("عمليات رُفعت من الفروع في هذا النطاق", "Operations uploaded from branches in this scope")}
-          icon={<Clock size={18} className="text-amber-600" />}
-          accent="amber"
-        />
-        <KpiCard
-          label={t("عمليات المبيعات — تمت الموافقة", "Sales Operations — Approved")}
-          value={String(salesOpsApproved)}
-          sub={t("موافق + معتمد نهائياً في هذا النطاق", "Approved + Final-approved in this scope")}
-          icon={<CheckCircle2 size={18} className="text-sky-600" />}
-          accent="blue"
-        />
-        <KpiCard
-          label={t("عمليات المبيعات — مرفوضة / مُعادة", "Sales Operations — Rejected / Returned")}
-          value={String(salesOpsRejected)}
-          sub={t("تحتاج إعادة رفع أو تصحيح في هذا النطاق", "Needs re-upload or correction in this scope")}
-          icon={<XCircle size={18} className="text-red-600" />}
-          accent="red"
-        />
-      </div>
-
-      {/* Sales financial KPIs (T04 §2) — GET /company/me/sales/kpis */}
-      {kpis && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <KpiCard
-            label={t("مبيعات البيانات اليومية", "Daily Statement Sales")}
-            value={fmtAmt(Math.round(kpis.totalSalesHalalas / 100))}
-            sub={`${kpis.branchCount} ${t("فرع", "branches")}`}
-            icon={<TrendingUp size={18} className="text-purple-600" />}
-            accent="purple"
-          />
-          <KpiCard
-            label={t("إجمالي التحصيل", "Total Collected")}
-            value={fmtAmt(Math.round(kpis.totalCollectedHalalas / 100))}
-            sub={
-              kpis.trendPct == null
-                ? t("لا مقارنة", "—")
-                : `${kpis.trendPct > 0 ? "▲" : "▼"} ${Math.abs(kpis.trendPct)}%`
-            }
-            icon={<CheckCircle2 size={18} className="text-sky-600" />}
-            accent="blue"
-          />
-          <KpiCard
-            label={t("الفرق", "Variance")}
-            value={fmtAmt(Math.round(kpis.totalVarianceHalalas / 100))}
-            sub={`${kpis.varianceCaseCount} ${t("حالة فرق", "variance cases")}`}
-            icon={<AlertTriangle size={18} className="text-red-600" />}
-            accent={kpis.totalVarianceHalalas === 0 ? "emerald" : "red"}
-          />
-          <KpiCard
-            label={t("فروع بلا فرق", "Zero-Variance")}
-            value={String(kpis.zeroVarianceBranchCount)}
-            sub={t("تحصيل مطابق", "Collection matches")}
-            icon={<Lock size={18} className="text-emerald-600" />}
-            accent="emerald"
-          />
-        </div>
-      )}
 
       {kpis && kpis.varianceBranches.length > 0 && (
         <div
