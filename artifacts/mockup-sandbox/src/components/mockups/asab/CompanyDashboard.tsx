@@ -4810,34 +4810,6 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
     return true;
   });
 
-  // MT-20: Scope sales operations counters to the same date, branch, and status filters as the table
-  const isStatusFiltered = Boolean(statusFilter);
-  const baseScopedOps = mOps.filter(op => {
-    if (branchFilter) {
-      const selectedBranch = branchOptions.find(b => b.id === branchFilter);
-      const branchName = selectedBranch ? selectedBranch.name : "";
-      const matchesId = op.branchId ? op.branchId === branchFilter : false;
-      const matchesName = branchName ? op.branch.includes(branchName) : op.branch.includes(branchFilter);
-      if (!matchesId && !matchesName) return false;
-    }
-    if (matchFilter && op.match !== matchFilter) return false;
-    if (brandFilter !== "الكل" && op.brandName !== brandFilter) return false;
-    if (salesDate && op.date.slice(0,10) !== salesDate) return false;
-    if (search && !op.branch.includes(search) && !op.submittedBy.includes(search) && !op.refNum.includes(search)) return false;
-    return true;
-  });
-
-  const salesOpsTotal = isStatusFiltered ? shown.length : baseScopedOps.length;
-  const salesOpsPending = isStatusFiltered
-    ? shown.filter(o => o.status === "pending").length
-    : baseScopedOps.filter(o => o.status === "pending").length;
-  const salesOpsApproved = isStatusFiltered
-    ? shown.filter(o => o.status === "approved" || o.status === "final-approved").length
-    : baseScopedOps.filter(o => o.status === "approved" || o.status === "final-approved").length;
-  const salesOpsRejected = isStatusFiltered
-    ? shown.filter(o => o.status === "rejected").length
-    : baseScopedOps.filter(o => o.status === "rejected").length;
-
   const shownPending = shown.filter(o=>o.status==="pending");
   const bulkSalesIds = salesBulkApprovalIds(shown, shownPending.map(op => op.id), "accountant",
     op => queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)));
@@ -4848,56 +4820,11 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-gray-800">{t("موديول المبيعات","Sales Module")}</h2><p className="text-gray-400 text-sm mt-0.5">{salesOpsPending} {t("بيان معلق بانتظار مراجعتك (ضمن النطاق المحدد)","pending statements awaiting your review (within active scope)")}</p></div>
+        <div><h2 className="text-xl font-bold text-gray-800">{t("موديول المبيعات","Sales Module")}</h2><p className="text-gray-400 text-sm mt-0.5">{shownPending.length} {t("بيان معلق بانتظار مراجعتك (ضمن النطاق المحدد)","pending statements awaiting your review (within active scope)")}</p></div>
         {bulkSalesIds.length>0 && <Btn variant="success" size="sm" onClick={()=>bulkApprove(bulkSalesIds)}>✓ {t("موافقة على الكل","Approve All")} ({bulkSalesIds.length})</Btn>}
-        {salesOpsPending > 0 && shownPending.some(isPkg6SalesReport) && <p className="text-xs text-amber-700">{t("تقارير اليوم تُعتمد فرديًا","Day reports are approved individually")}</p>}
+        {shownPending.some(isPkg6SalesReport) && <p className="text-xs text-amber-700">{t("تقارير اليوم تُعتمد فرديًا","Day reports are approved individually")}</p>}
       </div>
       <ShiftSalesOverview filterBranch={branchFilter} filterStatus={statusFilter} filterDate={salesDate} filterSearch={search} />
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KpiCard
-          label={t("عمليات المبيعات — الإجمالي","Sales Operations — Total")}
-          value={String(salesOpsTotal)}
-          sub={
-            isStatusFiltered
-              ? t("مطابق لفلاتر التاريخ والفرع والحالة","Matching date, branch, and status filters")
-              : t("مطابق لفلاتر التاريخ والفرع","Matching date and branch filters")
-          }
-          icon={<FileText size={18} className="text-purple-600"/>}
-          accent="purple"
-        />
-        <KpiCard
-          label={t("عمليات المبيعات — قيد المراجعة","Sales Operations — Under Review")}
-          value={String(salesOpsPending)}
-          sub={t("عمليات رُفعت من الفروع في هذا النطاق","Operations uploaded from branches in this scope")}
-          icon={<Clock size={18} className="text-amber-600"/>}
-          accent="amber"
-        />
-        <KpiCard
-          label={t("عمليات المبيعات — تمت الموافقة","Sales Operations — Approved")}
-          value={String(salesOpsApproved)}
-          sub={t("موافق + معتمد نهائياً في هذا النطاق","Approved + Final in this scope")}
-          icon={<CheckCircle2 size={18} className="text-sky-600"/>}
-          accent="blue"
-        />
-        <KpiCard
-          label={t("عمليات المبيعات — مرفوضة","Sales Operations — Rejected")}
-          value={String(salesOpsRejected)}
-          sub={t("تحتاج إعادة رفع في هذا النطاق","Needs re-upload in this scope")}
-          icon={<XCircle size={18} className="text-red-600"/>}
-          accent="red"
-        />
-      </div>
-
-      {/* Sales financial KPIs (T04 §2) — live from GET /company/me/sales/kpis */}
-      {kpis && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <KpiCard label={t("مبيعات البيانات اليومية","Daily Statement Sales")}   value={`${fmtH(kpis.totalSalesHalalas)}`}     sub={`${kpis.branchCount} ${t("فرع","branches")}`} icon={<TrendingUp size={18} className="text-purple-600"/>} accent="purple"/>
-          <KpiCard label={t("إجمالي التحصيل","Total Collected")} value={`${fmtH(kpis.totalCollectedHalalas)}`}  sub={kpis.trendPct==null?t("لا مقارنة","—"):`${kpis.trendPct>0?"▲":"▼"} ${Math.abs(kpis.trendPct)}%`} icon={<CheckCircle2 size={18} className="text-sky-600"/>} accent="blue"/>
-          <KpiCard label={t("الفرق","Variance")}                value={`${fmtH(kpis.totalVarianceHalalas)}`}   sub={`${kpis.varianceCaseCount} ${t("حالة فرق","variance cases")}`} icon={<AlertTriangle size={18} className="text-red-600"/>} accent={kpis.totalVarianceHalalas===0?"emerald":"red"}/>
-          <KpiCard label={t("فروع بلا فرق","Zero-Variance Branches")} value={String(kpis.zeroVarianceBranchCount)} sub={t("تحصيل مطابق","Collection matches")} icon={<Lock size={18} className="text-emerald-600"/>} accent="emerald"/>
-        </div>
-      )}
 
       {/* Variance branches banner (ACC-1.5) */}
       {kpis && kpis.varianceBranches.length>0 && (
