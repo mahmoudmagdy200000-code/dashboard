@@ -290,7 +290,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Company-wide operations channel (only for company-scoped users)
     if (user.companyId) {
       const companyChannel = echo.private(`operations.company.${user.companyId}`);
-      companyChannel.listen(".operation.created", invalidateAllOps);
+      companyChannel.listen(".operation.created", (event: { moduleKey?: string }) => {
+        invalidateAllOps();
+        if (event.moduleKey === "shifts") {
+          queryClient.invalidateQueries({ queryKey: ["shifts", "employee-closed"] });
+        }
+      });
       companyChannel.listen(".operation.status_changed", (_e: OperationStatusChangedEvent) =>
         invalidateAllOps(),
       );
