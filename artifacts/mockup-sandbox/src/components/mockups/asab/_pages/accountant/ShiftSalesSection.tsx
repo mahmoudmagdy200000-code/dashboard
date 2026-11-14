@@ -1,4 +1,5 @@
 import { useId, useState, type ReactNode } from "react";
+import type { ShiftFilter } from "../../../../../api/queries/keys";
 import type { Shift } from "../../../../../api/types/company";
 import { useOperation } from "../../../../../api/queries/operations";
 import {
@@ -356,10 +357,10 @@ type ShiftSalesFilters = {
   filterSearch?: string;
 };
 
-function shiftSalesHistoryScope({ filterBranch, filterStatus, filterDate, filterSearch }: ShiftSalesFilters) {
+function shiftSalesHistoryScope({ filterBranch, filterStatus, filterDate, filterSearch }: ShiftSalesFilters): ShiftFilter {
   const status = filterStatus === "pending" ? "pending_review"
     : filterStatus === "approved" || filterStatus === "final-approved" ? "closed"
-    : filterStatus || undefined;
+    : filterStatus === "rejected" || filterStatus === "active" || filterStatus === "late" ? filterStatus : undefined;
   return {
     branchId: filterBranch || undefined,
     status,

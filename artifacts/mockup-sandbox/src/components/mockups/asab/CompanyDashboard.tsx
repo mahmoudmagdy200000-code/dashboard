@@ -1462,9 +1462,6 @@ function ShiftAllocationForm({ op, shortageHalalas }:{ op:COp; shortageHalalas:n
     setRows(current=>current.map((row,i)=>i===index?{...row,[field]:value}:row));
   const submit = async () => {
     if (!allocations || pending || submitLock.current || !mounted.current || !hasRoleGrant(user,"accountant")) return;
-    if (uncertain) return;
-    setSaveAttempted(true);
-    if (!request) return;
     const generation = financialAccessGeneration(queryClient);
     const requestFingerprint = currentFingerprint.current;
     setPending(true);
@@ -1547,6 +1544,9 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
     setDraft(current=>({...current,shares:current.shares?.map((share,i)=>i===index?{...share,[key]:value}:share) ?? null}));
   const submit = async () => {
     if (!evidence || !hasRoleGrant(user,"accountant") || pending || completed || submitLock.current || !mounted.current) return;
+    if (uncertain) return;
+    setSaveAttempted(true);
+    if (!request) return;
     const generation = financialAccessGeneration(queryClient);
     const requestFingerprint = currentFingerprint.current;
     setPending(true);
