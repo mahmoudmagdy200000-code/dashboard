@@ -107,6 +107,62 @@ export function useShiftsHistory(
   });
 }
 
+export async function summarizeCashierShiftSales(
+  loadPage: (page: number) => Promise<Page<Shift>>,
+) {
+  const seen = new Set<string>();
+  let totalSalesHalalas = 0;
+  let totalVarianceHalalas = 0;
+  let hasCompleteCounts = true;
+  let pending = 0;
+  let expectedTotal: number | undefined;
+  for (let page = 1; ; page++) {
+    const { data, meta } = await loadPage(page);
+    expectedTotal ??= meta.total;
+    if (meta.page !== page || meta.total !== expectedTotal || !Number.isSafeInteger(meta.total)
+      || meta.total < 0 || !Number.isSafeInteger(meta.totalPages) || meta.totalPages < 0) {
+      throw new Error("Shift history pagination changed");
+    }
+    for (const shift of data) {
+      if (seen.has(shift.id) || (shift.role && shift.role !== "cashier")
+        || !Number.isSafeInteger(shift.salesHalalas)) {
+        throw new Error("Invalid cashier shift summary data");
+      }
+      seen.add(shift.id);
+      totalSalesHalalas += shift.salesHalalas;
+      if (shift.status === "pending_review" || String(shift.status) === "pending") pending++;
+      if (shift.cashCountState === "counted" && shift.varianceHalalas !== null
+        && Number.isSafeInteger(shift.varianceHalalas)) {
+        totalVarianceHalalas += shift.varianceHalalas;
+      } else {
+        hasCompleteCounts = false;
+      }
+    }
+    if (page >= meta.totalPages) break;
+    if (!data.length) throw new Error("Missing shift history page");
+  }
+  if (seen.size !== expectedTotal || !Number.isSafeInteger(totalSalesHalalas)
+    || !Number.isSafeInteger(totalVarianceHalalas)) {
+    throw new Error("Incomplete cashier shift summary");
+  }
+  return { count: seen.size, pending, totalSalesHalalas,
+    totalVarianceHalalas: hasCompleteCounts ? totalVarianceHalalas : null };
+}
+
+export function useCashierShiftSalesSummary(filter: ShiftFilter) {
+  const params = historyRequestParams({ ...filter, role: "cashier", pageSize: 100 },
+    { allowStatus: true, allowRole: true });
+  return useQuery({
+    queryKey: ["shifts", "sales-summary", params],
+    queryFn: ({ signal }) => summarizeCashierShiftSales(async page => {
+      const response = await api.get<Page<Shift>>("/accountant/shifts/history", {
+        params: { ...params, page }, signal,
+      });
+      return response.data;
+    }),
+  });
+}
+
 // ─── Config (T08 §1) ─────────────────────────────────────────────────────────
 export function useShiftConfigs(scope?: "brand" | "branch" | "all") {
   return useQuery({

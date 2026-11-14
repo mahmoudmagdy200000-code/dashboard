@@ -1,10 +1,14 @@
 import { useId, useState, type ReactNode } from "react";
+import type { ShiftFilter } from "../../../../../api/queries/keys";
 import type { Shift } from "../../../../../api/types/company";
 import { useOperation } from "../../../../../api/queries/operations";
 import {
   historyPageTarget,
   useShiftsHistory,
+  useCashierShiftSalesSummary,
 } from "../../../../../api/queries/shifts";
+import { AlertTriangle, Clock, FileText, TrendingUp } from "lucide-react";
+import { KpiCard } from "../../components/KpiCard";
 import { Card } from "../../components/Card";
 import { Btn } from "../../components/Btn";
 import { useLang, type Lang } from "../../_shared/LangContext";
@@ -223,7 +227,7 @@ function ShiftSalesDetails({
             )}
           </div>
           {getShiftCorrectionEvidence(apiOpToCOp(report), report, "accountant") ? (
-            <ShiftReportCorrectionForm op={apiOpToCOp(report)} detail={report} />
+            <ShiftReportCorrectionForm key={`${report.id}:${report.reportRevision ?? report.payload?.reportRevision ?? "missing"}`} op={apiOpToCOp(report)} detail={report} />
           ) : (
             <div className="rounded-lg bg-amber-50/80 border border-amber-200 p-2.5 text-xs text-amber-800">
               <span className="font-semibold block mb-0.5">
@@ -346,6 +350,56 @@ function ShiftSalesRow({
   );
 }
 
+type ShiftSalesFilters = {
+  filterBranch?: string;
+  filterStatus?: string;
+  filterDate?: string;
+  filterSearch?: string;
+};
+
+function shiftSalesHistoryScope({ filterBranch, filterStatus, filterDate, filterSearch }: ShiftSalesFilters): ShiftFilter {
+  const status = filterStatus === "pending" ? "pending_review"
+    : filterStatus === "approved" || filterStatus === "final-approved" ? "closed"
+    : filterStatus === "rejected" || filterStatus === "active" || filterStatus === "late" ? filterStatus : undefined;
+  return {
+    branchId: filterBranch || undefined,
+    status,
+    dateFrom: filterDate,
+    dateTo: filterDate,
+    search: filterSearch || undefined,
+  };
+}
+
+export function ShiftSalesOverview(filters: ShiftSalesFilters) {
+  const { lang, t } = useLang();
+  const summary = useCashierShiftSalesSummary(shiftSalesHistoryScope(filters));
+  const data = summary.isSuccess ? summary.data : undefined;
+  const scope = t("كل الورديات المطابقة للفلاتر", "All shifts matching filters");
+  const money = (value: number | null | undefined) => value == null ? "—"
+    : `${formatShiftHalalas(value, lang)} ${t("ر.س", "SAR")}`;
+  const count = (value: number | undefined) => value == null ? "—" : displayDigits(String(value), lang);
+  return (
+    <section aria-label={t("إجماليات مبيعات الورديات", "Shift Sales Totals")} className="space-y-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard label={t("إجمالي مبيعات الورديات", "Total Shift Sales")} value={money(data?.totalSalesHalalas)}
+          sub={scope} icon={<TrendingUp size={18} />} />
+        <KpiCard label={t("تقارير الكاشير", "Cashier Reports")} value={count(data?.count)}
+          sub={scope} icon={<FileText size={18} />} accent="blue" />
+        <KpiCard label={t("ورديات قيد المراجعة", "Shifts Under Review")} value={count(data?.pending)}
+          sub={scope} icon={<Clock size={18} />} accent="amber" />
+        <KpiCard label={t("صافي فرق النقد", "Net Cash Variance")} value={money(data?.totalVarianceHalalas)}
+          sub={data?.totalVarianceHalalas === null ? t("بيانات الجرد غير مكتملة", "Cash counts incomplete") : scope}
+          icon={<AlertTriangle size={18} />} accent="red" />
+      </div>
+      {summary.isPending && <p role="status">{t("جارٍ حساب إجماليات الورديات…", "Calculating shift totals…")}</p>}
+      {summary.isError && <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-red-700">
+        {t("تعذر تحميل إجماليات الورديات", "Could not load shift totals")}
+        <Btn size="sm" variant="outline" onClick={() => void summary.refetch()}>{t("إعادة المحاولة", "Retry")}</Btn>
+      </div>}
+    </section>
+  );
+}
+
 export function ShiftSalesSection({
   operations,
   filterBranch,
@@ -374,27 +428,8 @@ export function ShiftSalesSection({
     setExpandedId(null);
   }
 
-  const historyStatus =
-    filterStatus === "pending"
-      ? ("pending_review" as const)
-      : filterStatus === "approved" || filterStatus === "final-approved"
-      ? ("closed" as const)
-      : filterStatus === "rejected"
-      ? ("rejected" as const)
-      : undefined;
-
-  // MT-20: Apply branch, date, status, and cashier-only scope on the query BEFORE pagination
   const history = useShiftsHistory(
-    {
-      page,
-      pageSize: 5,
-      branchId: filterBranch || undefined,
-      status: historyStatus,
-      dateFrom: filterDate || undefined,
-      dateTo: filterDate || undefined,
-      search: filterSearch || undefined,
-      role: "cashier",
-    },
+    { ...shiftSalesHistoryScope({ filterBranch, filterStatus, filterDate, filterSearch }), page, pageSize: 5, role: "cashier" },
     { allowStatus: true, allowRole: true },
   );
 
@@ -404,11 +439,6 @@ export function ShiftSalesSection({
   const shifts = rawShifts.filter((shift) => {
     if (shift.role && shift.role !== "cashier") return false;
     if (filterBranch && shift.branchId && shift.branchId !== filterBranch) return false;
-    if (filterDate) {
-      const sDate = (shift.startedAt ?? "").slice(0, 10);
-      const eDate = (shift.endedAt ?? "").slice(0, 10);
-      if (sDate !== filterDate && eDate !== filterDate) return false;
-    }
     if (filterStatus && filterStatus !== "all") {
       const st = String(shift.status);
       if (

@@ -90,6 +90,13 @@ test("correction payload uses exact decimal strings, expected versions, and excl
     "equivalent decimal formatting does not create a financial correction");
 });
 
+test("Arabic decimal input creates the same precise correction payload", () => {
+  const draft = { ...initialShiftCorrectionDraft(detail), cardPaymentsSar: "٤٥٫٢٥", countedCashSar: "۲۸٫۰۱", reason: "تصحيح الجرد" };
+  assert.deepEqual(prepareShiftCorrectionRequest(detail, draft)?.changes,
+    { card_payments: "45.25", counted_cash: "28.01" });
+  assert.equal(prepareShiftCorrectionRequest(detail, { ...draft, cardPaymentsSar: "٤٥٫٢٥١" }), null);
+});
+
 test("allocation changes use integer halalas and require the current allocation version", () => {
   const draft={...initialShiftCorrectionDraft(detail),reason:"Correct responsibility",shares:[
     {type:"employee",id:"550e8400-e29b-41d4-a716-446655440001",amountSar:"12.50"},
