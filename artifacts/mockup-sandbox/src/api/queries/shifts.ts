@@ -1,6 +1,7 @@
 import {
   useMutation,
   useQuery,
+  useQueries,
   useQueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -107,41 +108,61 @@ export function useShiftsHistory(
   });
 }
 
-export async function loadEmployeeClosedShifts(
-  employeeId: string,
+export async function loadBranchClosedShiftsByEmployee(
   branchId: string,
   loadPage: (page: number) => Promise<Page<Shift>>,
 ) {
-  const matches = new Map<string, Shift>();
+  const byEmployee = new Map<string, Shift[]>();
+  const seen = new Set<string>();
+  let expectedTotal: number | undefined;
   for (let page = 1; ; page++) {
     const { data, meta } = await loadPage(page);
-    if (meta.page !== page || !Number.isSafeInteger(meta.totalPages) || meta.totalPages < 0) {
-      throw new Error("Invalid shift history pagination");
+    expectedTotal ??= meta.total;
+    if (meta.page !== page || !Number.isSafeInteger(meta.totalPages) || meta.totalPages < 0
+      || !Number.isSafeInteger(meta.total) || meta.total < 0 || meta.total !== expectedTotal) {
+      throw new Error("Shift history pagination changed");
     }
     for (const shift of data) {
-      if (shift.cashierEmployeeId === employeeId && shift.branchId === branchId
-        && shift.role === "cashier" && shift.endedAt
-        && (shift.status === "pending_review" || shift.status === "closed")) {
-        matches.set(shift.id, shift);
+      if (seen.has(shift.id)) throw new Error("Duplicate shift history row");
+      seen.add(shift.id);
+      const employeeId = shift.cashierEmployeeId;
+      if (employeeId && shift.branchId === branchId && shift.role === "cashier"
+        && shift.endedAt && (shift.status === "pending_review" || shift.status === "closed")) {
+        const shifts = byEmployee.get(employeeId) ?? [];
+        shifts.push(shift);
+        byEmployee.set(employeeId, shifts);
       }
     }
-    if (page >= meta.totalPages) return [...matches.values()];
+    if (page >= meta.totalPages) {
+      if (seen.size !== expectedTotal) throw new Error("Incomplete shift history");
+      return Object.fromEntries(byEmployee);
+    }
     if (!data.length) throw new Error("Missing shift history page");
   }
 }
 
-export function useEmployeeClosedShifts(employeeId: string, branchId: string) {
-  return useQuery({
-    queryKey: ["shifts", "employee-closed", employeeId, branchId],
-    enabled: Boolean(employeeId && branchId),
+export function useEmployeeClosedShiftHistory(branchIds: string[]) {
+  const queries = useQueries({ queries: branchIds.map(branchId => ({
+    queryKey: ["shifts", "employee-closed", branchId],
     refetchInterval: 15_000,
-    queryFn: ({ signal }) => loadEmployeeClosedShifts(employeeId, branchId, async page => {
+    queryFn: ({ signal }) => loadBranchClosedShiftsByEmployee(branchId, async page => {
       const response = await api.get<Page<Shift>>("/accountant/shifts/history", {
         params: { branchId, role: "cashier", pageSize: 100, page }, signal,
       });
       return response.data;
     }),
-  });
+  })) });
+  return new Map(branchIds.map((id, index) => [id, queries[index]]));
+}
+
+export function totalClosedShiftSales(shifts: readonly Shift[] | undefined): number | null {
+  if (!shifts) return null;
+  let total = 0;
+  for (const shift of shifts) {
+    if (!Number.isSafeInteger(shift.salesHalalas) || shift.salesHalalas < 0) return null;
+    total += shift.salesHalalas;
+  }
+  return Number.isSafeInteger(total) ? total : null;
 }
 
 export async function summarizeCashierShiftSales(
