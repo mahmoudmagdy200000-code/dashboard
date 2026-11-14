@@ -5,10 +5,10 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GlobalWindow } from "happy-dom";
 import type { Shift } from "../../../../../api/types/company";
-import { loadEmployeeClosedShifts } from "../../../../../api/queries/shifts";
+import { loadBranchClosedShiftsByEmployee, totalClosedShiftSales } from "../../../../../api/queries/shifts";
 import { queryKeys } from "../../../../../api/queries/keys";
 import { LangContext } from "../../_shared/LangContext";
-import { EmployeeClosedShiftSales } from "./EmployeeClosedShiftSales";
+import { EmployeeClosedShiftSales, EmployeeShiftSalesTotal } from "./EmployeeClosedShiftSales";
 
 const employee = { id: "employee-a", branchId: "branch-a" };
 const first: Shift = {
@@ -29,17 +29,21 @@ test("selects the employee’s completed shifts across pages before accountant a
     [second, { ...first, id: "other-branch", branchId: "branch-b" },
       { ...first, id: "manager", role: "branch_manager" }],
   ];
-  const actual = await loadEmployeeClosedShifts(employee.id, employee.branchId, async page => ({
+  const actual = await loadBranchClosedShiftsByEmployee(employee.branchId, async page => ({
     data: rows[page - 1], meta: { page, pageSize: 3, total: 6, totalPages: 2 },
   }));
-  assert.deepEqual(actual.map(shift => shift.id), [first.id, second.id]);
+  assert.deepEqual(actual[employee.id].map(shift => shift.id), [first.id, second.id]);
+  assert.equal(totalClosedShiftSales(actual[employee.id]), 431500);
+  assert.deepEqual(actual["employee-b"].map(shift => shift.id), ["other-employee"]);
+  assert.equal(totalClosedShiftSales(undefined), null);
+  assert.equal(totalClosedShiftSales([]), 0);
 });
 
 test("shows gross sales immediately and only the selected employee’s assigned share", async () => {
   const window = new GlobalWindow();
   Object.assign(globalThis, { window, document: window.document, React, IS_REACT_ACT_ENVIRONMENT: true });
   const qc = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
-  qc.setQueryData(["shifts", "employee-closed", employee.id, employee.branchId], [first, second]);
+  const shifts = [first, second];
   qc.setQueryData(queryKeys.operation("report-a"), {
     id: "report-a", branchId: employee.branchId, moduleKey: "shifts", payload: { shiftId: first.id },
     liability: { shares: [
@@ -56,10 +60,13 @@ test("shows gross sales immediately and only the selected employee’s assigned 
     await act(async () => root.render(
       <QueryClientProvider client={qc}>
         <LangContext.Provider value={{ lang: "en", dir: "ltr", setLang: () => {}, t: (_ar, en) => en }}>
-          <EmployeeClosedShiftSales employee={employee} identity={identity} />
+          <div data-testid="employee-row"><EmployeeShiftSalesTotal shifts={shifts} /></div>
+          <EmployeeClosedShiftSales employee={employee} identity={identity} shifts={shifts} />
         </LangContext.Provider>
       </QueryClientProvider>,
     ));
+    assert.match(div.querySelector('[data-testid="employee-row"]')?.textContent ?? "", /4,315\.00 SAR.*Total shift sales/);
+    assert.match(div.querySelector("section header, section > div")?.textContent ?? "", /4,315\.00 SAR/);
     const rows = div.querySelectorAll("li");
     assert.equal(rows.length, 2);
     assert.match(rows[0].textContent ?? "", /Shift sales total115\.00 SAR/);

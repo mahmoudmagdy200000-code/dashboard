@@ -6,7 +6,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
 import { chooseGrantedRole, companyRoles, financialAccessFingerprint, financialAccessGeneration, isFinancialSessionActive, grantedRoleKeys, hasRoleGrant, pageForRole, purgeFinancialQueries, registerFinancialRequest } from "../../../auth/roleAccess";
-import { historyBranchOptions, historyPageTarget } from "../../../api/queries/shifts";
+import { historyBranchOptions, historyPageTarget, useEmployeeClosedShiftHistory } from "../../../api/queries/shifts";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRows, shfReviewPageTarget, type ShfReviewAction, type ShfReviewGroup } from "./shiftReviewQueue";
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT, HEAD_EXPENSE_EVIDENCE_HINT } from "./headReviewGuards";
@@ -14,7 +14,7 @@ import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocation
 import { hasEmployeeDebitWarning } from "./_shared/formatters";
 import { ShiftReconciliationSummaryView } from "./ShiftReconciliationSummary.tsx";
 import { ShiftSalesOverview, ShiftSalesSection } from "./_pages/accountant/ShiftSalesSection";
-import { EmployeeClosedShiftSales } from "./_pages/accountant/EmployeeClosedShiftSales";
+import { EmployeeClosedShiftSales, EmployeeShiftSalesTotal } from "./_pages/accountant/EmployeeClosedShiftSales";
 import { LangContext } from "./_shared/LangContext.tsx";
 import { api, generateCommandId } from "../../../api/client";
 import { toast } from "sonner";
@@ -7404,6 +7404,11 @@ function AccCompanyEmployees() {
   const employees: ApiEmployee[] = employeesPage?.data ?? [];
   const selectedRow = selectedEmp ? employees.find(e=>e.id===selectedEmp) : null;
 
+  const branchShiftHistory = useEmployeeClosedShiftHistory([...new Set(employees
+    .filter(employee => employee.role === "cashier" && employee.branchId)
+    .map(employee => employee.branchId))]);
+  const selectedHistory = selectedRow ? branchShiftHistory.get(selectedRow.branchId) : undefined;
+
   // Header KPIs derived from the list contract (salary + standing balances).
   const totalSalariesH = employees.reduce((s,e)=>s+(e.monthlySalary ?? 0),0);
   const owedToCompanyH = employees.reduce((s,e)=>s+(e.balanceHalalas<0?-e.balanceHalalas:0),0);
@@ -7468,10 +7473,11 @@ function AccCompanyEmployees() {
             <p className="font-bold text-gray-900 text-sm">{t("قائمة الموظفين","Employees")} ({employees.length})</p>
           </div>
           {employees.length===0 && <p className="text-center text-gray-400 text-sm py-8">{t("لا يوجد موظفون","No employees")}</p>}
-          {employees.map(e=>(
-            <div key={e.id}
+          {employees.map(e=>{
+            const history = branchShiftHistory.get(e.branchId);
+            return <button type="button" key={e.id} aria-expanded={selectedEmp===e.id}
               onClick={()=>{ setSelectedEmp(selectedEmp===e.id?null:e.id); setMonth(""); setCustodyPage(1); }}
-              className={`flex items-center gap-3 px-4 py-3.5 border-b border-gray-50 last:border-0 cursor-pointer transition-all ${selectedEmp===e.id?"bg-purple-50 border-r-4 border-r-purple-500":"hover:bg-gray-50/70"} ${e.status!=="active"?"opacity-60":""}`}>
+              className={`flex w-full items-center gap-3 px-4 py-3.5 text-start border-b border-gray-50 last:border-0 cursor-pointer transition-all ${selectedEmp===e.id?"bg-purple-50 border-r-4 border-r-purple-500":"hover:bg-gray-50/70"} ${e.status!=="active"?"opacity-60":""}`}>
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">{e.name[0]}</div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
@@ -7480,12 +7486,14 @@ function AccCompanyEmployees() {
                 </div>
                 <p className="text-[10px] text-gray-400 mt-0.5">{e.role} · {e.branchName}</p>
               </div>
-              <div className="text-left flex-shrink-0">
+              {e.role === "cashier" ? (
+                <EmployeeShiftSalesTotal shifts={history?.isSuccess ? history.data[e.id] ?? [] : undefined} />
+              ) : <div className="text-left flex-shrink-0">
                 <p className={`font-mono font-bold text-xs ${balColor(e.balanceHalalas)}`}>{fmtH(e.balanceHalalas)}</p>
                 <p className="text-[9px] text-gray-400">{e.balanceCaption?.labelAr ?? t("الرصيد","balance")}</p>
-              </div>
-            </div>
-          ))}
+              </div>}
+            </button>;
+          })}
         </div>
         {/* Right: Employee statement */}
         <div className="col-span-3">
@@ -7546,6 +7554,10 @@ function AccCompanyEmployees() {
                     key={`${selectedRow.id}:${selectedRow.branchId}`}
                     employee={selectedRow}
                     identity={custodyStatement?.identity}
+                    shifts={selectedHistory?.data?.[selectedRow.id]}
+                    isPending={selectedHistory?.isPending}
+                    isError={selectedHistory?.isError}
+                    onRetry={() => void selectedHistory?.refetch()}
                   />
                 )}
 

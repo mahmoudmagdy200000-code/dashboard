@@ -3,7 +3,7 @@ import type { Operation } from "../../../../../api/types";
 import type { Employee, Shift } from "../../../../../api/types/company";
 import type { ShiftCustodyStatement } from "../../../../../api/queries/employees";
 import { useOperation } from "../../../../../api/queries/operations";
-import { useEmployeeClosedShifts } from "../../../../../api/queries/shifts";
+import { totalClosedShiftSales } from "../../../../../api/queries/shifts";
 import { useLang } from "../../_shared/LangContext";
 import { Btn } from "../../components/Btn";
 import { formatShiftHalalas } from "../../shiftCountEvidence";
@@ -59,25 +59,46 @@ function EmployeeShiftSale({ shift, employee, identity }: { shift: Shift; employ
 
 const pageSize = 8;
 
-export function EmployeeClosedShiftSales({ employee, identity }: { employee: ShiftEmployee; identity?: Identity }) {
+export function EmployeeShiftSalesTotal({ shifts }: { shifts?: readonly Shift[] }) {
+  const { lang, t } = useLang();
+  const total = totalClosedShiftSales(shifts);
+  return (
+    <div className="shrink-0 text-end">
+      <p className="text-sm font-bold tabular-nums text-gray-900">
+        <bdi>{formatShiftHalalas(total, lang)}</bdi>{total !== null && ` ${t("ر.س", "SAR")}`}
+      </p>
+      <p className="text-[10px] text-gray-600">{t("إجمالي مبيعات الورديات", "Total shift sales")}</p>
+    </div>
+  );
+}
+
+export function EmployeeClosedShiftSales({ employee, identity, shifts = [], isPending = false, isError = false, onRetry }: {
+  employee: ShiftEmployee;
+  identity?: Identity;
+  shifts?: Shift[];
+  isPending?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
+}) {
   const { t } = useLang();
-  const query = useEmployeeClosedShifts(employee.id, employee.branchId);
   const [page, setPage] = useState(1);
   if (!employee.branchId) return null;
-  const shifts = query.data ?? [];
   const lastPage = Math.max(1, Math.ceil(shifts.length / pageSize));
   const currentPage = Math.min(page, lastPage);
   const shown = shifts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <section aria-label={t("مبيعات الورديات المقفلة", "Closed shift sales")} className="mt-4 space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
-      <h3 className="text-sm font-bold text-gray-900">{t("مبيعات الورديات المقفلة", "Closed shift sales")}</h3>
-      {query.isPending && <p role="status" className="text-sm text-gray-600">{t("جارٍ تحميل الورديات…", "Loading shifts…")}</p>}
-      {query.isError && <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-red-700">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-bold text-gray-900">{t("مبيعات الورديات المقفلة", "Closed shift sales")}</h3>
+        <EmployeeShiftSalesTotal shifts={isPending || isError ? undefined : shifts} />
+      </div>
+      {isPending && <p role="status" className="text-sm text-gray-600">{t("جارٍ تحميل الورديات…", "Loading shifts…")}</p>}
+      {isError && <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-red-700">
         {t("تعذر تحميل مبيعات الورديات", "Could not load shift sales")}
-        <Btn size="sm" variant="outline" onClick={() => void query.refetch()}>{t("إعادة المحاولة", "Retry")}</Btn>
+        <Btn size="sm" variant="outline" onClick={onRetry}>{t("إعادة المحاولة", "Retry")}</Btn>
       </div>}
-      {query.isSuccess && !shifts.length && <p className="text-sm text-gray-600">{t("لا توجد ورديات مقفلة لهذا الموظف", "No closed shifts for this employee")}</p>}
+      {!isPending && !isError && !shifts.length && <p className="text-sm text-gray-600">{t("لا توجد ورديات مقفلة لهذا الموظف", "No closed shifts for this employee")}</p>}
       {shown.length > 0 && <ul className="space-y-2">
         {shown.map(shift => <EmployeeShiftSale key={shift.id} shift={shift} employee={employee} identity={identity} />)}
       </ul>}
