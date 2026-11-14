@@ -10,7 +10,7 @@ import {
 // Transpile shifts.ts functions cleanly without bundler dependencies
 const shiftsPath = new URL("../../../api/queries/shifts.ts", import.meta.url);
 const source = ts.createSourceFile("shifts.ts", readFileSync(shiftsPath, "utf8"), ts.ScriptTarget.Latest, true);
-const names = ["historyRequestParams", "historyPageTarget", "historyBranchOptions", "useShiftsHistory"];
+const names = ["historyRequestParams", "historyPageTarget", "historyBranchOptions", "useShiftsHistory", "summarizeCashierShiftSales"];
 const declarations = source.statements.filter(node =>
   ts.isFunctionDeclaration(node) && node.name && names.includes(node.name.text),
 );
@@ -26,7 +26,7 @@ const api = {get: async (url:string, config:{params:Record<string,unknown>}) => 
 const queryKeys = {shifts:(filter:unknown) => ["shifts","history",filter]};
 const useQuery = (config:unknown) => config;
 const helpers = new Function("exports","useQuery","queryKeys","api",compiled +
-  "\nreturn {historyRequestParams,historyPageTarget,historyBranchOptions,useShiftsHistory};"
+  "\nreturn {historyRequestParams,historyPageTarget,historyBranchOptions,useShiftsHistory,summarizeCashierShiftSales};"
 )({},useQuery,queryKeys,api);
 const {historyRequestParams,historyPageTarget,historyBranchOptions,useShiftsHistory} = helpers;
 
@@ -497,4 +497,23 @@ test("MT-20: Status filter scope includes final-approved and rejected (zero-resu
   assert.equal(finalApprovedBranchB.meta.total, 1, "Branch B closed cashier shifts = 1");
   assert.equal(finalApprovedBranchB.data.length, 1);
   assert.equal(finalApprovedBranchB.data[0].id, "shift-b-1");
+});
+
+
+test("cashier sales totals span all pages and do not treat uncounted cash as zero variance", async () => {
+  const rows = [1, 2, 3].map(id => ({
+    id: String(id), role: "cashier", status: "pending_review",
+    salesHalalas: 11500, cashCountState: "counted", varianceHalalas: -2000,
+  }));
+  const load = (page: number) => Promise.resolve({
+    data: page === 1 ? rows.slice(0, 2) : rows.slice(2),
+    meta: { page, pageSize: 2, totalPages: 2, total: 3 },
+  });
+  assert.deepEqual(await helpers.summarizeCashierShiftSales(load), {
+    count: 3, pending: 3, totalSalesHalalas: 34500, totalVarianceHalalas: -6000,
+  });
+  rows[2].cashCountState = "unknown";
+  assert.equal((await helpers.summarizeCashierShiftSales(load)).totalVarianceHalalas, null);
+  rows[2].id = "1";
+  await assert.rejects(helpers.summarizeCashierShiftSales(load), /Invalid cashier shift summary data/);
 });

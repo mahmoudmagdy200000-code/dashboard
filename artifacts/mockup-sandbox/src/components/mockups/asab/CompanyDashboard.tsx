@@ -13,7 +13,7 @@ import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_
 import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocationHalalas, runShfAllocationCorrection, type ShfAllocationRow } from "./shiftAllocationCorrection";
 import { hasEmployeeDebitWarning } from "./_shared/formatters";
 import { ShiftReconciliationSummaryView } from "./ShiftReconciliationSummary.tsx";
-import { ShiftSalesSection } from "./_pages/accountant/ShiftSalesSection";
+import { ShiftSalesOverview, ShiftSalesSection } from "./_pages/accountant/ShiftSalesSection";
 import { LangContext } from "./_shared/LangContext.tsx";
 import { api, generateCommandId } from "../../../api/client";
 import { toast } from "sonner";
@@ -1462,6 +1462,9 @@ function ShiftAllocationForm({ op, shortageHalalas }:{ op:COp; shortageHalalas:n
     setRows(current=>current.map((row,i)=>i===index?{...row,[field]:value}:row));
   const submit = async () => {
     if (!allocations || pending || submitLock.current || !mounted.current || !hasRoleGrant(user,"accountant")) return;
+    if (uncertain) return;
+    setSaveAttempted(true);
+    if (!request) return;
     const generation = financialAccessGeneration(queryClient);
     const requestFingerprint = currentFingerprint.current;
     setPending(true);
@@ -1515,6 +1518,7 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
   const [pending,setPending] = useState(false);
   const [completed,setCompleted] = useState(false);
   const [uncertain,setUncertain] = useState(false);
+  const [saveAttempted,setSaveAttempted] = useState(false);
   const mounted = useRef(false);
   const submitLock = useRef(false);
   const pendingDirect = useRef(new Set<()=>void>());
@@ -1531,7 +1535,11 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
     mounted.current && generation === financialAccessGeneration(queryClient)
     && expectedFingerprint === currentFingerprint.current && hasRoleGrant(user,"accountant");
   const employees = (employeeQuery.data?.data ?? []).filter(employee=>employee.status === "active");
-  const hasDraftChanges = Boolean(evidence && prepareShiftCorrectionRequest(detail,draft));
+  const request = evidence ? prepareShiftCorrectionRequest(detail, draft) : null;
+  const reasonMissing = draft.reason.trim().length < 3;
+  const validationMessage = reasonMissing
+    ? t("اكتب سبب التصحيح (٣ أحرف على الأقل).", "Enter a correction reason (at least 3 characters).")
+    : t("غيّر قيمة واحدة على الأقل، وتأكد من صحة المبالغ والمسؤولين المحددين.", "Change at least one value and check the amounts and selected parties.");
 
   const setField = (key:"cardPaymentsSar"|"countedCashSar"|"cashCollectedSar"|"handoverNotes"|"reason",value:string) =>
     setDraft(current=>({...current,[key]:value}));
@@ -1565,6 +1573,11 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
       } else if(!didComplete && accessStillCurrent(generation,requestFingerprint))
         toast.error(t("تغير دليل التقرير أو نسخته؛ حدّث التفاصيل وأعد المراجعة","Report evidence or revision changed; refresh the details and review again"));
     } catch(error) {
+      if (postStarted && isApiError(error) && [400, 401, 403, 404, 409, 422, 429].includes(error.status)
+        && !error.code.startsWith("IDEMPOTENCY_")) {
+        // The mutation reports an explicit rejection; the accountant may fix the draft and retry.
+        return;
+      }
       if(postStarted) {
         // F-COR05-02: After uncertain correction POST outcome, refetch actual operation from server
         // to reconcile screen with server truth without repeating the financial POST.
@@ -1689,9 +1702,10 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
       <p className="text-gray-500">{t("تُرسل حصص التوزيع كهللات صحيحة؛ يتحقق الخادم من مجموعها والفرع والنسخة، دون حساب فرق التقرير هنا.","Shares are sent as integer halalas; the server validates their total, branch and version without calculating report variance here.")}</p>
     </div>}
     <label className="block space-y-1"><span>{t("سبب التصحيح (إلزامي)","Correction reason (required)")}</span>
-      <textarea rows={2} value={draft.reason} onChange={event=>setField("reason",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+      <textarea rows={2} required minLength={3} aria-invalid={saveAttempted && reasonMissing} value={draft.reason} onChange={event=>setField("reason",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
     </label>
-    <button type="button" onClick={submit} disabled={!hasDraftChanges||pending||completed||correction.isPending}
+    {saveAttempted && !request && !completed && <p role="alert" className="text-red-700">{validationMessage}</p>}
+    <button type="button" onClick={submit} disabled={pending||completed||uncertain||correction.isPending}
       className="rounded-lg bg-violet-700 px-3 py-2 font-semibold text-white disabled:opacity-50">
       {pending||correction.isPending?t("جارٍ حفظ التصحيح…","Saving correction…"):completed?t("تم حفظ التصحيح","Correction saved"):t("حفظ التصحيح","Save correction")}
     </button>
@@ -4837,6 +4851,8 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
         {bulkSalesIds.length>0 && <Btn variant="success" size="sm" onClick={()=>bulkApprove(bulkSalesIds)}>✓ {t("موافقة على الكل","Approve All")} ({bulkSalesIds.length})</Btn>}
         {salesOpsPending > 0 && shownPending.some(isPkg6SalesReport) && <p className="text-xs text-amber-700">{t("تقارير اليوم تُعتمد فرديًا","Day reports are approved individually")}</p>}
       </div>
+      <ShiftSalesOverview filterBranch={branchFilter} filterStatus={statusFilter} filterDate={salesDate} filterSearch={search} />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard
           label={t("عمليات المبيعات — الإجمالي","Sales Operations — Total")}
@@ -4875,7 +4891,7 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
       {/* Sales financial KPIs (T04 §2) — live from GET /company/me/sales/kpis */}
       {kpis && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <KpiCard label={t("إجمالي المبيعات","Total Sales")}   value={`${fmtH(kpis.totalSalesHalalas)}`}     sub={`${kpis.branchCount} ${t("فرع","branches")}`} icon={<TrendingUp size={18} className="text-purple-600"/>} accent="purple"/>
+          <KpiCard label={t("مبيعات البيانات اليومية","Daily Statement Sales")}   value={`${fmtH(kpis.totalSalesHalalas)}`}     sub={`${kpis.branchCount} ${t("فرع","branches")}`} icon={<TrendingUp size={18} className="text-purple-600"/>} accent="purple"/>
           <KpiCard label={t("إجمالي التحصيل","Total Collected")} value={`${fmtH(kpis.totalCollectedHalalas)}`}  sub={kpis.trendPct==null?t("لا مقارنة","—"):`${kpis.trendPct>0?"▲":"▼"} ${Math.abs(kpis.trendPct)}%`} icon={<CheckCircle2 size={18} className="text-sky-600"/>} accent="blue"/>
           <KpiCard label={t("الفرق","Variance")}                value={`${fmtH(kpis.totalVarianceHalalas)}`}   sub={`${kpis.varianceCaseCount} ${t("حالة فرق","variance cases")}`} icon={<AlertTriangle size={18} className="text-red-600"/>} accent={kpis.totalVarianceHalalas===0?"emerald":"red"}/>
           <KpiCard label={t("فروع بلا فرق","Zero-Variance Branches")} value={String(kpis.zeroVarianceBranchCount)} sub={t("تحصيل مطابق","Collection matches")} icon={<Lock size={18} className="text-emerald-600"/>} accent="emerald"/>

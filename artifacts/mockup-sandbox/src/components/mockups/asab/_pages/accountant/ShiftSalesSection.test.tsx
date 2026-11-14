@@ -73,7 +73,7 @@ const salesOp: Op = {
   moduleLabel: "Sales",
   amount: 25,
 };
-const historyKey = (page = 1) => queryKeys.shifts({ page, pageSize: 5 });
+const historyKey = (page = 1) => queryKeys.shifts({ page, pageSize: 5, role: "cashier" } as Parameters<typeof queryKeys.shifts>[0]);
 const client = () =>
   new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
@@ -146,6 +146,9 @@ test("Sales shows both cashier shifts separately and expands each linked report 
     handoverNotes: "Earlier shift",
   });
   qc.setQueryData(queryKeys.salesKpis(), null);
+  qc.setQueryData(["shifts", "sales-summary", { role: "cashier", page: 1, pageSize: 100 }], {
+    count: 3, pending: 3, totalSalesHalalas: 34500, totalVarianceHalalas: null,
+  });
   qc.setQueryDefaults(["sales", "day-completeness"], { enabled: false });
 
   const container = document.createElement("div");
@@ -162,6 +165,9 @@ test("Sales shows both cashier shifts separately and expands each linked report 
       ),
     );
     assert.match(container.textContent ?? "", /Shift sales/);
+    const overview = container.querySelector('[aria-label="Shift Sales Totals"]');
+    assert.match(overview?.textContent ?? "", /Total Shift Sales345\.00 SAR/);
+    assert.match(overview?.textContent ?? "", /Cash counts incomplete/);
     assert.ok(container.querySelector('[data-op-id="SAL-0001"]'));
     assert.equal(container.querySelector('[data-op-id="SHF-0005"]'), null);
     assert.equal(

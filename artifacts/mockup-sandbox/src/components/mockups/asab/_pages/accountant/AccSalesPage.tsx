@@ -32,7 +32,7 @@ import {
   brandOptionsFromOps,
 } from "../../_shared/filterOps";
 import { OpRow } from "../../_shared/OpRow";
-import { ShiftSalesSection } from "./ShiftSalesSection";
+import { ShiftSalesOverview, ShiftSalesSection } from "./ShiftSalesSection";
 import type { PageProps, Filters, OpStatus, PageId } from "../../_shared/types";
 
 export function AccSalesPage({
@@ -148,6 +148,8 @@ export function AccSalesPage({
         )}
       </div>
 
+      <ShiftSalesOverview filterBranch={filters.branch} filterStatus={filters.status} filterDate={salesDate} filterSearch={filters.search} />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard
           label={t("عمليات المبيعات — الإجمالي", "Sales Operations — Total")}
@@ -187,7 +189,7 @@ export function AccSalesPage({
       {kpis && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <KpiCard
-            label={t("إجمالي المبيعات", "Total Sales")}
+            label={t("مبيعات البيانات اليومية", "Daily Statement Sales")}
             value={fmtAmt(Math.round(kpis.totalSalesHalalas / 100))}
             sub={`${kpis.branchCount} ${t("فرع", "branches")}`}
             icon={<TrendingUp size={18} className="text-purple-600" />}

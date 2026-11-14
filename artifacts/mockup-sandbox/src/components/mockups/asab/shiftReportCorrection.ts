@@ -169,7 +169,11 @@ function halalasToSar(value: unknown): string | null {
 
 /** Strict decimal input: no float conversion or rounding. */
 export function parseCorrectionSar(value: string): { sar: string; halalas: number } | null {
-  const match = /^(0|[1-9]\d*)(?:\.(\d{1,2}))?$/.exec(value.trim());
+  const normalized = value.trim()
+    .replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 0x0660))
+    .replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 0x06f0))
+    .replace(/٫/g, ".");
+  const match = /^(0|[1-9]\d*)(?:\.(\d{1,2}))?$/.exec(normalized);
   if (!match) return null;
   const halalas = BigInt(match[1]) * 100n + BigInt((match[2] ?? "").padEnd(2, "0") || "0");
   if (halalas > BigInt(Number.MAX_SAFE_INTEGER)) return null;
