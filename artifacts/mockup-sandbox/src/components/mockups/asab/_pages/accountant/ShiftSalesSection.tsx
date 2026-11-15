@@ -363,6 +363,7 @@ function shiftSalesHistoryScope({ filterBranch, filterStatus, filterDate, filter
     : filterStatus === "rejected" || filterStatus === "active" || filterStatus === "late" ? filterStatus : undefined;
   return {
     branchId: filterBranch || undefined,
+    submittedWithWorkday: true,
     status,
     dateFrom: filterDate,
     dateTo: filterDate,
@@ -374,7 +375,7 @@ export function ShiftSalesOverview(filters: ShiftSalesFilters) {
   const { lang, t } = useLang();
   const summary = useCashierShiftSalesSummary(shiftSalesHistoryScope(filters));
   const data = summary.isSuccess ? summary.data : undefined;
-  const scope = t("كل الورديات المطابقة للفلاتر", "All shifts matching filters");
+  const scope = t("الورديات المرسلة ضمن تقارير الأيام والمطابقة للفلاتر", "Submitted workday shifts matching filters");
   const money = (value: number | null | undefined) => value == null ? "—"
     : `${formatShiftHalalas(value, lang)} ${t("ر.س", "SAR")}`;
   const count = (value: number | undefined) => value == null ? "—" : displayDigits(String(value), lang);
@@ -433,7 +434,7 @@ export function ShiftSalesSection({
     { allowStatus: true, allowRole: true },
   );
 
-  // Backend filters cashier role, branch, date, and status prior to pagination.
+  // Backend filters submitted workday membership and search scope before pagination.
   // Safety filter retains fallback compliance if mock/offline data is unpaginated.
   const rawShifts = history.data?.data ?? [];
   const shifts = rawShifts.filter((shift) => {
@@ -493,8 +494,8 @@ export function ShiftSalesSection({
       <div className="space-y-4 p-4 sm:p-5">
         <p className="text-sm text-gray-600">
           {t(
-            "الورديات المقفلة من السجل التاريخي. الأوقات بتوقيت السعودية.",
-            "Closed shifts from shift history. All times are shown in Saudi local time.",
+            "ورديات الكاشير المشمولة في تقارير الأيام التي أرسلها مدير الفرع. الأوقات بتوقيت السعودية.",
+            "Cashier shifts included in workday reports submitted by the branch manager. Times are shown in Saudi local time.",
           )}
         </p>
 
@@ -561,8 +562,8 @@ export function ShiftSalesSection({
         {history.isSuccess && shifts.length === 0 && (
           <p className="text-sm text-gray-500">
             {t(
-              "لا توجد ورديات كاشير في هذه الصفحة.",
-              "No cashier shifts on this page.",
+              "لا توجد ورديات مرسلة ضمن تقارير أيام تطابق الفلاتر.",
+              "No submitted workday shifts match the filters.",
             )}
           </p>
         )}

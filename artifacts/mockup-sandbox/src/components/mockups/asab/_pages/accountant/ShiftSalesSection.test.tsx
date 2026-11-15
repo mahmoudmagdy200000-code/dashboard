@@ -4,12 +4,13 @@ import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GlobalWindow } from "happy-dom";
+import { api } from "../../../../../api/client";
 import { queryKeys } from "../../../../../api/queries/keys";
 import type { Shift } from "../../../../../api/types/company";
 import { LangContext, type Lang } from "../../_shared/LangContext";
 import type { Op, PageProps } from "../../_shared/types";
 import { AccSalesPage } from "./AccSalesPage";
-import { ShiftSalesSection } from "./ShiftSalesSection";
+import { ShiftSalesOverview, ShiftSalesSection } from "./ShiftSalesSection";
 
 const window = new GlobalWindow();
 Object.assign(globalThis, {
@@ -73,7 +74,7 @@ const salesOp: Op = {
   moduleLabel: "Sales",
   amount: 25,
 };
-const historyKey = (page = 1) => queryKeys.shifts({ page, pageSize: 5, role: "cashier" } as Parameters<typeof queryKeys.shifts>[0]);
+const historyKey = (page = 1) => queryKeys.shifts({ page, pageSize: 5, role: "cashier", submittedWithWorkday: true } as Parameters<typeof queryKeys.shifts>[0]);
 const client = () =>
   new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
@@ -146,7 +147,7 @@ test("Sales shows both cashier shifts separately and expands each linked report 
     handoverNotes: "Earlier shift",
   });
   qc.setQueryData(queryKeys.salesKpis(), null);
-  qc.setQueryData(["shifts", "sales-summary", { role: "cashier", page: 1, pageSize: 100 }], {
+  qc.setQueryData(["shifts", "sales-summary", { role: "cashier", page: 1, pageSize: 100, submittedWithWorkday: true }], {
     count: 3, pending: 3, totalSalesHalalas: 34500, totalVarianceHalalas: null,
   });
   qc.setQueryDefaults(["sales", "day-completeness"], { enabled: false });
@@ -246,5 +247,47 @@ test("Arabic shift detail preserves Arabic money and keeps a mismatched report o
   } finally {
     await act(async () => root.unmount());
     qc.clear();
+  }
+});
+
+test("sales rows and totals reject unfiltered history from an older backend", async () => {
+  const qc = client();
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  const originalAdapter = api.defaults.adapter;
+  const requests = new Map<number, unknown>();
+  const options = (pageSize: number) => ({ page: 1, pageSize, role: "cashier", submittedWithWorkday: true });
+  api.defaults.adapter = async (config) => {
+    requests.set(config.params.pageSize, config.params);
+    return {
+      config, status: 200, statusText: "OK", headers: {},
+      data: { data: [first], meta: { page: 1, pageSize: config.params.pageSize, total: 1, totalPages: 1 } },
+    };
+  };
+
+  try {
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={qc}>
+          <LangContext.Provider value={language("en")}>
+            <ShiftSalesOverview />
+            <ShiftSalesSection operations={[]} />
+          </LangContext.Provider>
+        </QueryClientProvider>,
+      );
+    });
+    await act(async () => {
+      await qc.refetchQueries();
+    });
+    assert.deepEqual(requests.get(5), options(5));
+    assert.deepEqual(requests.get(100), options(100));
+    assert.match(container.textContent ?? "", /Could not load shift totals/);
+    assert.match(container.textContent ?? "", /Could not refresh shift sales/);
+    assert.doesNotMatch(container.textContent ?? "", /115\.00 SAR/);
+    assert.equal(container.querySelector('[data-shift-sales-id="shift-6"]'), null);
+  } finally {
+    await act(async () => root.unmount());
+    qc.clear();
+    api.defaults.adapter = originalAdapter;
   }
 });
