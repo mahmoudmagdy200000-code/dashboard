@@ -1,5 +1,6 @@
 import {
   useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
@@ -352,4 +353,87 @@ function cleanFilter<T extends object>(f: T): Partial<T> {
     }
   }
   return out as Partial<T>;
+}
+
+const SALES_HISTORY_PAGE_SIZE = 50;
+const SALES_HISTORY_MAX_PAGES = 20;
+
+function hasSalesActorName(op: Pick<Operation, "payload" | "submittedBy">): boolean {
+  const payloadName = (op.payload as { managerName?: unknown } | undefined)?.managerName;
+  if (typeof payloadName === "string" && payloadName.trim().length > 0) return true;
+  const sub = op.submittedBy?.name?.trim();
+  return Boolean(sub && sub !== "—");
+}
+
+/** Loads all daily sales report operations for a branch, hydrating actor details only when needed. */
+export async function loadBranchSalesOperations(
+  branchId: string,
+  loadPage: (page: number) => Promise<Page<Operation>>,
+  loadDetail?: (operationId: string) => Promise<Operation>,
+): Promise<Operation[]> {
+  const rows: Operation[] = [];
+  for (let page = 1; page <= SALES_HISTORY_MAX_PAGES; page++) {
+    const res = await loadPage(page);
+    for (const op of res.data ?? []) {
+      if (op.moduleKey === "sales" && op.branchId === branchId) {
+        rows.push(op);
+      }
+    }
+    const totalPages = Math.max(1, res.meta?.totalPages ?? 1);
+    if (page >= totalPages) break;
+  }
+
+  if (!loadDetail) return rows;
+
+  return Promise.all(
+    rows.map(async (op) => {
+      if (op.status === "rejected" || hasSalesActorName(op)) return op;
+      const detail = await loadDetail(op.id);
+      return {
+        ...op,
+        payload: detail.payload ?? op.payload,
+        submittedBy: detail.submittedBy ?? op.submittedBy,
+      };
+    }),
+  );
+}
+
+/** Per-branch map of daily sales operations delivered by branch managers. */
+export function useBranchSalesOperations(
+  branchIds: readonly string[],
+  resolveDetailsByBranch: Readonly<Record<string, boolean>> = {},
+) {
+  const uniqueBranchIds = Array.from(new Set(branchIds.filter(Boolean)));
+  const queries = useQueries({
+    queries: uniqueBranchIds.map((branchId) => {
+      const resolveDetails = Boolean(resolveDetailsByBranch[branchId]);
+      return {
+        queryKey: ["operations", "branch-sales", branchId, resolveDetails ? "detail" : "list"] as const,
+        queryFn: () =>
+          loadBranchSalesOperations(
+            branchId,
+            async (page) => {
+              const res = await api.get<Page<Operation>>("/operations", {
+                params: {
+                  moduleKey: "sales",
+                  branchId,
+                  page,
+                  pageSize: SALES_HISTORY_PAGE_SIZE,
+                },
+              });
+              return res.data;
+            },
+            resolveDetails
+              ? async (id) => {
+                  const res = await api.get<Operation>(`/operations/${id}`);
+                  return res.data;
+                }
+              : undefined,
+          ),
+        staleTime: 30_000,
+      };
+    }),
+  });
+
+  return new Map(uniqueBranchIds.map((id, index) => [id, queries[index]]));
 }
