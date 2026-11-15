@@ -46,6 +46,7 @@ export function historyRequestParams(
     "branchId",
     "shiftType",
     "search",
+    "submittedWithWorkday",
   ];
   if (options?.allowStatus) {
     allowedKeys.push("status");
@@ -99,13 +100,20 @@ export function useShiftsHistory(
   const params = historyRequestParams(filter, options);
   return useQuery({
     queryKey: queryKeys.shifts(params),
-    queryFn: async () => {
-      const res = await api.get<Page<Shift>>("/accountant/shifts/history", {
-        params,
-      });
-      return res.data;
-    },
+    queryFn: ({ signal }) => loadShiftHistory(params, signal),
   });
+}
+
+async function loadShiftHistory(params: ShiftFilter, signal: AbortSignal) {
+  const { data } = await api.get<Page<Shift> & {
+    meta: { submittedWithWorkday?: boolean };
+  }>("/accountant/shifts/history", { params, signal });
+
+  // Older deployments ignore the filter and return every closed cashier shift.
+  if (params.submittedWithWorkday && data.meta?.submittedWithWorkday !== true) {
+    throw new Error("The server did not apply the submitted workday filter");
+  }
+  return data;
 }
 
 export async function loadBranchClosedShiftsByEmployee(
@@ -212,12 +220,9 @@ export function useCashierShiftSalesSummary(filter: ShiftFilter) {
     { allowStatus: true, allowRole: true });
   return useQuery({
     queryKey: ["shifts", "sales-summary", params],
-    queryFn: ({ signal }) => summarizeCashierShiftSales(async page => {
-      const response = await api.get<Page<Shift>>("/accountant/shifts/history", {
-        params: { ...params, page }, signal,
-      });
-      return response.data;
-    }),
+    queryFn: ({ signal }) => summarizeCashierShiftSales(
+      page => loadShiftHistory({ ...params, page }, signal),
+    ),
   });
 }
 

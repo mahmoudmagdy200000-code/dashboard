@@ -376,6 +376,7 @@ export interface AssetFilter {
 
 export interface ShiftFilter {
   branchId?: string;
+  submittedWithWorkday?: boolean;
   status?: "active" | "late" | "pending_review" | "closed" | "rejected" | "final-approved" | "all";
   shiftType?: string;
   search?: string;
