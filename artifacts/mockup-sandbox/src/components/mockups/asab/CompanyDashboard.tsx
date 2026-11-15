@@ -6,7 +6,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
 import { chooseGrantedRole, companyRoles, financialAccessFingerprint, financialAccessGeneration, isFinancialSessionActive, grantedRoleKeys, hasRoleGrant, pageForRole, purgeFinancialQueries, registerFinancialRequest } from "../../../auth/roleAccess";
-import { historyBranchOptions, historyPageTarget, useEmployeeClosedShiftHistory } from "../../../api/queries/shifts";
+import { historyBranchOptions, historyPageTarget } from "../../../api/queries/shifts";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRows, shfReviewPageTarget, type ShfReviewAction, type ShfReviewGroup } from "./shiftReviewQueue";
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT, HEAD_EXPENSE_EVIDENCE_HINT } from "./headReviewGuards";
@@ -15,6 +15,9 @@ import { hasEmployeeDebitWarning } from "./_shared/formatters";
 import { ShiftReconciliationSummaryView } from "./ShiftReconciliationSummary.tsx";
 import { ShiftSalesOverview, ShiftSalesSection } from "./_pages/accountant/ShiftSalesSection";
 import { EmployeeClosedShiftSales, EmployeeShiftSalesTotal } from "./_pages/accountant/EmployeeClosedShiftSales";
+import { ManagerDeliveredSalesSection, ManagerDeliveredSalesTotal } from "./_pages/accountant/ManagerDeliveredSales";
+import { withNormalizedCashierRole } from "./_pages/accountant/employeeSalesHelpers";
+import { useEmployeeDeliveredSales } from "./_pages/accountant/useEmployeeDeliveredSales";
 import { LangContext } from "./_shared/LangContext.tsx";
 import { api, generateCommandId } from "../../../api/client";
 import { toast } from "sonner";
@@ -7330,11 +7333,13 @@ function AccCompanyEmployees() {
 
   const employees: ApiEmployee[] = employeesPage?.data ?? [];
   const selectedRow = selectedEmp ? employees.find(e=>e.id===selectedEmp) : null;
-
-  const branchShiftHistory = useEmployeeClosedShiftHistory([...new Set(employees
-    .filter(employee => employee.role === "cashier" && employee.branchId)
-    .map(employee => employee.branchId))]);
-  const selectedHistory = selectedRow ? branchShiftHistory.get(selectedRow.branchId) : undefined;
+  const { getEmployeeSales, selectedSales } = useEmployeeDeliveredSales(
+    employees,
+    selectedRow,
+    custodyStatement,
+  );
+  const selectedIsCashier = selectedSales?.isCashier ?? false;
+  const selectedIsManager = selectedSales?.isManager ?? false;
 
   // Header KPIs derived from the list contract (salary + standing balances).
   const totalSalariesH = employees.reduce((s,e)=>s+(e.monthlySalary ?? 0),0);
@@ -7401,7 +7406,7 @@ function AccCompanyEmployees() {
           </div>
           {employees.length===0 && <p className="text-center text-gray-400 text-sm py-8">{t("لا يوجد موظفون","No employees")}</p>}
           {employees.map(e=>{
-            const history = branchShiftHistory.get(e.branchId);
+            const rowSales = getEmployeeSales(e);
             return <button type="button" key={e.id} aria-expanded={selectedEmp===e.id}
               onClick={()=>{ setSelectedEmp(selectedEmp===e.id?null:e.id); setMonth(""); setCustodyPage(1); }}
               className={`flex w-full items-center gap-3 px-4 py-3.5 text-start border-b border-gray-50 last:border-0 cursor-pointer transition-all ${selectedEmp===e.id?"bg-purple-50 border-r-4 border-r-purple-500":"hover:bg-gray-50/70"} ${e.status!=="active"?"opacity-60":""}`}>
@@ -7413,8 +7418,13 @@ function AccCompanyEmployees() {
                 </div>
                 <p className="text-[10px] text-gray-400 mt-0.5">{e.role} · {e.branchName}</p>
               </div>
-              {e.role === "cashier" ? (
-                <EmployeeShiftSalesTotal shifts={history?.isSuccess ? history.data[e.id] ?? [] : undefined} />
+              {rowSales.isCashier ? (
+                <EmployeeShiftSalesTotal shifts={rowSales.cashierShifts} />
+              ) : rowSales.isManager ? (
+                <ManagerDeliveredSalesTotal
+                  operations={rowSales.managerOps}
+                  custodyStatement={rowSales.custody}
+                />
               ) : <div className="text-left flex-shrink-0">
                 <p className={`font-mono font-bold text-xs ${balColor(e.balanceHalalas)}`}>{fmtH(e.balanceHalalas)}</p>
                 <p className="text-[9px] text-gray-400">{e.balanceCaption?.labelAr ?? t("الرصيد","balance")}</p>
@@ -7476,15 +7486,29 @@ function AccCompanyEmployees() {
                   )}
                 </div>
 
-                {selectedRow.role === "cashier" && (
+                {selectedIsCashier && (
                   <EmployeeClosedShiftSales
                     key={`${selectedRow.id}:${selectedRow.branchId}`}
-                    employee={selectedRow}
+                    employee={withNormalizedCashierRole(selectedRow, custodyStatement?.identity?.linked_type)}
                     identity={custodyStatement?.identity}
-                    shifts={selectedHistory?.data?.[selectedRow.id]}
-                    isPending={selectedHistory?.isPending}
-                    isError={selectedHistory?.isError}
-                    onRetry={() => void selectedHistory?.refetch()}
+                    shifts={selectedSales?.cashierShifts}
+                    isPending={selectedSales?.shiftQuery?.isPending}
+                    isError={selectedSales?.shiftQuery?.isError}
+                    onRetry={() => void selectedSales?.shiftQuery?.refetch()}
+                  />
+                )}
+                {selectedIsManager && (
+                  <ManagerDeliveredSalesSection
+                    key={`${selectedRow.id}:${selectedRow.branchId}:manager`}
+                    employee={selectedRow}
+                    operations={selectedSales?.managerOps}
+                    custodyStatement={custodyStatement}
+                    isOpsPending={selectedSales?.salesQuery?.isPending}
+                    isOpsError={selectedSales?.salesQuery?.isError}
+                    onRetryOps={() => void selectedSales?.salesQuery?.refetch()}
+                    isCustodyPending={custodyQuery.isPending}
+                    isCustodyError={custodyQuery.isError}
+                    onRetryCustody={() => void custodyQuery.refetch()}
                   />
                 )}
 

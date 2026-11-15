@@ -12,6 +12,18 @@ import {
   Plus,
   Phone,
 } from "lucide-react";
+import { useShiftCustodyStatement } from "../../../../../api/queries/employees";
+import { formatShiftHalalas } from "../../shiftCountEvidence";
+import {
+  EmployeeClosedShiftSales,
+  EmployeeShiftSalesTotal,
+} from "./EmployeeClosedShiftSales";
+import {
+  ManagerDeliveredSalesSection,
+  ManagerDeliveredSalesTotal,
+} from "./ManagerDeliveredSales";
+import { withNormalizedCashierRole } from "./employeeSalesHelpers";
+import { useEmployeeDeliveredSales } from "./useEmployeeDeliveredSales";
 import {
   useCreateEmployeeMovement,
   useEmployees,
@@ -199,7 +211,7 @@ export function AsabEmpMovementModal({
 }
 
 export function AccEmployees({ setModal }: PageProps) {
-  const { t } = useLang();
+  const { lang, dir, t } = useLang();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [empFilter, setEmpFilter] = useState({
@@ -228,6 +240,7 @@ export function AccEmployees({ setModal }: PageProps) {
     selectedId,
     month || undefined,
   );
+  const custodyQuery = useShiftCustodyStatement(selectedId, { pageSize: 100 });
   const { user, isRole } = useAuth();
   const isHead = isRole("head");
   const settleMut = useSettleEmployeeBalance();
@@ -240,6 +253,15 @@ export function AccEmployees({ setModal }: PageProps) {
   const emp = selectedId
     ? employees.find((e) => e.id === selectedId)
     : undefined;
+  const selectedCustody = custodyQuery.data;
+  const { getEmployeeSales, selectedSales } = useEmployeeDeliveredSales(
+    employees,
+    emp,
+    selectedCustody,
+  );
+  const selectedIsCashier = Boolean(selectedSales?.isCashier);
+  const selectedIsManager = Boolean(selectedSales?.isManager);
+  const deliveredSalesSummaryHalalas = selectedSales?.deliveredTotalHalalas ?? null;
   const balColor = (h: number) =>
     h < 0 ? "text-red-600" : h > 0 ? "text-emerald-600" : "text-gray-400";
   const bal = statement?.balanceHalalas ?? emp?.balanceHalalas ?? 0;
@@ -533,7 +555,10 @@ export function AccEmployees({ setModal }: PageProps) {
             {employees.length === 0 && (
               <EmptyState icon="🔍" title="لا نتائج" desc="لا يوجد موظفون" />
             )}
-            {employees.map((e) => (
+            {employees.map((e) => {
+              const rowSales = getEmployeeSales(e);
+
+              return (
               <button
                 key={e.id}
                 onClick={() => {
@@ -552,6 +577,15 @@ export function AccEmployees({ setModal }: PageProps) {
                   <p className="text-xs text-gray-400">
                     {e.role} · {e.branchName}
                   </p>
+                  {rowSales.isCashier && (
+                    <EmployeeShiftSalesTotal shifts={rowSales.cashierShifts} />
+                  )}
+                  {rowSales.isManager && (
+                    <ManagerDeliveredSalesTotal
+                      operations={rowSales.managerOps}
+                      custodyStatement={rowSales.custody}
+                    />
+                  )}
                 </div>
                 <div className="text-left flex-shrink-0">
                   <p
@@ -564,7 +598,8 @@ export function AccEmployees({ setModal }: PageProps) {
                   </p>
                 </div>
               </button>
-            ))}
+              );
+            })}
           </div>
         </Card>
         <div className="space-y-4">
@@ -776,6 +811,30 @@ export function AccEmployees({ setModal }: PageProps) {
                     </p>
                   </div>
                 </div>
+                {(selectedIsCashier || selectedIsManager) && (
+                  <div
+                    data-testid="statement-delivered-sales-summary"
+                    className="mb-3 px-3 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-2"
+                    dir={dir}
+                  >
+                    <span className="text-xs font-semibold text-emerald-900">
+                      {selectedIsCashier
+                        ? t(
+                            "إجمالي مبيعات الورديات المسلمة",
+                            "Total handed-over shift sales",
+                          )
+                        : t(
+                            "إجمالي المبيعات المسلمة",
+                            "Total delivered sales",
+                          )}
+                    </span>
+                    <span className="font-mono font-bold text-sm text-emerald-700">
+                      {deliveredSalesSummaryHalalas == null
+                        ? "—"
+                        : `${formatShiftHalalas(deliveredSalesSummaryHalalas, lang)} ${t("ر.س", "SAR")}`}
+                    </span>
+                  </div>
+                )}
                 {hasEmployeeDebitWarning(statement) && (
                   <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
                     <AlertTriangle
@@ -789,6 +848,46 @@ export function AccEmployees({ setModal }: PageProps) {
                       )}
                     </p>
                   </div>
+                )}
+                {selectedSales?.isCashier && (
+                  <EmployeeClosedShiftSales
+                    employee={withNormalizedCashierRole(
+                      emp,
+                      selectedSales.identity?.linked_type,
+                    )}
+                    identity={selectedSales.identity}
+                    shifts={selectedSales.cashierShifts}
+                    isPending={Boolean(selectedSales.shiftQuery?.isPending)}
+                    isError={Boolean(selectedSales.shiftQuery?.isError)}
+                    onRetry={
+                      selectedSales.shiftQuery
+                        ? () => {
+                            void selectedSales.shiftQuery?.refetch();
+                          }
+                        : undefined
+                    }
+                  />
+                )}
+                {selectedSales?.isManager && (
+                  <ManagerDeliveredSalesSection
+                    employee={emp}
+                    operations={selectedSales.managerOps}
+                    custodyStatement={selectedCustody}
+                    isOpsPending={Boolean(selectedSales.salesQuery?.isPending)}
+                    isOpsError={Boolean(selectedSales.salesQuery?.isError)}
+                    onRetryOps={
+                      selectedSales.salesQuery
+                        ? () => {
+                            void selectedSales.salesQuery?.refetch();
+                          }
+                        : undefined
+                    }
+                    isCustodyPending={custodyQuery.isPending}
+                    isCustodyError={custodyQuery.isError}
+                    onRetryCustody={() => {
+                      void custodyQuery.refetch();
+                    }}
+                  />
                 )}
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[11px] font-bold text-gray-500">
