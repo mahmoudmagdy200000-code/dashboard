@@ -1779,10 +1779,12 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
 
   const validationMessage = preview.cardsPlusAppsExceedsGross
     ? t("مجموع الشبكة والتطبيقات يتجاوز إجمالي المبيعات المقفول.", "Cards plus delivery apps exceed locked total sales.")
+    : preview.cashAboveDerivedWhileIncreasing
+    ? t("تعديل القنوات يرفع سقف الكاش وعهدة الكاشير، والكاش المسجل سابقًا يتجاوز السقف المشتق؛ أدخل مبلغ الكاش الفعلي المحصّل صراحةً قبل الحفظ.", "Channel edits increase custody and prior cash exceeds derived sales; explicitly enter actual cash collected before saving.")
     : preview.cashExceedsDerivedCap
     ? t("الكاش المحصّل يتجاوز المتبقي من المبيعات بعد الشبكة والتطبيقات.", "Cash collected exceeds remaining sales after cards and apps.")
     : preview.requiresExplicitCashConfirmation && !cashConfirmed
-    ? t("تعديل الشبكة/القنوات سيزيد سقف الكاش؛ أكّد مبلغ الكاش الفعلي المحصّل صراحةً قبل الحفظ.", "Channel edits increase cash custody ceiling; explicitly confirm the actual cash collected before saving.")
+    ? t("تعديل الشبكة/القنوات سيزيد عهدة الكاشير؛ أكّد مبلغ الكاش الفعلي المحصّل صراحةً قبل الحفظ.", "Channel edits increase cashier custody; explicitly confirm the actual cash collected before saving.")
     : reasonMissing
     ? t("اختر سبب الفرق أو اكتب سبب التصحيح (٣ أحرف على الأقل).", "Select the variance reason or enter a correction reason (at least 3 characters).")
     : anyLookupPending
@@ -1994,37 +1996,44 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
       </div>
     )}
 
-    {/* 4. BE-01 Mahmoud decision: explicit confirmation when channel correction raises custody ceiling */}
+    {/* 4. BE-01 Mahmoud decision: explicit confirmation when channel correction actually raises custody */}
     {preview.requiresExplicitCashConfirmation && (
       <div role="alert" data-testid="cash-confirmation-gate" className="rounded-xl border border-amber-300 bg-amber-50 p-3 space-y-2 text-amber-950">
         <p className="font-bold">
           {t("تنبيه عهدة الكاش (قاعدة BE-01): يجب تأكيد الكاش الفعلي صراحةً","Cash Custody Alert (BE-01): Explicit Cash Confirmation Required")}
         </p>
         <p className="text-[11px] leading-relaxed">
-          {t(
-            `تعديل الشبكة/التطبيقات رفع سقف كاش المبيعات إلى ${formatShiftHalalas(preview.derivedCashSalesHalalas, lang)} ${sarUnit} (مقابل عهدة مرحلة سابقًا ${formatShiftHalalas(preview.postedCustodyCashHalalas, lang)} ${sarUnit}). أدخل مبلغ الكاش الفعلي المحصّل أو أكّد القيمة صراحةً؛ لن يُعتمد الإرسال التلقائي بالقيمة القديمة.`,
-            `Channel adjustment raises derived cash sales to ${formatShiftHalalas(preview.derivedCashSalesHalalas, lang)} ${sarUnit} (above posted custody ${formatShiftHalalas(preview.postedCustodyCashHalalas, lang)} ${sarUnit}). Enter or explicitly confirm actual cash collected; auto-submitting the old value is disabled.`,
-          )}
+          {preview.cashAboveDerivedWhileIncreasing
+            ? t(
+                `تعديل الشبكة/التطبيقات سيرفع عهدة الكاشير إلى ${formatShiftHalalas(preview.projectedCustodyCashHalalas, lang)} ${sarUnit} (مقابل عهدة مرحلة سابقًا ${formatShiftHalalas(preview.postedCustodyCashHalalas, lang)} ${sarUnit})، بينما الكاش المسجل سابقًا (${draft.cashCollectedSar ?? "0.00"} ${sarUnit}) يتجاوز السقف المشتق (${formatShiftHalalas(preview.derivedCashSalesHalalas, lang)} ${sarUnit}). أدخل مبلغ الكاش الفعلي المحصّل في حقل الكاش أعلاه (حتى ${formatShiftHalalas(preview.derivedCashSalesHalalas, lang)} ${sarUnit}) قبل الحفظ.`,
+                `Channel adjustment raises cashier custody to ${formatShiftHalalas(preview.projectedCustodyCashHalalas, lang)} ${sarUnit} (above posted custody ${formatShiftHalalas(preview.postedCustodyCashHalalas, lang)} ${sarUnit}), while previously reported cash (${draft.cashCollectedSar ?? "0.00"} ${sarUnit}) exceeds derived cash (${formatShiftHalalas(preview.derivedCashSalesHalalas, lang)} ${sarUnit}). Enter the actual cash collected above (up to ${formatShiftHalalas(preview.derivedCashSalesHalalas, lang)} ${sarUnit}) before saving.`,
+              )
+            : t(
+                `تعديل الشبكة/التطبيقات سيرفع عهدة الكاشير إلى ${formatShiftHalalas(preview.projectedCustodyCashHalalas, lang)} ${sarUnit} (مقابل عهدة مرحلة سابقًا ${formatShiftHalalas(preview.postedCustodyCashHalalas, lang)} ${sarUnit}). عدّل الكاش المحصّل أو أكّد القيمة صراحةً؛ لن يُعتمد الإرسال التلقائي بالقيمة القديمة.`,
+                `Channel adjustment raises cashier custody to ${formatShiftHalalas(preview.projectedCustodyCashHalalas, lang)} ${sarUnit} (above posted custody ${formatShiftHalalas(preview.postedCustodyCashHalalas, lang)} ${sarUnit}). Update cash collected or explicitly confirm the value; auto-submitting the old value is disabled.`,
+              )}
         </p>
-        <label className="flex items-start gap-2 cursor-pointer font-semibold">
-          <input
-            type="checkbox"
-            checked={cashConfirmed}
-            onChange={e => setCashConfirmed(e.target.checked)}
-            disabled={pending || correction.isPending || preview.cashExceedsDerivedCap}
-            className="mt-0.5 h-4 w-4 accent-purple-700"
-          />
-          <span>
-            {t(
-              `أؤكد صراحةً أن الكاش الفعلي المحصّل هو ${draft.cashCollectedSar ?? "0.00"} ${sarUnit}`,
-              `I explicitly confirm actual cash collected is ${draft.cashCollectedSar ?? "0.00"} ${sarUnit}`,
-            )}
-          </span>
-        </label>
+        {!preview.cashAboveDerivedWhileIncreasing && (
+          <label className="flex items-start gap-2 cursor-pointer font-semibold">
+            <input
+              type="checkbox"
+              checked={cashConfirmed}
+              onChange={e => setCashConfirmed(e.target.checked)}
+              disabled={pending || correction.isPending}
+              className="mt-0.5 h-4 w-4 accent-purple-700"
+            />
+            <span>
+              {t(
+                `أؤكد صراحةً أن الكاش الفعلي المحصّل هو ${draft.cashCollectedSar ?? "0.00"} ${sarUnit}`,
+                `I explicitly confirm actual cash collected is ${draft.cashCollectedSar ?? "0.00"} ${sarUnit}`,
+              )}
+            </span>
+          </label>
+        )}
       </div>
     )}
 
-    {(preview.cardsPlusAppsExceedsGross || preview.cashExceedsDerivedCap) && (
+    {(preview.cardsPlusAppsExceedsGross || (preview.cashExceedsDerivedCap && !preview.requiresExplicitCashConfirmation)) && (
       <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-2.5 text-red-800 font-medium">
         {preview.cardsPlusAppsExceedsGross
           ? t("خطأ: مجموع الشبكة والتطبيقات يتجاوز إجمالي المبيعات.", "Error: Card payments plus apps exceed gross sales.")

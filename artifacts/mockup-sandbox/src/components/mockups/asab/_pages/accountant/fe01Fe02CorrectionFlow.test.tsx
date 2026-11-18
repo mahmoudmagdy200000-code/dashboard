@@ -249,8 +249,8 @@ test("FE-01: next step guidance covers final-approved, head_review, and manager_
   );
 });
 
-test("FE-02: Mahmoud BE-01 cash confirmation rule & cash cap validation in integer halalas", () => {
-  // Gross 200, Card 110, Apps 0, Initial Cash Collected 120, Posted Custody 90, Drawer Count 100
+test("FE-02: Mahmoud BE-01 cash confirmation rule, no false gate at custody=90, and custody-lowering path", () => {
+  // Case A: Gross 200, Card 110, Apps 0, Initial Cash Collected 120, Posted Custody 90
   const be01Detail = makeOperationDetail({
     payload: {
       shiftId: "shift-be01",
@@ -268,7 +268,7 @@ test("FE-02: Mahmoud BE-01 cash confirmation rule & cash cap validation in integ
     },
   });
 
-  // 1. Editing card 110 -> 100 without touching/confirming cash requires explicit confirmation & blocks >100 cap
+  // 1. Editing card 110 -> 100 alone raises projected custody (90 -> 100) while old cash 120 > cap 100 -> blocked
   const draftCardOnly = {
     ...initialShiftCorrectionDraft(be01Detail),
     cardPaymentsSar: "100.00",
@@ -276,47 +276,105 @@ test("FE-02: Mahmoud BE-01 cash confirmation rule & cash cap validation in integ
   };
   const preview1 = evaluateShiftCorrectionPreview(be01Detail, draftCardOnly);
   assert.equal(preview1.requiresExplicitCashConfirmation, true);
-  assert.equal(preview1.cashExceedsDerivedCap, true, "120.00 exceeds new derived cash cap 100.00");
+  assert.equal(preview1.cashAboveDerivedWhileIncreasing, true);
+  assert.equal(preview1.cashExceedsDerivedCap, true);
   assert.equal(
-    prepareShiftCorrectionRequest(be01Detail, draftCardOnly, { enforceCashConfirmation: true, cashConfirmed: false }),
+    prepareShiftCorrectionRequest(be01Detail, draftCardOnly, { enforceCashConfirmation: true, cashConfirmed: true }),
     null,
+    "Cannot auto-confirm an over-cap 120.00 cash figure when derived cap is 100.00",
   );
 
-  // 2. Explicit cash confirmation at 90.00 -> permitted, emits cash_collected="90.00", shows 10 SAR collection deficit
-  const draftConfirm90 = {
+  // 2. Accountant explicitly sets cash = 90.00 -> custody stays 90, deficit 10 SAR, passes without extra checkbox
+  const draftExplicit90 = {
     ...draftCardOnly,
     cashCollectedSar: "90.00",
   };
-  const preview90 = evaluateShiftCorrectionPreview(be01Detail, draftConfirm90);
+  const preview90 = evaluateShiftCorrectionPreview(be01Detail, draftExplicit90);
+  assert.equal(preview90.cashEdited, true);
+  assert.equal(preview90.requiresExplicitCashConfirmation, false);
   assert.equal(preview90.cashExceedsDerivedCap, false);
   assert.equal(preview90.collectionDiffHalalas, 1000, "200 - (100 card + 90 cash) = 10 SAR deficit");
-  assert.equal(
-    prepareShiftCorrectionRequest(be01Detail, draftConfirm90, { enforceCashConfirmation: true, cashConfirmed: false }),
-    null,
-    "Auto-unconfirmed submission must fail when enforceCashConfirmation is active and cashConfirmed is false",
-  );
-  const req90 = prepareShiftCorrectionRequest(be01Detail, draftConfirm90, {
+  const req90 = prepareShiftCorrectionRequest(be01Detail, draftExplicit90, {
     enforceCashConfirmation: true,
-    cashConfirmed: true,
+    cashConfirmed: false,
   });
   assert.deepEqual(req90?.changes, { card_payments: "100.00", cash_collected: "90.00" });
 
-  // 3. Explicit cash confirmation at 100.00 (even when initial cash was already 90.00!)
-  const detailInitial90 = makeOperationDetail({
-    payload: { ...be01Detail.payload!, cashCollectedHalalas: 9000 },
+  // 3. Card 110 -> 100 when actual cash & custody are ALREADY 90 -> custody stays 90 (90 <= 90),
+  //    shows 10 SAR deficit and saves WITHOUT requiring extra cash confirmation!
+  const detailActual90 = makeOperationDetail({
+    payload: { ...be01Detail.payload!, cashActualHalalas: 9000, cashCollectedHalalas: 9000 },
   });
-  const draftConfirmSame90 = {
-    ...initialShiftCorrectionDraft(detailInitial90),
+  const draft110To100Cash90 = {
+    ...initialShiftCorrectionDraft(detailActual90),
     cardPaymentsSar: "100.00",
-    reason: "الشبكة 100 والكاش المحصّل المؤكد 90",
+    reason: "تصحيح الشبكة مع بقاء الكاش 90",
   };
-  const previewSame90 = evaluateShiftCorrectionPreview(detailInitial90, draftConfirmSame90);
-  assert.equal(previewSame90.requiresExplicitCashConfirmation, true);
-  const reqSame90Confirmed = prepareShiftCorrectionRequest(detailInitial90, draftConfirmSame90, {
+  const previewActual90 = evaluateShiftCorrectionPreview(detailActual90, draft110To100Cash90);
+  assert.equal(previewActual90.requiresExplicitCashConfirmation, false, "Custody does not increase (90 -> 90)");
+  assert.equal(previewActual90.cashExceedsDerivedCap, false);
+  assert.equal(previewActual90.collectionDiffHalalas, 1000, "Deficit 10.00 SAR");
+  assert.equal(previewActual90.targetShortageHalalas, 1000, "Requires 10.00 SAR allocation");
+  const reqActual90 = prepareShiftCorrectionRequest(
+    detailActual90,
+    {
+      ...draft110To100Cash90,
+      shares: [{ type: "employee", id: emp1Id, empNumber: "1001", amountSar: "10.00" }],
+    },
+    { enforceCashConfirmation: true, cashConfirmed: false, allowNewShares: true },
+  );
+  assert.deepEqual(reqActual90?.changes, { card_payments: "100.00" });
+  assert.deepEqual(reqActual90?.shortage_allocations, [{ type: "employee", id: emp1Id, amount: 1000 }]);
+
+  // 4. Custody-lowering edit (card 90 -> 110, untouched old cash 120 -> custody drops 110 -> 90)
+  //    must pass under BE-01 rules without forcing cash edit or tripping cashExceedsDerivedCap.
+  const detailLowering = makeOperationDetail({
+    payload: {
+      ...be01Detail.payload!,
+      salesHalalas: 20000,
+      cardTotalHalalas: 9000,
+      cashActualHalalas: 9000,
+      cashCollectedHalalas: 12000,
+    },
+  });
+  const draftLowering = {
+    ...initialShiftCorrectionDraft(detailLowering),
+    cardPaymentsSar: "110.00",
+    reason: "تصحيح يخفض العهدة إلى 90",
+  };
+  const previewLowering = evaluateShiftCorrectionPreview(detailLowering, draftLowering);
+  assert.equal(previewLowering.projectedCustodyCashHalalas, 9000);
+  assert.equal(previewLowering.requiresExplicitCashConfirmation, false);
+  assert.equal(previewLowering.cashExceedsDerivedCap, false, "Untouched old cash does not block custody reduction");
+  const reqLowering = prepareShiftCorrectionRequest(detailLowering, draftLowering, {
+    enforceCashConfirmation: true,
+    cashConfirmed: false,
+  });
+  assert.deepEqual(reqLowering?.changes, { card_payments: "110.00" });
+
+  // 5. Real custody increase (card 110 -> 100, untouched initial cash 100 -> posted 90, projected 100)
+  //    MUST still demand explicit cash confirmation checkbox & send cash_collected="100.00".
+  const detailInitial100 = makeOperationDetail({
+    payload: { ...be01Detail.payload!, cashCollectedHalalas: 10000 },
+  });
+  const draftIncrease = {
+    ...initialShiftCorrectionDraft(detailInitial100),
+    cardPaymentsSar: "100.00",
+    reason: "زيادة حقيقية للعهدة إلى 100",
+  };
+  const previewIncrease = evaluateShiftCorrectionPreview(detailInitial100, draftIncrease);
+  assert.equal(previewIncrease.requiresExplicitCashConfirmation, true);
+  assert.equal(previewIncrease.cashAboveDerivedWhileIncreasing, false);
+  assert.equal(
+    prepareShiftCorrectionRequest(detailInitial100, draftIncrease, { enforceCashConfirmation: true, cashConfirmed: false }),
+    null,
+    "Blocks auto-save without explicit confirmation when custody genuinely increases",
+  );
+  const reqIncreaseConfirmed = prepareShiftCorrectionRequest(detailInitial100, draftIncrease, {
     enforceCashConfirmation: true,
     cashConfirmed: true,
   });
-  assert.equal(reqSame90Confirmed?.changes.cash_collected, "90.00", "Explicit confirmation forces cash_collected even if value matches initial");
+  assert.deepEqual(reqIncreaseConfirmed?.changes, { card_payments: "100.00", cash_collected: "100.00" });
 });
 
 test("FE-02: Ninja 660->650 deficit, 2-employee split, duplicate/unknown rejection, and lookup race safety", () => {
@@ -471,12 +529,9 @@ test("FE-02 interactive form resolves employee by empNumber, blocks duplicate/wr
       setControlValue(reasonSelect, "تأخر تحويل من تطبيقات التوصيل", "change");
     });
 
-    // BE-01 cash confirmation gate activates because Ninja dropped 660->650 raising cash ceiling
-    const confirmCheckbox = container.querySelector('[data-testid="cash-confirmation-gate"] input[type="checkbox"]') as HTMLInputElement;
-    assert.ok(confirmCheckbox, "BE-01 cash confirmation checkbox shown");
-    await act(async () => {
-      confirmCheckbox.click();
-    });
+    // Custody stays 4200 -> 4200 when Ninja drops 660 -> 650 with cash=4200:
+    // BE-01 cash-confirmation gate must NOT trigger unnecessarily.
+    assert.equal(container.querySelector('[data-testid="cash-confirmation-gate"]'), null, "No extra cash gate when custody does not increase");
 
     // Enter unknown employee number 9999 -> name shows unknown & save is blocked
     const empNumberInput = container.querySelector('input[placeholder="مثال: 1001"]') as HTMLInputElement;
@@ -509,4 +564,159 @@ test("FE-02 interactive form resolves employee by empNumber, blocks duplicate/wr
     container.remove();
     qc.clear();
   }
+});
+
+test("FE-02 UI: card 110->100 with cash=90 saves deficit without extra confirm; lowering saves untouched; real increase gates Save", async () => {
+  const createRoot = await loadCreateRoot();
+  const roster: Employee[] = [
+    { id: emp1Id, empNumber: "1001", name: "فهد العتيبي", phone: "050", role: "كاشير", branchId: "branch-1", branchName: "العليا", monthlySalary: 300000, status: "active", balanceHalalas: 0, balanceCaption: { key: "zero", labelAr: "متوازن" } },
+  ];
+
+  async function mountScenario(detailOverride: ApiOperation, fn: (ctx: { container: HTMLDivElement; posted: Array<{ url: string; body: any }> }) => Promise<void>) {
+    const qc = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
+    qc.setQueryData(queryKeys.employees({ branchId: "branch-1", pageSize: 100 }), {
+      data: roster,
+      meta: { total: 1, page: 1, pageSize: 100, totalPages: 1 },
+    });
+    qc.setQueryData(["lookups", "branch-employee-by-number", "branch-1", "1001"], {
+      status: "resolved",
+      employee: { id: emp1Id, empNumber: "1001", name: "فهد العتيبي" },
+    });
+    const posted: Array<{ url: string; body: any }> = [];
+    const origGet = api.get.bind(api);
+    const origPost = api.post.bind(api);
+    api.get = (async () => ({ data: detailOverride }) as never) as typeof api.get;
+    api.post = (async (url: string, body?: unknown) => {
+      posted.push({ url, body });
+      return { data: { revision_number: 2 } } as never;
+    }) as typeof api.post;
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    try {
+      await act(async () => {
+        root.render(
+          <QueryClientProvider client={qc}>
+            <AuthContext.Provider value={authValue}>
+              <LangContext.Provider value={langCtx("ar")}>
+                <ShiftReportCorrectionForm op={apiOpToCOp(detailOverride)} detail={detailOverride} />
+              </LangContext.Provider>
+            </AuthContext.Provider>
+          </QueryClientProvider>,
+        );
+      });
+      await fn({ container, posted });
+    } finally {
+      api.get = origGet;
+      api.post = origPost;
+      await act(async () => root.unmount());
+      container.remove();
+      qc.clear();
+    }
+  }
+
+  // A. Card 110 -> 100 with cash=90 & custody=90: shows 10 SAR deficit, no extra BE-01 cash gate, saves cleanly
+  const detailCash90 = makeOperationDetail({
+    payload: {
+      shiftId: "shift-cash-90",
+      reportRevision: 1,
+      allocationVersion: null,
+      cashCountState: "counted",
+      salesHalalas: 20000,
+      cardTotalHalalas: 11000,
+      cashActualHalalas: 9000,
+      cashExpectedHalalas: 9000,
+      confirmedOpeningHalalas: 0,
+      cashCollectedHalalas: 9000,
+      aggregatorTotalsHalalas: 0,
+      aggregatorBreakdown: [],
+      pkg6Review: { phase: "accountant_review" },
+    },
+  });
+  await mountScenario(detailCash90, async ({ container, posted }) => {
+    const cardInput = Array.from(container.querySelectorAll("input")).find((i) => i.value === "110.00")!;
+    await act(async () => setControlValue(cardInput, "100.00", "input"));
+    assert.match(container.textContent ?? "", /عجز تحصيل/);
+    assert.match(container.textContent ?? "", /١٠٫٠٠/);
+    assert.equal(container.querySelector('[data-testid="cash-confirmation-gate"]'), null, "No extra confirmation when custody stays 90");
+
+    await act(async () => setControlValue(container.querySelector("select")!, "خطأ في جهاز نقطة البيع (POS)", "change"));
+    await act(async () => setControlValue(container.querySelector('input[placeholder="مثال: 1001"]') as HTMLInputElement, "1001", "input"));
+    await act(async () => findButton(container, "المتبقي")!.click());
+    const saveBtn = findButton(container, "حفظ التعديلات وإرسال اقتراح التحميل")!;
+    assert.equal(saveBtn.disabled, false);
+    await act(async () => saveBtn.click());
+    assert.equal(posted.length, 1);
+    assert.deepEqual(posted[0].body.changes, { card_payments: "100.00" });
+    assert.deepEqual(posted[0].body.shortage_allocations, [{ type: "employee", id: emp1Id, amount: 1000 }]);
+  });
+
+  // B. Custody-lowering (card 90 -> 110, untouched old cash 120): allowed under BE-01 without touching cash
+  const detailLower = makeOperationDetail({
+    payload: {
+      shiftId: "shift-lower",
+      reportRevision: 1,
+      allocationVersion: null,
+      cashCountState: "counted",
+      salesHalalas: 20000,
+      cardTotalHalalas: 9000,
+      cashActualHalalas: 9000,
+      cashExpectedHalalas: 11000,
+      confirmedOpeningHalalas: 0,
+      cashCollectedHalalas: 12000,
+      aggregatorTotalsHalalas: 0,
+      aggregatorBreakdown: [],
+      pkg6Review: { phase: "accountant_review" },
+    },
+  });
+  await mountScenario(detailLower, async ({ container, posted }) => {
+    const cardInput = Array.from(container.querySelectorAll("input")).find((i) => i.value === "90.00")!;
+    await act(async () => setControlValue(cardInput, "110.00", "input"));
+    assert.equal(container.querySelector('[data-testid="cash-confirmation-gate"]'), null);
+    assert.doesNotMatch(container.textContent ?? "", /الكاش المحصّل يتجاوز المتبقي/);
+
+    await act(async () => setControlValue(container.querySelector("select")!, "خطأ في جهاز نقطة البيع (POS)", "change"));
+    const saveBtn = findButton(container, "حفظ التعديلات")!;
+    assert.equal(saveBtn.disabled, false);
+    await act(async () => saveBtn.click());
+    assert.equal(posted.length, 1);
+    assert.deepEqual(posted[0].body.changes, { card_payments: "110.00" });
+  });
+
+  // C. Real custody increase (card 110 -> 100, untouched cash 100, posted custody 90 -> 100): requires explicit confirmation
+  const detailIncrease = makeOperationDetail({
+    payload: {
+      shiftId: "shift-inc",
+      reportRevision: 1,
+      allocationVersion: null,
+      cashCountState: "counted",
+      salesHalalas: 20000,
+      cardTotalHalalas: 11000,
+      cashActualHalalas: 10000,
+      cashExpectedHalalas: 9000,
+      confirmedOpeningHalalas: 0,
+      cashCollectedHalalas: 10000,
+      aggregatorTotalsHalalas: 0,
+      aggregatorBreakdown: [],
+      pkg6Review: { phase: "accountant_review" },
+    },
+  });
+  await mountScenario(detailIncrease, async ({ container, posted }) => {
+    const cardInput = Array.from(container.querySelectorAll("input")).find((i) => i.value === "110.00")!;
+    await act(async () => setControlValue(cardInput, "100.00", "input"));
+    const confirmCheckbox = container.querySelector('[data-testid="cash-confirmation-gate"] input[type="checkbox"]') as HTMLInputElement;
+    assert.ok(confirmCheckbox, "BE-01 explicit cash confirmation gate required when custody genuinely increases");
+
+    await act(async () => setControlValue(container.querySelector("select")!, "خطأ في جهاز نقطة البيع (POS)", "change"));
+    const saveBtn = findButton(container, "حفظ التعديلات")!;
+    assert.equal(saveBtn.disabled, true, "Save stays disabled before confirming cash increase");
+    await act(async () => saveBtn.click());
+    assert.equal(posted.length, 0);
+
+    await act(async () => confirmCheckbox.click());
+    assert.equal(saveBtn.disabled, false);
+    await act(async () => saveBtn.click());
+    assert.equal(posted.length, 1);
+    assert.deepEqual(posted[0].body.changes, { card_payments: "100.00", cash_collected: "100.00" });
+  });
 });

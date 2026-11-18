@@ -247,9 +247,12 @@ export type ShiftCorrectionPreview = {
   targetShortageHalalas: number;
   derivedCashSalesHalalas: number | null;
   postedCustodyCashHalalas: number | null;
+  projectedCustodyCashHalalas: number | null;
+  cashEdited: boolean;
   cardsPlusAppsExceedsGross: boolean;
   cashExceedsDerivedCap: boolean;
   requiresExplicitCashConfirmation: boolean;
+  cashAboveDerivedWhileIncreasing: boolean;
 };
 
 function readHalalaNumber(value: unknown): number | null {
@@ -313,23 +316,46 @@ export function evaluateShiftCorrectionPreview(
       ? Math.min(initialCashH, initialDerivedCashSalesH)
       : null;
 
-  const cashExceedsDerivedCap =
-    derivedCashSalesHalalas !== null &&
+  const projectedCustodyCashHalalas =
+    cashCollectedHalalas !== null && derivedCashSalesHalalas !== null
+      ? Math.min(cashCollectedHalalas, derivedCashSalesHalalas)
+      : null;
+
+  const cashEdited =
+    initialCashH !== null &&
     cashCollectedHalalas !== null &&
-    cashCollectedHalalas > derivedCashSalesHalalas;
+    cashCollectedHalalas !== initialCashH;
+
+  const custodyIncreases =
+    postedCustodyCashHalalas !== null &&
+    projectedCustodyCashHalalas !== null &&
+    projectedCustodyCashHalalas > postedCustodyCashHalalas;
 
   const channelsChanged =
     (initialCardsH !== null && cardPaymentsHalalas !== null && cardPaymentsHalalas !== initialCardsH) ||
     (initialAppsH !== null && appsHalalas !== null && appsHalalas !== initialAppsH);
 
-  // BE-01 Mahmoud decision: when channel edits alone would increase derived sales cash above
-  // previously posted cashier custody, the accountant must explicitly confirm cash collected.
+  // BE-01 Mahmoud decision: require explicit cash confirmation ONLY when channel edits without an
+  // explicit cash change would actually raise capped cashier custody above previously posted custody.
+  // Edits that keep custody equal (e.g. cash=custody=90, cards 110->100) or lower custody
+  // (e.g. cards 90->110 with untouched old cash) follow BE-01 without extra confirmation or cap error.
   const requiresExplicitCashConfirmation =
     channelsChanged &&
     initial.cashCollectedSar !== null &&
-    postedCustodyCashHalalas !== null &&
+    custodyIncreases &&
+    !cashEdited;
+
+  const cashExceedsDerivedCap =
     derivedCashSalesHalalas !== null &&
-    derivedCashSalesHalalas > postedCustodyCashHalalas;
+    cashCollectedHalalas !== null &&
+    cashCollectedHalalas > derivedCashSalesHalalas &&
+    (cashEdited || custodyIncreases);
+
+  const cashAboveDerivedWhileIncreasing =
+    requiresExplicitCashConfirmation &&
+    derivedCashSalesHalalas !== null &&
+    cashCollectedHalalas !== null &&
+    cashCollectedHalalas > derivedCashSalesHalalas;
 
   const totalCollectionHalalas =
     cashCollectedHalalas !== null && cardPaymentsHalalas !== null && appsHalalas !== null
@@ -382,9 +408,12 @@ export function evaluateShiftCorrectionPreview(
     targetShortageHalalas,
     derivedCashSalesHalalas,
     postedCustodyCashHalalas,
+    projectedCustodyCashHalalas,
+    cashEdited,
     cardsPlusAppsExceedsGross,
     cashExceedsDerivedCap,
     requiresExplicitCashConfirmation,
+    cashAboveDerivedWhileIncreasing,
   };
 }
 
