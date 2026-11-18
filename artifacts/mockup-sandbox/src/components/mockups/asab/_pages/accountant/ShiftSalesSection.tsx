@@ -24,6 +24,7 @@ import { ShiftReportCorrectionForm } from "../../CompanyDashboard.tsx";
 import {
   getShiftCorrectionEvidence,
   getShiftCorrectionIneligibilityReason,
+  getShiftCorrectionNextStep,
 } from "../../shiftReportCorrection";
 import { apiOpToCOp } from "../../operationMapping";
 
@@ -90,6 +91,7 @@ function ShiftSalesDetails({
   onOpenReport?: (shiftId: string, operationId?: string) => void;
 }) {
   const { lang, t } = useLang();
+  const [correctionOpen, setCorrectionOpen] = useState(false);
   const reportQuery = useOperation(operationId);
   const operation = reportQuery.data;
   const report =
@@ -209,32 +211,66 @@ function ShiftSalesDetails({
         </div>
       ) : null}
 
-      {/* Requirement G1.3: Open full shift report / reuse ShiftReportCorrectionForm or display clear ineligibility reason */}
+      {/* Requirement FE-01: Open full shift report / toggle "Edit breakdown" when eligible or show exact lock reason + next step */}
       {report && (
         <div className="space-y-3 pt-3 border-t border-gray-200">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h4 className="text-xs font-bold text-gray-900">
               {t("إجراءات المحاسب وتصحيح التقرير", "Accountant Actions & Report Correction")}
             </h4>
-            {onOpenReport && (
-              <button
-                type="button"
-                onClick={() => onOpenReport(shift.id, report.id)}
-                className="rounded-lg bg-purple-50 border border-purple-200 px-2.5 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-100"
-              >
-                {t("عرض في صفحة التقارير الكاملة ↗", "View in full reports page ↗")}
-              </button>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {getShiftCorrectionEvidence(apiOpToCOp(report), report, "accountant") && (
+                <button
+                  type="button"
+                  onClick={() => setCorrectionOpen((open) => !open)}
+                  className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700 focus-visible:outline-2 focus-visible:outline-purple-600"
+                >
+                  {correctionOpen
+                    ? t("إخفاء نموذج التعديل", "Hide edit form")
+                    : t("تعديل التفصيل", "Edit breakdown")}
+                </button>
+              )}
+              {onOpenReport && (
+                <button
+                  type="button"
+                  onClick={() => onOpenReport(shift.id, report.id)}
+                  className="rounded-lg bg-purple-50 border border-purple-200 px-2.5 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100"
+                >
+                  {t("عرض في صفحة التقارير الكاملة ↗", "View in full reports page ↗")}
+                </button>
+              )}
+            </div>
           </div>
           {getShiftCorrectionEvidence(apiOpToCOp(report), report, "accountant") ? (
-            <ShiftReportCorrectionForm key={`${report.id}:${report.reportRevision ?? report.payload?.reportRevision ?? "missing"}`} op={apiOpToCOp(report)} detail={report} />
+            correctionOpen ? (
+              <ShiftReportCorrectionForm
+                key={`${report.id}:${report.reportRevision ?? report.payload?.reportRevision ?? "missing"}`}
+                op={apiOpToCOp(report)}
+                detail={report}
+              />
+            ) : (
+              <p className="text-xs text-gray-600">
+                {t(
+                  "التقرير مؤهل للتصحيح؛ اضغط «تعديل التفصيل» لفتح نموذج تعديل القنوات وتوزيع العجز.",
+                  "Report is eligible for correction; click 'Edit breakdown' to adjust channels and allocate any deficit.",
+                )}
+              </p>
+            )
           ) : (
-            <div className="rounded-lg bg-amber-50/80 border border-amber-200 p-2.5 text-xs text-amber-800">
-              <span className="font-semibold block mb-0.5">
-                {t("أهلية تصحيح التقرير:", "Correction eligibility:")}
+            <div className="rounded-lg bg-amber-50/80 border border-amber-200 p-2.5 text-xs text-amber-800 space-y-1">
+              <span className="font-semibold block">
+                {t("التعديل غير متاح:", "Editing locked:")}
               </span>
               <p>
                 {getShiftCorrectionIneligibilityReason(
+                  apiOpToCOp(report),
+                  report,
+                  "accountant",
+                  lang,
+                )}
+              </p>
+              <p className="text-amber-900 font-medium">
+                {getShiftCorrectionNextStep(
                   apiOpToCOp(report),
                   report,
                   "accountant",
@@ -246,14 +282,20 @@ function ShiftSalesDetails({
         </div>
       )}
       {!report && operationId && !reportQuery.isPending && (
-        <div className="rounded-lg bg-amber-50/60 border border-amber-200 p-2.5 text-xs text-amber-800">
-          <span className="font-semibold block mb-0.5">
+        <div className="rounded-lg bg-amber-50/60 border border-amber-200 p-2.5 text-xs text-amber-800 space-y-1">
+          <span className="font-semibold block">
             {t("أهلية تصحيح التقرير:", "Correction eligibility:")}
           </span>
           <p>
             {t(
               "تقرير الوردية غير متاح للمراجعة والتصحيح بعد.",
               "Shift report is not available for review and correction yet.",
+            )}
+          </p>
+          <p className="text-amber-900 font-medium">
+            {t(
+              "الخطوة المتاحة: انتظر إرسال تقرير الوردية أو حدّث الصفحة لاحقًا.",
+              "Available step: Wait for shift report submission or refresh later.",
             )}
           </p>
         </div>

@@ -25,7 +25,13 @@ export type ShiftCorrectionOperation = {
 };
 
 export type ShiftCorrectionAggregatorDraft = { aggregatorId: string; amountSar: string; notes?: string | null };
-export type ShiftCorrectionShareDraft = { type: string; id: string; amountSar: string; name?: string | null };
+export type ShiftCorrectionShareDraft = {
+  type: string;
+  id: string;
+  amountSar: string;
+  name?: string | null;
+  empNumber?: string;
+};
 export type ShiftCorrectionDraft = {
   cardPaymentsSar: string | null;
   countedCashSar: string | null;
@@ -34,6 +40,11 @@ export type ShiftCorrectionDraft = {
   aggregators: ShiftCorrectionAggregatorDraft[] | null;
   shares: ShiftCorrectionShareDraft[] | null;
   reason: string;
+};
+export type ShiftCorrectionRequestOptions = {
+  enforceCashConfirmation?: boolean;
+  cashConfirmed?: boolean;
+  allowNewShares?: boolean;
 };
 export type ShiftCorrectionRequest = {
   expected_revision: number;
@@ -161,6 +172,304 @@ export function getShiftCorrectionIneligibilityReason(
   return language === "ar" ? "التقرير غير مؤهل للتصحيح حالياً" : "Report is currently ineligible for correction";
 }
 
+export function getShiftCorrectionNextStep(
+  operation: ShiftCorrectionOperation | undefined,
+  detail: ShiftCorrectionOperation | undefined,
+  role: string | null | undefined,
+  language: "ar" | "en" = "ar",
+): string | null {
+  if (getShiftCorrectionEvidence(operation, detail, role)) return null;
+
+  if (role !== "accountant") {
+    return language === "ar"
+      ? "الخطوة المتاحة: يمكنك استعراض تفاصيل الوردية للقراءة فقط أو تنفيذ المراجعة المصرحة لدورك."
+      : "Available step: Review the shift details in read-only mode or perform actions authorized for your role.";
+  }
+
+  const status = detail?.status ?? operation?.status;
+  const rawRev = (detail?.payload?.pkg6Review ?? detail?.reportReview ?? operation?.reportReview) as
+    | Record<string, unknown>
+    | undefined;
+  const phase = typeof rawRev?.phase === "string" ? rawRev.phase : undefined;
+
+  if (status === "final-approved") {
+    return language === "ar"
+      ? "الخطوة المتاحة: السجل معتمد نهائيًا ومُقفل؛ القراءة والمراجعة فقط."
+      : "Available step: This report is final-approved and locked; read-only inspection only.";
+  }
+
+  if (status === "approved" || phase === "head_review") {
+    return language === "ar"
+      ? "الخطوة المتاحة: التقرير لدى رئيس الحسابات حاليًا؛ انتظر قراره أو اطلب توضيحًا، وإذا أُعيد لك فسيُفتح التعديل."
+      : "Available step: Report is currently with the Head Accountant; await their decision or request clarification. Editing reopens only if returned to you.";
+  }
+
+  if (status === "rejected" || phase === "manager_returned") {
+    return language === "ar"
+      ? "الخطوة المتاحة: انتظر إعادة إرسال التقرير من مدير الفرع حتى يعود إلى مرحلة مراجعة المحاسب."
+      : "Available step: Await Branch Manager resubmission so the shift report returns to accountant review.";
+  }
+
+  if (phase === "head_returned") {
+    return language === "ar"
+      ? "الخطوة المتاحة: التقرير مُعاد من رئيس الحسابات؛ راجع سبب الإرجاع وأعده لمدير الفرع عند اللزوم."
+      : "Available step: Returned by the Head Accountant; inspect the return reason and return it to the Branch Manager if needed.";
+  }
+
+  return language === "ar"
+    ? "الخطوة المتاحة: حدّث تفاصيل العملية لإعادة التحقق من رقم النسخة وبيانات المراجعة."
+    : "Available step: Refresh operation details to re-verify report revision and review metadata.";
+}
+
+export const SHIFT_VARIANCE_REASONS: ReadonlyArray<{
+  value: string;
+  ar: string;
+  en: string;
+}> = [
+  { value: "تأخر تحويل من تطبيقات التوصيل", ar: "تأخر تحويل من تطبيقات التوصيل", en: "Delayed transfer from delivery apps" },
+  { value: "خطأ في جهاز نقطة البيع (POS)", ar: "خطأ في جهاز نقطة البيع (POS)", en: "POS terminal error" },
+  { value: "عملية مبيعات ملغاة", ar: "عملية مبيعات ملغاة", en: "Cancelled sales transaction" },
+  { value: "فارق في الصندوق النقدي", ar: "فارق في الصندوق النقدي", en: "Cash till discrepancy" },
+  { value: "خطأ في إدخال البيانات", ar: "خطأ في إدخال البيانات", en: "Data entry error" },
+  { value: "تسوية لاحقة — جارٍ المتابعة", ar: "تسوية لاحقة — جارٍ المتابعة", en: "Deferred reconciliation — under follow-up" },
+  { value: "أخرى", ar: "أخرى", en: "Other" },
+];
+
+export type ShiftCorrectionPreview = {
+  grossHalalas: number | null;
+  cardPaymentsHalalas: number | null;
+  appsHalalas: number | null;
+  cashCollectedHalalas: number | null;
+  countedCashHalalas: number | null;
+  totalCollectionHalalas: number | null;
+  collectionDiffHalalas: number | null;
+  projectedDrawerVarianceHalalas: number | null;
+  targetShortageHalalas: number;
+  derivedCashSalesHalalas: number | null;
+  postedCustodyCashHalalas: number | null;
+  cardsPlusAppsExceedsGross: boolean;
+  cashExceedsDerivedCap: boolean;
+  requiresExplicitCashConfirmation: boolean;
+};
+
+function readHalalaNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isSafeInteger(value) ? value : null;
+}
+
+export function evaluateShiftCorrectionPreview(
+  detail: ShiftCorrectionOperation,
+  draft: ShiftCorrectionDraft,
+): ShiftCorrectionPreview {
+  const initial = initialShiftCorrectionDraft(detail);
+  const p = (detail.payload ?? {}) as Record<string, unknown>;
+  const grossHalalas = readHalalaNumber(p.salesHalalas);
+
+  const initialCardsH = initial.cardPaymentsSar !== null ? parseCorrectionSar(initial.cardPaymentsSar)?.halalas ?? null : null;
+  const cardPaymentsHalalas = draft.cardPaymentsSar !== null
+    ? parseCorrectionSar(draft.cardPaymentsSar)?.halalas ?? null
+    : initialCardsH;
+
+  const sumAggs = (rows: ShiftCorrectionAggregatorDraft[] | null): number | null => {
+    if (!rows) return null;
+    let total = 0;
+    for (const row of rows) {
+      const parsed = parseCorrectionSar(row.amountSar);
+      if (!parsed) return null;
+      total += parsed.halalas;
+    }
+    return total;
+  };
+  const fallbackAppsH = readHalalaNumber(p.aggregatorTotalsHalalas) ?? 0;
+  const initialAppsH = initial.aggregators ? (sumAggs(initial.aggregators) ?? fallbackAppsH) : fallbackAppsH;
+  const appsHalalas = draft.aggregators ? sumAggs(draft.aggregators) : fallbackAppsH;
+
+  const initialCashH = initial.cashCollectedSar !== null ? parseCorrectionSar(initial.cashCollectedSar)?.halalas ?? null : null;
+  const cashCollectedHalalas = draft.cashCollectedSar !== null
+    ? parseCorrectionSar(draft.cashCollectedSar)?.halalas ?? null
+    : initialCashH;
+
+  const countedCashHalalas = draft.countedCashSar !== null
+    ? parseCorrectionSar(draft.countedCashSar)?.halalas ?? null
+    : null;
+
+  const cardsPlusAppsExceedsGross =
+    grossHalalas !== null &&
+    cardPaymentsHalalas !== null &&
+    appsHalalas !== null &&
+    cardPaymentsHalalas + appsHalalas > grossHalalas;
+
+  const derivedCashSalesHalalas =
+    grossHalalas !== null && cardPaymentsHalalas !== null && appsHalalas !== null
+      ? Math.max(0, grossHalalas - cardPaymentsHalalas - appsHalalas)
+      : null;
+
+  const initialDerivedCashSalesH =
+    grossHalalas !== null && initialCardsH !== null && initialAppsH !== null
+      ? Math.max(0, grossHalalas - initialCardsH - initialAppsH)
+      : null;
+
+  const postedCustodyCashHalalas =
+    initialCashH !== null && initialDerivedCashSalesH !== null
+      ? Math.min(initialCashH, initialDerivedCashSalesH)
+      : null;
+
+  const cashExceedsDerivedCap =
+    derivedCashSalesHalalas !== null &&
+    cashCollectedHalalas !== null &&
+    cashCollectedHalalas > derivedCashSalesHalalas;
+
+  const channelsChanged =
+    (initialCardsH !== null && cardPaymentsHalalas !== null && cardPaymentsHalalas !== initialCardsH) ||
+    (initialAppsH !== null && appsHalalas !== null && appsHalalas !== initialAppsH);
+
+  // BE-01 Mahmoud decision: when channel edits alone would increase derived sales cash above
+  // previously posted cashier custody, the accountant must explicitly confirm cash collected.
+  const requiresExplicitCashConfirmation =
+    channelsChanged &&
+    initial.cashCollectedSar !== null &&
+    postedCustodyCashHalalas !== null &&
+    derivedCashSalesHalalas !== null &&
+    derivedCashSalesHalalas > postedCustodyCashHalalas;
+
+  const totalCollectionHalalas =
+    cashCollectedHalalas !== null && cardPaymentsHalalas !== null && appsHalalas !== null
+      ? cashCollectedHalalas + cardPaymentsHalalas + appsHalalas
+      : null;
+
+  const collectionDiffHalalas =
+    grossHalalas !== null && totalCollectionHalalas !== null
+      ? grossHalalas - totalCollectionHalalas
+      : null;
+
+  const confirmedOpeningH =
+    readHalalaNumber(p.confirmedOpeningHalalas) ??
+    readHalalaNumber(p.confirmed_opening_halalas) ??
+    readHalalaNumber((detail as Record<string, unknown>).confirmedOpeningHalalas) ??
+    0;
+
+  const projectedDrawerVarianceHalalas =
+    p.cashCountState === "counted" &&
+    countedCashHalalas !== null &&
+    grossHalalas !== null &&
+    cardPaymentsHalalas !== null &&
+    appsHalalas !== null
+      ? countedCashHalalas - (confirmedOpeningH + Math.max(0, grossHalalas - cardPaymentsHalalas - appsHalalas))
+      : null;
+
+  const drawerShortageH =
+    projectedDrawerVarianceHalalas !== null && projectedDrawerVarianceHalalas < 0
+      ? Math.abs(projectedDrawerVarianceHalalas)
+      : 0;
+  const collectionDeficitH =
+    collectionDiffHalalas !== null && collectionDiffHalalas > 0
+      ? collectionDiffHalalas
+      : 0;
+
+  const targetShortageHalalas =
+    p.cashCountState === "counted" && projectedDrawerVarianceHalalas !== null
+      ? Math.max(drawerShortageH, collectionDeficitH)
+      : collectionDeficitH;
+
+  return {
+    grossHalalas,
+    cardPaymentsHalalas,
+    appsHalalas,
+    cashCollectedHalalas,
+    countedCashHalalas,
+    totalCollectionHalalas,
+    collectionDiffHalalas,
+    projectedDrawerVarianceHalalas,
+    targetShortageHalalas,
+    derivedCashSalesHalalas,
+    postedCustodyCashHalalas,
+    cardsPlusAppsExceedsGross,
+    cashExceedsDerivedCap,
+    requiresExplicitCashConfirmation,
+  };
+}
+
+export type ShortageAllocationValidation = {
+  valid: boolean;
+  allocatedHalalas: number;
+  remainingHalalas: number;
+  hasInvalidAmount: boolean;
+  hasUnresolvedEmployee: boolean;
+  hasDuplicateEmployee: boolean;
+};
+
+export function validateShortageAllocations(
+  shares: readonly ShiftCorrectionShareDraft[] | null | undefined,
+  targetShortageHalalas: number,
+): ShortageAllocationValidation {
+  if (targetShortageHalalas <= 0) {
+    return {
+      valid: true,
+      allocatedHalalas: 0,
+      remainingHalalas: 0,
+      hasInvalidAmount: false,
+      hasUnresolvedEmployee: false,
+      hasDuplicateEmployee: false,
+    };
+  }
+  const rows = shares ?? [];
+  if (rows.length === 0) {
+    return {
+      valid: false,
+      allocatedHalalas: 0,
+      remainingHalalas: targetShortageHalalas,
+      hasInvalidAmount: false,
+      hasUnresolvedEmployee: true,
+      hasDuplicateEmployee: false,
+    };
+  }
+
+  let allocatedHalalas = 0;
+  let hasInvalidAmount = false;
+  let hasUnresolvedEmployee = false;
+  let hasDuplicateEmployee = false;
+  const seenIds = new Set<string>();
+  const seenEmpNumbers = new Set<string>();
+
+  for (const row of rows) {
+    const parsed = parseCorrectionSar(row.amountSar);
+    if (!parsed || parsed.halalas <= 0) {
+      hasInvalidAmount = true;
+    } else {
+      allocatedHalalas += parsed.halalas;
+    }
+    const validType = (["cashier", "employee", "branch_manager"] as string[]).includes(row.type);
+    const validId = UUID.test(row.id);
+    if (!validType || !validId) {
+      hasUnresolvedEmployee = true;
+    } else {
+      const actorKey = `${row.type}:${row.id}`;
+      if (seenIds.has(actorKey)) hasDuplicateEmployee = true;
+      seenIds.add(actorKey);
+    }
+    const num = row.empNumber?.trim();
+    if (num) {
+      if (seenEmpNumbers.has(num)) hasDuplicateEmployee = true;
+      seenEmpNumbers.add(num);
+    }
+  }
+
+  const remainingHalalas = targetShortageHalalas - allocatedHalalas;
+  const valid =
+    !hasInvalidAmount &&
+    !hasUnresolvedEmployee &&
+    !hasDuplicateEmployee &&
+    remainingHalalas === 0;
+
+  return {
+    valid,
+    allocatedHalalas,
+    remainingHalalas,
+    hasInvalidAmount,
+    hasUnresolvedEmployee,
+    hasDuplicateEmployee,
+  };
+}
+
 function halalasToSar(value: unknown): string | null {
   if (!isSafeHalalas(value)) return null;
   const amount = BigInt(value);
@@ -245,11 +554,18 @@ function sameValue(left: unknown, right: unknown): boolean {
 export function prepareShiftCorrectionRequest(
   detail: ShiftCorrectionOperation,
   draft: ShiftCorrectionDraft,
+  options?: ShiftCorrectionRequestOptions,
 ): ShiftCorrectionRequest | null {
   const reportRevision = readConsistentVersion([detail.reportRevision, detail.payload?.reportRevision], true);
   if (!isPositiveVersion(reportRevision)) return null;
   const reason = draft.reason.trim();
   if (reason.length < 3) return null;
+
+  if (options?.enforceCashConfirmation) {
+    const preview = evaluateShiftCorrectionPreview(detail, draft);
+    if (preview.cardsPlusAppsExceedsGross || preview.cashExceedsDerivedCap) return null;
+    if (preview.requiresExplicitCashConfirmation && !options.cashConfirmed) return null;
+  }
 
   const changes: ShiftCorrectionRequest["changes"] = {};
   const initial = initialShiftCorrectionDraft(detail);
@@ -265,11 +581,18 @@ export function prepareShiftCorrectionRequest(
     if (!before || !value) return null;
     if (value.halalas !== before.halalas) changes.counted_cash = value.sar;
   }
-  if (initial.cashCollectedSar !== null && draft.cashCollectedSar !== initial.cashCollectedSar) {
+  if (initial.cashCollectedSar !== null) {
     const before = parseCorrectionSar(initial.cashCollectedSar);
     const value = draft.cashCollectedSar === null ? null : parseCorrectionSar(draft.cashCollectedSar);
     if (!before || !value) return null;
-    if (value.halalas !== before.halalas) changes.cash_collected = value.sar;
+    const forceConfirmedCash = Boolean(
+      options?.enforceCashConfirmation &&
+      options?.cashConfirmed &&
+      evaluateShiftCorrectionPreview(detail, draft).requiresExplicitCashConfirmation,
+    );
+    if (value.halalas !== before.halalas || forceConfirmedCash) {
+      changes.cash_collected = value.sar;
+    }
   }
   if (initial.handoverNotes !== null && draft.handoverNotes !== null) {
     const currentNotes = draft.handoverNotes.trim();
@@ -304,26 +627,34 @@ export function prepareShiftCorrectionRequest(
 
   let shortageAllocations: ShiftCorrectionRequest["shortage_allocations"];
   const currentShares = correctionShares(detail);
+  const normalizeShares = (rows: ShiftCorrectionShareDraft[]) => {
+    const requestRows: NonNullable<ShiftCorrectionRequest["shortage_allocations"]> = [];
+    const signature: Array<{ type: string; id: string; amount: number }> = [];
+    const seenIds = new Set<string>();
+    for (const row of rows) {
+      const amount = parseCorrectionSar(row.amountSar);
+      if (!(["cashier", "employee", "branch_manager"] as string[]).includes(row.type)
+        || !UUID.test(row.id) || !amount || amount.halalas === 0) return null;
+      const actorKey = `${row.type}:${row.id}`;
+      if (seenIds.has(actorKey)) return null;
+      seenIds.add(actorKey);
+      requestRows.push({ type: row.type as "cashier" | "employee" | "branch_manager", id: row.id, amount: amount.halalas });
+      signature.push({ type: row.type, id: row.id, amount: amount.halalas });
+    }
+    return { requestRows, signature };
+  };
   if (currentShares && draft.shares && !sameValue(currentShares, draft.shares)) {
-    const normalize = (rows: ShiftCorrectionShareDraft[]) => {
-      const requestRows = [];
-      const signature = [];
-      for (const row of rows) {
-        const amount = parseCorrectionSar(row.amountSar);
-        if (!(["cashier", "employee", "branch_manager"] as string[]).includes(row.type)
-          || !UUID.test(row.id) || !amount || amount.halalas === 0) return null;
-        requestRows.push({ type: row.type as "cashier" | "employee" | "branch_manager", id: row.id, amount: amount.halalas });
-        signature.push({ type: row.type, id: row.id, amount: amount.halalas });
-      }
-      return { requestRows, signature };
-    };
-    const before = normalize(currentShares);
-    const current = normalize(draft.shares);
+    const before = normalizeShares(currentShares);
+    const current = normalizeShares(draft.shares);
     if (!before || !current) return null;
     if (!sameValue(before.signature, current.signature)) {
       if (!current.requestRows.length) return null;
       shortageAllocations = current.requestRows;
     }
+  } else if (!currentShares && options?.allowNewShares && draft.shares && draft.shares.length > 0) {
+    const current = normalizeShares(draft.shares);
+    if (!current || !current.requestRows.length) return null;
+    shortageAllocations = current.requestRows;
   }
 
   const hasChanges = Object.keys(changes).length > 0 || shortageAllocations !== undefined;
@@ -351,11 +682,12 @@ export async function runShiftReportCorrection(
   loadDetail: () => Promise<ShiftCorrectionOperation>,
   send: (shiftId: string, body: ShiftCorrectionRequest) => Promise<unknown>,
   lock: { current: boolean },
+  options?: ShiftCorrectionRequestOptions,
 ): Promise<boolean> {
   if (lock.current) return false;
   const initialEvidence = getShiftCorrectionEvidence(operation, initialDetail, role);
   if (!initialEvidence) return false;
-  const request = prepareShiftCorrectionRequest(initialDetail, draft);
+  const request = prepareShiftCorrectionRequest(initialDetail, draft, options);
   if (!request) return false;
   lock.current = true;
   try {

@@ -25,6 +25,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import type { Operation as ApiOperation } from "../../../../../api/types";
+import { isApiError } from "../../../../../api/errors";
 import { queryKeys } from "../../../../../api/queries/keys";
 import {
   useBranchEmployeesLookup,
@@ -69,39 +70,50 @@ function AccVarEmpRow({ branchId, row, onField, onRemove, onQuickFill, canRemove
   onField: (field: "empId" | "amount", val: string) => void; onRemove: () => void; onQuickFill: () => void;
   canRemove: boolean; t: (ar: string, en: string) => string;
 }) {
-  const { data: emp } = useBranchEmployeesLookup(branchId, row.empId.length >= 3 ? row.empId : undefined);
-  const empName = emp?.name ?? "";
+  const trimmed = row.empId.trim();
+  const lookup = useBranchEmployeesLookup(branchId, trimmed.length >= 1 ? trimmed : undefined);
+  const empName = lookup.data?.name ?? "";
+  const isDuplicateErr = isApiError(lookup.error) && lookup.error.status === 409;
+  const isNotFound = trimmed.length > 0 && !lookup.isFetching && lookup.isError && !isDuplicateErr;
   return (
-    <div className="flex items-center gap-2">
+    <div className="grid grid-cols-1 gap-2 lg:grid-cols-[6.5rem_minmax(8.5rem,1fr)_7.5rem_auto_auto] lg:items-end">
       <div className="flex flex-col gap-0.5">
-        <label className="text-[10px] text-gray-400">{t("رقم الموظف", "Employee ID")}</label>
+        <label className="text-[10px] text-gray-500">{t("رقم الموظف", "Employee #")}</label>
         <input placeholder={t("مثال: 1001", "e.g. 1001")} value={row.empId}
           onChange={ev => onField("empId", ev.target.value)}
-          className="w-24 text-center font-mono border border-red-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-red-400" />
+          className="w-full text-center font-mono border border-red-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-purple-400" />
       </div>
-      <div className="flex flex-col gap-0.5 flex-1">
-        <label className="text-[10px] text-gray-400">{t("اسم الموظف", "Employee Name")}</label>
-        <div className="h-8 flex items-center px-2 rounded-lg bg-white border border-gray-100 text-xs text-gray-700 font-medium">
-          {empName || <span className="text-gray-300">{t("يُعبأ تلقائياً", "Auto-filled")}</span>}
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <label className="text-[10px] text-gray-500">{t("اسم الموظف", "Employee Name")}</label>
+        <div className={`min-h-8 flex items-center px-2.5 py-1 rounded-lg bg-white border text-xs font-medium ${isDuplicateErr || isNotFound ? "border-red-300 text-red-700" : "border-gray-200 text-gray-700"}`}>
+          {lookup.isFetching ? (
+            <span className="text-gray-400">{t("جارٍ البحث…", "Looking up…")}</span>
+          ) : isDuplicateErr ? (
+            <span>{t("رقم موظف مكرر في الفرع", "Duplicate employee number")}</span>
+          ) : isNotFound ? (
+            <span>{t("غير موجود أو غير نشط", "Unknown or inactive")}</span>
+          ) : empName ? (
+            <span className="truncate">{empName}</span>
+          ) : (
+            <span className="text-gray-300">{t("يُعبأ تلقائياً", "Auto-filled")}</span>
+          )}
         </div>
       </div>
       <div className="flex flex-col gap-0.5">
-        <label className="text-[10px] text-gray-400">{t("المبلغ (ر.س)", "Amount (SAR)")}</label>
-        <input placeholder="0.00" type="number" value={row.amount}
+        <label className="text-[10px] text-gray-500">{t("المبلغ (ر.س)", "Amount (SAR)")}</label>
+        <input placeholder="0.00" type="number" step="0.01" value={row.amount}
           onChange={ev => onField("amount", ev.target.value)}
-          className="w-28 text-center font-mono border border-red-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-red-400" />
+          className="w-full text-center font-mono border border-red-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-purple-400" />
       </div>
       <div className="flex flex-col gap-0.5">
-        <label className="text-[10px] text-gray-400 opacity-0">⚡</label>
-        <button title={t("تعبئة المتبقي تلقائياً", "Auto-fill remaining")} onClick={onQuickFill}
-          className="px-2 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-[11px] font-bold hover:bg-amber-200 border border-amber-200">
+        <button type="button" title={t("تعبئة المتبقي تلقائياً", "Auto-fill remaining")} onClick={onQuickFill}
+          className="w-full sm:w-auto px-2.5 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-[11px] font-bold hover:bg-amber-200 border border-amber-200 whitespace-nowrap">
           ⚡ {t("المتبقي", "Remaining")}
         </button>
       </div>
       {canRemove && (
         <div className="flex flex-col gap-0.5">
-          <label className="text-[10px] text-gray-400 opacity-0">×</label>
-          <button onClick={onRemove} className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><X size={13} /></button>
+          <button type="button" onClick={onRemove} aria-label={t("حذف", "Remove")} className="self-end p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><X size={13} /></button>
         </div>
       )}
     </div>
@@ -193,17 +205,31 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
   function confirmVarianceAssign() {
     if (!op || recon?.totals?.varianceHalalas == null) return;
     runSalesAction(salesContext, "assign", () => {
+      const numbers = varEmps.map(e => e.empId.trim()).filter(Boolean);
+      if (numbers.length !== new Set(numbers).size) return;
       const allocations = varEmps
         .filter(e => e.empId.trim() && (parseFloat(e.amount) || 0) > 0)
         .map(e => ({ empNumber: e.empId.trim(), amountHalalas: Math.round((parseFloat(e.amount) || 0) * 100) }));
-      if (allocations.length === 0) return;
+      const sumH = allocations.reduce((s, a) => s + a.amountHalalas, 0);
+      if (allocations.length === 0 || sumH !== Math.abs(recon.totals.varianceHalalas)) return;
       assignMut.mutate({ operationId: op.id, payload: { allocations, notes: reconVarReason || undefined } });
     });
   }
 
   return (
     <div className="space-y-4">
-      {salesPolicy.pkg6 && <p role="note" className="text-xs text-amber-800 bg-amber-50 rounded-lg p-3">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</p>}
+      {salesPolicy.pkg6 && (
+        <div role="note" className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
+          <p className="font-semibold">{t("التعديل المباشر على بيان المبيعات اليومي مقفول (PKG-6).", "Direct edit on daily sales summary is locked (PKG-6).")}</p>
+          <p>{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</p>
+        </div>
+      )}
+      {!salesPolicy.pkg6 && !salesPolicy.edit && (
+        <div role="note" className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
+          <p className="font-semibold">{isLocked ? t("السجل معتمد نهائياً ومُقفل.", "Record is final-approved and locked.") : t("التعديل غير متاح حالياً.", "Editing is currently unavailable.")}</p>
+          <p>{salesPolicy.correct ? t("الخطوة المتاحة: يمكنك إنشاء عملية تعديل مرتبطة بالأسفل.", "Available step: You may create a linked corrective operation below.") : t("الخطوة المتاحة: استعراض تفاصيل العملية وسجل المراجعة للقراءة فقط.", "Available step: Read-only inspection of details and audit log.")}</p>
+        </div>
+      )}
       {salesPolicy.staleMembers.length > 0 && <p role="status" className="text-xs text-amber-700">{t("بانتظار إعادة اعتماد ورديات أعضاء", "Awaiting reapproval of member shifts")}</p>}
       {recon && !salesPolicy.pkg6 && !hasSalesReconciliationEvidence(recon) && <p role="note" className="text-xs text-gray-500">{t("بيانات التسوية غير مكتملة — التعديل غير متاح", "Reconciliation data is incomplete — editing is unavailable")}</p>}
       <Breadcrumb items={[
@@ -383,7 +409,7 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
                           className="flex items-center gap-1 text-xs text-red-600 hover:underline font-semibold">
                           <Plus size={11} /> {t("إضافة موظف آخر", "Add Another Employee")}
                         </button>
-                        <Btn size="sm" variant="success" onClick={confirmVarianceAssign} disabled={assignMut.isPending || remaining == null || remaining > 0}>
+                        <Btn size="sm" variant="success" onClick={confirmVarianceAssign} disabled={assignMut.isPending || remaining == null || remaining !== 0 || !reconVarReason.trim()}>
                           <CheckCircle2 size={11} /> {assignMut.isPending ? t("جارٍ التحميل…", "Uploading…") : t("تأكيد التحميل", "Confirm Assignment")}
                         </Btn>
                       </div>

@@ -77,7 +77,7 @@ import {
   useAccDashboard, useOperation, useRequestClarification, useOperationAttachments,
   useSalesDetails, usePatchSalesDetails, useAssignSalesVariance,
   useSalesKpis, useSalesDayCompleteness,
-  useDailyRollup, useRejectionReasons, useBranchEmployeesLookup,
+  useDailyRollup, useRejectionReasons, useBranchEmployeesLookup, useBranchEmployeeByNumber, resolveBranchEmployeeMatch,
   usePipelineOverview,
   // T06 purchases wiring
   usePurchasesList, usePurchaseDetail, useDocumentOperation, usePatchPurchaseLine,
@@ -92,7 +92,20 @@ import {
 } from "../../../api/queries";
 import { apiOpToCOp, sumCOpAmounts, type COp, type COpStatus, type CMatch, type CModKey } from "./operationMapping";
 import { formatShiftHalalas, getShiftCountEvidence, getShiftStatusDisplay } from "./shiftCountEvidence";
-import { getShiftCorrectionEvidence, getShiftCorrectionIneligibilityReason, initialShiftCorrectionDraft, prepareShiftCorrectionRequest, runShiftReportCorrection, type ShiftCorrectionDraft, type ShiftCorrectionShareDraft } from "./shiftReportCorrection";
+import {
+  evaluateShiftCorrectionPreview,
+  getShiftCorrectionEvidence,
+  getShiftCorrectionIneligibilityReason,
+  getShiftCorrectionNextStep,
+  initialShiftCorrectionDraft,
+  parseCorrectionSar,
+  prepareShiftCorrectionRequest,
+  runShiftReportCorrection,
+  SHIFT_VARIANCE_REASONS,
+  validateShortageAllocations,
+  type ShiftCorrectionDraft,
+  type ShiftCorrectionShareDraft,
+} from "./shiftReportCorrection";
 import type {
   Asset, ExpenseInvoiceRow,
   PurchaseLine, PurchasesBlock, Supplier, PurchaseReturn, PurchaseEnumsCatalogue,
@@ -1168,31 +1181,46 @@ function VarEmpRow({ branchId, row, onField, onRemove, onQuickFill, canRemove, d
   branchId?:string; row:VEmpCD; onField:(field:keyof VEmpCD,val:string)=>void;
   onRemove:()=>void; onQuickFill?:()=>void; canRemove:boolean; disabled?:boolean; strictDecimal?:boolean;
 }) {
-  const { data: emp } = useBranchEmployeesLookup(branchId, row.empId.length>=3 ? row.empId : undefined);
-  const empName = emp?.name ?? "";
+  const { t } = useCLang();
+  const trimmed = row.empId.trim();
+  const lookup = useBranchEmployeesLookup(branchId, trimmed.length >= 1 ? trimmed : undefined);
+  const empName = lookup.data?.name ?? "";
+  const isDuplicateErr = isApiError(lookup.error) && lookup.error.status === 409;
+  const isNotFound = trimmed.length > 0 && !lookup.isFetching && (lookup.isError && !isDuplicateErr);
   return (
-    <div className="flex items-center gap-2">
+    <div className="grid grid-cols-1 gap-2 lg:grid-cols-[6.5rem_minmax(8.5rem,1fr)_7rem_auto_auto] lg:items-end">
       <div className="flex flex-col gap-0.5">
-        <label className="text-[9px] text-gray-400">رقم الموظف</label>
-        <input placeholder="مثال: 1001" value={row.empId} onChange={ev=>onField("empId",ev.target.value)} disabled={disabled}
-          className="w-20 text-center font-mono border border-red-200 rounded-lg px-2 py-1 text-[10px] bg-white focus:outline-none focus:border-red-400"/>
+        <label className="text-[10px] text-gray-500">{t("رقم الموظف","Employee #")}</label>
+        <input placeholder={t("مثال: 1001","e.g. 1001")} value={row.empId} onChange={ev=>onField("empId",ev.target.value)} disabled={disabled}
+          className="w-full text-center font-mono border border-red-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-purple-400"/>
       </div>
-      <div className="flex flex-col gap-0.5 flex-1">
-        <label className="text-[9px] text-gray-400">اسم الموظف</label>
-        <div className="h-7 flex items-center px-2 rounded-lg bg-white border border-gray-100 text-[10px] text-gray-700">{empName||<span className="text-gray-300">يُعبأ تلقائياً</span>}</div>
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <label className="text-[10px] text-gray-500">{t("اسم الموظف","Employee name")}</label>
+        <div className={`min-h-8 flex items-center px-2.5 py-1 rounded-lg bg-white border text-xs ${isDuplicateErr || isNotFound ? "border-red-300 text-red-700" : "border-gray-200 text-gray-800"}`}>
+          {lookup.isFetching ? (
+            <span className="text-gray-400">{t("جارٍ البحث…","Looking up…")}</span>
+          ) : isDuplicateErr ? (
+            <span>{t("رقم موظف مكرر في الفرع","Duplicate employee number")}</span>
+          ) : isNotFound ? (
+            <span>{t("غير موجود أو غير نشط بهذا الفرع","Unknown or inactive in branch")}</span>
+          ) : empName ? (
+            <span className="font-medium truncate">{empName}</span>
+          ) : (
+            <span className="text-gray-300">{t("يُعبأ تلقائياً","Auto-filled")}</span>
+          )}
+        </div>
       </div>
       <div className="flex flex-col gap-0.5">
-        <label className="text-[9px] text-gray-400">المبلغ (ر.س)</label>
+        <label className="text-[10px] text-gray-500">{t("المبلغ (ر.س)","Amount (SAR)")}</label>
         <input placeholder="0.00" type={strictDecimal ? "text" : "number"} inputMode="decimal" value={row.amount} onChange={ev=>onField("amount",ev.target.value)} disabled={disabled}
-          className="w-24 text-center font-mono border border-red-200 rounded-lg px-2 py-1 text-[10px] bg-white focus:outline-none focus:border-red-400"/>
+          className="w-full text-center font-mono border border-red-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-purple-400"/>
       </div>
       {onQuickFill && <div className="flex flex-col gap-0.5">
-        <label className="text-[9px] text-gray-400 opacity-0">⚡</label>
-        <button onClick={onQuickFill}
-          className="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-bold hover:bg-amber-200 border border-amber-200">⚡ المتبقي</button>
+        <button type="button" onClick={onQuickFill} disabled={disabled}
+          className="w-full sm:w-auto px-2.5 py-1.5 bg-amber-100 text-amber-800 rounded-lg text-[11px] font-bold hover:bg-amber-200 border border-amber-200 whitespace-nowrap">⚡ {t("المتبقي","Remaining")}</button>
       </div>}
       {canRemove && (
-        <button onClick={onRemove} disabled={disabled} className="mt-3 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><X size={12}/></button>
+        <button type="button" onClick={onRemove} disabled={disabled} aria-label={t("حذف","Remove")} className="self-end p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"><X size={14}/></button>
       )}
     </div>
   );
@@ -1278,10 +1306,14 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
   function confirmAssign() {
     if (totals?.varianceHalalas == null || totals.varianceHalalas >= 0) return;
     runSalesAction(salesContext, "assign", () => {
-      const allocations = varEmps
+      const filled = varEmps.filter(e=>e.empId.trim() || e.amount.trim());
+      const numbers = filled.map(e=>e.empId.trim()).filter(Boolean);
+      if (numbers.length !== new Set(numbers).size) return;
+      const allocations = filled
         .filter(e=>e.empId.trim() && (parseFloat(e.amount)||0)>0)
         .map(e=>({ empNumber: e.empId.trim(), amountHalalas: Math.round((parseFloat(e.amount)||0)*100) }));
-      if (allocations.length===0) return;
+      const sumH = allocations.reduce((s,a)=>s+a.amountHalalas, 0);
+      if (allocations.length===0 || sumH !== Math.abs(totals.varianceHalalas)) return;
       assignMut.mutate(
         { operationId: op.id, payload: { allocations, notes: assignNotes || undefined } },
         { onSuccess: (res)=>{ setRemainingH(res.remainingVarianceHalalas); if (res.remainingVarianceHalalas<=0) setVarEmps([{empId:"",amount:""}]); } },
@@ -1305,7 +1337,18 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
 
   return (
     <div className="space-y-3">
-      {salesPolicy.pkg6 && <p role="note" className="text-xs text-amber-800 bg-amber-50 rounded-lg p-3">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</p>}
+      {salesPolicy.pkg6 && (
+        <div role="note" className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
+          <p className="font-semibold">{t("التعديل المباشر على بيان المبيعات اليومي مقفول (PKG-6).","Direct edit on daily sales summary is locked (PKG-6).")}</p>
+          <p>{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)} — {t("افتح الوردية المعنية في قسم «مبيعات الورديات» أو «مراجعة الورديات» للتعديل عند استيفاء المرحلة.","Open the relevant cashier shift in Shift Sales / Shift Review to edit when eligible.")}</p>
+        </div>
+      )}
+      {!salesPolicy.pkg6 && !salesPolicy.edit && (
+        <div role="note" className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
+          <p className="font-semibold">{isLocked ? t("العملية معتمدة نهائياً ومُقفلة.","Operation is final-approved and locked.") : t("التعديل غير متاح حالياً.","Editing is currently unavailable.")}</p>
+          <p>{salesPolicy.correct ? t("الخطوة المتاحة: يمكنك إنشاء عملية تعديل مرتبطة من صفحة التفاصيل إذا كانت مصرحاً بها.","Available step: You may create a linked corrective operation if authorized.") : t("الخطوة المتاحة: استعراض تفاصيل التسوية والمرفقات للقراءة فقط.","Available step: Read-only review of reconciliation details and attachments.")}</p>
+        </div>
+      )}
       {salesPolicy.staleMembers.length > 0 && <p role="status" className="text-xs text-amber-700">{t("بانتظار إعادة اعتماد ورديات أعضاء","Awaiting reapproval of member shifts")}</p>}
       {recon && !salesPolicy.pkg6 && !hasSalesReconciliationEvidence(recon) && <p role="note" className="text-xs text-gray-500">{t("بيانات التسوية غير مكتملة — التعديل غير متاح","Reconciliation data is incomplete — editing is unavailable")}</p>}
       {/* Reconciliation Panel */}
@@ -1507,6 +1550,157 @@ function ShiftAllocationForm({ op, shortageHalalas }:{ op:COp; shortageHalalas:n
   </div>;
 }
 
+function ShiftCorrectionShareRow({
+  branchId,
+  index,
+  share,
+  employees,
+  disabled,
+  canRemove,
+  onResolved,
+  onClearIdentity,
+  onAmountChange,
+  onEmpNumberChange,
+  onQuickFill,
+  onRemove,
+  onLookupStateChange,
+}: {
+  branchId?: string;
+  index: number;
+  share: ShiftCorrectionShareDraft;
+  employees: readonly ApiEmployee[];
+  disabled: boolean;
+  canRemove: boolean;
+  onResolved: (index: number, match: { id: string; name: string; empNumber: string }) => void;
+  onClearIdentity: (index: number) => void;
+  onAmountChange: (index: number, value: string) => void;
+  onEmpNumberChange: (index: number, empNumber: string) => void;
+  onQuickFill: (index: number) => void;
+  onRemove: (index: number) => void;
+  onLookupStateChange: (index: number, pending: boolean) => void;
+}) {
+  const { t } = useCLang();
+  const empNum = (share.empNumber ?? "").trim();
+  const rosterMatch = useMemo(
+    () => (empNum ? resolveBranchEmployeeMatch(employees, branchId, empNum) : { status: "idle" as const, employee: null }),
+    [employees, branchId, empNum],
+  );
+  // Authoritative branch-scoped lookup for >100 employees & stale-race protection via keyed query + exact empNumber verification.
+  const query = useBranchEmployeeByNumber(branchId, empNum.length > 0 ? empNum : undefined);
+  const queryMatch = query.data;
+
+  useEffect(() => {
+    onLookupStateChange(index, Boolean(empNum) && query.isFetching && rosterMatch.status !== "resolved");
+  }, [index, empNum, query.isFetching, rosterMatch.status, onLookupStateChange]);
+
+  useEffect(() => {
+    if (!empNum) return;
+    if (query.isSuccess && queryMatch) {
+      if (queryMatch.status === "resolved" && queryMatch.employee.empNumber.trim() === empNum) {
+        if (share.id !== queryMatch.employee.id || share.name !== queryMatch.employee.name || share.type !== "employee") {
+          onResolved(index, queryMatch.employee);
+        }
+        return;
+      }
+      if (queryMatch.status === "not_found" || queryMatch.status === "duplicate") {
+        if (share.id !== "") onClearIdentity(index);
+        return;
+      }
+    }
+    if (!query.isFetching && rosterMatch.status === "resolved" && rosterMatch.employee.empNumber.trim() === empNum) {
+      if (share.id !== rosterMatch.employee.id || share.name !== rosterMatch.employee.name || share.type !== "employee") {
+        onResolved(index, rosterMatch.employee);
+      }
+    } else if (!query.isFetching && (rosterMatch.status === "not_found" || rosterMatch.status === "duplicate")) {
+      if (share.id !== "") onClearIdentity(index);
+    }
+  }, [empNum, query.isSuccess, query.isFetching, queryMatch, rosterMatch, index, share.id, share.name, share.type, onResolved, onClearIdentity]);
+
+  const effectiveStatus = !empNum
+    ? (share.id && share.name ? "preserved" : "idle")
+    : query.isFetching && rosterMatch.status !== "resolved"
+    ? "loading"
+    : queryMatch?.status === "duplicate" || rosterMatch.status === "duplicate"
+    ? "duplicate"
+    : queryMatch?.status === "resolved"
+    ? "resolved"
+    : !query.isFetching && rosterMatch.status === "resolved"
+    ? "resolved"
+    : query.isError || queryMatch?.status === "not_found" || (!query.isFetching && rosterMatch.status === "not_found")
+    ? "not_found"
+    : "loading";
+
+  const displayName =
+    effectiveStatus === "resolved"
+      ? (queryMatch?.employee?.name ?? rosterMatch.employee?.name ?? share.name ?? "")
+      : effectiveStatus === "preserved"
+      ? (share.name ?? "")
+      : "";
+
+  const inputClass = "w-full min-w-0 rounded-lg border border-red-200 bg-white px-2.5 py-2 font-mono text-xs focus:outline-none focus:border-violet-500";
+  return (
+    <div className="grid grid-cols-1 gap-2 rounded-lg border border-red-200/80 bg-white/80 p-2.5 lg:grid-cols-[6.5rem_minmax(8.5rem,1fr)_7.5rem_auto_auto] lg:items-end">
+      <label className="space-y-1 min-w-0">
+        <span className="block text-[11px] font-medium text-gray-700">{t("رقم الموظف","Employee #")}</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          placeholder={t("مثال: 1001","e.g. 1001")}
+          value={share.empNumber ?? ""}
+          onChange={event => onEmpNumberChange(index, event.target.value)}
+          disabled={disabled}
+          className={`${inputClass} text-center`}
+        />
+      </label>
+      <div className="space-y-1 min-w-0">
+        <span className="block text-[11px] font-medium text-gray-700">{t("اسم الموظف","Employee name")}</span>
+        <div className={`min-h-[34px] flex items-center rounded-lg border px-2.5 py-1.5 text-xs min-w-0 ${effectiveStatus === "not_found" || effectiveStatus === "duplicate" ? "border-red-300 bg-red-50 text-red-700" : "border-gray-200 bg-gray-50 text-gray-800"}`}>
+          {effectiveStatus === "loading" ? (
+            <span className="text-gray-500">{t("جارٍ البحث عن الموظف…","Looking up employee…")}</span>
+          ) : effectiveStatus === "duplicate" ? (
+            <span className="font-medium">{t("رقم موظف مكرر في هذا الفرع","Duplicate employee number in branch")}</span>
+          ) : effectiveStatus === "not_found" ? (
+            <span className="font-medium">{t("موظف غير موجود أو غير نشط بهذا الفرع","Employee unknown or inactive in branch")}</span>
+          ) : displayName ? (
+            <span className="font-semibold truncate">{displayName}</span>
+          ) : (
+            <span className="text-gray-400">{t("يُعبأ تلقائياً بالرقم","Auto-filled by number")}</span>
+          )}
+        </div>
+      </div>
+      <label className="space-y-1 min-w-0">
+        <span className="block text-[11px] font-medium text-gray-700">{t("المبلغ (ر.س)","Amount (SAR)")}</span>
+        <input
+          inputMode="decimal"
+          placeholder="0.00"
+          className={`${inputClass} text-center`}
+          value={share.amountSar}
+          disabled={disabled}
+          onChange={event => onAmountChange(index, event.target.value)}
+        />
+      </label>
+      <div className="flex flex-wrap items-center gap-2 lg:contents">
+        <button
+          type="button"
+          onClick={() => onQuickFill(index)}
+          disabled={disabled}
+          className="min-h-[34px] flex-1 sm:flex-none rounded-lg border border-amber-200 bg-amber-100 px-2.5 py-1.5 text-[11px] font-bold text-amber-800 hover:bg-amber-200 disabled:opacity-50 whitespace-nowrap"
+        >
+          ⚡ {t("المتبقي","Remaining")}
+        </button>
+        <button
+          type="button"
+          onClick={() => onRemove(index)}
+          disabled={disabled || !canRemove}
+          className="min-h-[34px] rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-40 whitespace-nowrap"
+        >
+          {t("حذف","Remove")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation }) {
   const { t, lang } = useCLang();
   const { user } = useAuth();
@@ -1516,6 +1710,9 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
   const employeeQuery = useEmployees({ branchId: op.branchId, q: empSearch.trim() || undefined, pageSize: 100 });
   const initial = initialShiftCorrectionDraft(detail);
   const [draft,setDraft] = useState<ShiftCorrectionDraft>(()=>initial);
+  const [reasonCategory, setReasonCategory] = useState("");
+  const [cashConfirmed, setCashConfirmed] = useState(false);
+  const [lookupPendingByRow, setLookupPendingByRow] = useState<Record<number, boolean>>({});
   const [pending,setPending] = useState(false);
   const [completed,setCompleted] = useState(false);
   const [uncertain,setUncertain] = useState(false);
@@ -1536,28 +1733,112 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
     mounted.current && generation === financialAccessGeneration(queryClient)
     && expectedFingerprint === currentFingerprint.current && hasRoleGrant(user,"accountant");
   const employees = (employeeQuery.data?.data ?? []).filter(employee=>employee.status === "active");
-  const request = evidence ? prepareShiftCorrectionRequest(detail, draft) : null;
-  const reasonMissing = draft.reason.trim().length < 3;
-  const validationMessage = reasonMissing
-    ? t("اكتب سبب التصحيح (٣ أحرف على الأقل).", "Enter a correction reason (at least 3 characters).")
+
+  // Enrich initial shares with known empNumber when loaded from branch roster.
+  useEffect(() => {
+    if (!employees.length) return;
+    setDraft(current => {
+      if (!current.shares) return current;
+      let changed = false;
+      const next = current.shares.map(share => {
+        if (share.empNumber !== undefined) return share;
+        const found = employees.find(e => e.id === share.id);
+        if (!found) return share;
+        changed = true;
+        return { ...share, empNumber: found.empNumber, name: share.name ?? found.name };
+      });
+      return changed ? { ...current, shares: next } : current;
+    });
+  }, [employees]);
+
+  const preview = evaluateShiftCorrectionPreview(detail, draft);
+  const activeShares: ShiftCorrectionShareDraft[] | null =
+    draft.shares ?? (preview.targetShortageHalalas > 0 ? [{ type: "employee", id: "", empNumber: "", amountSar: "" }] : null);
+  const effectiveDraft: ShiftCorrectionDraft = {
+    ...draft,
+    shares: activeShares,
+  };
+  const allocationValidation = validateShortageAllocations(activeShares, preview.targetShortageHalalas);
+  const anyLookupPending = Object.values(lookupPendingByRow).some(Boolean);
+  const correctionOptions = {
+    enforceCashConfirmation: true,
+    cashConfirmed,
+    allowNewShares: preview.targetShortageHalalas > 0,
+  };
+  const request = evidence ? prepareShiftCorrectionRequest(detail, effectiveDraft, correctionOptions) : null;
+  const reasonMissing = draft.reason.trim().length < 3 || (preview.targetShortageHalalas > 0 && !reasonCategory && draft.reason.trim().length < 3);
+  const canSubmitForm = Boolean(
+    request &&
+    !reasonMissing &&
+    !preview.cardsPlusAppsExceedsGross &&
+    !preview.cashExceedsDerivedCap &&
+    !(preview.requiresExplicitCashConfirmation && !cashConfirmed) &&
+    !anyLookupPending &&
+    (preview.targetShortageHalalas === 0 || allocationValidation.valid),
+  );
+
+  const validationMessage = preview.cardsPlusAppsExceedsGross
+    ? t("مجموع الشبكة والتطبيقات يتجاوز إجمالي المبيعات المقفول.", "Cards plus delivery apps exceed locked total sales.")
+    : preview.cashExceedsDerivedCap
+    ? t("الكاش المحصّل يتجاوز المتبقي من المبيعات بعد الشبكة والتطبيقات.", "Cash collected exceeds remaining sales after cards and apps.")
+    : preview.requiresExplicitCashConfirmation && !cashConfirmed
+    ? t("تعديل الشبكة/القنوات سيزيد سقف الكاش؛ أكّد مبلغ الكاش الفعلي المحصّل صراحةً قبل الحفظ.", "Channel edits increase cash custody ceiling; explicitly confirm the actual cash collected before saving.")
+    : reasonMissing
+    ? t("اختر سبب الفرق أو اكتب سبب التصحيح (٣ أحرف على الأقل).", "Select the variance reason or enter a correction reason (at least 3 characters).")
+    : anyLookupPending
+    ? t("انتظر اكتمال التحقق من رقم الموظف.", "Wait for employee number lookup to complete.")
+    : preview.targetShortageHalalas > 0 && allocationValidation.hasDuplicateEmployee
+    ? t("لا يمكن تكرار نفس الموظف في صفوف توزيع العجز.", "Cannot assign duplicate employees across shortage rows.")
+    : preview.targetShortageHalalas > 0 && allocationValidation.hasUnresolvedEmployee
+    ? t("أدخل رقم موظف صحيح ونشط من نفس الفرع لكل صف.", "Enter a valid active branch employee number for each row.")
+    : preview.targetShortageHalalas > 0 && !allocationValidation.valid
+    ? t("يجب أن يساوي مجموع التوزيع كامل مبلغ العجز بدون مبالغ صفرية.", "Allocation total must equal the full deficit with positive amounts.")
     : t("غيّر قيمة واحدة على الأقل، وتأكد من صحة المبالغ والمسؤولين المحددين.", "Change at least one value and check the amounts and selected parties.");
 
-  const setField = (key:"cardPaymentsSar"|"countedCashSar"|"cashCollectedSar"|"handoverNotes"|"reason",value:string) =>
+  const setField = (key:"cardPaymentsSar"|"countedCashSar"|"cashCollectedSar"|"handoverNotes"|"reason",value:string) => {
+    if (key === "cashCollectedSar") setCashConfirmed(true);
+    if (key === "cardPaymentsSar") setCashConfirmed(false);
     setDraft(current=>({...current,[key]:value}));
-  const setShare = (index:number,key:"type"|"id"|"amountSar",value:string) =>
-    setDraft(current=>({...current,shares:current.shares?.map((share,i)=>i===index?{...share,[key]:value}:share) ?? null}));
+  };
+  const handleReasonCategory = (val: string) => {
+    setReasonCategory(val);
+    if (val) {
+      setDraft(current => {
+        const currentText = current.reason.trim();
+        const isExistingTax = SHIFT_VARIANCE_REASONS.some(r => r.value === currentText || r.en === currentText);
+        return {
+          ...current,
+          reason: !currentText || isExistingTax ? val : `${val} — ${currentText}`,
+        };
+      });
+    }
+  };
+  const ensureShares = (updater: (rows: ShiftCorrectionShareDraft[]) => ShiftCorrectionShareDraft[]) =>
+    setDraft(current => {
+      const base = current.shares ?? (preview.targetShortageHalalas > 0 ? [{ type: "employee", id: "", empNumber: "", amountSar: "" }] : []);
+      return { ...current, shares: updater(base) };
+    });
+  const handleLookupState = useRef((index: number, isBusy: boolean) => {
+    setLookupPendingByRow(prev => (prev[index] === isBusy ? prev : { ...prev, [index]: isBusy }));
+  }).current;
+  const handleResolvedShare = useRef((index: number, match: { id: string; name: string; empNumber: string }) => {
+    ensureShares(rows => rows.map((r, i) => i === index ? { ...r, type: "employee", id: match.id, name: match.name, empNumber: match.empNumber } : r));
+  }).current;
+  const handleClearIdentity = useRef((index: number) => {
+    ensureShares(rows => rows.map((r, i) => i === index ? { ...r, id: "", name: "" } : r));
+  }).current;
   const submit = async () => {
     if (!evidence || !hasRoleGrant(user,"accountant") || pending || completed || submitLock.current || !mounted.current) return;
     if (uncertain) return;
     setSaveAttempted(true);
-    if (!request) return;
+    if (!canSubmitForm || !request) return;
     const generation = financialAccessGeneration(queryClient);
     const requestFingerprint = currentFingerprint.current;
     setPending(true);
     let postStarted = false;
     const clientCommandId = generateCommandId();
     try {
-      const didComplete=await runShiftReportCorrection(op,detail,"accountant",draft,async()=>{
+      const didComplete=await runShiftReportCorrection(op,detail,"accountant",effectiveDraft,async()=>{
         const request=registerFinancialRequest(queryClient);
         pendingDirect.current.add(request.abort);
         try {
@@ -1570,7 +1851,7 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
         if(!accessStillCurrent(generation,requestFingerprint)) throw new FinancialAccessChangedError();
         postStarted = true;
         await correction.mutateAsync({operationId:op.id,shiftId,body,idempotencyKey:clientCommandId});
-      },submitLock);
+      },submitLock,correctionOptions);
       if(didComplete && accessStillCurrent(generation,requestFingerprint)) {
         setCompleted(true);
         setUncertain(false);
@@ -1627,12 +1908,14 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
   };
 
   if(!evidence || !hasRoleGrant(user,"accountant")) return null;
-  const fieldClass="w-full rounded-lg border border-violet-200 bg-white px-2.5 py-2 font-mono text-xs";
-  const employeeOption=(employee:{id:string;name:string;empNumber:string})=>(
-    <option key={employee.id} value={`employee:${employee.id}`}>{employee.name} · {employee.empNumber}</option>
-  );
-  return <section aria-label={t("تصحيح تقرير الوردية","Shift report correction")} className="space-y-3 rounded-xl border border-violet-200 bg-violet-50/40 p-3 text-xs">
-    <div><h4 className="font-bold text-violet-900">{t("تصحيح تقرير المحاسب","Accountant report correction")}</h4>
+  const fieldClass="w-full rounded-lg border border-violet-200 bg-white px-2.5 py-2 font-mono text-xs focus:outline-none focus:border-violet-500";
+  const sarUnit = t("ر.س","SAR");
+  const fmtSignedHalalas = (h: number | null) =>
+    h == null ? "—" : `${h < 0 ? "-" : h > 0 ? "+" : ""}${formatShiftHalalas(Math.abs(h), lang)} ${sarUnit}`;
+
+  return <section aria-label={t("تصحيح تقرير الوردية","Shift report correction")} className="min-w-0 max-w-full space-y-3 rounded-xl border border-violet-200 bg-violet-50/40 p-3 sm:p-4 text-xs">
+    <div>
+      <h4 className="font-bold text-violet-950 text-sm">{t("تصحيح تفصيل المبيعات والعهدة","Accountant Sales Breakdown & Custody Correction")}</h4>
       <p className="mt-1 text-gray-600">{t("يُحفظ السبب وسجل المراجعة. إجمالي المبيعات غير قابل للتعديل.","The reason and audit history are retained. Gross sales cannot be changed.")}</p>
     </div>
     {uncertain && (
@@ -1641,83 +1924,255 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
         <p className="mt-0.5 text-gray-600">{t("تم التوفيق مع الخادم لمنع تكرار الإرسال المالي؛ تحقّق من نسخة التقرير أو حدّث الصفحة.","Reconciled with server to prevent duplicate financial POST; verify report revision or reload the page.")}</p>
       </div>
     )}
-    <div className="grid gap-2 sm:grid-cols-2">
-      <label className="space-y-1"><span>{t("إجمالي المبيعات — للقراءة فقط","Gross sales — read only")}</span>
-        <p className="rounded-lg border bg-gray-50 px-2.5 py-2 font-mono">{formatShiftHalalas(detail.payload?.salesHalalas,lang)}</p>
-      </label>
-      {draft.cardPaymentsSar !== null ? <label className="space-y-1"><span>{t("إجمالي الشبكة (ر.س)","Card payments (SAR)")}</span>
-        <input inputMode="decimal" value={draft.cardPaymentsSar} onChange={event=>setField("cardPaymentsSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
-      </label> : <p>{t("إجمالي الشبكة غير متاح للتصحيح","Card amount unavailable for correction")}</p>}
-      {draft.countedCashSar !== null ? <label className="space-y-1"><span>{t("النقد المجرود (ر.س)","Counted cash (SAR)")}</span>
-        <input inputMode="decimal" value={draft.countedCashSar} onChange={event=>setField("countedCashSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
-      </label> : <p>{t("لا يوجد مبلغ جرد صالح قابل للتصحيح","No valid counted amount is available to correct")}</p>}
-      {draft.cashCollectedSar !== null ? <label className="space-y-1"><span>{t("تحصيل النقد (ر.س)","Cash collected (SAR)")}</span>
-        <input inputMode="decimal" value={draft.cashCollectedSar} onChange={event=>setField("cashCollectedSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
-      </label> : <p className="text-gray-500">{t("تحصيل النقد غير متاح في تفاصيل هذه العملية","Cash collected is unavailable in this operation detail")}</p>}
-      {draft.handoverNotes !== null ? <label className="space-y-1 sm:col-span-2"><span>{t("ملاحظات التسليم","Handover notes")}</span>
-        <input type="text" value={draft.handoverNotes} onChange={event=>setField("handoverNotes",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
-      </label> : <p className="text-gray-500 sm:col-span-2">{t("ملاحظات التسليم غير متاحة في تفاصيل هذه العملية","Handover notes are unavailable in this operation detail")}</p>}
-    </div>
-    {draft.aggregators === null ? <p className="text-gray-600">{t("تفاصيل التطبيقات غير متاحة بصيغة قابلة للتصحيح","Aggregator values are not available in a correctable contract shape")}</p>
-      : draft.aggregators.length > 0 && <div className="space-y-2">
-        <h5 className="font-semibold">{t("مبالغ تفاصيل التطبيقات (ر.س)","Aggregator detail amounts (SAR)")}</h5>
-        {draft.aggregators.map((row,index)=><label key={`${row.aggregatorId}-${index}`} className="flex items-center gap-2">
-          <span>{t("تفصيل التطبيق","Aggregator item")} {index+1}</span>
-          <input inputMode="decimal" value={row.amountSar} disabled={pending||correction.isPending} className={fieldClass}
-            onChange={event=>setDraft(current=>({...current,aggregators:current.aggregators?.map((item,i)=>i===index?{...item,amountSar:event.target.value}:item)??null}))}/>
-        </label>)}
-        <p className="text-gray-500">{t("يُعرض التفصيل بترتيبه دون ادعاء اسم التطبيق؛ لا تُعرض معرّفاته.","Items follow API order; no app name is inferred and identifiers stay hidden.")}</p>
-      </div>}
-    {draft.shares !== null && <div className="space-y-2 border-t border-violet-100 pt-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h5 className="font-semibold">{t("تصحيح توزيع المسؤولية","Correct responsibility allocation")}</h5>
-        <input type="search" placeholder={t("بحث في موظفي الفرع…","Search branch employees…")} value={empSearch}
-          onChange={event=>setEmpSearch(event.target.value)} disabled={pending||correction.isPending}
-          className="rounded-lg border border-violet-200 bg-white px-2 py-1 text-xs"/>
+
+    {/* 1. Fixed Gross Sales card at top (Photo 11) */}
+    <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 py-2.5 flex flex-wrap items-center justify-between gap-2">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 flex-shrink-0" />
+        <span className="font-bold text-indigo-950">{t("إجمالي المبيعات (من رفع مدير الفرع — مقفل)","Gross sales (Branch Manager entry — locked)")}</span>
       </div>
-      {employeeQuery.isLoading && <p role="status">{t("جارٍ تحميل موظفي الفرع…","Loading branch employees…")}</p>}
-      {employeeQuery.isError && <p role="alert">{t("تعذر تحميل موظفي الفرع؛ التوزيع غير متاح للتصحيح","Could not load branch employees; allocation correction is unavailable")}</p>}
-      {draft.shares.map((share,index)=>{
-        const currentKey=["cashier","employee","branch_manager"].includes(share.type)&&share.id?`${share.type}:${share.id}`:"";
-        const changeActor=(value:string)=>{
-          const [type,id]=value.split(":");
-          setDraft(current=>({...current,shares:current.shares?.map((item,i)=>i===index?{...item,type,id}:item)??null}));
-        };
-        const selectedEmployee=employees.find(employee=>employee.id===share.id);
-        const showCurrentActor=currentKey && (share.type!=="employee" || !selectedEmployee);
-        return <div key={index} className="grid gap-2 sm:grid-cols-[1fr_9rem_auto]">
-          <label className="space-y-1"><span>{t("المسؤول","Responsible person")}</span>
-            <select className={fieldClass} value={currentKey} onChange={event=>changeActor(event.target.value)} disabled={pending||correction.isPending||employeeQuery.isLoading||employeeQuery.isError}>
-              <option value="">{t("اختر موظفًا","Select an employee")}</option>
-              {showCurrentActor && <option value={currentKey}>{share.name ?? selectedEmployee?.name ?? t("المسؤول الحالي","Current responsible party")}</option>}
-              {employees.map(employeeOption)}
-            </select>
-          </label>
-          <label className="space-y-1"><span>{t("المبلغ (ر.س)","Amount (SAR)")}</span>
-            <input inputMode="decimal" className={fieldClass} value={share.amountSar} disabled={pending||correction.isPending}
-              onChange={event=>setShare(index,"amountSar",event.target.value)}/>
-          </label>
-          <button type="button" onClick={()=>setDraft(current=>({...current,shares:current.shares?.filter((_,i)=>i!==index)??null}))}
-            disabled={pending||correction.isPending} className="self-end rounded-lg border border-red-200 px-2 py-2 text-red-700 disabled:opacity-50">{t("حذف","Remove")}</button>
-        </div>;
-      })}
-      <button type="button" onClick={()=>setDraft(current=>({...current,shares:[...(current.shares??[]),{type:"employee",id:"",amountSar:""}]}))}
-        disabled={pending||correction.isPending||employeeQuery.isLoading||employeeQuery.isError} className="rounded-lg border px-2 py-1.5 disabled:opacity-50">{t("إضافة مسؤول","Add responsible person")}</button>
-      <p className="text-gray-500">{t("تُرسل حصص التوزيع كهللات صحيحة؛ يتحقق الخادم من مجموعها والفرع والنسخة، دون حساب فرق التقرير هنا.","Shares are sent as integer halalas; the server validates their total, branch and version without calculating report variance here.")}</p>
-    </div>}
-    <label className="block space-y-1"><span>{t("سبب التصحيح (إلزامي)","Correction reason (required)")}</span>
-      <textarea rows={2} required minLength={3} aria-invalid={saveAttempted && reasonMissing} value={draft.reason} onChange={event=>setField("reason",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
-    </label>
-    {saveAttempted && !request && !completed && <p role="alert" className="text-red-700">{validationMessage}</p>}
-    <button type="button" onClick={submit} disabled={pending||completed||uncertain||correction.isPending}
-      className="rounded-lg bg-violet-700 px-3 py-2 font-semibold text-white disabled:opacity-50">
-      {pending||correction.isPending?t("جارٍ حفظ التصحيح…","Saving correction…"):completed?t("تم حفظ التصحيح","Correction saved"):t("حفظ التصحيح","Save correction")}
+      <span className="font-mono font-black text-indigo-900 text-sm">
+        <bdi>{formatShiftHalalas(detail.payload?.salesHalalas,lang)}</bdi> {sarUnit}
+      </span>
+    </div>
+
+    {/* 2. Editable payment channels + separate Drawer Counted Cash */}
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      {draft.cashCollectedSar !== null ? (
+        <label className="space-y-1">
+          <span className="font-medium text-gray-800">{t("نقدي / الكاش المحصّل (ر.س)","Cash collected (SAR)")}</span>
+          <input inputMode="decimal" value={draft.cashCollectedSar} onChange={event=>setField("cashCollectedSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+        </label>
+      ) : (
+        <p className="text-gray-500">{t("تحصيل النقد غير متاح في تفاصيل هذه العملية","Cash collected is unavailable in this operation detail")}</p>
+      )}
+      {draft.cardPaymentsSar !== null ? (
+        <label className="space-y-1">
+          <span className="font-medium text-gray-800">{t("مدفوعات الشبكة / الكارت (ر.س)","Card payments (SAR)")}</span>
+          <input inputMode="decimal" value={draft.cardPaymentsSar} onChange={event=>setField("cardPaymentsSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+        </label>
+      ) : (
+        <p>{t("إجمالي الشبكة غير متاح للتصحيح","Card amount unavailable for correction")}</p>
+      )}
+      {draft.countedCashSar !== null ? (
+        <label className="space-y-1">
+          <span className="font-medium text-gray-800">{t("مبلغ عدّ الدرج / النقد المجرود (حقل مستقل) (ر.س)","Drawer counted cash (separate field) (SAR)")}</span>
+          <input inputMode="decimal" value={draft.countedCashSar} onChange={event=>setField("countedCashSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+        </label>
+      ) : (
+        <p>{t("لا يوجد مبلغ جرد صالح قابل للتصحيح","No valid counted amount is available to correct")}</p>
+      )}
+      {draft.handoverNotes !== null ? (
+        <label className="space-y-1">
+          <span className="font-medium text-gray-800">{t("ملاحظات التسليم","Handover notes")}</span>
+          <input type="text" value={draft.handoverNotes} onChange={event=>setField("handoverNotes",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+        </label>
+      ) : (
+        <p className="text-gray-500">{t("ملاحظات التسليم غير متاحة في تفاصيل هذه العملية","Handover notes are unavailable in this operation detail")}</p>
+      )}
+    </div>
+
+    {/* 3. Aggregator rows */}
+    {draft.aggregators === null ? (
+      <p className="text-gray-600">{t("تفاصيل التطبيقات غير متاحة بصيغة قابلة للتصحيح","Aggregator values are not available in a correctable contract shape")}</p>
+    ) : draft.aggregators.length > 0 && (
+      <div className="space-y-2 rounded-lg border border-violet-100 bg-white/80 p-2.5">
+        <h5 className="font-semibold text-gray-800">{t("تطبيقات التوصيل (ر.س)","Delivery app channels (SAR)")}</h5>
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+          {draft.aggregators.map((row,index)=>(
+            <label key={`${row.aggregatorId}-${index}`} className="space-y-1">
+              <span className="text-gray-700">{t("تفصيل التطبيق","Aggregator item")} {index+1}</span>
+              <input inputMode="decimal" value={row.amountSar} disabled={pending||correction.isPending} className={fieldClass}
+                onChange={event=>{
+                  setCashConfirmed(false);
+                  setDraft(current=>({...current,aggregators:current.aggregators?.map((item,i)=>i===index?{...item,amountSar:event.target.value}:item)??null}));
+                }}/>
+            </label>
+          ))}
+        </div>
+        <p className="text-[11px] text-gray-500">{t("يُعرض التفصيل بترتيبه دون ادعاء اسم التطبيق؛ لا تُعرض معرّفاته.","Items follow API order; no app name is inferred and identifiers stay hidden.")}</p>
+      </div>
+    )}
+
+    {/* 4. BE-01 Mahmoud decision: explicit confirmation when channel correction raises custody ceiling */}
+    {preview.requiresExplicitCashConfirmation && (
+      <div role="alert" data-testid="cash-confirmation-gate" className="rounded-xl border border-amber-300 bg-amber-50 p-3 space-y-2 text-amber-950">
+        <p className="font-bold">
+          {t("تنبيه عهدة الكاش (قاعدة BE-01): يجب تأكيد الكاش الفعلي صراحةً","Cash Custody Alert (BE-01): Explicit Cash Confirmation Required")}
+        </p>
+        <p className="text-[11px] leading-relaxed">
+          {t(
+            `تعديل الشبكة/التطبيقات رفع سقف كاش المبيعات إلى ${formatShiftHalalas(preview.derivedCashSalesHalalas, lang)} ${sarUnit} (مقابل عهدة مرحلة سابقًا ${formatShiftHalalas(preview.postedCustodyCashHalalas, lang)} ${sarUnit}). أدخل مبلغ الكاش الفعلي المحصّل أو أكّد القيمة صراحةً؛ لن يُعتمد الإرسال التلقائي بالقيمة القديمة.`,
+            `Channel adjustment raises derived cash sales to ${formatShiftHalalas(preview.derivedCashSalesHalalas, lang)} ${sarUnit} (above posted custody ${formatShiftHalalas(preview.postedCustodyCashHalalas, lang)} ${sarUnit}). Enter or explicitly confirm actual cash collected; auto-submitting the old value is disabled.`,
+          )}
+        </p>
+        <label className="flex items-start gap-2 cursor-pointer font-semibold">
+          <input
+            type="checkbox"
+            checked={cashConfirmed}
+            onChange={e => setCashConfirmed(e.target.checked)}
+            disabled={pending || correction.isPending || preview.cashExceedsDerivedCap}
+            className="mt-0.5 h-4 w-4 accent-purple-700"
+          />
+          <span>
+            {t(
+              `أؤكد صراحةً أن الكاش الفعلي المحصّل هو ${draft.cashCollectedSar ?? "0.00"} ${sarUnit}`,
+              `I explicitly confirm actual cash collected is ${draft.cashCollectedSar ?? "0.00"} ${sarUnit}`,
+            )}
+          </span>
+        </label>
+      </div>
+    )}
+
+    {(preview.cardsPlusAppsExceedsGross || preview.cashExceedsDerivedCap) && (
+      <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-2.5 text-red-800 font-medium">
+        {preview.cardsPlusAppsExceedsGross
+          ? t("خطأ: مجموع الشبكة والتطبيقات يتجاوز إجمالي المبيعات.", "Error: Card payments plus apps exceed gross sales.")
+          : t("خطأ: الكاش المحصّل يتجاوز المتبقي من المبيعات (الإجمالي − الشبكة − التطبيقات).", "Error: Cash collected exceeds derived cash sales (Gross − Cards − Apps).")}
+      </div>
+    )}
+
+    {/* 5. Live Collection & Deficit/Surplus Preview (Photos 11-12) */}
+    <div className="space-y-1.5 rounded-xl border border-gray-200 bg-white overflow-hidden">
+      <div className={`flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 font-bold ${
+        preview.collectionDiffHalalas === 0 && !preview.cashExceedsDerivedCap && !preview.cardsPlusAppsExceedsGross
+          ? "bg-emerald-50 text-emerald-900"
+          : preview.collectionDiffHalalas !== null && preview.collectionDiffHalalas > 0
+          ? "bg-red-50 text-red-900"
+          : preview.collectionDiffHalalas !== null && preview.collectionDiffHalalas < 0
+          ? "bg-blue-50 text-blue-900"
+          : "bg-gray-50 text-gray-800"
+      }`}>
+        <span>{t("إجمالي التحصيل","Total collected")}</span>
+        <span className="font-mono text-sm"><bdi>{formatShiftHalalas(preview.totalCollectionHalalas, lang)}</bdi> {sarUnit}</span>
+      </div>
+      {preview.collectionDiffHalalas === 0 && !preview.cashExceedsDerivedCap && !preview.cardsPlusAppsExceedsGross ? (
+        <div className="px-3 py-2 bg-emerald-50/70 text-emerald-800 font-semibold border-t border-emerald-200">
+          ✓ {t("إجمالي التحصيل مطابق لإجمالي المبيعات تماماً","Total collected matches gross sales exactly")}
+        </div>
+      ) : preview.collectionDiffHalalas !== null && preview.collectionDiffHalalas > 0 ? (
+        <div className="px-3 py-2 bg-red-100/80 text-red-900 font-bold border-t border-red-200 flex flex-wrap items-center justify-between gap-2">
+          <span>⚠ {t("عجز تحصيل — يتطلب مراجعة وتحميل على الموظفين","Collection deficit — requires review & allocation")}</span>
+          <span className="font-mono"><bdi>{formatShiftHalalas(preview.collectionDiffHalalas, lang)}</bdi> {sarUnit}</span>
+        </div>
+      ) : preview.collectionDiffHalalas !== null && preview.collectionDiffHalalas < 0 ? (
+        <div className="px-3 py-2 bg-blue-100/70 text-blue-900 font-bold border-t border-blue-200 flex flex-wrap items-center justify-between gap-2">
+          <span>{t("فائض تحصيل (لصالح الفرع ولا يُحمَّل على موظفين)","Surplus collected (credited to branch, not employees)")}</span>
+          <span className="font-mono">{fmtSignedHalalas(Math.abs(preview.collectionDiffHalalas))}</span>
+        </div>
+      ) : null}
+      {preview.projectedDrawerVarianceHalalas !== null && (
+        <div className="px-3 py-1.5 bg-gray-50 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-700">
+          <span>{t("فرق عدّ الدرج المتوقع (المجرود − المتوقع)","Projected drawer variance (counted − expected)")}</span>
+          <span className={`font-mono font-bold ${preview.projectedDrawerVarianceHalalas < 0 ? "text-red-700" : preview.projectedDrawerVarianceHalalas > 0 ? "text-blue-700" : "text-emerald-700"}`}>
+            <bdi>{fmtSignedHalalas(preview.projectedDrawerVarianceHalalas)}</bdi>
+          </span>
+        </div>
+      )}
+    </div>
+
+    {/* 6. Variance reason taxonomy + Employee Number lookup Shortage Assignment (Photos 12-15) */}
+    {(activeShares !== null || preview.targetShortageHalalas > 0) && (
+      <div className="space-y-2.5 rounded-xl border border-red-200 bg-red-50/70 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-red-200 pb-2">
+          <h5 className="font-bold text-red-900">
+            {t("توزيع العجز على الموظفين — المطلوب:","Shortage allocation to employees — Target:")}{" "}
+            <span className="font-mono"><bdi>{formatShiftHalalas(preview.targetShortageHalalas, lang)}</bdi> {sarUnit}</span>
+          </h5>
+          <span className={`rounded-lg px-2 py-1 text-[11px] font-bold ${allocationValidation.remainingHalalas === 0 && !allocationValidation.hasUnresolvedEmployee && !allocationValidation.hasDuplicateEmployee ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
+            {allocationValidation.remainingHalalas === 0
+              ? t("✓ موزّع بالكامل","✓ Fully allocated")
+              : `${t("المتبقي","Remaining")}: ${fmtSignedHalalas(allocationValidation.remainingHalalas)}`}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[11px] text-gray-700">
+            {t("الموزّع حاليًا:","Allocated:")} <strong className="font-mono">{formatShiftHalalas(allocationValidation.allocatedHalalas, lang)} {sarUnit}</strong>
+          </span>
+          <input type="search" placeholder={t("بحث سريع بالاسم…","Quick name filter…")} value={empSearch}
+            onChange={event=>setEmpSearch(event.target.value)} disabled={pending||correction.isPending}
+            className="w-full sm:w-48 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs"/>
+        </div>
+        {employeeQuery.isError && <p role="alert" className="text-red-700">{t("تعذر تحميل قائمة موظفي الفرع المسبقة؛ يتم التحقق مباشرة برقم الموظف.","Branch roster preload failed; resolving directly by employee number.")}</p>}
+        {(activeShares ?? []).map((share,index)=>(
+          <ShiftCorrectionShareRow
+            key={index}
+            branchId={op.branchId}
+            index={index}
+            share={share}
+            employees={employees}
+            disabled={pending||correction.isPending}
+            canRemove={(activeShares ?? []).length > 1 || preview.targetShortageHalalas === 0}
+            onResolved={handleResolvedShare}
+            onClearIdentity={handleClearIdentity}
+            onLookupStateChange={handleLookupState}
+            onEmpNumberChange={(rowIdx, val) => ensureShares(rows => rows.map((r, i) => i === rowIdx ? { ...r, empNumber: val, id: "", name: "" } : r))}
+            onAmountChange={(rowIdx, val) => ensureShares(rows => rows.map((r, i) => i === rowIdx ? { ...r, amountSar: val } : r))}
+            onQuickFill={(rowIdx) => {
+              const currentParsed = parseCorrectionSar((activeShares ?? [])[rowIdx]?.amountSar ?? "");
+              const currentH = currentParsed?.halalas ?? 0;
+              const neededH = Math.max(0, allocationValidation.remainingHalalas + currentH);
+              const sar = `${Math.floor(neededH / 100)}.${String(neededH % 100).padStart(2, "0")}`;
+              ensureShares(rows => rows.map((r, i) => i === rowIdx ? { ...r, amountSar: sar } : r));
+            }}
+            onRemove={(rowIdx) => ensureShares(rows => rows.filter((_, i) => i !== rowIdx))}
+          />
+        ))}
+        <button
+          type="button"
+          onClick={()=>ensureShares(rows => [...rows, {type:"employee", id:"", empNumber:"", amountSar:""}])}
+          disabled={pending||correction.isPending}
+          className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+        >
+          + {t("إضافة موظف آخر","Add another employee")}
+        </button>
+        <p className="text-[11px] text-gray-600">{t("يُربط الموظف تلقائيًا برقم الموظف داخل نفس الفرع وتُرسل الحصص كهللات صحيحة للخادم.","Employees resolve strictly inside this branch by employee number and submit in integer halalas.")}</p>
+      </div>
+    )}
+
+    {/* 7. Reason selection + details (Photo 13) */}
+    <div className="space-y-2">
+      <label className="block space-y-1">
+        <span className="font-semibold text-gray-800">{t("سبب الفرق / التصحيح (إلزامي)","Difference / Correction reason (required)")} *</span>
+        <select
+          value={reasonCategory}
+          onChange={event => handleReasonCategory(event.target.value)}
+          disabled={pending || correction.isPending}
+          className={fieldClass}
+        >
+          <option value="">— {t("اختر سبب الفرق","Select variance reason")} —</option>
+          {SHIFT_VARIANCE_REASONS.map(r => (
+            <option key={r.value} value={r.value}>{t(r.ar, r.en)}</option>
+          ))}
+        </select>
+      </label>
+      <label className="block space-y-1">
+        <span className="text-gray-700">{t("تفصيل السبب (٣ أحرف على الأقل)","Reason details (at least 3 characters)")}</span>
+        <textarea rows={2} required minLength={3} aria-invalid={saveAttempted && reasonMissing} value={draft.reason} onChange={event=>setField("reason",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+      </label>
+    </div>
+
+    {saveAttempted && !canSubmitForm && !completed && <p role="alert" className="text-red-700 font-medium">{validationMessage}</p>}
+    <button
+      type="button"
+      onClick={submit}
+      disabled={pending||completed||uncertain||correction.isPending||(saveAttempted && !canSubmitForm)||preview.cardsPlusAppsExceedsGross||preview.cashExceedsDerivedCap||(preview.requiresExplicitCashConfirmation && !cashConfirmed)||anyLookupPending}
+      className="w-full sm:w-auto min-h-[40px] rounded-lg bg-violet-700 px-4 py-2 font-semibold text-white hover:bg-violet-800 disabled:opacity-50"
+    >
+      {pending||correction.isPending
+        ? t("جارٍ حفظ التصحيح…","Saving correction…")
+        : completed
+        ? t("تم حفظ التصحيح","Correction saved")
+        : preview.targetShortageHalalas > 0
+        ? t("حفظ التعديلات وإرسال اقتراح التحميل","Save changes & submit allocation")
+        : t("حفظ التعديلات","Save changes")}
     </button>
   </section>;
 }
 
 function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:boolean; detail?:ApiOperation; loading?:boolean; error?:boolean }) {
   const { t, lang } = useCLang();
+  const [correctionOpen, setCorrectionOpen] = useState(false);
   if (loading) return <p role="status">{t("جارٍ تحميل تفاصيل الوردية…","Loading shift details…")}</p>;
   if (error) return <p role="alert">{t("تعذر تحميل تفاصيل الوردية","Could not load shift details")}</p>;
   if (!detail?.payload) return <p>{t("تفاصيل الوردية غير متاحة","Shift details are unavailable")}</p>;
@@ -1755,7 +2210,7 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
       : null
   );
   return (
-    <section aria-label={t("تفاصيل وردية الكاشير","Cashier shift details")} className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
+    <section aria-label={t("تفاصيل وردية الكاشير","Cashier shift details")} className="min-w-0 max-w-full bg-white rounded-xl border border-gray-100 p-4 space-y-4">
       <ShiftReconciliationSummaryView source={detail ?? op} />
       <div className="flex justify-between text-xs"><span>{t("حالة الجرد","Count state")}</span>
         <strong>{count === "counted" ? t("مجرود فعلياً","Physically counted") : count === "unknown" ? t("غير مجرود — لا يُعتمد كدليل","Not counted — not evidence") : "—"}</strong>
@@ -1795,12 +2250,26 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
         </div>
       )}
       {allocationEvidence && <ShiftAllocationForm op={op} shortageHalalas={allocationEvidence.shortageHalalas}/>}
-      {!forHead && op?.branchId && getShiftCorrectionEvidence(op,detail,"accountant") &&
-        <ShiftReportCorrectionForm key={`${detail.id}:${detail.reportRevision ?? "missing"}`} op={op} detail={detail}/>}
+      {!forHead && op?.branchId && getShiftCorrectionEvidence(op,detail,"accountant") && (
+        <div className="space-y-2.5 pt-2 border-t border-gray-100">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold text-gray-800">{t("تصحيح التفصيل والعهدة","Breakdown & Custody Correction")}</span>
+            <button
+              type="button"
+              onClick={() => setCorrectionOpen(open => !open)}
+              className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700"
+            >
+              {correctionOpen ? t("إخفاء نموذج التعديل","Hide edit form") : t("تعديل التفصيل","Edit breakdown")}
+            </button>
+          </div>
+          {correctionOpen && <ShiftReportCorrectionForm key={`${detail.id}:${detail.reportRevision ?? "missing"}`} op={op} detail={detail}/>}
+        </div>
+      )}
       {!forHead && op?.branchId && !getShiftCorrectionEvidence(op,detail,"accountant") && (
-        <div className="rounded-lg bg-amber-50/80 border border-amber-200 p-2.5 text-xs text-amber-800" data-testid="correction-ineligibility-reason">
-          <span className="font-semibold block mb-0.5">{t("أهلية تصحيح التقرير:","Correction eligibility:")}</span>
+        <div className="rounded-lg bg-amber-50/80 border border-amber-200 p-2.5 text-xs text-amber-800 space-y-1" data-testid="correction-ineligibility-reason">
+          <span className="font-semibold block">{t("التعديل غير متاح:","Editing locked:")}</span>
           <p>{getShiftCorrectionIneligibilityReason(op, detail, "accountant", lang)}</p>
+          <p className="font-medium text-amber-900">{getShiftCorrectionNextStep(op, detail, "accountant", lang)}</p>
         </div>
       )}
       <div className="text-xs space-y-1">
@@ -1963,11 +2432,12 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
           {isLocked && <span className="flex items-center gap-1 text-xs text-slate-400 bg-slate-100 border border-slate-200 px-2 py-1.5 rounded-lg"><Lock size={11}/> {t("مُغلق","Locked")}</span>}
           <button
             type="button"
-            className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 flex items-center justify-center transition-all"
+            className="h-8 px-2.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-700 hover:bg-purple-100 flex items-center justify-center gap-1 text-xs font-semibold transition-all"
             onClick={onToggle}
             aria-expanded={expanded}
-            aria-label={expanded ? t("طي التفاصيل","Collapse details") : t("توسيع التفاصيل","Expand details")}
+            aria-label={expanded ? t("طي التفاصيل","Collapse details") : t("عرض التفاصيل","View details")}
           >
+            <span>{expanded ? t("إخفاء","Hide") : t("عرض","View")}</span>
             {expanded?<ChevronUp size={13}/>:<ChevronDown size={13}/>}
           </button>
         </div>
