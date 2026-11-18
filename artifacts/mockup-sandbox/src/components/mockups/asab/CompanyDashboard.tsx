@@ -8524,15 +8524,15 @@ export function AccCompanyEmployees() {
 
                         {/* Desktop (>= lg): Full 7-column statement table fitting cleanly without horizontal clip */}
                         <div className="hidden lg:block overflow-x-auto">
-                          <table className="w-full text-xs">
+                          <table className="w-full text-[11px]">
                             <thead className="bg-gray-50 text-gray-600">
                               <tr>
                                 <th className="px-2 py-2.5 text-start font-semibold whitespace-nowrap">{t("التاريخ / الترحيل", "Date / Posted")}</th>
                                 <th className="px-2 py-2.5 text-start font-semibold">{t("الحركة والمصدر", "Movement & Source")}</th>
                                 <th className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{t("الإيصال", "Receipt")}</th>
                                 <th className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{t("الحالة", "Status")}</th>
-                                <th className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{t("دائن (+) — كاش داخل", "Credit (+) — Cash In")}</th>
-                                <th className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{t("مدين (−) — كاش خارج", "Debit (−) — Cash Out")}</th>
+                                <th className="px-1.5 py-2 text-center font-semibold leading-tight max-w-[96px]">{t("دائن (+) — كاش داخل", "Credit (+) — Cash In")}</th>
+                                <th className="px-1.5 py-2 text-center font-semibold leading-tight max-w-[96px]">{t("مدين (−) — كاش خارج", "Debit (−) — Cash Out")}</th>
                                 <th className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{t("الرصيد الجاري", "Running Bal.")}</th>
                               </tr>
                             </thead>
