@@ -7945,10 +7945,10 @@ export function AccCompanyEmployees() {
   const [headAction,  setHeadAction]  = useState<{ action: "approve" | "reject"; open: boolean } | null>(null);
 
   const trimmedEmpSearch = searchTerm.trim();
-  const isNumericEmpSearch = /^\d+$/.test(trimmedEmpSearch);
+  const isEmpNumberSearch = /^(?:EMP-?)?\d+$/i.test(trimmedEmpSearch);
   const { data: employeesPage } = useEmployees({
-    empNumber: isNumericEmpSearch ? trimmedEmpSearch : undefined,
-    q: !isNumericEmpSearch && trimmedEmpSearch ? trimmedEmpSearch : undefined,
+    empNumber: isEmpNumberSearch ? trimmedEmpSearch : undefined,
+    q: !isEmpNumberSearch && trimmedEmpSearch ? trimmedEmpSearch : undefined,
     branchId: branchFilter || undefined,
   });
   const { data: statement } = useEmployeeMovements(selectedEmp, month || undefined);
@@ -8043,7 +8043,7 @@ export function AccCompanyEmployees() {
               <input
                 value={searchTerm}
                 onChange={e=>setSearchTerm(e.target.value)}
-                placeholder={t("ابحث برقم الموظف (مثل 1001) أو الاسم…","Search by employee # (e.g. 1001) or name…")}
+                placeholder={t("ابحث برقم الموظف (مثل EMP-0007 أو 7) أو الاسم…","Search by employee # (e.g. EMP-0007 or 7) or name…")}
                 className="flex-1 text-sm outline-none min-w-0"
               />
               {searchTerm && (

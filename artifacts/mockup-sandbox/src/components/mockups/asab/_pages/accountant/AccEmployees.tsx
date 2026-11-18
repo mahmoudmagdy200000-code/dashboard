@@ -223,10 +223,10 @@ export function AccEmployees({ setModal }: PageProps) {
   const [showAdd, setShowAdd] = useState(false);
 
   const trimmedEmpQ = empFilter.q.trim();
-  const isNumericEmpQ = /^\d+$/.test(trimmedEmpQ);
+  const isEmpNumberQ = /^(?:EMP-?)?\d+$/i.test(trimmedEmpQ);
   const { data: employeesPage } = useEmployees({
-    empNumber: isNumericEmpQ ? trimmedEmpQ : undefined,
-    q: !isNumericEmpQ && trimmedEmpQ ? trimmedEmpQ : undefined,
+    empNumber: isEmpNumberQ ? trimmedEmpQ : undefined,
+    q: !isEmpNumberQ && trimmedEmpQ ? trimmedEmpQ : undefined,
     branchId: empFilter.branchId || undefined,
     brandId: empFilter.brandId || undefined,
   });
