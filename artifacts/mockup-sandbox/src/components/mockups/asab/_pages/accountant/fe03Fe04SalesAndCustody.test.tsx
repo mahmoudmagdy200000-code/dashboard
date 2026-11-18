@@ -179,6 +179,19 @@ test("FE-03: AccCompanySales orders Summary, Filters, Sales Statements, and Shif
     origin: "mobile",
   };
 
+  qc.setQueryData(queryKeys.salesKpis("2026-11-17"), {
+    date: "2026-11-17",
+    totalHalalas: 1834000,
+    cashHalalas: 420000,
+    cardHalalas: 850000,
+    transferHalalas: 0,
+    deliveryHalalas: 564000,
+    varianceHalalas: 0,
+    matchedCount: 1,
+    varianceCount: 0,
+    pendingCount: 1,
+    varianceBranches: [],
+  });
   qc.setQueryData(queryKeys.salesKpis(undefined), {
     date: "2026-11-17",
     totalHalalas: 1834000,
@@ -192,7 +205,17 @@ test("FE-03: AccCompanySales orders Summary, Filters, Sales Statements, and Shif
     pendingCount: 1,
     varianceBranches: [],
   });
-  qc.setQueryData(queryKeys.dayCompleteness(7), []);
+  qc.setQueryData(queryKeys.dayCompleteness(7), [
+    {
+      date: "2026-11-17",
+      pillLabelAr: "اليوم · ١٧ نوفمبر",
+      requiredCount: 2,
+      completedCount: 1,
+      missingCount: 1,
+      bannerAr: "تم رفع فرع ١ من ٢ — متبقي ١",
+      missingBranches: [{ branchId: "branch-2", name: "Al-Nakheel Branch" }],
+    },
+  ]);
   qc.setQueryData([...queryKeys.shiftConfigs, "branch"], []);
   qc.setQueryData(
     queryKeys.shifts({ page: 1, pageSize: 5, role: "cashier", submittedWithWorkday: true } as Parameters<typeof queryKeys.shifts>[0]),
@@ -234,6 +257,18 @@ test("FE-03: AccCompanySales orders Summary, Filters, Sales Statements, and Shif
     assert.match(container.textContent ?? "", /Branch app/);
     assert.match(container.textContent ?? "", /Bulk approve/);
     assert.match(container.textContent ?? "", /18,340\.00 SAR/);
+
+    // Selecting a day pill in EN mode must render localized English day label (never Arabic pillLabelAr)
+    const dayPill = container.querySelector('[data-testid="sales-day-pill-2026-11-17"]') as HTMLButtonElement;
+    assert.ok(dayPill, "Day pill button rendered");
+    assert.doesNotMatch(dayPill.textContent ?? "", /اليوم/);
+    assert.match(dayPill.textContent ?? "", /Tue, Nov 17/);
+    await act(async () => dayPill.click());
+    const dayBanner = container.querySelector('[data-testid="sales-selected-day-banner"]');
+    assert.ok(dayBanner, "Selected day completeness banner rendered");
+    assert.doesNotMatch(dayBanner.textContent ?? "", /اليوم|تم رفع/);
+    assert.match(dayBanner.textContent ?? "", /Tue, Nov 17/);
+    assert.match(dayBanner.textContent ?? "", /1 of 2 branches submitted · 1 missing/);
   } finally {
     api.get = origGet;
     await act(async () => root.unmount());
@@ -438,6 +473,8 @@ test("FE-04: AccCompanyEmployees searches by empNumber or name, separates Dues v
     assert.match(text, /عهدة كاشير/);
     assert.match(text, /RCP-9001/);
     assert.match(text, /مؤكد/);
+    assert.match(text, /دائن \(\+\) — كاش داخل/);
+    assert.match(text, /مدين \(−\) — كاش خارج/);
   } finally {
     api.get = origGet;
     await act(async () => root.unmount());

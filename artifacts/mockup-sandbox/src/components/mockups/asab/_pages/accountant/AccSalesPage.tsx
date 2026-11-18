@@ -19,7 +19,7 @@ import { Card } from "../../components/Card";
 import { Btn } from "../../components/Btn";
 import { EmptyState } from "../../components/EmptyState";
 import { useLang } from "../../_shared/LangContext";
-import { fmtAmt, opDetailPage } from "../../_shared/formatters";
+import { fmtAmt, formatDayCompletenessBanner, formatDayCompletenessLabel, opDetailPage } from "../../_shared/formatters";
 import { STATUS_CFG, EN_STATUS_CFG } from "../../_shared/displayConfig";
 import {
   applyFilters,
@@ -276,7 +276,7 @@ export function AccSalesPage({
               <option value="all">{t("الكل", "All")}</option>
               {dayRows.map((d) => (
                 <option key={d.date} value={d.date}>
-                  {d.pillLabelAr} ({d.completedCount}/{d.requiredCount})
+                  {formatDayCompletenessLabel(d, lang)} ({d.completedCount}/{d.requiredCount})
                 </option>
               ))}
             </select>
@@ -327,10 +327,10 @@ export function AccSalesPage({
         >
           <div className="flex-1">
             <p className="text-sm font-bold text-gray-800">
-              {selectedDayInfo.pillLabelAr}
+              {formatDayCompletenessLabel(selectedDayInfo, lang)}
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
-              {selectedDayInfo.bannerAr}
+              {formatDayCompletenessBanner(selectedDayInfo, lang)}
             </p>
             {selectedDayInfo.missingBranches.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">

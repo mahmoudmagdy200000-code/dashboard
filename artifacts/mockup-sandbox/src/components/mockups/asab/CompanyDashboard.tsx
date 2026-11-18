@@ -11,7 +11,7 @@ import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRows, shfReviewPageTarget, type ShfReviewAction, type ShfReviewGroup } from "./shiftReviewQueue";
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT, HEAD_EXPENSE_EVIDENCE_HINT } from "./headReviewGuards";
 import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocationHalalas, runShfAllocationCorrection, type ShfAllocationRow } from "./shiftAllocationCorrection";
-import { hasEmployeeDebitWarning } from "./_shared/formatters";
+import { formatDayCompletenessBanner, formatDayCompletenessLabel, hasEmployeeDebitWarning } from "./_shared/formatters";
 import { displayDigits } from "./_shared/displayDigits";
 import { ShiftReconciliationSummaryView } from "./ShiftReconciliationSummary.tsx";
 import { ShiftSalesOverview, ShiftSalesSection } from "./_pages/accountant/ShiftSalesSection";
@@ -5459,7 +5459,7 @@ export function AccCompanySales({ ops, approve, reject, requestClarification, bu
       <ShiftSalesOverview filterBranch={branchFilter} filterStatus={statusFilter} filterDate={salesDate} filterSearch={search} />
 
       {/* Variance branches banner (ACC-1.5) */}
-      {kpis && kpis.varianceBranches.length>0 && (
+      {(kpis?.varianceBranches?.length ?? 0) > 0 && kpis && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4" dir={dir}>
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle size={15} className="text-red-600"/>
@@ -5489,9 +5489,10 @@ export function AccCompanySales({ ops, approve, reject, requestClarification, bu
           </button>
           {dayRows.map(d=>(
             <button key={d.date} onClick={()=>setDateFilter(d.date)}
+              data-testid={`sales-day-pill-${d.date}`}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${dateFilter===d.date?"bg-purple-600 text-white border-purple-600":d.missingCount>0?"bg-white text-amber-700 border-amber-200 hover:border-amber-300":"bg-white text-gray-600 border-gray-200 hover:border-purple-300"}`}>
-              {d.pillLabelAr}
-              <span className={`text-[9px] px-1 rounded-full ${dateFilter===d.date?"bg-purple-500 text-purple-100":d.missingCount>0?"bg-amber-100 text-amber-700":"bg-gray-100 text-gray-500"}`}>{d.completedCount}/{d.requiredCount}</span>
+              {formatDayCompletenessLabel(d, lang)}
+              <span className={`text-[9px] px-1 rounded-full ${dateFilter===d.date?"bg-purple-500 text-purple-100":d.missingCount>0?"bg-amber-100 text-amber-700":"bg-gray-100 text-gray-500"}`}>{displayDigits(`${d.completedCount}/${d.requiredCount}`, lang)}</span>
             </button>
           ))}
         </div>
@@ -5530,10 +5531,10 @@ export function AccCompanySales({ ops, approve, reject, requestClarification, bu
       </div>
 
       {selectedDay && (
-        <div className={`rounded-xl border p-4 flex flex-wrap items-center gap-4 ${selectedDay.missingCount>0?"bg-amber-50 border-amber-200":"bg-emerald-50 border-emerald-200"}`} dir={dir}>
+        <div data-testid="sales-selected-day-banner" className={`rounded-xl border p-4 flex flex-wrap items-center gap-4 ${selectedDay.missingCount>0?"bg-amber-50 border-amber-200":"bg-emerald-50 border-emerald-200"}`} dir={dir}>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-gray-800">{selectedDay.pillLabelAr}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{selectedDay.bannerAr}</p>
+            <p className="text-sm font-bold text-gray-800">{formatDayCompletenessLabel(selectedDay, lang)}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{formatDayCompletenessBanner(selectedDay, lang)}</p>
             {selectedDay.missingBranches.length>0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {selectedDay.missingBranches.map(b=>(
@@ -8490,7 +8491,7 @@ export function AccCompanyEmployees() {
                                 </div>
                                 <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] bg-gray-50 rounded-lg px-2.5 py-2">
                                   <div>
-                                    <span className="text-gray-500">{entry.cash_in > 0 ? t("داخل (+):", "Cash in (+):") : t("خارج (−):", "Cash out (−):")}</span>{" "}
+                                    <span className="text-gray-500">{entry.cash_in > 0 ? t("دائن (+) — كاش داخل:", "Credit (+) — Cash in:") : t("مدين (−) — كاش خارج:", "Debit (−) — Cash out:")}</span>{" "}
                                     {entry.cash_in > 0 ? (
                                       <span className="font-mono font-bold text-emerald-700"><bdi>+{fmtMoney(entry.cash_in)}</bdi> {SAR}</span>
                                     ) : (
@@ -8526,13 +8527,13 @@ export function AccCompanyEmployees() {
                           <table className="w-full text-xs">
                             <thead className="bg-gray-50 text-gray-600">
                               <tr>
-                                <th className="px-2.5 py-2.5 text-start font-semibold whitespace-nowrap">{t("التاريخ / الترحيل", "Date / Posted")}</th>
-                                <th className="px-2.5 py-2.5 text-start font-semibold">{t("الحركة والمصدر", "Movement & Source")}</th>
-                                <th className="px-2.5 py-2.5 text-center font-semibold whitespace-nowrap">{t("الإيصال", "Receipt")}</th>
-                                <th className="px-2.5 py-2.5 text-center font-semibold whitespace-nowrap">{t("الحالة", "Status")}</th>
-                                <th className="px-2.5 py-2.5 text-center font-semibold whitespace-nowrap">{t("داخل (+)", "Cash In (+)")}</th>
-                                <th className="px-2.5 py-2.5 text-center font-semibold whitespace-nowrap">{t("خارج (−)", "Cash Out (−)")}</th>
-                                <th className="px-2.5 py-2.5 text-center font-semibold whitespace-nowrap">{t("الرصيد الجاري", "Running Bal.")}</th>
+                                <th className="px-2 py-2.5 text-start font-semibold whitespace-nowrap">{t("التاريخ / الترحيل", "Date / Posted")}</th>
+                                <th className="px-2 py-2.5 text-start font-semibold">{t("الحركة والمصدر", "Movement & Source")}</th>
+                                <th className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{t("الإيصال", "Receipt")}</th>
+                                <th className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{t("الحالة", "Status")}</th>
+                                <th className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{t("دائن (+) — كاش داخل", "Credit (+) — Cash In")}</th>
+                                <th className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{t("مدين (−) — كاش خارج", "Debit (−) — Cash Out")}</th>
+                                <th className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{t("الرصيد الجاري", "Running Bal.")}</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
