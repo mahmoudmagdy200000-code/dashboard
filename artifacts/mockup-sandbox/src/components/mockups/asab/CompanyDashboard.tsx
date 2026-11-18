@@ -2223,7 +2223,7 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
   </section>;
 }
 
-function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:boolean; detail?:ApiOperation; loading?:boolean; error?:boolean }) {
+export function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:boolean; detail?:ApiOperation; loading?:boolean; error?:boolean }) {
   const { t, lang } = useCLang();
   const [correctionOpen, setCorrectionOpen] = useState(false);
   if (loading) return <p role="status">{t("جارٍ تحميل تفاصيل الوردية…","Loading shift details…")}</p>;
