@@ -11,7 +11,8 @@ import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRows, shfReviewPageTarget, type ShfReviewAction, type ShfReviewGroup } from "./shiftReviewQueue";
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT, HEAD_EXPENSE_EVIDENCE_HINT } from "./headReviewGuards";
 import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocationHalalas, runShfAllocationCorrection, type ShfAllocationRow } from "./shiftAllocationCorrection";
-import { hasEmployeeDebitWarning } from "./_shared/formatters";
+import { formatDayCompletenessBanner, formatDayCompletenessLabel, hasEmployeeDebitWarning } from "./_shared/formatters";
+import { displayDigits } from "./_shared/displayDigits";
 import { ShiftReconciliationSummaryView } from "./ShiftReconciliationSummary.tsx";
 import { ShiftSalesOverview, ShiftSalesSection } from "./_pages/accountant/ShiftSalesSection";
 import { EmployeeClosedShiftSales, EmployeeShiftSalesTotal } from "./_pages/accountant/EmployeeClosedShiftSales";
@@ -77,7 +78,7 @@ import {
   useAccDashboard, useOperation, useRequestClarification, useOperationAttachments,
   useSalesDetails, usePatchSalesDetails, useAssignSalesVariance,
   useSalesKpis, useSalesDayCompleteness,
-  useDailyRollup, useRejectionReasons, useBranchEmployeesLookup,
+  useDailyRollup, useRejectionReasons, useBranchEmployeesLookup, useBranchEmployeeByNumber, resolveBranchEmployeeMatch,
   usePipelineOverview,
   // T06 purchases wiring
   usePurchasesList, usePurchaseDetail, useDocumentOperation, usePatchPurchaseLine,
@@ -92,7 +93,20 @@ import {
 } from "../../../api/queries";
 import { apiOpToCOp, sumCOpAmounts, type COp, type COpStatus, type CMatch, type CModKey } from "./operationMapping";
 import { formatShiftHalalas, getShiftCountEvidence, getShiftStatusDisplay } from "./shiftCountEvidence";
-import { getShiftCorrectionEvidence, getShiftCorrectionIneligibilityReason, initialShiftCorrectionDraft, prepareShiftCorrectionRequest, runShiftReportCorrection, type ShiftCorrectionDraft, type ShiftCorrectionShareDraft } from "./shiftReportCorrection";
+import {
+  evaluateShiftCorrectionPreview,
+  getShiftCorrectionEvidence,
+  getShiftCorrectionIneligibilityReason,
+  getShiftCorrectionNextStep,
+  initialShiftCorrectionDraft,
+  parseCorrectionSar,
+  prepareShiftCorrectionRequest,
+  runShiftReportCorrection,
+  SHIFT_VARIANCE_REASONS,
+  validateShortageAllocations,
+  type ShiftCorrectionDraft,
+  type ShiftCorrectionShareDraft,
+} from "./shiftReportCorrection";
 import type {
   Asset, ExpenseInvoiceRow,
   PurchaseLine, PurchasesBlock, Supplier, PurchaseReturn, PurchaseEnumsCatalogue,
@@ -1161,38 +1175,62 @@ function OperationAttachmentsPanel({ operationId }:{ operationId:string }) {
 // ═══════════════════════════════════════════════════
 // SALES: RECONCILIATION PANEL (inside expanded OpRow)
 // ═══════════════════════════════════════════════════
-type VEmpCD = { empId:string; amount:string };
+type VEmpCD = { empId:string; amount:string; employeeId?: string };
 
 // One variance-allocation row — owns its own employee-name lookup by empNumber.
 function VarEmpRow({ branchId, row, onField, onRemove, onQuickFill, canRemove, disabled=false, strictDecimal=false }:{
   branchId?:string; row:VEmpCD; onField:(field:keyof VEmpCD,val:string)=>void;
   onRemove:()=>void; onQuickFill?:()=>void; canRemove:boolean; disabled?:boolean; strictDecimal?:boolean;
 }) {
-  const { data: emp } = useBranchEmployeesLookup(branchId, row.empId.length>=3 ? row.empId : undefined);
-  const empName = emp?.name ?? "";
+  const { t } = useCLang();
+  const trimmed = row.empId.trim();
+  const lookup = useBranchEmployeesLookup(branchId, trimmed.length >= 1 ? trimmed : undefined);
+  const empName = lookup.data?.name ?? "";
+  const resolvedId = lookup.data?.id ?? lookup.data?.employeeId;
+
+  useEffect(() => {
+    if (resolvedId && row.employeeId !== resolvedId) {
+      onField("employeeId", resolvedId);
+    } else if (!resolvedId && row.employeeId) {
+      onField("employeeId", "");
+    }
+  }, [resolvedId, row.employeeId, onField]);
+  const isDuplicateErr = isApiError(lookup.error) && lookup.error.status === 409;
+  const isNotFound = trimmed.length > 0 && !lookup.isFetching && (lookup.isError && !isDuplicateErr);
   return (
-    <div className="flex items-center gap-2">
+    <div className="grid grid-cols-1 gap-2 lg:grid-cols-[6.5rem_minmax(8.5rem,1fr)_7rem_auto_auto] lg:items-end">
       <div className="flex flex-col gap-0.5">
-        <label className="text-[9px] text-gray-400">رقم الموظف</label>
-        <input placeholder="مثال: 1001" value={row.empId} onChange={ev=>onField("empId",ev.target.value)} disabled={disabled}
-          className="w-20 text-center font-mono border border-red-200 rounded-lg px-2 py-1 text-[10px] bg-white focus:outline-none focus:border-red-400"/>
+        <label className="text-[10px] text-gray-500">{t("رقم الموظف","Employee #")}</label>
+        <input placeholder={t("مثال: 1001","e.g. 1001")} value={row.empId} onChange={ev=>onField("empId",ev.target.value)} disabled={disabled}
+          className="w-full text-center font-mono border border-red-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-purple-400"/>
       </div>
-      <div className="flex flex-col gap-0.5 flex-1">
-        <label className="text-[9px] text-gray-400">اسم الموظف</label>
-        <div className="h-7 flex items-center px-2 rounded-lg bg-white border border-gray-100 text-[10px] text-gray-700">{empName||<span className="text-gray-300">يُعبأ تلقائياً</span>}</div>
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <label className="text-[10px] text-gray-500">{t("اسم الموظف","Employee name")}</label>
+        <div className={`min-h-8 flex items-center px-2.5 py-1 rounded-lg bg-white border text-xs ${isDuplicateErr || isNotFound ? "border-red-300 text-red-700" : "border-gray-200 text-gray-800"}`}>
+          {lookup.isFetching ? (
+            <span className="text-gray-400">{t("جارٍ البحث…","Looking up…")}</span>
+          ) : isDuplicateErr ? (
+            <span>{t("رقم موظف مكرر في الفرع","Duplicate employee number")}</span>
+          ) : isNotFound ? (
+            <span>{t("غير موجود أو غير نشط بهذا الفرع","Unknown or inactive in branch")}</span>
+          ) : empName ? (
+            <span className="font-medium truncate">{empName}</span>
+          ) : (
+            <span className="text-gray-300">{t("يُعبأ تلقائياً","Auto-filled")}</span>
+          )}
+        </div>
       </div>
       <div className="flex flex-col gap-0.5">
-        <label className="text-[9px] text-gray-400">المبلغ (ر.س)</label>
+        <label className="text-[10px] text-gray-500">{t("المبلغ (ر.س)","Amount (SAR)")}</label>
         <input placeholder="0.00" type={strictDecimal ? "text" : "number"} inputMode="decimal" value={row.amount} onChange={ev=>onField("amount",ev.target.value)} disabled={disabled}
-          className="w-24 text-center font-mono border border-red-200 rounded-lg px-2 py-1 text-[10px] bg-white focus:outline-none focus:border-red-400"/>
+          className="w-full text-center font-mono border border-red-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:border-purple-400"/>
       </div>
       {onQuickFill && <div className="flex flex-col gap-0.5">
-        <label className="text-[9px] text-gray-400 opacity-0">⚡</label>
-        <button onClick={onQuickFill}
-          className="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-bold hover:bg-amber-200 border border-amber-200">⚡ المتبقي</button>
+        <button type="button" onClick={onQuickFill} disabled={disabled}
+          className="w-full sm:w-auto px-2.5 py-1.5 bg-amber-100 text-amber-800 rounded-lg text-[11px] font-bold hover:bg-amber-200 border border-amber-200 whitespace-nowrap">⚡ {t("المتبقي","Remaining")}</button>
       </div>}
       {canRemove && (
-        <button onClick={onRemove} disabled={disabled} className="mt-3 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><X size={12}/></button>
+        <button type="button" onClick={onRemove} disabled={disabled} aria-label={t("حذف","Remove")} className="self-end p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"><X size={14}/></button>
       )}
     </div>
   );
@@ -1200,7 +1238,7 @@ function VarEmpRow({ branchId, row, onField, onRemove, onQuickFill, canRemove, d
 function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHead }:{
   op:COp; onApprove:()=>void; onReject:()=>void; onClarify?:()=>void; isPending:boolean; forHead:boolean;
 }) {
-  const { t } = useCLang();
+  const { t, lang } = useCLang();
   const detailQ = useSalesDetails(op.id);
   const recon = detailQ.reconciliation;
   const queryClient = useQueryClient();
@@ -1211,6 +1249,7 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
       financialDataReady: hasSalesReconciliationEvidence(detail?.reconciliation) };
   };
   const salesPolicy = getSalesActionPolicy(salesContext());
+  const fmtMoney = (h: number | null | undefined) => formatShiftHalalas(h, lang);
   const patchMut = usePatchSalesDetails();
   const assignMut = useAssignSalesVariance();
 
@@ -1278,10 +1317,18 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
   function confirmAssign() {
     if (totals?.varianceHalalas == null || totals.varianceHalalas >= 0) return;
     runSalesAction(salesContext, "assign", () => {
-      const allocations = varEmps
+      const filled = varEmps.filter(e=>e.empId.trim() || e.amount.trim());
+      const numbers = filled.map(e=>e.empId.trim()).filter(Boolean);
+      if (numbers.length !== new Set(numbers).size) return;
+      const allocations = filled
         .filter(e=>e.empId.trim() && (parseFloat(e.amount)||0)>0)
-        .map(e=>({ empNumber: e.empId.trim(), amountHalalas: Math.round((parseFloat(e.amount)||0)*100) }));
-      if (allocations.length===0) return;
+        .map(e=>({
+          employeeId: e.employeeId?.trim() || undefined,
+          empNumber: e.empId.trim(),
+          amountHalalas: Math.round((parseFloat(e.amount)||0)*100),
+        }));
+      const sumH = allocations.reduce((s,a)=>s+a.amountHalalas, 0);
+      if (allocations.length===0 || sumH !== Math.abs(totals.varianceHalalas)) return;
       assignMut.mutate(
         { operationId: op.id, payload: { allocations, notes: assignNotes || undefined } },
         { onSuccess: (res)=>{ setRemainingH(res.remainingVarianceHalalas); if (res.remainingVarianceHalalas<=0) setVarEmps([{empId:"",amount:""}]); } },
@@ -1290,32 +1337,43 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
   }
 
   const ChannelRow = ({ c }:{ c:typeof channels[number] }) => (
-    <div className={`flex items-center justify-between px-4 py-2.5 hover:bg-gray-50/60 ${c.status==="diff"?"bg-amber-50/40":""}`}>
-      <div className="flex items-center gap-2">
+    <div className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 hover:bg-gray-50/60 ${c.status==="diff"?"bg-amber-50/40":""}`}>
+      <div className="flex items-center gap-2 min-w-0">
         <span className="text-sm">{c.icon}</span><span className="text-xs text-gray-700">{c.labelAr}</span>
-        {c.diffHalalas != null && c.diffHalalas!==0 && <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold">{c.statusLabelAr} {c.diffHalalas>0?"+":""}{fmtH(c.diffHalalas)}</span>}
+        {c.diffHalalas != null && c.diffHalalas!==0 && <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold">{c.statusLabelAr} {c.diffHalalas>0?"+":""}{fmtMoney(c.diffHalalas)}</span>}
       </div>
       {editMode && salesPolicy.edit ? (
         <input type="number" value={draft[c.key] ?? String(c.actualAmountHalalas/100)}
           onChange={e=>setDraft(d=>({...d,[c.key]:e.target.value}))}
           className="w-32 text-center font-mono font-semibold border-2 border-purple-300 rounded-lg px-2 py-1 text-xs bg-purple-50 focus:outline-none"/>
-      ) : <span className="font-mono font-semibold text-gray-800 text-xs">{fmtH(c.actualAmountHalalas)} ر.س</span>}
+      ) : <span className="font-mono font-semibold text-gray-800 text-xs whitespace-nowrap"><bdi>{fmtMoney(c.actualAmountHalalas)}</bdi> {t("ر.س","SAR")}</span>}
     </div>
   );
 
   return (
     <div className="space-y-3">
-      {salesPolicy.pkg6 && <p role="note" className="text-xs text-amber-800 bg-amber-50 rounded-lg p-3">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</p>}
+      {salesPolicy.pkg6 && (
+        <div role="note" className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
+          <p className="font-semibold">{t("التعديل المباشر على بيان المبيعات اليومي مقفول (PKG-6).","Direct edit on daily sales summary is locked (PKG-6).")}</p>
+          <p>{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)} — {t("افتح الوردية المعنية في قسم «مبيعات الورديات» أو «مراجعة الورديات» للتعديل عند استيفاء المرحلة.","Open the relevant cashier shift in Shift Sales / Shift Review to edit when eligible.")}</p>
+        </div>
+      )}
+      {!salesPolicy.pkg6 && !salesPolicy.edit && (
+        <div role="note" className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
+          <p className="font-semibold">{isLocked ? t("العملية معتمدة نهائياً ومُقفلة.","Operation is final-approved and locked.") : t("التعديل غير متاح حالياً.","Editing is currently unavailable.")}</p>
+          <p>{salesPolicy.correct ? t("الخطوة المتاحة: يمكنك إنشاء عملية تعديل مرتبطة من صفحة التفاصيل إذا كانت مصرحاً بها.","Available step: You may create a linked corrective operation if authorized.") : t("الخطوة المتاحة: استعراض تفاصيل التسوية والمرفقات للقراءة فقط.","Available step: Read-only review of reconciliation details and attachments.")}</p>
+        </div>
+      )}
       {salesPolicy.staleMembers.length > 0 && <p role="status" className="text-xs text-amber-700">{t("بانتظار إعادة اعتماد ورديات أعضاء","Awaiting reapproval of member shifts")}</p>}
       {recon && !salesPolicy.pkg6 && !hasSalesReconciliationEvidence(recon) && <p role="note" className="text-xs text-gray-500">{t("بيانات التسوية غير مكتملة — التعديل غير متاح","Reconciliation data is incomplete — editing is unavailable")}</p>}
       {/* Reconciliation Panel */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-indigo-50/40">
+        <div className="px-4 py-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2 bg-indigo-50/40">
           <p className="text-xs font-bold text-gray-700">{t("تسوية المبيعات","Sales Reconciliation")}</p>
           {salesPolicy.edit && recon && (
             <button onClick={()=> editMode ? saveEdit() : beginEdit()} disabled={patchMut.isPending}
               className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border transition-all ${editMode?"bg-purple-600 text-white border-purple-600":"bg-white text-purple-600 border-purple-200 hover:bg-purple-50"}`}>
-              <Edit3 size={10}/> {editMode?(patchMut.isPending?"جارٍ الحفظ…":"💾 حفظ"):"تعديل الأرقام"}
+              <Edit3 size={10}/> {editMode?(patchMut.isPending?t("جارٍ الحفظ…","Saving…"):t("💾 حفظ","💾 Save")):t("تعديل الأرقام","Edit breakdown")}
             </button>
           )}
           {isLocked && <span className="flex items-center gap-1 text-[11px] text-slate-400"><Lock size={11}/> {t("مقفل","Locked")}</span>}
@@ -1335,13 +1393,13 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
         {recon && (
           <div className="divide-y divide-gray-100">
             {/* إجمالي المبيعات (locked branch total) */}
-            <div className="flex items-center justify-between px-4 py-3 bg-indigo-50/60">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-indigo-50/60">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-indigo-500"/>
                 <span className="text-xs font-bold text-indigo-900">{t("إجمالي المبيعات","Total Sales")}</span>
                 <span className="text-[10px] bg-indigo-100 text-indigo-500 px-1.5 py-0.5 rounded-md">{t("من رفع مدير الفرع — مقفل","From branch manager — locked")}</span>
               </div>
-              <span className="font-mono font-black text-indigo-800 text-sm">{fmtH(totals?.expectedTotalHalalas)} ر.س</span>
+              <span className="font-mono font-black text-indigo-800 text-sm whitespace-nowrap"><bdi>{fmtMoney(totals?.expectedTotalHalalas)}</bdi> {t("ر.س","SAR")}</span>
             </div>
 
             {/* Core channels */}
@@ -1366,12 +1424,12 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
 
             {/* تحميل الفرق على موظفين — يتاح فقط في حالة العجز وليس الفائض (ACC-F04) */}
             {isShortage && salesPolicy.assign && (
-              <div className="mx-4 my-2 bg-red-50 border border-red-200 rounded-xl overflow-hidden">
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-red-100/60 border-b border-red-200">
+              <div className="mx-3 sm:mx-4 my-2 bg-red-50 border border-red-200 rounded-xl overflow-hidden">
+                <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 bg-red-100/60 border-b border-red-200">
                   <AlertTriangle size={13} className="text-red-600 flex-shrink-0"/>
-                  <p className="text-xs font-bold text-red-800">{t("تحميل الفرق على موظفين","Allocate variance to employees")} — {t("العجز","Shortage")}: <span className="font-mono">{fmtH(Math.abs(varianceH))} ر.س</span></p>
-                  <span className={`mr-auto text-[10px] font-bold px-2 py-0.5 rounded-lg ${leftH != null && leftH<=0?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}`}>
-                    {leftH != null && leftH<=0?"✓ محمَّل بالكامل":`${t("متبقي","Remaining")} ${fmtH(leftH)} ر.س`}
+                  <p className="text-xs font-bold text-red-800">{t("تحميل الفرق على موظفين","Allocate variance to employees")} — {t("العجز","Shortage")}: <span className="font-mono"><bdi>{fmtMoney(Math.abs(varianceH))}</bdi> {t("ر.س","SAR")}</span></p>
+                  <span className={`ms-auto text-[10px] font-bold px-2 py-0.5 rounded-lg ${leftH != null && leftH<=0?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}`}>
+                    {leftH != null && leftH<=0?t("✓ محمَّل بالكامل","✓ Fully allocated"):`${t("متبقي","Remaining")} ${fmtMoney(leftH)} ${t("ر.س","SAR")}`}
                   </span>
                 </div>
                 <div className="p-3 space-y-2">
@@ -1384,7 +1442,7 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
                   <input value={assignNotes} onChange={e=>setAssignNotes(e.target.value)}
                     placeholder={t("ملاحظات (اختياري)","Notes (optional)")}
                     className="w-full text-[10px] border border-red-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:border-red-400"/>
-                  <div className="flex items-center justify-between pt-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                     <button onClick={()=>setVarEmps(p=>[...p,{empId:"",amount:""}])} className="flex items-center gap-1 text-[10px] text-red-600 hover:underline font-semibold"><Plus size={10}/> {t("إضافة موظف آخر","Add another employee")}</button>
                     <Btn size="sm" variant="success" onClick={confirmAssign} disabled={assignMut.isPending || leftH == null || leftH>0}>
                       <CheckCircle2 size={10}/> {assignMut.isPending?t("جارٍ التحميل…","Uploading…"):t("تأكيد التحميل","Confirm Upload")}
@@ -1395,21 +1453,21 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
             )}
 
             {isSurplus && (
-              <div className="mx-4 my-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2">
+              <div className="mx-3 sm:mx-4 my-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2">
                 <CheckCircle2 size={13} className="text-emerald-600 flex-shrink-0"/>
-                <p className="text-xs font-bold text-emerald-800">{t("فائض في المبيعات — لا يتم تحميله كمديونية على الموظفين وفق القواعد","Sales surplus — not allocated as employee liability per rules")}: <span className="font-mono">+{fmtH(varianceH)} {t("ر.س","SAR")}</span></p>
+                <p className="text-xs font-bold text-emerald-800">{t("فائض في المبيعات — لا يتم تحميله كمديونية على الموظفين وفق القواعد","Sales surplus — not allocated as employee liability per rules")}: <span className="font-mono">+<bdi>{fmtMoney(varianceH)}</bdi> {t("ر.س","SAR")}</span></p>
               </div>
             )}
 
             {/* إجمالي التحصيل */}
-            <div className={`flex items-center justify-between px-4 py-3 font-bold border-t-2 ${varianceH===0?"bg-emerald-50/70 border-emerald-200":hasVariance?"bg-red-50/70 border-red-200":"bg-gray-50 border-gray-200"}`}>
+            <div className={`flex flex-wrap items-center justify-between gap-2 px-4 py-3 font-bold border-t-2 ${varianceH===0?"bg-emerald-50/70 border-emerald-200":hasVariance?"bg-red-50/70 border-red-200":"bg-gray-50 border-gray-200"}`}>
               <span className={`text-xs ${varianceH===0?"text-emerald-800":hasVariance?"text-red-800":"text-gray-500"}`}>{t("إجمالي التحصيل","Total Collection")}</span>
-              <span className={`font-mono text-sm ${varianceH===0?"text-emerald-700":hasVariance?"text-red-700":"text-gray-500"}`}>{fmtH(totals?.totalCollectionHalalas)} ر.س</span>
+              <span className={`font-mono text-sm whitespace-nowrap ${varianceH===0?"text-emerald-700":hasVariance?"text-red-700":"text-gray-500"}`}><bdi>{fmtMoney(totals?.totalCollectionHalalas)}</bdi> {t("ر.س","SAR")}</span>
             </div>
             {varianceH == null ? <p className="text-xs text-gray-400 px-4 py-2.5">{t("الفرق غير متاح —","Variance unavailable —")}</p> : varianceH!==0 ? (
-              <div className="flex items-center justify-between px-4 py-2.5 bg-red-100 border-t border-red-200">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-red-100 border-t border-red-200">
                 <div className="flex items-center gap-2"><AlertTriangle size={12} className="text-red-600"/><span className="text-xs font-bold text-red-800">{totals?.statusLabelAr ?? t("يوجد فرق","Variance")}</span></div>
-                <span className="font-mono font-black text-red-800 text-sm">{fmtH(varianceH)} ر.س</span>
+                <span className="font-mono font-black text-red-800 text-sm whitespace-nowrap"><bdi>{fmtMoney(varianceH)}</bdi> {t("ر.س","SAR")}</span>
               </div>
             ) : (
               <div className="flex items-center justify-center px-4 py-2.5 bg-emerald-50">
@@ -1423,14 +1481,43 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
       {/* Attachments */}
       <OperationAttachmentsPanel operationId={op.id}/>
 
-      {/* Action buttons */}
-      {isPending && !forHead && (
-        <div className="flex gap-2 justify-end">
-          {onClarify && (
-            <button onClick={e=>{e.stopPropagation();onClarify();}} className="px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold hover:bg-amber-100">❔ {t("طلب توضيح","Request Clarification")}</button>
+      {/* Action buttons + clear disabled explanations */}
+      {!forHead && (
+        <div className="space-y-2">
+          {isPending ? (
+            <div className="flex flex-wrap gap-2 justify-end">
+              {onClarify && (
+                <button type="button" onClick={e=>{e.stopPropagation();onClarify();}} className="min-h-[36px] px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold hover:bg-amber-100 whitespace-nowrap">
+                  ❔ {t("طلب توضيح","Request Clarification")}
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={!salesPolicy.return}
+                onClick={e=>{e.stopPropagation();runSalesAction(salesContext, "return", onReject);}}
+                title={!salesPolicy.return ? t("الرفض/الإرجاع معطل لهذا البيان (PKG-6 أو مقفل)","Reject/Return disabled for this statement (PKG-6 or locked)") : t("رفض","Reject")}
+                className="min-h-[36px] px-3.5 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold hover:bg-red-100 disabled:opacity-45 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                ✕ {t("رفض / إرجاع","Reject / Return")}
+              </button>
+              <button type="button" onClick={e=>{e.stopPropagation();onApprove();}} className="min-h-[36px] px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 whitespace-nowrap">
+                ✓ {t("موافقة وإرسال لرئيس الحسابات","Approve & Send to Head")}
+              </button>
+            </div>
+          ) : (
+            <p role="note" className="text-[11px] text-gray-600 bg-gray-100 border border-gray-200 rounded-lg px-3 py-2">
+              {isLocked
+                ? t("الإجراءات (الاعتماد / الإرجاع / طلب الإيضاح) مقفلة لأن البيان معتمد نهائياً.","Actions (Approve / Return / Clarify) are locked because this statement is final-approved.")
+                : op.status === "approved"
+                ? t("الاعتماد والإرجاع مقفلان لأن البيان بانتظار مراجعة رئيس الحسابات.","Approve and Return are locked while awaiting Head Accountant review.")
+                : t("البيان مرفوض حالياً بانتظار إعادة الرفع من الفرع.","Statement is currently rejected awaiting branch resubmission.")}
+            </p>
           )}
-          {salesPolicy.return && <button onClick={e=>{e.stopPropagation();runSalesAction(salesContext, "return", onReject);}} className="px-4 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold hover:bg-red-100">✕ {t("رفض","Reject")}</button>}
-          <button onClick={e=>{e.stopPropagation();onApprove();}} className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600">✓ {t("موافقة — إرسال لرئيس الحسابات","Approve — send to head")}</button>
+          {isPending && !salesPolicy.return && salesPolicy.pkg6 && (
+            <p role="note" className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+              {t("الإرجاع المباشر لبيان اليوم معطّل وفق PKG-6؛ أرجِع الوردية الفردية من قسم الورديات إذا لزم التعديل.","Direct return on workday summary is disabled per PKG-6; return the individual cashier shift if changes are needed.")}
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -1494,9 +1581,9 @@ function ShiftAllocationForm({ op, shortageHalalas }:{ op:COp; shortageHalalas:n
   return <div className="space-y-2 rounded-xl border border-red-200 bg-red-50/40 p-3 text-xs">
     <h4 className="font-bold text-red-800">{t("تصحيح توزيع العجز","Correct shortage allocation")}</h4>
     <p>{t("كامل العجز المطلوب توزيعه","Full shortage to allocate")}: <bdi>{formatShiftHalalas(shortageHalalas,lang)}</bdi> {t("ر.س","SAR")}</p>
-    {rows.map((row,i)=><VarEmpRow key={i} branchId={op.branchId} row={{empId:row.empNumber,amount:row.amountSar}}
+    {rows.map((row,i)=><VarEmpRow key={i} branchId={op.branchId} row={{empId:row.empNumber,amount:row.amountSar,employeeId:row.employeeId}}
       disabled={pending || allocationMut.isPending} strictDecimal canRemove={rows.length>1}
-      onField={(field,value)=>setField(i,field==="empId" ? "empNumber" : "amountSar",value)}
+      onField={(field,value)=>setField(i,field==="empId" ? "empNumber" : (field==="employeeId" ? "employeeId" : "amountSar"),value)}
       onRemove={()=>setRows(current=>current.filter((_,index)=>index!==i))}/>)}
     <button onClick={()=>setRows(current=>[...current,{empNumber:"",amountSar:""}])} disabled={pending || allocationMut.isPending}
       className="rounded-lg border px-2 py-1.5 disabled:opacity-50">{t("إضافة موظف","Add employee")}</button>
@@ -1505,6 +1592,157 @@ function ShiftAllocationForm({ op, shortageHalalas }:{ op:COp; shortageHalalas:n
     <button onClick={submit} disabled={!allocations || pending || allocationMut.isPending}
       className="rounded-lg bg-red-700 px-3 py-1.5 font-semibold text-white disabled:opacity-50">{pending ? t("جارٍ الحفظ…","Saving…") : t("حفظ التوزيع","Save allocation")}</button>
   </div>;
+}
+
+function ShiftCorrectionShareRow({
+  branchId,
+  index,
+  share,
+  employees,
+  disabled,
+  canRemove,
+  onResolved,
+  onClearIdentity,
+  onAmountChange,
+  onEmpNumberChange,
+  onQuickFill,
+  onRemove,
+  onLookupStateChange,
+}: {
+  branchId?: string;
+  index: number;
+  share: ShiftCorrectionShareDraft;
+  employees: readonly ApiEmployee[];
+  disabled: boolean;
+  canRemove: boolean;
+  onResolved: (index: number, match: { id: string; name: string; empNumber: string }) => void;
+  onClearIdentity: (index: number) => void;
+  onAmountChange: (index: number, value: string) => void;
+  onEmpNumberChange: (index: number, empNumber: string) => void;
+  onQuickFill: (index: number) => void;
+  onRemove: (index: number) => void;
+  onLookupStateChange: (index: number, pending: boolean) => void;
+}) {
+  const { t } = useCLang();
+  const empNum = (share.empNumber ?? "").trim();
+  const rosterMatch = useMemo(
+    () => (empNum ? resolveBranchEmployeeMatch(employees, branchId, empNum) : { status: "idle" as const, employee: null }),
+    [employees, branchId, empNum],
+  );
+  // Authoritative branch-scoped lookup for >100 employees & stale-race protection via keyed query + exact empNumber verification.
+  const query = useBranchEmployeeByNumber(branchId, empNum.length > 0 ? empNum : undefined);
+  const queryMatch = query.data;
+
+  useEffect(() => {
+    onLookupStateChange(index, Boolean(empNum) && query.isFetching && rosterMatch.status !== "resolved");
+  }, [index, empNum, query.isFetching, rosterMatch.status, onLookupStateChange]);
+
+  useEffect(() => {
+    if (!empNum) return;
+    if (query.isSuccess && queryMatch) {
+      if (queryMatch.status === "resolved" && queryMatch.employee.empNumber.trim() === empNum) {
+        if (share.id !== queryMatch.employee.id || share.name !== queryMatch.employee.name || share.type !== "employee") {
+          onResolved(index, queryMatch.employee);
+        }
+        return;
+      }
+      if (queryMatch.status === "not_found" || queryMatch.status === "duplicate") {
+        if (share.id !== "") onClearIdentity(index);
+        return;
+      }
+    }
+    if (!query.isFetching && rosterMatch.status === "resolved" && rosterMatch.employee.empNumber.trim() === empNum) {
+      if (share.id !== rosterMatch.employee.id || share.name !== rosterMatch.employee.name || share.type !== "employee") {
+        onResolved(index, rosterMatch.employee);
+      }
+    } else if (!query.isFetching && (rosterMatch.status === "not_found" || rosterMatch.status === "duplicate")) {
+      if (share.id !== "") onClearIdentity(index);
+    }
+  }, [empNum, query.isSuccess, query.isFetching, queryMatch, rosterMatch, index, share.id, share.name, share.type, onResolved, onClearIdentity]);
+
+  const effectiveStatus = !empNum
+    ? (share.id && share.name ? "preserved" : "idle")
+    : query.isFetching && rosterMatch.status !== "resolved"
+    ? "loading"
+    : queryMatch?.status === "duplicate" || rosterMatch.status === "duplicate"
+    ? "duplicate"
+    : queryMatch?.status === "resolved"
+    ? "resolved"
+    : !query.isFetching && rosterMatch.status === "resolved"
+    ? "resolved"
+    : query.isError || queryMatch?.status === "not_found" || (!query.isFetching && rosterMatch.status === "not_found")
+    ? "not_found"
+    : "loading";
+
+  const displayName =
+    effectiveStatus === "resolved"
+      ? (queryMatch?.employee?.name ?? rosterMatch.employee?.name ?? share.name ?? "")
+      : effectiveStatus === "preserved"
+      ? (share.name ?? "")
+      : "";
+
+  const inputClass = "w-full min-w-0 rounded-lg border border-red-200 bg-white px-2.5 py-2 font-mono text-xs focus:outline-none focus:border-violet-500";
+  return (
+    <div className="grid grid-cols-1 gap-2 rounded-lg border border-red-200/80 bg-white/80 p-2.5 lg:grid-cols-[6.5rem_minmax(8.5rem,1fr)_7.5rem_auto_auto] lg:items-end">
+      <label className="space-y-1 min-w-0">
+        <span className="block text-[11px] font-medium text-gray-700">{t("رقم الموظف","Employee #")}</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          placeholder={t("مثال: 1001","e.g. 1001")}
+          value={share.empNumber ?? ""}
+          onChange={event => onEmpNumberChange(index, event.target.value)}
+          disabled={disabled}
+          className={`${inputClass} text-center`}
+        />
+      </label>
+      <div className="space-y-1 min-w-0">
+        <span className="block text-[11px] font-medium text-gray-700">{t("اسم الموظف","Employee name")}</span>
+        <div className={`min-h-[34px] flex items-center rounded-lg border px-2.5 py-1.5 text-xs min-w-0 ${effectiveStatus === "not_found" || effectiveStatus === "duplicate" ? "border-red-300 bg-red-50 text-red-700" : "border-gray-200 bg-gray-50 text-gray-800"}`}>
+          {effectiveStatus === "loading" ? (
+            <span className="text-gray-500">{t("جارٍ البحث عن الموظف…","Looking up employee…")}</span>
+          ) : effectiveStatus === "duplicate" ? (
+            <span className="font-medium">{t("رقم موظف مكرر في هذا الفرع","Duplicate employee number in branch")}</span>
+          ) : effectiveStatus === "not_found" ? (
+            <span className="font-medium">{t("موظف غير موجود أو غير نشط بهذا الفرع","Employee unknown or inactive in branch")}</span>
+          ) : displayName ? (
+            <span className="font-semibold truncate">{displayName}</span>
+          ) : (
+            <span className="text-gray-400">{t("يُعبأ تلقائياً بالرقم","Auto-filled by number")}</span>
+          )}
+        </div>
+      </div>
+      <label className="space-y-1 min-w-0">
+        <span className="block text-[11px] font-medium text-gray-700">{t("المبلغ (ر.س)","Amount (SAR)")}</span>
+        <input
+          inputMode="decimal"
+          placeholder="0.00"
+          className={`${inputClass} text-center`}
+          value={share.amountSar}
+          disabled={disabled}
+          onChange={event => onAmountChange(index, event.target.value)}
+        />
+      </label>
+      <div className="flex flex-wrap items-center gap-2 lg:contents">
+        <button
+          type="button"
+          onClick={() => onQuickFill(index)}
+          disabled={disabled}
+          className="min-h-[34px] flex-1 sm:flex-none rounded-lg border border-amber-200 bg-amber-100 px-2.5 py-1.5 text-[11px] font-bold text-amber-800 hover:bg-amber-200 disabled:opacity-50 whitespace-nowrap"
+        >
+          ⚡ {t("المتبقي","Remaining")}
+        </button>
+        <button
+          type="button"
+          onClick={() => onRemove(index)}
+          disabled={disabled || !canRemove}
+          className="min-h-[34px] rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-40 whitespace-nowrap"
+        >
+          {t("حذف","Remove")}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOperation }) {
@@ -1516,6 +1754,9 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
   const employeeQuery = useEmployees({ branchId: op.branchId, q: empSearch.trim() || undefined, pageSize: 100 });
   const initial = initialShiftCorrectionDraft(detail);
   const [draft,setDraft] = useState<ShiftCorrectionDraft>(()=>initial);
+  const [reasonCategory, setReasonCategory] = useState("");
+  const [cashConfirmed, setCashConfirmed] = useState(false);
+  const [lookupPendingByRow, setLookupPendingByRow] = useState<Record<number, boolean>>({});
   const [pending,setPending] = useState(false);
   const [completed,setCompleted] = useState(false);
   const [uncertain,setUncertain] = useState(false);
@@ -1536,28 +1777,114 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
     mounted.current && generation === financialAccessGeneration(queryClient)
     && expectedFingerprint === currentFingerprint.current && hasRoleGrant(user,"accountant");
   const employees = (employeeQuery.data?.data ?? []).filter(employee=>employee.status === "active");
-  const request = evidence ? prepareShiftCorrectionRequest(detail, draft) : null;
-  const reasonMissing = draft.reason.trim().length < 3;
-  const validationMessage = reasonMissing
-    ? t("اكتب سبب التصحيح (٣ أحرف على الأقل).", "Enter a correction reason (at least 3 characters).")
+
+  // Enrich initial shares with known empNumber when loaded from branch roster.
+  useEffect(() => {
+    if (!employees.length) return;
+    setDraft(current => {
+      if (!current.shares) return current;
+      let changed = false;
+      const next = current.shares.map(share => {
+        if (share.empNumber !== undefined) return share;
+        const found = employees.find(e => e.id === share.id);
+        if (!found) return share;
+        changed = true;
+        return { ...share, empNumber: found.empNumber, name: share.name ?? found.name };
+      });
+      return changed ? { ...current, shares: next } : current;
+    });
+  }, [employees]);
+
+  const preview = evaluateShiftCorrectionPreview(detail, draft);
+  const activeShares: ShiftCorrectionShareDraft[] | null =
+    draft.shares ?? (preview.targetShortageHalalas > 0 ? [{ type: "employee", id: "", empNumber: "", amountSar: "" }] : null);
+  const effectiveDraft: ShiftCorrectionDraft = {
+    ...draft,
+    shares: activeShares,
+  };
+  const allocationValidation = validateShortageAllocations(activeShares, preview.targetShortageHalalas);
+  const anyLookupPending = Object.values(lookupPendingByRow).some(Boolean);
+  const correctionOptions = {
+    enforceCashConfirmation: true,
+    cashConfirmed,
+    allowNewShares: preview.targetShortageHalalas > 0,
+  };
+  const request = evidence ? prepareShiftCorrectionRequest(detail, effectiveDraft, correctionOptions) : null;
+  const reasonMissing = draft.reason.trim().length < 3 || (preview.targetShortageHalalas > 0 && !reasonCategory && draft.reason.trim().length < 3);
+  const canSubmitForm = Boolean(
+    request &&
+    !reasonMissing &&
+    !preview.cardsPlusAppsExceedsGross &&
+    !preview.cashExceedsDerivedCap &&
+    !(preview.requiresExplicitCashConfirmation && !cashConfirmed) &&
+    !anyLookupPending &&
+    (preview.targetShortageHalalas === 0 || allocationValidation.valid),
+  );
+
+  const validationMessage = preview.cardsPlusAppsExceedsGross
+    ? t("مجموع الشبكة والتطبيقات يتجاوز إجمالي المبيعات المقفول.", "Cards plus delivery apps exceed locked total sales.")
+    : preview.cashAboveDerivedWhileIncreasing
+    ? t("تعديل القنوات يرفع سقف الكاش وعهدة الكاشير، والكاش المسجل سابقًا يتجاوز السقف المشتق؛ أدخل مبلغ الكاش الفعلي المحصّل صراحةً قبل الحفظ.", "Channel edits increase custody and prior cash exceeds derived sales; explicitly enter actual cash collected before saving.")
+    : preview.cashExceedsDerivedCap
+    ? t("الكاش المحصّل يتجاوز المتبقي من المبيعات بعد الشبكة والتطبيقات.", "Cash collected exceeds remaining sales after cards and apps.")
+    : preview.requiresExplicitCashConfirmation && !cashConfirmed
+    ? t("تعديل الشبكة/القنوات سيزيد عهدة الكاشير؛ أكّد مبلغ الكاش الفعلي المحصّل صراحةً قبل الحفظ.", "Channel edits increase cashier custody; explicitly confirm the actual cash collected before saving.")
+    : reasonMissing
+    ? t("اختر سبب الفرق أو اكتب سبب التصحيح (٣ أحرف على الأقل).", "Select the variance reason or enter a correction reason (at least 3 characters).")
+    : anyLookupPending
+    ? t("انتظر اكتمال التحقق من رقم الموظف.", "Wait for employee number lookup to complete.")
+    : preview.targetShortageHalalas > 0 && allocationValidation.hasDuplicateEmployee
+    ? t("لا يمكن تكرار نفس الموظف في صفوف توزيع العجز.", "Cannot assign duplicate employees across shortage rows.")
+    : preview.targetShortageHalalas > 0 && allocationValidation.hasUnresolvedEmployee
+    ? t("أدخل رقم موظف صحيح ونشط من نفس الفرع لكل صف.", "Enter a valid active branch employee number for each row.")
+    : preview.targetShortageHalalas > 0 && !allocationValidation.valid
+    ? t("يجب أن يساوي مجموع التوزيع كامل مبلغ العجز بدون مبالغ صفرية.", "Allocation total must equal the full deficit with positive amounts.")
     : t("غيّر قيمة واحدة على الأقل، وتأكد من صحة المبالغ والمسؤولين المحددين.", "Change at least one value and check the amounts and selected parties.");
 
-  const setField = (key:"cardPaymentsSar"|"countedCashSar"|"cashCollectedSar"|"handoverNotes"|"reason",value:string) =>
+  const setField = (key:"cardPaymentsSar"|"countedCashSar"|"cashCollectedSar"|"handoverNotes"|"reason",value:string) => {
+    if (key === "cashCollectedSar") setCashConfirmed(true);
+    if (key === "cardPaymentsSar") setCashConfirmed(false);
     setDraft(current=>({...current,[key]:value}));
-  const setShare = (index:number,key:"type"|"id"|"amountSar",value:string) =>
-    setDraft(current=>({...current,shares:current.shares?.map((share,i)=>i===index?{...share,[key]:value}:share) ?? null}));
+  };
+  const handleReasonCategory = (val: string) => {
+    setReasonCategory(val);
+    if (val) {
+      setDraft(current => {
+        const currentText = current.reason.trim();
+        const isExistingTax = SHIFT_VARIANCE_REASONS.some(r => r.value === currentText || r.en === currentText);
+        return {
+          ...current,
+          reason: !currentText || isExistingTax ? val : `${val} — ${currentText}`,
+        };
+      });
+    }
+  };
+  const ensureShares = (updater: (rows: ShiftCorrectionShareDraft[]) => ShiftCorrectionShareDraft[]) =>
+    setDraft(current => {
+      const base = current.shares ?? (preview.targetShortageHalalas > 0 ? [{ type: "employee", id: "", empNumber: "", amountSar: "" }] : []);
+      return { ...current, shares: updater(base) };
+    });
+  const handleLookupState = useRef((index: number, isBusy: boolean) => {
+    setLookupPendingByRow(prev => (prev[index] === isBusy ? prev : { ...prev, [index]: isBusy }));
+  }).current;
+  const handleResolvedShare = useRef((index: number, match: { id: string; name: string; empNumber: string }) => {
+    ensureShares(rows => rows.map((r, i) => i === index ? { ...r, type: "employee", id: match.id, name: match.name, empNumber: match.empNumber } : r));
+  }).current;
+  const handleClearIdentity = useRef((index: number) => {
+    ensureShares(rows => rows.map((r, i) => i === index ? { ...r, id: "", name: "" } : r));
+  }).current;
   const submit = async () => {
     if (!evidence || !hasRoleGrant(user,"accountant") || pending || completed || submitLock.current || !mounted.current) return;
     if (uncertain) return;
     setSaveAttempted(true);
-    if (!request) return;
+    if (!canSubmitForm || !request) return;
     const generation = financialAccessGeneration(queryClient);
     const requestFingerprint = currentFingerprint.current;
     setPending(true);
     let postStarted = false;
     const clientCommandId = generateCommandId();
     try {
-      const didComplete=await runShiftReportCorrection(op,detail,"accountant",draft,async()=>{
+      const didComplete=await runShiftReportCorrection(op,detail,"accountant",effectiveDraft,async()=>{
         const request=registerFinancialRequest(queryClient);
         pendingDirect.current.add(request.abort);
         try {
@@ -1570,7 +1897,7 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
         if(!accessStillCurrent(generation,requestFingerprint)) throw new FinancialAccessChangedError();
         postStarted = true;
         await correction.mutateAsync({operationId:op.id,shiftId,body,idempotencyKey:clientCommandId});
-      },submitLock);
+      },submitLock,correctionOptions);
       if(didComplete && accessStillCurrent(generation,requestFingerprint)) {
         setCompleted(true);
         setUncertain(false);
@@ -1627,12 +1954,14 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
   };
 
   if(!evidence || !hasRoleGrant(user,"accountant")) return null;
-  const fieldClass="w-full rounded-lg border border-violet-200 bg-white px-2.5 py-2 font-mono text-xs";
-  const employeeOption=(employee:{id:string;name:string;empNumber:string})=>(
-    <option key={employee.id} value={`employee:${employee.id}`}>{employee.name} · {employee.empNumber}</option>
-  );
-  return <section aria-label={t("تصحيح تقرير الوردية","Shift report correction")} className="space-y-3 rounded-xl border border-violet-200 bg-violet-50/40 p-3 text-xs">
-    <div><h4 className="font-bold text-violet-900">{t("تصحيح تقرير المحاسب","Accountant report correction")}</h4>
+  const fieldClass="w-full rounded-lg border border-violet-200 bg-white px-2.5 py-2 font-mono text-xs focus:outline-none focus:border-violet-500";
+  const sarUnit = t("ر.س","SAR");
+  const fmtSignedHalalas = (h: number | null) =>
+    h == null ? "—" : `${h < 0 ? "-" : h > 0 ? "+" : ""}${formatShiftHalalas(Math.abs(h), lang)} ${sarUnit}`;
+
+  return <section aria-label={t("تصحيح تقرير الوردية","Shift report correction")} className="min-w-0 max-w-full space-y-3 rounded-xl border border-violet-200 bg-violet-50/40 p-3 sm:p-4 text-xs">
+    <div>
+      <h4 className="font-bold text-violet-950 text-sm">{t("تصحيح تفصيل المبيعات والعهدة","Accountant Sales Breakdown & Custody Correction")}</h4>
       <p className="mt-1 text-gray-600">{t("يُحفظ السبب وسجل المراجعة. إجمالي المبيعات غير قابل للتعديل.","The reason and audit history are retained. Gross sales cannot be changed.")}</p>
     </div>
     {uncertain && (
@@ -1641,83 +1970,262 @@ export function ShiftReportCorrectionForm({ op, detail }:{ op:COp; detail:ApiOpe
         <p className="mt-0.5 text-gray-600">{t("تم التوفيق مع الخادم لمنع تكرار الإرسال المالي؛ تحقّق من نسخة التقرير أو حدّث الصفحة.","Reconciled with server to prevent duplicate financial POST; verify report revision or reload the page.")}</p>
       </div>
     )}
-    <div className="grid gap-2 sm:grid-cols-2">
-      <label className="space-y-1"><span>{t("إجمالي المبيعات — للقراءة فقط","Gross sales — read only")}</span>
-        <p className="rounded-lg border bg-gray-50 px-2.5 py-2 font-mono">{formatShiftHalalas(detail.payload?.salesHalalas,lang)}</p>
-      </label>
-      {draft.cardPaymentsSar !== null ? <label className="space-y-1"><span>{t("إجمالي الشبكة (ر.س)","Card payments (SAR)")}</span>
-        <input inputMode="decimal" value={draft.cardPaymentsSar} onChange={event=>setField("cardPaymentsSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
-      </label> : <p>{t("إجمالي الشبكة غير متاح للتصحيح","Card amount unavailable for correction")}</p>}
-      {draft.countedCashSar !== null ? <label className="space-y-1"><span>{t("النقد المجرود (ر.س)","Counted cash (SAR)")}</span>
-        <input inputMode="decimal" value={draft.countedCashSar} onChange={event=>setField("countedCashSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
-      </label> : <p>{t("لا يوجد مبلغ جرد صالح قابل للتصحيح","No valid counted amount is available to correct")}</p>}
-      {draft.cashCollectedSar !== null ? <label className="space-y-1"><span>{t("تحصيل النقد (ر.س)","Cash collected (SAR)")}</span>
-        <input inputMode="decimal" value={draft.cashCollectedSar} onChange={event=>setField("cashCollectedSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
-      </label> : <p className="text-gray-500">{t("تحصيل النقد غير متاح في تفاصيل هذه العملية","Cash collected is unavailable in this operation detail")}</p>}
-      {draft.handoverNotes !== null ? <label className="space-y-1 sm:col-span-2"><span>{t("ملاحظات التسليم","Handover notes")}</span>
-        <input type="text" value={draft.handoverNotes} onChange={event=>setField("handoverNotes",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
-      </label> : <p className="text-gray-500 sm:col-span-2">{t("ملاحظات التسليم غير متاحة في تفاصيل هذه العملية","Handover notes are unavailable in this operation detail")}</p>}
-    </div>
-    {draft.aggregators === null ? <p className="text-gray-600">{t("تفاصيل التطبيقات غير متاحة بصيغة قابلة للتصحيح","Aggregator values are not available in a correctable contract shape")}</p>
-      : draft.aggregators.length > 0 && <div className="space-y-2">
-        <h5 className="font-semibold">{t("مبالغ تفاصيل التطبيقات (ر.س)","Aggregator detail amounts (SAR)")}</h5>
-        {draft.aggregators.map((row,index)=><label key={`${row.aggregatorId}-${index}`} className="flex items-center gap-2">
-          <span>{t("تفصيل التطبيق","Aggregator item")} {index+1}</span>
-          <input inputMode="decimal" value={row.amountSar} disabled={pending||correction.isPending} className={fieldClass}
-            onChange={event=>setDraft(current=>({...current,aggregators:current.aggregators?.map((item,i)=>i===index?{...item,amountSar:event.target.value}:item)??null}))}/>
-        </label>)}
-        <p className="text-gray-500">{t("يُعرض التفصيل بترتيبه دون ادعاء اسم التطبيق؛ لا تُعرض معرّفاته.","Items follow API order; no app name is inferred and identifiers stay hidden.")}</p>
-      </div>}
-    {draft.shares !== null && <div className="space-y-2 border-t border-violet-100 pt-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h5 className="font-semibold">{t("تصحيح توزيع المسؤولية","Correct responsibility allocation")}</h5>
-        <input type="search" placeholder={t("بحث في موظفي الفرع…","Search branch employees…")} value={empSearch}
-          onChange={event=>setEmpSearch(event.target.value)} disabled={pending||correction.isPending}
-          className="rounded-lg border border-violet-200 bg-white px-2 py-1 text-xs"/>
+
+    {/* 1. Fixed Gross Sales card at top (Photo 11) */}
+    <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 px-3 py-2.5 flex flex-wrap items-center justify-between gap-2">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 flex-shrink-0" />
+        <span className="font-bold text-indigo-950">{t("إجمالي المبيعات (من رفع مدير الفرع — مقفل)","Gross sales (Branch Manager entry — locked)")}</span>
       </div>
-      {employeeQuery.isLoading && <p role="status">{t("جارٍ تحميل موظفي الفرع…","Loading branch employees…")}</p>}
-      {employeeQuery.isError && <p role="alert">{t("تعذر تحميل موظفي الفرع؛ التوزيع غير متاح للتصحيح","Could not load branch employees; allocation correction is unavailable")}</p>}
-      {draft.shares.map((share,index)=>{
-        const currentKey=["cashier","employee","branch_manager"].includes(share.type)&&share.id?`${share.type}:${share.id}`:"";
-        const changeActor=(value:string)=>{
-          const [type,id]=value.split(":");
-          setDraft(current=>({...current,shares:current.shares?.map((item,i)=>i===index?{...item,type,id}:item)??null}));
-        };
-        const selectedEmployee=employees.find(employee=>employee.id===share.id);
-        const showCurrentActor=currentKey && (share.type!=="employee" || !selectedEmployee);
-        return <div key={index} className="grid gap-2 sm:grid-cols-[1fr_9rem_auto]">
-          <label className="space-y-1"><span>{t("المسؤول","Responsible person")}</span>
-            <select className={fieldClass} value={currentKey} onChange={event=>changeActor(event.target.value)} disabled={pending||correction.isPending||employeeQuery.isLoading||employeeQuery.isError}>
-              <option value="">{t("اختر موظفًا","Select an employee")}</option>
-              {showCurrentActor && <option value={currentKey}>{share.name ?? selectedEmployee?.name ?? t("المسؤول الحالي","Current responsible party")}</option>}
-              {employees.map(employeeOption)}
-            </select>
+      <span className="font-mono font-black text-indigo-900 text-sm">
+        <bdi>{formatShiftHalalas(detail.payload?.salesHalalas,lang)}</bdi> {sarUnit}
+      </span>
+    </div>
+
+    {/* 2. Editable payment channels + separate Drawer Counted Cash */}
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      {draft.cashCollectedSar !== null ? (
+        <label className="space-y-1">
+          <span className="font-medium text-gray-800">{t("نقدي / الكاش المحصّل (ر.س)","Cash collected (SAR)")}</span>
+          <input inputMode="decimal" value={draft.cashCollectedSar} onChange={event=>setField("cashCollectedSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+        </label>
+      ) : (
+        <p className="text-gray-500">{t("تحصيل النقد غير متاح في تفاصيل هذه العملية","Cash collected is unavailable in this operation detail")}</p>
+      )}
+      {draft.cardPaymentsSar !== null ? (
+        <label className="space-y-1">
+          <span className="font-medium text-gray-800">{t("مدفوعات الشبكة / الكارت (ر.س)","Card payments (SAR)")}</span>
+          <input inputMode="decimal" value={draft.cardPaymentsSar} onChange={event=>setField("cardPaymentsSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+        </label>
+      ) : (
+        <p>{t("إجمالي الشبكة غير متاح للتصحيح","Card amount unavailable for correction")}</p>
+      )}
+      {draft.countedCashSar !== null ? (
+        <label className="space-y-1">
+          <span className="font-medium text-gray-800">{t("مبلغ عدّ الدرج / النقد المجرود (حقل مستقل) (ر.س)","Drawer counted cash (separate field) (SAR)")}</span>
+          <input inputMode="decimal" value={draft.countedCashSar} onChange={event=>setField("countedCashSar",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+        </label>
+      ) : (
+        <p>{t("لا يوجد مبلغ جرد صالح قابل للتصحيح","No valid counted amount is available to correct")}</p>
+      )}
+      {draft.handoverNotes !== null ? (
+        <label className="space-y-1">
+          <span className="font-medium text-gray-800">{t("ملاحظات التسليم","Handover notes")}</span>
+          <input type="text" value={draft.handoverNotes} onChange={event=>setField("handoverNotes",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+        </label>
+      ) : (
+        <p className="text-gray-500">{t("ملاحظات التسليم غير متاحة في تفاصيل هذه العملية","Handover notes are unavailable in this operation detail")}</p>
+      )}
+    </div>
+
+    {/* 3. Aggregator rows */}
+    {draft.aggregators === null ? (
+      <p className="text-gray-600">{t("تفاصيل التطبيقات غير متاحة بصيغة قابلة للتصحيح","Aggregator values are not available in a correctable contract shape")}</p>
+    ) : draft.aggregators.length > 0 && (
+      <div className="space-y-2 rounded-lg border border-violet-100 bg-white/80 p-2.5">
+        <h5 className="font-semibold text-gray-800">{t("تطبيقات التوصيل (ر.س)","Delivery app channels (SAR)")}</h5>
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+          {draft.aggregators.map((row,index)=>(
+            <label key={`${row.aggregatorId}-${index}`} className="space-y-1">
+              <span className="text-gray-700">{t("تفصيل التطبيق","Aggregator item")} {index+1}</span>
+              <input inputMode="decimal" value={row.amountSar} disabled={pending||correction.isPending} className={fieldClass}
+                onChange={event=>{
+                  setCashConfirmed(false);
+                  setDraft(current=>({...current,aggregators:current.aggregators?.map((item,i)=>i===index?{...item,amountSar:event.target.value}:item)??null}));
+                }}/>
+            </label>
+          ))}
+        </div>
+        <p className="text-[11px] text-gray-500">{t("يُعرض التفصيل بترتيبه دون ادعاء اسم التطبيق؛ لا تُعرض معرّفاته.","Items follow API order; no app name is inferred and identifiers stay hidden.")}</p>
+      </div>
+    )}
+
+    {/* 4. BE-01 Mahmoud decision: explicit confirmation when channel correction actually raises custody */}
+    {preview.requiresExplicitCashConfirmation && (
+      <div role="alert" data-testid="cash-confirmation-gate" className="rounded-xl border border-amber-300 bg-amber-50 p-3 space-y-2 text-amber-950">
+        <p className="font-bold">
+          {t("تنبيه عهدة الكاش (قاعدة BE-01): يجب تأكيد الكاش الفعلي صراحةً","Cash Custody Alert (BE-01): Explicit Cash Confirmation Required")}
+        </p>
+        <p className="text-[11px] leading-relaxed">
+          {preview.cashAboveDerivedWhileIncreasing
+            ? t(
+                `تعديل الشبكة/التطبيقات سيرفع عهدة الكاشير إلى ${formatShiftHalalas(preview.projectedCustodyCashHalalas, lang)} ${sarUnit} (مقابل عهدة مرحلة سابقًا ${formatShiftHalalas(preview.postedCustodyCashHalalas, lang)} ${sarUnit})، بينما الكاش المسجل سابقًا (${draft.cashCollectedSar ?? "0.00"} ${sarUnit}) يتجاوز السقف المشتق (${formatShiftHalalas(preview.derivedCashSalesHalalas, lang)} ${sarUnit}). أدخل مبلغ الكاش الفعلي المحصّل في حقل الكاش أعلاه (حتى ${formatShiftHalalas(preview.derivedCashSalesHalalas, lang)} ${sarUnit}) قبل الحفظ.`,
+                `Channel adjustment raises cashier custody to ${formatShiftHalalas(preview.projectedCustodyCashHalalas, lang)} ${sarUnit} (above posted custody ${formatShiftHalalas(preview.postedCustodyCashHalalas, lang)} ${sarUnit}), while previously reported cash (${draft.cashCollectedSar ?? "0.00"} ${sarUnit}) exceeds derived cash (${formatShiftHalalas(preview.derivedCashSalesHalalas, lang)} ${sarUnit}). Enter the actual cash collected above (up to ${formatShiftHalalas(preview.derivedCashSalesHalalas, lang)} ${sarUnit}) before saving.`,
+              )
+            : t(
+                `تعديل الشبكة/التطبيقات سيرفع عهدة الكاشير إلى ${formatShiftHalalas(preview.projectedCustodyCashHalalas, lang)} ${sarUnit} (مقابل عهدة مرحلة سابقًا ${formatShiftHalalas(preview.postedCustodyCashHalalas, lang)} ${sarUnit}). عدّل الكاش المحصّل أو أكّد القيمة صراحةً؛ لن يُعتمد الإرسال التلقائي بالقيمة القديمة.`,
+                `Channel adjustment raises cashier custody to ${formatShiftHalalas(preview.projectedCustodyCashHalalas, lang)} ${sarUnit} (above posted custody ${formatShiftHalalas(preview.postedCustodyCashHalalas, lang)} ${sarUnit}). Update cash collected or explicitly confirm the value; auto-submitting the old value is disabled.`,
+              )}
+        </p>
+        {!preview.cashAboveDerivedWhileIncreasing && (
+          <label className="flex items-start gap-2 cursor-pointer font-semibold">
+            <input
+              type="checkbox"
+              checked={cashConfirmed}
+              onChange={e => setCashConfirmed(e.target.checked)}
+              disabled={pending || correction.isPending}
+              className="mt-0.5 h-4 w-4 accent-purple-700"
+            />
+            <span>
+              {t(
+                `أؤكد صراحةً أن الكاش الفعلي المحصّل هو ${draft.cashCollectedSar ?? "0.00"} ${sarUnit}`,
+                `I explicitly confirm actual cash collected is ${draft.cashCollectedSar ?? "0.00"} ${sarUnit}`,
+              )}
+            </span>
           </label>
-          <label className="space-y-1"><span>{t("المبلغ (ر.س)","Amount (SAR)")}</span>
-            <input inputMode="decimal" className={fieldClass} value={share.amountSar} disabled={pending||correction.isPending}
-              onChange={event=>setShare(index,"amountSar",event.target.value)}/>
-          </label>
-          <button type="button" onClick={()=>setDraft(current=>({...current,shares:current.shares?.filter((_,i)=>i!==index)??null}))}
-            disabled={pending||correction.isPending} className="self-end rounded-lg border border-red-200 px-2 py-2 text-red-700 disabled:opacity-50">{t("حذف","Remove")}</button>
-        </div>;
-      })}
-      <button type="button" onClick={()=>setDraft(current=>({...current,shares:[...(current.shares??[]),{type:"employee",id:"",amountSar:""}]}))}
-        disabled={pending||correction.isPending||employeeQuery.isLoading||employeeQuery.isError} className="rounded-lg border px-2 py-1.5 disabled:opacity-50">{t("إضافة مسؤول","Add responsible person")}</button>
-      <p className="text-gray-500">{t("تُرسل حصص التوزيع كهللات صحيحة؛ يتحقق الخادم من مجموعها والفرع والنسخة، دون حساب فرق التقرير هنا.","Shares are sent as integer halalas; the server validates their total, branch and version without calculating report variance here.")}</p>
-    </div>}
-    <label className="block space-y-1"><span>{t("سبب التصحيح (إلزامي)","Correction reason (required)")}</span>
-      <textarea rows={2} required minLength={3} aria-invalid={saveAttempted && reasonMissing} value={draft.reason} onChange={event=>setField("reason",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
-    </label>
-    {saveAttempted && !request && !completed && <p role="alert" className="text-red-700">{validationMessage}</p>}
-    <button type="button" onClick={submit} disabled={pending||completed||uncertain||correction.isPending}
-      className="rounded-lg bg-violet-700 px-3 py-2 font-semibold text-white disabled:opacity-50">
-      {pending||correction.isPending?t("جارٍ حفظ التصحيح…","Saving correction…"):completed?t("تم حفظ التصحيح","Correction saved"):t("حفظ التصحيح","Save correction")}
+        )}
+      </div>
+    )}
+
+    {(preview.cardsPlusAppsExceedsGross || (preview.cashExceedsDerivedCap && !preview.requiresExplicitCashConfirmation)) && (
+      <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-2.5 text-red-800 font-medium">
+        {preview.cardsPlusAppsExceedsGross
+          ? t("خطأ: مجموع الشبكة والتطبيقات يتجاوز إجمالي المبيعات.", "Error: Card payments plus apps exceed gross sales.")
+          : t("خطأ: الكاش المحصّل يتجاوز المتبقي من المبيعات (الإجمالي − الشبكة − التطبيقات).", "Error: Cash collected exceeds derived cash sales (Gross − Cards − Apps).")}
+      </div>
+    )}
+
+    {/* 5. Live Collection & Deficit/Surplus Preview (Photos 11-12) */}
+    <div className="space-y-1.5 rounded-xl border border-gray-200 bg-white overflow-hidden">
+      <div className={`flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 font-bold ${
+        preview.collectionDiffHalalas === 0 && !preview.cashExceedsDerivedCap && !preview.cardsPlusAppsExceedsGross
+          ? "bg-emerald-50 text-emerald-900"
+          : preview.collectionDiffHalalas !== null && preview.collectionDiffHalalas > 0
+          ? "bg-red-50 text-red-900"
+          : preview.collectionDiffHalalas !== null && preview.collectionDiffHalalas < 0
+          ? "bg-blue-50 text-blue-900"
+          : "bg-gray-50 text-gray-800"
+      }`}>
+        <span>{t("إجمالي التحصيل","Total collected")}</span>
+        <span className="font-mono text-sm"><bdi>{formatShiftHalalas(preview.totalCollectionHalalas, lang)}</bdi> {sarUnit}</span>
+      </div>
+      {preview.collectionDiffHalalas === 0 && !preview.cashExceedsDerivedCap && !preview.cardsPlusAppsExceedsGross ? (
+        <div className="px-3 py-2 bg-emerald-50/70 text-emerald-800 font-semibold border-t border-emerald-200">
+          ✓ {t("إجمالي التحصيل مطابق لإجمالي المبيعات تماماً","Total collected matches gross sales exactly")}
+        </div>
+      ) : preview.collectionDiffHalalas !== null && preview.collectionDiffHalalas > 0 ? (
+        <div className="px-3 py-2 bg-red-100/80 text-red-900 font-bold border-t border-red-200 flex flex-wrap items-center justify-between gap-2">
+          <span>⚠ {t("عجز تحصيل — يتطلب مراجعة وتحميل على الموظفين","Collection deficit — requires review & allocation")}</span>
+          <span className="font-mono"><bdi>{formatShiftHalalas(preview.collectionDiffHalalas, lang)}</bdi> {sarUnit}</span>
+        </div>
+      ) : preview.collectionDiffHalalas !== null && preview.collectionDiffHalalas < 0 ? (
+        <div className="px-3 py-2 bg-blue-100/70 text-blue-900 font-bold border-t border-blue-200 flex flex-wrap items-center justify-between gap-2">
+          <span>{t("فائض تحصيل (لصالح الفرع ولا يُحمَّل على موظفين)","Surplus collected (credited to branch, not employees)")}</span>
+          <span className="font-mono">{fmtSignedHalalas(Math.abs(preview.collectionDiffHalalas))}</span>
+        </div>
+      ) : null}
+      {preview.projectedDrawerVarianceHalalas !== null && (
+        <div className="px-3 py-1.5 bg-gray-50 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-700">
+          <span>{t("فرق عدّ الدرج المتوقع (المجرود − المتوقع)","Projected drawer variance (counted − expected)")}</span>
+          <span className={`font-mono font-bold ${preview.projectedDrawerVarianceHalalas < 0 ? "text-red-700" : preview.projectedDrawerVarianceHalalas > 0 ? "text-blue-700" : "text-emerald-700"}`}>
+            <bdi>{fmtSignedHalalas(preview.projectedDrawerVarianceHalalas)}</bdi>
+          </span>
+        </div>
+      )}
+    </div>
+
+    {/* 6. Variance reason taxonomy + Employee Number lookup Shortage Assignment (Photos 12-15) */}
+    {(activeShares !== null || preview.targetShortageHalalas > 0) && (
+      <div className="space-y-2.5 rounded-xl border border-red-200 bg-red-50/70 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-red-200 pb-2">
+          <h5 className="font-bold text-red-900">
+            {t("توزيع العجز على الموظفين — المطلوب:","Shortage allocation to employees — Target:")}{" "}
+            <span className="font-mono"><bdi>{formatShiftHalalas(preview.targetShortageHalalas, lang)}</bdi> {sarUnit}</span>
+          </h5>
+          <span className={`rounded-lg px-2 py-1 text-[11px] font-bold ${allocationValidation.remainingHalalas === 0 && !allocationValidation.hasUnresolvedEmployee && !allocationValidation.hasDuplicateEmployee ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
+            {allocationValidation.remainingHalalas === 0
+              ? t("✓ موزّع بالكامل","✓ Fully allocated")
+              : `${t("المتبقي","Remaining")}: ${fmtSignedHalalas(allocationValidation.remainingHalalas)}`}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[11px] text-gray-700">
+            {t("الموزّع حاليًا:","Allocated:")} <strong className="font-mono">{formatShiftHalalas(allocationValidation.allocatedHalalas, lang)} {sarUnit}</strong>
+          </span>
+          <input type="search" placeholder={t("بحث سريع بالاسم…","Quick name filter…")} value={empSearch}
+            onChange={event=>setEmpSearch(event.target.value)} disabled={pending||correction.isPending}
+            className="w-full sm:w-48 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs"/>
+        </div>
+        {employeeQuery.isError && <p role="alert" className="text-red-700">{t("تعذر تحميل قائمة موظفي الفرع المسبقة؛ يتم التحقق مباشرة برقم الموظف.","Branch roster preload failed; resolving directly by employee number.")}</p>}
+        {(activeShares ?? []).map((share,index)=>(
+          <ShiftCorrectionShareRow
+            key={index}
+            branchId={op.branchId}
+            index={index}
+            share={share}
+            employees={employees}
+            disabled={pending||correction.isPending}
+            canRemove={(activeShares ?? []).length > 1 || preview.targetShortageHalalas === 0}
+            onResolved={handleResolvedShare}
+            onClearIdentity={handleClearIdentity}
+            onLookupStateChange={handleLookupState}
+            onEmpNumberChange={(rowIdx, val) => ensureShares(rows => rows.map((r, i) => i === rowIdx ? { ...r, empNumber: val, id: "", name: "" } : r))}
+            onAmountChange={(rowIdx, val) => ensureShares(rows => rows.map((r, i) => i === rowIdx ? { ...r, amountSar: val } : r))}
+            onQuickFill={(rowIdx) => {
+              const currentParsed = parseCorrectionSar((activeShares ?? [])[rowIdx]?.amountSar ?? "");
+              const currentH = currentParsed?.halalas ?? 0;
+              const neededH = Math.max(0, allocationValidation.remainingHalalas + currentH);
+              const sar = `${Math.floor(neededH / 100)}.${String(neededH % 100).padStart(2, "0")}`;
+              ensureShares(rows => rows.map((r, i) => i === rowIdx ? { ...r, amountSar: sar } : r));
+            }}
+            onRemove={(rowIdx) => ensureShares(rows => rows.filter((_, i) => i !== rowIdx))}
+          />
+        ))}
+        <button
+          type="button"
+          onClick={()=>ensureShares(rows => [...rows, {type:"employee", id:"", empNumber:"", amountSar:""}])}
+          disabled={pending||correction.isPending}
+          className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+        >
+          + {t("إضافة موظف آخر","Add another employee")}
+        </button>
+        <p className="text-[11px] text-gray-600">{t("يُربط الموظف تلقائيًا برقم الموظف داخل نفس الفرع وتُرسل الحصص كهللات صحيحة للخادم.","Employees resolve strictly inside this branch by employee number and submit in integer halalas.")}</p>
+      </div>
+    )}
+
+    {/* 7. Reason selection + details (Photo 13) */}
+    <div className="space-y-2">
+      <label className="block space-y-1">
+        <span className="font-semibold text-gray-800">{t("سبب الفرق / التصحيح (إلزامي)","Difference / Correction reason (required)")} *</span>
+        <select
+          value={reasonCategory}
+          onChange={event => handleReasonCategory(event.target.value)}
+          disabled={pending || correction.isPending}
+          className={fieldClass}
+        >
+          <option value="">— {t("اختر سبب الفرق","Select variance reason")} —</option>
+          {SHIFT_VARIANCE_REASONS.map(r => (
+            <option key={r.value} value={r.value}>{t(r.ar, r.en)}</option>
+          ))}
+        </select>
+      </label>
+      <label className="block space-y-1">
+        <span className="text-gray-700">{t("تفصيل السبب (٣ أحرف على الأقل)","Reason details (at least 3 characters)")}</span>
+        <textarea rows={2} required minLength={3} aria-invalid={saveAttempted && reasonMissing} value={draft.reason} onChange={event=>setField("reason",event.target.value)} disabled={pending||correction.isPending} className={fieldClass}/>
+      </label>
+    </div>
+
+    {saveAttempted && !canSubmitForm && !completed && <p role="alert" className="text-red-700 font-medium">{validationMessage}</p>}
+    <button
+      type="button"
+      onClick={submit}
+      disabled={pending||completed||uncertain||correction.isPending||(saveAttempted && !canSubmitForm)||preview.cardsPlusAppsExceedsGross||preview.cashExceedsDerivedCap||(preview.requiresExplicitCashConfirmation && !cashConfirmed)||anyLookupPending}
+      className="w-full sm:w-auto min-h-[40px] rounded-lg bg-violet-700 px-4 py-2 font-semibold text-white hover:bg-violet-800 disabled:opacity-50"
+    >
+      {pending||correction.isPending
+        ? t("جارٍ حفظ التصحيح…","Saving correction…")
+        : completed
+        ? t("تم حفظ التصحيح","Correction saved")
+        : preview.targetShortageHalalas > 0
+        ? t("حفظ التعديلات وإرسال اقتراح التحميل","Save changes & submit allocation")
+        : t("حفظ التعديلات","Save changes")}
     </button>
   </section>;
 }
 
-function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:boolean; detail?:ApiOperation; loading?:boolean; error?:boolean }) {
+export function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:boolean; detail?:ApiOperation; loading?:boolean; error?:boolean }) {
   const { t, lang } = useCLang();
+  const [correctionOpen, setCorrectionOpen] = useState(false);
   if (loading) return <p role="status">{t("جارٍ تحميل تفاصيل الوردية…","Loading shift details…")}</p>;
   if (error) return <p role="alert">{t("تعذر تحميل تفاصيل الوردية","Could not load shift details")}</p>;
   if (!detail?.payload) return <p>{t("تفاصيل الوردية غير متاحة","Shift details are unavailable")}</p>;
@@ -1755,7 +2263,7 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
       : null
   );
   return (
-    <section aria-label={t("تفاصيل وردية الكاشير","Cashier shift details")} className="bg-white rounded-xl border border-gray-100 p-4 space-y-4">
+    <section aria-label={t("تفاصيل وردية الكاشير","Cashier shift details")} className="min-w-0 max-w-full bg-white rounded-xl border border-gray-100 p-4 space-y-4">
       <ShiftReconciliationSummaryView source={detail ?? op} />
       <div className="flex justify-between text-xs"><span>{t("حالة الجرد","Count state")}</span>
         <strong>{count === "counted" ? t("مجرود فعلياً","Physically counted") : count === "unknown" ? t("غير مجرود — لا يُعتمد كدليل","Not counted — not evidence") : "—"}</strong>
@@ -1795,12 +2303,26 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
         </div>
       )}
       {allocationEvidence && <ShiftAllocationForm op={op} shortageHalalas={allocationEvidence.shortageHalalas}/>}
-      {!forHead && op?.branchId && getShiftCorrectionEvidence(op,detail,"accountant") &&
-        <ShiftReportCorrectionForm key={`${detail.id}:${detail.reportRevision ?? "missing"}`} op={op} detail={detail}/>}
+      {!forHead && op?.branchId && getShiftCorrectionEvidence(op,detail,"accountant") && (
+        <div className="space-y-2.5 pt-2 border-t border-gray-100">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold text-gray-800">{t("تصحيح التفصيل والعهدة","Breakdown & Custody Correction")}</span>
+            <button
+              type="button"
+              onClick={() => setCorrectionOpen(open => !open)}
+              className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700"
+            >
+              {correctionOpen ? t("إخفاء نموذج التعديل","Hide edit form") : t("تعديل التفصيل","Edit breakdown")}
+            </button>
+          </div>
+          {correctionOpen && <ShiftReportCorrectionForm key={`${detail.id}:${detail.reportRevision ?? "missing"}`} op={op} detail={detail}/>}
+        </div>
+      )}
       {!forHead && op?.branchId && !getShiftCorrectionEvidence(op,detail,"accountant") && (
-        <div className="rounded-lg bg-amber-50/80 border border-amber-200 p-2.5 text-xs text-amber-800" data-testid="correction-ineligibility-reason">
-          <span className="font-semibold block mb-0.5">{t("أهلية تصحيح التقرير:","Correction eligibility:")}</span>
+        <div className="rounded-lg bg-amber-50/80 border border-amber-200 p-2.5 text-xs text-amber-800 space-y-1" data-testid="correction-ineligibility-reason">
+          <span className="font-semibold block">{t("التعديل غير متاح:","Editing locked:")}</span>
           <p>{getShiftCorrectionIneligibilityReason(op, detail, "accountant", lang)}</p>
+          <p className="font-medium text-amber-900">{getShiftCorrectionNextStep(op, detail, "accountant", lang)}</p>
         </div>
       )}
       <div className="text-xs space-y-1">
@@ -1826,24 +2348,39 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
   );
 }
 
-function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle, forHead=false, actionsPending=false }:{
+export function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle, forHead=false, actionsPending=false }:{
   op:COp; onApprove:()=>void; onReject:()=>void; onClarify?:()=>void; onView:()=>void;
   expanded?:boolean; onToggle?:()=>void; forHead?:boolean; actionsPending?:boolean;
 }) {
-  const { t } = useCLang();
+  const { t, lang } = useCLang();
   const detailQ = useOperation(expanded && (op.module === "sales" || op.module === "shifts") ? op.id : null);
   const queryClient = useQueryClient();
+  const currentDetail = queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detailQ.data;
   const salesContext = () => ({ operation: op, role: forHead ? "head" : "accountant",
-    detail: queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detailQ.data });
+    detail: currentDetail });
   const salesPolicy = getSalesActionPolicy(salesContext());
-  const shiftPolicy = getShfReviewPolicy(op, forHead ? "head" : "accountant",
-    queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detailQ.data);
-  const headPolicy = getHeadReviewPolicy(op, forHead ? "head" : null,
-    queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detailQ.data);
+  const shiftPolicy = getShfReviewPolicy(op, forHead ? "head" : "accountant", currentDetail);
+  const headPolicy = getHeadReviewPolicy(op, forHead ? "head" : null, currentDetail);
   const isPending = op.status === "pending";
   const isApproved = op.status === "approved";
   const isLocked = op.status === "final-approved";
   const isRejected = op.status === "rejected";
+  const fmtSarLang = (sar: number | null | undefined) => sar == null ? "—" : formatShiftHalalas(Math.round(sar * 100), lang);
+  const fmtHalLang = (h: number | null | undefined) => formatShiftHalalas(h, lang);
+  const shiftGroup = op.module === "shifts" ? getShfReviewGroup(op) : null;
+  const shiftActionBlockReason = op.module !== "shifts" || forHead ? null
+    : shiftGroup === "head_returned"
+    ? t("مُعادة من رئيس الحسابات: الاعتماد وطلب الإيضاح معطلان؛ المتاح حاليًا هو الإرجاع لمدير الفرع.", "Returned by Head Accountant: Approve and Clarification are disabled; only Return to Branch Manager is available.")
+    : shiftGroup === "pending_unknown"
+    ? t("مرحلة المراجعة غير متاحة للمحاسب — الإجراءات مقفلة للقراءة فقط.", "Current review stage is unavailable to accountant — actions disabled.")
+    : shiftGroup === "head_review"
+    ? t("التقرير بانتظار مراجعة رئيس الحسابات — إجراءات المحاسب مقفلة.", "Report is awaiting Head Accountant review — accountant actions locked.")
+    : shiftGroup === "final_approved"
+    ? t("التقرير معتمد نهائيًا ومقفل — جميع الإجراءات معطلة.", "Report is final-approved and locked — all actions disabled.")
+    : shiftGroup === "manager_returned"
+    ? t("التقرير مُرجَع لمدير الفرع للتصحيح — بانتظار إعادة الرفع.", "Report returned to Branch Manager for correction — awaiting resubmission.")
+    : null;
+  const enModLabel = ({ sales:"Sales", expenses:"Expenses", purchases:"Purchases", inventory:"Inventory", assets:"Fixed Assets", shifts:"Shifts", employees:"Employees", cash:"Cash Custody", waste:"Waste" } as Record<string,string>)[op.module] ?? op.module;
   return (
     <div className={`border-b border-gray-50 last:border-0
       ${op.match==="diff"?"border-r-4 border-r-red-400":op.match==="review"?"border-r-4 border-r-amber-400":""}
@@ -1856,11 +2393,11 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
             <div className="w-1.5 h-4 rounded-full flex-shrink-0" style={{background:op.brandColor}}/>
             <span className="font-bold text-gray-800 text-sm break-words">{op.branch}</span>
             <Badge className="bg-gray-100 text-gray-600 text-[10px]">{op.brandName}</Badge>
-            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-100">{op.moduleLabel}</span>
+            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-100">{t(op.moduleLabel, enModLabel)}</span>
           </div>
           {op.amount != null && op.amount>0 && (
             <div className="font-mono font-extrabold text-gray-900 text-sm flex-shrink-0 tabular-nums whitespace-nowrap pt-0.5">
-              {fmt(op.amount)} <span className="text-xs font-sans font-normal text-gray-600">{t("ر.س","SAR")}</span>
+              <bdi>{fmtSarLang(op.amount)}</bdi> <span className="text-xs font-sans font-normal text-gray-600">{t("ر.س","SAR")}</span>
             </div>
           )}
         </div>
@@ -1878,7 +2415,12 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
           <div className="hidden lg:flex items-center gap-1.5 flex-wrap">
             <span className="font-semibold text-gray-800 text-sm">{op.branch}</span>
             <Badge className="bg-gray-100 text-gray-600 text-[10px]">{op.brandName}</Badge>
-            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-100">{op.moduleLabel}</span>
+            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-100">{t(op.moduleLabel, enModLabel)}</span>
+            {op.origin === "mobile" && (
+              <span className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                {t("تطبيق الفرع","Branch app")}
+              </span>
+            )}
             <Badge className={`text-[10px] border ${MATCH_CFG[op.match].cls}`}>
               <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${MATCH_CFG[op.match].dot}`}/>
               {t(MATCH_CFG[op.match].label, EN_MATCH_CD[op.match])}
@@ -1893,6 +2435,11 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
 
           {/* Mobile/Tablet Badges Row */}
           <div className="flex lg:hidden items-center gap-1.5 flex-wrap">
+            {op.origin === "mobile" && (
+              <span className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                {t("تطبيق الفرع","Branch app")}
+              </span>
+            )}
             <Badge className={`text-[10px] border ${MATCH_CFG[op.match].cls}`}>
               <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${MATCH_CFG[op.match].dot}`}/>
               {t(MATCH_CFG[op.match].label, EN_MATCH_CD[op.match])}
@@ -1911,23 +2458,23 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
             <span className="lg:hidden text-gray-300">·</span>
             <span>{op.submittedBy}</span>
             <span>⏰ {op.timeAgo}</span>
-            <span className="flex items-center gap-0.5"><Paperclip size={9}/> {op.attachments} {t("مرفق","attach.")}</span>
+            <span className="flex items-center gap-0.5"><Paperclip size={9}/> {displayDigits(String(op.attachments), lang)} {t("مرفق","attach.")}</span>
           </div>
 
           {/* Sales matching breakdown (T04 §8) — cash/card/apps + collected/variance */}
           {op.module==="sales" && (
             <div className="flex items-center gap-2 mt-1 flex-wrap text-[10px]">
               {op.salesBreakdown ? (<>
-                <span className="text-gray-500">💵 {t("نقدي","Cash")}: <span className="font-mono text-gray-700">{fmt(op.salesBreakdown.cashHalalas/100)}</span></span>
-                <span className="text-gray-500">🏦 {t("كارت","Card")}: <span className="font-mono text-gray-700">{fmt(op.salesBreakdown.cardHalalas/100)}</span></span>
-                <span className="text-gray-500">🛵 {t("تطبيقات","Apps")}: <span className="font-mono text-gray-700">{fmt(op.salesBreakdown.appsHalalas/100)}</span></span>
+                <span className="text-gray-500">💵 {t("نقدي","Cash")}: <span className="font-mono text-gray-700"><bdi>{fmtHalLang(op.salesBreakdown.cashHalalas)}</bdi></span></span>
+                <span className="text-gray-500">🏦 {t("كارت","Card")}: <span className="font-mono text-gray-700"><bdi>{fmtHalLang(op.salesBreakdown.cardHalalas)}</bdi></span></span>
+                <span className="text-gray-500">🛵 {t("تطبيقات","Apps")}: <span className="font-mono text-gray-700"><bdi>{fmtHalLang(op.salesBreakdown.appsHalalas)}</bdi></span></span>
                 <span className="text-gray-400">·</span>
-                <span className="text-gray-500">{t("محصّل","Collected")}: <span className="font-mono text-gray-700">{fmt(op.salesBreakdown.collectedHalalas/100)}</span></span>
+                <span className="text-gray-500">{t("محصّل","Collected")}: <span className="font-mono text-gray-700"><bdi>{fmtHalLang(op.salesBreakdown.collectedHalalas)}</bdi></span></span>
                 <span className={`font-mono font-bold ${op.salesBreakdown.varianceHalalas===0?"text-emerald-600":"text-red-600"}`}>
-                  {op.salesBreakdown.varianceHalalas===0?"✓ 0":`${op.salesBreakdown.varianceHalalas>0?"+":""}${fmt(op.salesBreakdown.varianceHalalas/100)}`}
+                  {op.salesBreakdown.varianceHalalas===0?"✓ 0":`${op.salesBreakdown.varianceHalalas>0?"+":""}${fmtHalLang(op.salesBreakdown.varianceHalalas)}`}
                 </span>
               </>) : (
-                <span className="text-gray-300">{t("لم تتم التسوية بعد — لا يوجد تفصيل","Not reconciled — no breakdown")} «—»</span>
+                <span className="text-gray-400">{t("افتح «عرض» لمعاينة تفاصيل التسوية","Open View to inspect reconciliation breakdown")}</span>
               )}
             </div>
           )}
@@ -1935,19 +2482,37 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
 
         {/* Desktop Amount */}
         <div className="hidden lg:block text-left flex-shrink-0">
-          {op.amount != null && op.amount>0 && <p className="font-mono font-bold text-gray-800 text-sm whitespace-nowrap">{fmt(op.amount)} {t("ر.س","SAR")}</p>}
+          {op.amount != null && op.amount>0 && <p className="font-mono font-bold text-gray-800 text-sm whitespace-nowrap"><bdi>{fmtSarLang(op.amount)}</bdi> {t("ر.س","SAR")}</p>}
         </div>
 
         {/* Action Buttons: Responsive touch targets, clear alignment */}
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100/80 lg:border-0 lg:pt-0 w-full lg:w-auto flex-shrink-0" onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100/80 lg:border-0 lg:pt-0 w-full lg:w-auto flex-shrink-0 flex-wrap" onClick={e=>e.stopPropagation()}>
           {!forHead && isPending && (
             op.module === "expenses" ? (
               <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">
                 {t("اعتماد المالك (EXP-06)","Owner approval (EXP-06)")}
               </span>
             ) : <>
-              {(op.module !== "shifts" || shiftPolicy.approve) && <button onClick={onApprove} title={t("موافقة","Approve")} className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center transition-all"><ThumbsUp size={13}/></button>}
-              {(op.module === "shifts" ? shiftPolicy.returnToManager : salesPolicy.return) && <button onClick={op.module === "shifts" ? onReject : ()=>runSalesAction(salesContext, "return", onReject)} title={op.module === "shifts" ? t("إرجاع لمدير الفرع","Return to branch manager") : t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all"><ThumbsDown size={13}/></button>}
+              <button
+                type="button"
+                disabled={op.module === "shifts" && !shiftPolicy.approve}
+                onClick={onApprove}
+                title={op.module === "shifts" && !shiftPolicy.approve ? (shiftActionBlockReason ?? t("الاعتماد معطل","Approve disabled")) : t("موافقة","Approve")}
+                aria-label={t("موافقة","Approve")}
+                className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all"
+              ><ThumbsUp size={13}/></button>
+              <button
+                type="button"
+                disabled={op.module === "shifts" ? !shiftPolicy.returnToManager : !salesPolicy.return}
+                onClick={op.module === "shifts" ? onReject : ()=>runSalesAction(salesContext, "return", onReject)}
+                title={
+                  (op.module === "shifts" ? !shiftPolicy.returnToManager : !salesPolicy.return)
+                    ? (salesPolicy.pkg6 ? t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en) : (shiftActionBlockReason ?? t("الإرجاع معطل","Return disabled")))
+                    : (op.module === "shifts" ? t("إرجاع لمدير الفرع","Return to branch manager") : t("رفض","Reject"))
+                }
+                aria-label={op.module === "shifts" ? t("إرجاع لمدير الفرع","Return to branch manager") : t("رفض","Reject")}
+                className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all"
+              ><ThumbsDown size={13}/></button>
             </>
           )}
           {forHead && isApproved && (
@@ -1960,26 +2525,68 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
               {headPolicy.returnForReview && salesPolicy.return && <button disabled={actionsPending} onClick={()=>runSalesAction(salesContext, "return", onReject)} title={op.module === "shifts" ? t("إعادة للمحاسب للتعديل","Return to accountant for changes") : t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all disabled:opacity-50"><ThumbsDown size={13}/></button>}
             </>
           )}
-          {isLocked && <span className="flex items-center gap-1 text-xs text-slate-400 bg-slate-100 border border-slate-200 px-2 py-1.5 rounded-lg"><Lock size={11}/> {t("مُغلق","Locked")}</span>}
+          {isLocked && <span className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1.5 rounded-lg"><Lock size={11}/> {t("مُغلق","Locked")}</span>}
           <button
             type="button"
-            className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 text-gray-500 hover:bg-gray-100 flex items-center justify-center transition-all"
+            className="h-8 px-2.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-700 hover:bg-purple-100 flex items-center justify-center gap-1 text-xs font-semibold transition-all"
             onClick={onToggle}
             aria-expanded={expanded}
-            aria-label={expanded ? t("طي التفاصيل","Collapse details") : t("توسيع التفاصيل","Expand details")}
+            aria-label={expanded ? t("طي التفاصيل","Collapse details") : t("عرض التفاصيل","View details")}
           >
+            <span>{expanded ? t("إخفاء","Hide") : t("عرض","View")}</span>
             {expanded?<ChevronUp size={13}/>:<ChevronDown size={13}/>}
           </button>
         </div>
       </div>
       {salesPolicy.pkg6 && <p className="px-5 pb-2 text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</p>}
+      {shiftActionBlockReason && <p className="px-5 pb-2 text-xs text-amber-800">{shiftActionBlockReason}</p>}
       {forHead && headPolicy.blockedReason === "day_evidence_missing" && <p className="px-5 pb-2 text-xs text-amber-700">{t(HEAD_DAY_EVIDENCE_HINT.ar, HEAD_DAY_EVIDENCE_HINT.en)}</p>}
       {forHead && headPolicy.blockedReason === "expense_owner_decision_required" && <p className="px-5 pb-2 text-xs text-amber-700">{t("قرار اعتماد المصروف محجوز للمالك أو مدير العلامة التجارية وفق القاعدة EXP-06","Expense approval decision is reserved for the brand owner or manager per rule EXP-06")}</p>}
       {expanded && (
-        <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-4 space-y-4">
+        <div className="border-t border-gray-100 bg-gray-50/60 px-4 sm:px-5 py-4 space-y-4">
           {op.module==="sales" && <SalesReconPanel op={op} onApprove={onApprove} onReject={onReject} onClarify={onClarify} isPending={isPending} forHead={forHead}/>}
-          {op.module==="shifts" && <ShiftOpPanel detail={detailQ.data} op={op} forHead={forHead} loading={detailQ.isLoading} error={detailQ.isError}/>}
-          {op.module==="shifts" && !forHead && shiftPolicy.clarify && onClarify && <button onClick={onClarify} className="text-xs font-semibold text-purple-700 underline">{t("طلب إيضاح","Request clarification")}</button>}
+          {op.module==="shifts" && (
+            <>
+              <ShiftOpPanel detail={detailQ.data} op={op} forHead={forHead} loading={detailQ.isLoading} error={detailQ.isError}/>
+              {!forHead && (
+                <div className="bg-white rounded-xl border border-gray-200 p-3 space-y-2" data-testid="shift-review-action-bar">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {onClarify && (
+                      <button
+                        type="button"
+                        disabled={!shiftPolicy.clarify}
+                        onClick={onClarify}
+                        className="min-h-[36px] px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold hover:bg-amber-100 disabled:opacity-45 disabled:cursor-not-allowed whitespace-nowrap"
+                      >
+                        ❔ {t("طلب إيضاح","Request clarification")}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={!shiftPolicy.returnToManager}
+                      onClick={onReject}
+                      className="min-h-[36px] px-3 py-1.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold hover:bg-red-100 disabled:opacity-45 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      ✕ {t("إرجاع لمدير الفرع","Return to branch manager")}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!shiftPolicy.approve}
+                      onClick={onApprove}
+                      className="min-h-[36px] px-4 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 disabled:opacity-45 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      ✓ {t("موافقة وإرسال لرئيس الحسابات","Approve & send to head")}
+                    </button>
+                  </div>
+                  {shiftActionBlockReason && (
+                    <p role="note" className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                      {shiftActionBlockReason}
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
           {op.module==="expenses" && (
             forHead ? (
               <div className="bg-amber-50/60 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
@@ -4757,8 +5364,8 @@ function AccDashboard({ navigate, ops }:{ navigate:(p:string)=>void; ops:COp[] }
 // ═══════════════════════════════════════════════════
 // ACCOUNTANT — SALES MODULE (Full Featured)
 // ═══════════════════════════════════════════════════
-function AccCompanySales({ ops, approve, reject, requestClarification, bulkApprove, onOpenReport }:{ ops:COp[]; approve:(id:string)=>void; reject:(id:string)=>void; requestClarification?:(id:string)=>void; bulkApprove:(ids:string[])=>void; onOpenReport?:(shiftId:string, opId?:string)=>void }) {
-  const { t, dir } = useCLang();
+export function AccCompanySales({ ops, approve, reject, requestClarification, bulkApprove, onOpenReport }:{ ops:COp[]; approve:(id:string)=>void; reject:(id:string)=>void; requestClarification?:(id:string)=>void; bulkApprove:(ids:string[])=>void; onOpenReport?:(shiftId:string, opId?:string)=>void }) {
+  const { t, dir, lang } = useCLang();
   const queryClient = useQueryClient();
   const exportOpsMut = useExportOperations();
   const [branchFilter, setBranchFilter] = useState("");
@@ -4819,18 +5426,53 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
   const clearFilters = () => { setBranchFilter(""); setStatusFilter(""); setMatchFilter(""); setBrandFilter("الكل"); setDateFilter("الكل"); setSearch(""); };
   const hasFilters = branchFilter||statusFilter||matchFilter||brandFilter!=="الكل"||dateFilter!=="الكل"||search;
   const totalShown = sumCOpAmounts(shown.filter(o=>o.status!=="rejected"));
+  const stmtTotalCount = mOps.length;
+  const stmtPendingCount = mOps.filter(o => o.status === "pending").length;
+  const stmtApprovedCount = mOps.filter(o => o.status === "approved" || o.status === "final-approved").length;
+  const stmtRejectedCount = mOps.filter(o => o.status === "rejected").length;
 
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-gray-800">{t("موديول المبيعات","Sales Module")}</h2><p className="text-gray-400 text-sm mt-0.5">{shownPending.length} {t("بيان معلق بانتظار مراجعتك (ضمن النطاق المحدد)","pending statements awaiting your review (within active scope)")}</p></div>
-        {bulkSalesIds.length>0 && <Btn variant="success" size="sm" onClick={()=>bulkApprove(bulkSalesIds)}>✓ {t("موافقة على الكل","Approve All")} ({bulkSalesIds.length})</Btn>}
-        {shownPending.some(isPkg6SalesReport) && <p className="text-xs text-amber-700">{t("تقارير اليوم تُعتمد فرديًا","Day reports are approved individually")}</p>}
+      {/* 1. Header & Approve All (Screenshot 06) */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">{t("موديول المبيعات","Sales Module")}</h2>
+          <p className="text-gray-400 text-sm mt-0.5">{displayDigits(String(shownPending.length), lang)} {t("بيان معلق بانتظار مراجعتك (ضمن النطاق المحدد)","pending statements awaiting your review (within active scope)")}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {bulkSalesIds.length>0 && <Btn variant="success" size="sm" onClick={()=>bulkApprove(bulkSalesIds)}>✓ {t("موافقة على الكل","Approve All")} ({displayDigits(String(bulkSalesIds.length), lang)})</Btn>}
+          {shownPending.some(isPkg6SalesReport) && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">{t("تقارير اليوم تُعتمد فرديًا (PKG-6)","Day reports are approved individually (PKG-6)")}</p>}
+        </div>
       </div>
+
+      {/* 2. Statements Summary Strip (Screenshot 06) + Shift Sales Overview */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-testid="sales-statements-summary">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3.5">
+          <p className="text-[11px] font-semibold text-gray-500">{t("إجمالي البيانات المرفوعة","Total Uploaded Statements")}</p>
+          <p className="mt-1 font-mono font-black text-xl text-gray-900">{displayDigits(String(stmtTotalCount), lang)}</p>
+          <p className="text-[10px] text-gray-400">{t("كل الحالات","All statuses")}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-amber-100 shadow-sm p-3.5">
+          <p className="text-[11px] font-semibold text-amber-700">{t("قيد المراجعة","Under Review")}</p>
+          <p className="mt-1 font-mono font-black text-xl text-amber-700">{displayDigits(String(stmtPendingCount), lang)}</p>
+          <p className="text-[10px] text-gray-400">{t("رُفعت من الفروع","Submitted by branches")}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-emerald-100 shadow-sm p-3.5">
+          <p className="text-[11px] font-semibold text-emerald-700">{t("تمت الموافقة","Approved")}</p>
+          <p className="mt-1 font-mono font-black text-xl text-emerald-700">{displayDigits(String(stmtApprovedCount), lang)}</p>
+          <p className="text-[10px] text-gray-400">{t("موافق + معتمد نهائياً","Approved + final")}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-red-100 shadow-sm p-3.5">
+          <p className="text-[11px] font-semibold text-red-700">{t("مرفوضة","Rejected")}</p>
+          <p className="mt-1 font-mono font-black text-xl text-red-600">{displayDigits(String(stmtRejectedCount), lang)}</p>
+          <p className="text-[10px] text-gray-400">{t("تحتاج إعادة رفع","Needs re-upload")}</p>
+        </div>
+      </div>
+
       <ShiftSalesOverview filterBranch={branchFilter} filterStatus={statusFilter} filterDate={salesDate} filterSearch={search} />
 
       {/* Variance branches banner (ACC-1.5) */}
-      {kpis && kpis.varianceBranches.length>0 && (
+      {(kpis?.varianceBranches?.length ?? 0) > 0 && kpis && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4" dir={dir}>
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle size={15} className="text-red-600"/>
@@ -4839,77 +5481,73 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
           <div className="flex flex-wrap gap-2">
             {kpis.varianceBranches.map(vb=>(
               <span key={vb.branchId} className="text-[11px] bg-white border border-red-200 text-red-700 px-2 py-1 rounded-lg font-semibold">
-                {vb.name}: <span className="font-mono">{fmtH(vb.varianceHalalas)} ر.س</span>
+                {vb.name}: <span className="font-mono"><bdi>{formatShiftHalalas(vb.varianceHalalas, lang)}</bdi> {t("ر.س","SAR")}</span>
               </span>
             ))}
           </div>
         </div>
       )}
 
-      <ShiftSalesSection
-        operations={ops as any}
-        filterBranch={branchFilter}
-        filterStatus={statusFilter}
-        filterDate={salesDate}
-        filterSearch={search}
-        onOpenReport={onOpenReport}
-      />
-
+      {/* 3. Search & Filters Card (Screenshots 04 & 06) */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3" dir={dir}>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-xs font-bold text-gray-800">{t("فلاتر البحث","Search & Filters")}</h3>
+          {hasFilters && <button onClick={clearFilters} className="flex items-center gap-1 text-xs text-purple-600 hover:underline"><RotateCcw size={10}/> {t("مسح الفلاتر","Clear filters")}</button>}
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={()=>setDateFilter("الكل")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${dateFilter==="الكل"?"bg-purple-600 text-white border-purple-600":"bg-white text-gray-600 border-gray-200 hover:border-purple-300"}`}>
             {t("الكل","All")}
-            <span className={`text-[9px] px-1 rounded-full ${dateFilter==="الكل"?"bg-purple-500 text-purple-100":"bg-gray-100 text-gray-500"}`}>{mOps.length}</span>
+            <span className={`text-[9px] px-1 rounded-full ${dateFilter==="الكل"?"bg-purple-500 text-purple-100":"bg-gray-100 text-gray-500"}`}>{displayDigits(String(mOps.length), lang)}</span>
           </button>
           {dayRows.map(d=>(
             <button key={d.date} onClick={()=>setDateFilter(d.date)}
+              data-testid={`sales-day-pill-${d.date}`}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${dateFilter===d.date?"bg-purple-600 text-white border-purple-600":d.missingCount>0?"bg-white text-amber-700 border-amber-200 hover:border-amber-300":"bg-white text-gray-600 border-gray-200 hover:border-purple-300"}`}>
-              {d.pillLabelAr}
-              <span className={`text-[9px] px-1 rounded-full ${dateFilter===d.date?"bg-purple-500 text-purple-100":d.missingCount>0?"bg-amber-100 text-amber-700":"bg-gray-100 text-gray-500"}`}>{d.completedCount}/{d.requiredCount}</span>
+              {formatDayCompletenessLabel(d, lang)}
+              <span className={`text-[9px] px-1 rounded-full ${dateFilter===d.date?"bg-purple-500 text-purple-100":d.missingCount>0?"bg-amber-100 text-amber-700":"bg-gray-100 text-gray-500"}`}>{displayDigits(`${d.completedCount}/${d.requiredCount}`, lang)}</span>
             </button>
           ))}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع","Branch")}</label>
-            <select value={branchFilter} onChange={e=>setBranchFilter(e.target.value)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
+            <select value={branchFilter} onChange={e=>setBranchFilter(e.target.value)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2 bg-white">
               <option value="">{t("الكل","All")}</option>
               {branchOptions.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الحالة","Status")}</label>
-            <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value as any)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
+            <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value as any)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2 bg-white">
               <option value="">{t("الكل","All")}</option>
               {(Object.entries(STATUS_CFG) as [COpStatus,any][]).map(([k,v])=><option key={k} value={k}>{t(v.label, EN_STATUS_CD[k].label)}</option>)}
             </select>
           </div>
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المطابقة","Match")}</label>
-            <select value={matchFilter} onChange={e=>setMatchFilter(e.target.value as any)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
+            <select value={matchFilter} onChange={e=>setMatchFilter(e.target.value as any)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2 bg-white">
               <option value="">{t("الكل","All")}</option>
               {(Object.entries(MATCH_CFG) as [CMatch,any][]).map(([k,v])=><option key={k} value={k}>{t(v.label, EN_MATCH_CD[k])}</option>)}
             </select>
           </div>
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("العلامة التجارية","Brand")}</label>
-            <select value={brandFilter} onChange={e=>setBrandFilter(e.target.value)} disabled={brandNames.length===0} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2 disabled:bg-gray-50 disabled:text-gray-400">
-              <option>{t("الكل","All")}</option>
+            <select value={brandFilter} onChange={e=>setBrandFilter(e.target.value)} disabled={brandNames.length===0} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2 bg-white disabled:bg-gray-50 disabled:text-gray-400">
+              <option value="الكل">{t("الكل","All")}</option>
               {brandNames.map(n=><option key={n}>{n}</option>)}
             </select>
           </div>
-          <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("بحث","Search")}</label>
-            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-2">
+          <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("بحث / مرجعي","Search / Ref")}</label>
+            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-2 bg-white">
               <Search size={11} className="text-gray-400 flex-shrink-0"/>
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("بحث...","Search...")} className="flex-1 text-xs outline-none"/>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("بحث...","Search...")} className="flex-1 text-xs outline-none min-w-0"/>
             </div>
           </div>
         </div>
-        {hasFilters && <button onClick={clearFilters} className="flex items-center gap-1 text-xs text-purple-600 hover:underline"><RotateCcw size={10}/> {t("مسح الفلاتر","Clear filters")}</button>}
       </div>
 
       {selectedDay && (
-        <div className={`rounded-xl border p-4 flex items-center gap-4 ${selectedDay.missingCount>0?"bg-amber-50 border-amber-200":"bg-emerald-50 border-emerald-200"}`} dir={dir}>
-          <div className="flex-1">
-            <p className="text-sm font-bold text-gray-800">{selectedDay.pillLabelAr}</p>
-            <p className="text-xs text-gray-500 mt-0.5">{selectedDay.bannerAr}</p>
+        <div data-testid="sales-selected-day-banner" className={`rounded-xl border p-4 flex flex-wrap items-center gap-4 ${selectedDay.missingCount>0?"bg-amber-50 border-amber-200":"bg-emerald-50 border-emerald-200"}`} dir={dir}>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-gray-800">{formatDayCompletenessLabel(selectedDay, lang)}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{formatDayCompletenessBanner(selectedDay, lang)}</p>
             {selectedDay.missingBranches.length>0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {selectedDay.missingBranches.map(b=>(
@@ -4919,23 +5557,27 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
             )}
           </div>
           <div className="flex gap-6 text-center">
-            <div><p className="text-lg font-black text-gray-800">{selectedDay.requiredCount}</p><p className="text-[10px] text-gray-500">{t("مطلوبة","Required")}</p></div>
-            <div><p className="text-lg font-black text-emerald-600">{selectedDay.completedCount}</p><p className="text-[10px] text-gray-500">{t("مكتملة","Done")}</p></div>
-            <div><p className={`text-lg font-black ${selectedDay.missingCount>0?"text-amber-600":"text-gray-300"}`}>{selectedDay.missingCount}</p><p className="text-[10px] text-gray-500">{t("ناقص","Missing")}</p></div>
+            <div><p className="text-lg font-black text-gray-800">{displayDigits(String(selectedDay.requiredCount), lang)}</p><p className="text-[10px] text-gray-500">{t("مطلوبة","Required")}</p></div>
+            <div><p className="text-lg font-black text-emerald-600">{displayDigits(String(selectedDay.completedCount), lang)}</p><p className="text-[10px] text-gray-500">{t("مكتملة","Done")}</p></div>
+            <div><p className={`text-lg font-black ${selectedDay.missingCount>0?"text-amber-600":"text-gray-300"}`}>{displayDigits(String(selectedDay.missingCount), lang)}</p><p className="text-[10px] text-gray-500">{t("ناقص","Missing")}</p></div>
           </div>
         </div>
       )}
 
+      {/* 4. Sales Statements List (Screenshots 07 & 08) */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-4 sm:px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-center justify-between gap-2">
-          <div><h3 className="font-bold text-gray-900 text-sm">{t("بيانات المبيعات","Sales Statements")}</h3><p className="text-[11px] text-gray-400 mt-0.5">{shown.length} {t("بيان · إجمالي","statements · total")} {fmt(totalShown)} {t("ر.س","SAR")}</p></div>
+          <div>
+            <h3 className="font-bold text-gray-900 text-sm">{t("بيانات المبيعات","Sales Statements")}</h3>
+            <p className="text-[11px] text-gray-400 mt-0.5">{displayDigits(String(shown.length), lang)} {t("بيان · إجمالي","statements · total")} <bdi className="font-mono">{totalShown == null ? "—" : formatShiftHalalas(Math.round(totalShown * 100), lang)}</bdi> {t("ر.س","SAR")}</p>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <button onClick={()=>exportOpsMut.mutate({moduleKey:"sales", format:"xlsx"})} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><Download size={11}/> Excel</button>
-            {bulkSalesIds.length>0 && <Btn size="sm" variant="success" onClick={()=>bulkApprove(bulkSalesIds)}>✓ موافقة جماعية ({bulkSalesIds.length})</Btn>}
+            {bulkSalesIds.length>0 && <Btn size="sm" variant="success" onClick={()=>bulkApprove(bulkSalesIds)}>✓ {t("موافقة جماعية","Bulk approve")} ({displayDigits(String(bulkSalesIds.length), lang)})</Btn>}
           </div>
         </div>
         {shown.length===0
-          ? <div className="py-10 text-center text-gray-400 text-sm">✅ لا توجد بيانات تطابق الفلاتر</div>
+          ? <div className="py-10 text-center text-gray-400 text-sm">✅ {t("لا توجد بيانات تطابق الفلاتر","No statements match the active filters")}</div>
           : shown.map(op=>(
               <OpRow key={op.id} op={op} onApprove={()=>approve(op.id)} onReject={()=>reject(op.id)}
                 onClarify={requestClarification?()=>requestClarification(op.id):undefined}
@@ -4944,6 +5586,16 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
             ))
         }
       </div>
+
+      {/* 5. Cashier Shift Sales Reports (FE-01 / FE-02 entry) */}
+      <ShiftSalesSection
+        operations={ops as any}
+        filterBranch={branchFilter}
+        filterStatus={statusFilter}
+        filterDate={salesDate}
+        filterSearch={search}
+        onOpenReport={onOpenReport}
+      />
     </div>
   );
 }
@@ -7295,8 +7947,8 @@ function HeadSettlementActionModal({
   );
 }
 
-function AccCompanyEmployees() {
-  const { t, dir } = useCLang();
+export function AccCompanyEmployees() {
+  const { t, dir, lang } = useCLang();
   const [selectedEmp, setSelectedEmp] = useState<string|null>(null);
   const [searchTerm,  setSearchTerm]  = useState("");
   const [branchFilter,setBranchFilter]= useState("");
@@ -7305,7 +7957,13 @@ function AccCompanyEmployees() {
   const [showSettle,  setShowSettle]  = useState(false);
   const [headAction,  setHeadAction]  = useState<{ action: "approve" | "reject"; open: boolean } | null>(null);
 
-  const { data: employeesPage } = useEmployees({ q: searchTerm || undefined, branchId: branchFilter || undefined });
+  const trimmedEmpSearch = searchTerm.trim();
+  const isEmpNumberSearch = /^(?:EMP-?)?\d+$/i.test(trimmedEmpSearch);
+  const { data: employeesPage } = useEmployees({
+    empNumber: isEmpNumberSearch ? trimmedEmpSearch : undefined,
+    q: !isEmpNumberSearch && trimmedEmpSearch ? trimmedEmpSearch : undefined,
+    branchId: branchFilter || undefined,
+  });
   const { data: statement } = useEmployeeMovements(selectedEmp, month || undefined);
 
   type EmpAccountTab = "dues" | "custody";
@@ -7348,6 +8006,11 @@ function AccCompanyEmployees() {
   const activeCount    = employees.filter(e=>e.status==="active").length;
 
   const SAR = t("ر.س","SAR");
+  const fmtMoney = (h: number | null | undefined) => formatShiftHalalas(h, lang);
+  const captionText = (balH: number, cap?: { key?: string; labelAr?: string } | null) =>
+    lang === "ar"
+      ? (cap?.labelAr ?? (balH > 0 ? "دائن" : balH < 0 ? "عليه" : "متوازن"))
+      : (cap?.key === "creditor" || balH > 0 ? "Creditor" : cap?.key === "debtor" || balH < 0 ? "Debtor" : "Balanced");
 
   const balColor = (h:number) => h<0 ? "text-red-600" : h>0 ? "text-emerald-600" : "text-gray-400";
 
@@ -7373,24 +8036,38 @@ function AccCompanyEmployees() {
           onClose={()=>setHeadAction(null)}
         />
       )}
-      <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-gray-800">{t("كشف حساب الموظفين","Employee Accounts")}</h2><p className="text-gray-400 text-sm mt-0.5">{t("الرواتب والحركات المالية للموظفين","Salaries and financial movements")}</p></div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div><h2 className="text-xl font-bold text-gray-800">{t("كشف حساب الموظفين وعهدة النقد","Employee Accounts & Cash Custody")}</h2><p className="text-gray-400 text-sm mt-0.5">{t("كشف عهدة النقد المستلم/المسلّم وتبويب مستقل للمستحقات والخصومات","Cash custody statement & separate dues and deductions")}</p></div>
         <button onClick={()=>exportPayrollMut.mutate(new Date().toISOString().slice(0,7))} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><Download size={12}/> {t("كشف الرواتب Excel","Payroll Excel")}</button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KpiCard label={t("إجمالي الرواتب","Total Salaries")}      value={fmtH(totalSalariesH)} sub={t("ر.س شهرياً","SAR / month")} icon={<Users size={18} className="text-blue-600"/>} accent="blue"/>
-        <KpiCard label={t("مستحق على الموظفين","Owed to company")} value={fmtH(owedToCompanyH)} sub={SAR} icon={<AlertTriangle size={18} className="text-red-500"/>} accent="red"/>
-        <KpiCard label={t("مستحق للموظفين","Owed to employees")}   value={fmtH(owedToEmpH)}     sub={SAR} icon={<Wallet size={18} className="text-amber-600"/>} accent="amber"/>
-        <KpiCard label={t("موظفون نشطون","Active Employees")}       value={String(activeCount)}  sub={`${t("من","of")} ${employees.length}`} icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
+        <KpiCard label={t("إجمالي الرواتب","Total Salaries")}      value={fmtMoney(totalSalariesH)} sub={t("ر.س شهرياً","SAR / month")} icon={<Users size={18} className="text-blue-600"/>} accent="blue"/>
+        <KpiCard label={t("مستحق على الموظفين","Owed to company")} value={fmtMoney(owedToCompanyH)} sub={SAR} icon={<AlertTriangle size={18} className="text-red-500"/>} accent="red"/>
+        <KpiCard label={t("مستحق للموظفين","Owed to employees")}   value={fmtMoney(owedToEmpH)}     sub={SAR} icon={<Wallet size={18} className="text-amber-600"/>} accent="amber"/>
+        <KpiCard label={t("موظفون نشطون","Active Employees")}       value={displayDigits(String(activeCount), lang)}  sub={`${t("من","of")} ${displayDigits(String(employees.length), lang)}`} icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
       </div>
-      {/* فلاتر */}
+      {/* فلاتر البحث بالرقم أو الاسم */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("بحث — اسم الموظف","Search — name")}</label>
-            <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2"><Search size={13} className="text-gray-400"/><input value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} placeholder={t("اسم الموظف...","Employee name...")} className="flex-1 text-sm outline-none"/></div>
+          <div className="sm:col-span-2">
+            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("بحث — رقم الموظف أو الاسم","Search — employee # or name")}</label>
+            <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 bg-white">
+              <Search size={13} className="text-gray-400 flex-shrink-0"/>
+              <input
+                value={searchTerm}
+                onChange={e=>setSearchTerm(e.target.value)}
+                placeholder={t("ابحث برقم الموظف (مثل EMP-0007 أو 7) أو الاسم…","Search by employee # (e.g. EMP-0007 or 7) or name…")}
+                className="flex-1 text-sm outline-none min-w-0"
+              />
+              {searchTerm && (
+                <button type="button" onClick={()=>setSearchTerm("")} className="text-xs text-gray-400 hover:text-gray-600" aria-label={t("مسح البحث","Clear search")}>
+                  <X size={13}/>
+                </button>
+              )}
+            </div>
           </div>
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع","Branch")}</label>
-            <select value={branchFilter} onChange={e=>setBranchFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
+            <select value={branchFilter} onChange={e=>setBranchFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white">
               <option value="">{t("كل الفروع","All branches")}</option>
               {[...new Map(employees.map(e=>[e.branchId,e.branchName])).entries()].map(([id,name])=><option key={id} value={id}>{name}</option>)}
             </select>
@@ -7400,11 +8077,11 @@ function AccCompanyEmployees() {
       {/* Two-panel layout */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
         {/* Left: Employee list */}
-        <div className="col-span-1 lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="col-span-1 lg:col-span-2 min-w-0 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/60">
-            <p className="font-bold text-gray-900 text-sm">{t("قائمة الموظفين","Employees")} ({employees.length})</p>
+            <p className="font-bold text-gray-900 text-sm">{t("قائمة الموظفين","Employees")} ({displayDigits(String(employees.length), lang)})</p>
           </div>
-          {employees.length===0 && <p className="text-center text-gray-400 text-sm py-8">{t("لا يوجد موظفون","No employees")}</p>}
+          {employees.length===0 && <p className="text-center text-gray-400 text-sm py-8">{t("لا يوجد موظفون مطابقون للبحث","No matching employees")}</p>}
           {employees.map(e=>{
             const rowSales = getEmployeeSales(e);
             return <button type="button" key={e.id} aria-expanded={selectedEmp===e.id}
@@ -7412,11 +8089,12 @@ function AccCompanyEmployees() {
               className={`flex w-full items-center gap-3 px-4 py-3.5 text-start border-b border-gray-50 last:border-0 cursor-pointer transition-all ${selectedEmp===e.id?"bg-purple-50 border-r-4 border-r-purple-500":"hover:bg-gray-50/70"} ${e.status!=="active"?"opacity-60":""}`}>
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">{e.name[0]}</div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <p className="font-semibold text-gray-800 text-sm truncate">{e.name}</p>
+                  {e.empNumber && <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">#{e.empNumber}</span>}
                   {e.status!=="active" && <Badge className="bg-red-50 text-red-700 border border-red-200 text-[9px]">{t("موقوف","inactive")}</Badge>}
                 </div>
-                <p className="text-[10px] text-gray-400 mt-0.5">{e.role} · {e.branchName}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5 truncate">{e.role} · {e.branchName}</p>
               </div>
               {rowSales.isCashier ? (
                 <EmployeeShiftSalesTotal shifts={rowSales.cashierShifts} />
@@ -7426,33 +8104,35 @@ function AccCompanyEmployees() {
                   custodyStatement={rowSales.custody}
                 />
               ) : <div className="text-left flex-shrink-0">
-                <p className={`font-mono font-bold text-xs ${balColor(e.balanceHalalas)}`}>{fmtH(e.balanceHalalas)}</p>
-                <p className="text-[9px] text-gray-400">{e.balanceCaption?.labelAr ?? t("الرصيد","balance")}</p>
+                <p className={`font-mono font-bold text-xs ${balColor(e.balanceHalalas)}`}>{fmtMoney(e.balanceHalalas)}</p>
+                <p className="text-[9px] text-gray-400">{captionText(e.balanceHalalas, e.balanceCaption)}</p>
               </div>}
             </button>;
           })}
         </div>
         {/* Right: Employee statement */}
-        <div className="col-span-3">
+        <div className="col-span-1 lg:col-span-3 min-w-0">
           {!selectedRow ? (
-            <div className="bg-white rounded-xl border border-dashed border-gray-200 h-64 flex flex-col items-center justify-center gap-2">
+            <div className="bg-white rounded-xl border border-dashed border-gray-200 h-64 flex flex-col items-center justify-center gap-2 p-4 text-center">
               <Users size={32} className="text-gray-300"/>
-              <p className="text-gray-400 text-sm">{t("اختر موظفاً من القائمة لعرض كشف حسابه","Pick an employee to view their statement")}</p>
+              <p className="text-gray-400 text-sm">{t("اختر موظفاً من القائمة لعرض كشف حسابه وعهدته النقدية","Pick an employee to view their dues & cash custody statement")}</p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-l from-purple-50/50 to-white">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-lg font-bold">{selectedRow.name[0]}</div>
-                  <div className="flex-1">
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden min-w-0">
+              <div className="px-4 sm:px-5 py-4 border-b border-gray-100 bg-gradient-to-l from-purple-50/50 to-white">
+                <div className="flex flex-wrap items-start gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-lg font-bold flex-shrink-0">{selectedRow.name[0]}</div>
+                  <div className="flex-1 min-w-0">
                     <p className="font-bold text-gray-900">{selectedRow.name}</p>
-                    <p className="text-xs text-gray-500">{selectedRow.role} · {selectedRow.branchName} · {selectedRow.empNumber}</p>
-                    <Badge className={`text-[10px] mt-1 ${(statement?.balanceCaption ?? selectedRow.balanceCaption)?.key==="creditor"?"bg-emerald-50 text-emerald-700 border border-emerald-200":(statement?.balanceHalalas ?? selectedRow.balanceHalalas)<0?"bg-red-50 text-red-700 border border-red-200":"bg-gray-50 text-gray-500 border border-gray-200"}`}>{(statement?.balanceCaption ?? selectedRow.balanceCaption)?.labelAr}</Badge>
-                    {selectedRow.settlementStatus === "under_review" && (
-                      <Badge className="text-[10px] mt-1 bg-amber-50 text-amber-700 border border-amber-200">
-                        {t("قيد المراجعة", "Under Review")}
-                      </Badge>
-                    )}
+                    <p className="text-xs text-gray-500 break-words">{selectedRow.role} · {selectedRow.branchName} · <span className="font-mono">#{selectedRow.empNumber}</span></p>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      <Badge className={`text-[10px] ${(statement?.balanceCaption ?? selectedRow.balanceCaption)?.key==="creditor"?"bg-emerald-50 text-emerald-700 border border-emerald-200":(statement?.balanceHalalas ?? selectedRow.balanceHalalas)<0?"bg-red-50 text-red-700 border border-red-200":"bg-gray-50 text-gray-500 border border-gray-200"}`}>{captionText(statement?.balanceHalalas ?? selectedRow.balanceHalalas, statement?.balanceCaption ?? selectedRow.balanceCaption)}</Badge>
+                      {selectedRow.settlementStatus === "under_review" && (
+                        <Badge className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200">
+                          {t("قيد المراجعة", "Under Review")}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   {activeTab === "dues" && (
                     <div className="flex flex-col gap-1.5">
@@ -7512,8 +8192,44 @@ function AccCompanyEmployees() {
                   />
                 )}
 
-                {/* Tabs Switcher: Dues & Deductions vs Shift Custody */}
-                <div className="flex items-center gap-2 border-b border-gray-100 pt-3 mt-3">
+                {/* Clear distinction: Shift Sales vs Cash Custody In */}
+                {(selectedIsCashier || selectedIsManager || custodyStatement?.balances?.is_available) && (
+                  <div
+                    data-testid="sales-vs-custody-distinction"
+                    className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50/60 p-3 space-y-1.5 text-xs"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-bold text-indigo-950">
+                        {t("تمييز مبيعات الوردية عن عهدة الكاش", "Shift Sales vs Cash Custody Distinction")}
+                      </span>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-[11px] text-gray-700">
+                          {t("إجمالي مبيعات الورديات:", "Shift sales total:")}{" "}
+                          <strong className="font-mono text-gray-900">
+                            <bdi>{selectedSales?.deliveredTotalHalalas != null ? fmtMoney(selectedSales.deliveredTotalHalalas) : "—"}</bdi>
+                            {selectedSales?.deliveredTotalHalalas != null ? ` ${SAR}` : ""}
+                          </strong>
+                        </span>
+                        <span className="text-[11px] text-emerald-800">
+                          {t("الكاش الداخل في العهدة:", "Cash into custody:")}{" "}
+                          <strong className="font-mono">
+                            <bdi>{custodyStatement?.balances?.is_available ? `+${fmtMoney(custodyStatement.balances.total_cash_in ?? 0)}` : "—"}</bdi>
+                            {custodyStatement?.balances?.is_available ? ` ${SAR}` : ""}
+                          </strong>
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-indigo-800 leading-relaxed">
+                      {t(
+                        "إجمالي مبيعات الوردية يشمل الكاش والشبكة والتطبيقات لأغراض مراجعة المبيعات؛ أما عهدة الموظف فتحسب النقد الفعلي الداخل (+) والصادر (−) والإيصالات المؤكدة فقط.",
+                        "Shift sales total combines cash, card, and delivery apps for sales reporting; employee custody counts only actual cash in (+), cash out (−), and confirmed receipts.",
+                      )}
+                    </p>
+                  </div>
+                )}
+
+                {/* Tabs Switcher: Dues & Deductions (Independent Tab) vs Cash Custody Statement */}
+                <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pt-3 mt-3">
                   <button
                     type="button"
                     onClick={() => setActiveTab("dues")}
@@ -7538,7 +8254,7 @@ function AccCompanyEmployees() {
                     }`}
                   >
                     <ArrowLeftRight size={13} />
-                    {t("عهدة الشيفتات", "Shift Custody")}
+                    {t("كشف عهدة النقد (عهدة الشيفتات)", "Cash Custody Statement")}
                   </button>
                 </div>
 
@@ -7548,19 +8264,19 @@ function AccCompanyEmployees() {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
                       <div className="bg-blue-50 rounded-xl p-2.5 text-center">
                         <p className="text-[10px] text-blue-600 font-semibold">{t("الراتب","Salary")}</p>
-                        <p className="font-mono font-bold text-blue-800 text-xs">{fmtH(selectedRow.monthlySalary)}</p>
+                        <p className="font-mono font-bold text-blue-800 text-xs">{fmtMoney(selectedRow.monthlySalary)}</p>
                       </div>
                       <div className="bg-emerald-50 rounded-xl p-2.5 text-center">
                         <p className="text-[10px] text-emerald-600 font-semibold">{t("إجمالي دائن","Total credit")}</p>
-                        <p className="font-mono font-bold text-emerald-800 text-xs">{fmtH(statement?.totalCredit ?? 0)}</p>
+                        <p className="font-mono font-bold text-emerald-800 text-xs">{fmtMoney(statement?.totalCredit ?? 0)}</p>
                       </div>
                       <div className="bg-red-50 rounded-xl p-2.5 text-center">
                         <p className="text-[10px] text-red-600 font-semibold">{t("إجمالي مدين","Total debit")}</p>
-                        <p className="font-mono font-bold text-red-800 text-xs">{fmtH(statement?.totalDebit ?? 0)}</p>
+                        <p className="font-mono font-bold text-red-800 text-xs">{fmtMoney(statement?.totalDebit ?? 0)}</p>
                       </div>
                       <div className="bg-gray-50 rounded-xl p-2.5 text-center border-2 border-gray-200">
-                        <p className="text-[10px] text-gray-600 font-semibold">{t("الرصيد","Balance")}</p>
-                        <p className={`font-mono font-black text-sm ${balColor(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}`}>{fmtH(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}</p>
+                        <p className="text-[10px] text-gray-600 font-semibold">{t("رصيد المستحقات","Dues Balance")}</p>
+                        <p className={`font-mono font-black text-sm ${balColor(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}`}>{fmtMoney(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}</p>
                       </div>
                     </div>
                     {hasEmployeeDebitWarning(statement) && (
@@ -7598,50 +8314,56 @@ function AccCompanyEmployees() {
                         <div className="bg-gray-50 rounded-xl p-2.5 text-center border border-gray-200">
                           <p className="text-[10px] text-gray-500 font-semibold">{t("رصيد أول المدة", "Opening Balance")}</p>
                           <p data-testid="custody-opening-balance" className={`font-mono font-bold text-xs ${balColor(custodyStatement.balances.opening_balance ?? 0)}`}>
-                            {fmtH(custodyStatement.balances.opening_balance ?? 0)}
+                            {fmtMoney(custodyStatement.balances.opening_balance ?? 0)}
                           </p>
                         </div>
                         <div className="bg-emerald-50 rounded-xl p-2.5 text-center border border-emerald-100">
-                          <p className="text-[10px] text-emerald-600 font-semibold">{t("إجمالي الوارد (نقد)", "Cash In")}</p>
+                          <p className="text-[10px] text-emerald-600 font-semibold">{t("الكاش الداخل (+)", "Cash In (+)")}</p>
                           <p className="font-mono font-bold text-emerald-800 text-xs">
-                            {fmtH(custodyStatement.balances.total_cash_in ?? 0)}
+                            +{fmtMoney(custodyStatement.balances.total_cash_in ?? 0)}
                           </p>
                         </div>
                         <div className="bg-red-50 rounded-xl p-2.5 text-center border border-red-100">
-                          <p className="text-[10px] text-red-600 font-semibold">{t("إجمالي الصادر (نقد)", "Cash Out")}</p>
+                          <p className="text-[10px] text-red-600 font-semibold">{t("الكاش الخارج (−)", "Cash Out (−)")}</p>
                           <p className="font-mono font-bold text-red-800 text-xs">
-                            {fmtH(custodyStatement.balances.total_cash_out ?? 0)}
+                            −{fmtMoney(custodyStatement.balances.total_cash_out ?? 0)}
                           </p>
                         </div>
                         <div className="bg-purple-50 rounded-xl p-2.5 text-center border-2 border-purple-200">
-                          <p className="text-[10px] text-purple-700 font-bold">{t("رصيد آخر المدة", "Closing Balance")}</p>
+                          <p className="text-[10px] text-purple-700 font-bold">{t("الرصيد الجاري للعهدة", "Closing Custody")}</p>
                           <p data-testid="custody-closing-balance" className={`font-mono font-black text-sm ${balColor(custodyStatement.balances.closing_balance ?? 0)}`}>
-                            {fmtH(custodyStatement.balances.closing_balance ?? 0)}
+                            {fmtMoney(custodyStatement.balances.closing_balance ?? 0)}
                           </p>
                         </div>
                       </div>
                     )}
                     {custodyStatement?.pending && custodyStatement.pending.length > 0 && (
                       <div data-testid="custody-pending-section" className="p-3 bg-purple-50/70 border border-purple-200 rounded-xl space-y-2">
-                        <div className="flex items-center gap-2 text-purple-900 font-bold text-xs">
-                          <Clock size={14} className="text-purple-600" />
-                          <span>{t("طلبات تسليم معلقة خارج الرصيد", "Pending handover requests (outside balance)")} ({custodyStatement.pending.length})</span>
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-purple-900 font-bold text-xs">
+                          <div className="flex items-center gap-2">
+                            <Clock size={14} className="text-purple-600 flex-shrink-0" />
+                            <span>{t("طلبات تسليم معلقة (خارج الرصيد)", "Pending handover requests (outside balance)")} ({displayDigits(String(custodyStatement.pending.length), lang)})</span>
+                          </div>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                            {t("لا يغيّر الرصيد الجاري", "Does not alter running balance")}
+                          </span>
                         </div>
                         <div className="space-y-1.5">
                           {custodyStatement.pending.map(p => (
-                            <div key={p.request_id} data-testid="custody-pending-item" className="bg-white rounded-lg p-2.5 border border-purple-100 flex items-center justify-between text-xs">
-                              <div className="space-y-0.5">
-                                <span className="font-semibold text-gray-800">
-                                  {p.request_type === "handover_sent" ? t("تسليم بانتظار التأكيد", "Handover sent (pending)") : t("استلام بانتظار التأكيد", "Handover received (pending)")}
+                            <div key={p.request_id} data-testid="custody-pending-item" className="bg-white rounded-lg p-2.5 border border-purple-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                              <div className="space-y-0.5 min-w-0">
+                                <span className="font-semibold text-gray-800 block">
+                                  {p.request_type === "handover_sent" ? t("تسليم بانتظار التأكيد (−)", "Handover sent — pending (−)") : t("استلام بانتظار التأكيد (+)", "Handover received — pending (+)")}
                                 </span>
-                                <p className="text-[10px] text-gray-400">
+                                <p className="text-[10px] text-gray-500">
+                                  {p.business_date ? `${p.business_date} · ` : ""}
                                   {p.counterparty.name ? `${t("الطرف المقابل", "Counterparty")}: ${p.counterparty.name}` : ""}
                                   {p.source_shift_id ? ` · ${t("وردية", "Shift")}: ${p.source_shift_id.slice(0, 8)}` : ""}
                                 </p>
                               </div>
-                              <div className="text-right">
-                                <span className="font-mono font-bold text-amber-600">{fmtH(p.amount)}</span>
-                                <Badge className="block text-[9px] bg-amber-50 text-amber-700 border border-amber-200 mt-0.5">{t("معلق", "Pending")}</Badge>
+                              <div className="text-end flex-shrink-0">
+                                <span className="font-mono font-bold text-amber-700"><bdi>{fmtMoney(p.amount)}</bdi> {SAR}</span>
+                                <Badge className="block text-[9px] bg-amber-50 text-amber-700 border border-amber-200 mt-0.5">{t("معلق — خارج الرصيد", "Pending · excluded")}</Badge>
                               </div>
                             </div>
                           ))}
@@ -7681,21 +8403,21 @@ function AccCompanyEmployees() {
                         )}
                         {(statement?.movements ?? []).map(m=>(
                           <tr key={m.id} className="hover:bg-gray-50">
-                            <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{new Date(m.movementDate).toLocaleDateString("ar-SA")}</td>
+                            <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{new Date(m.movementDate).toLocaleDateString(lang === "ar" ? "ar-SA-u-ca-gregory" : "en-GB")}</td>
                             <td className="px-3 py-3 font-medium text-gray-800">{m.description}<span className="block text-[9px] text-gray-400">{m.categoryLabelAr}</span></td>
                             <td className="px-3 py-3 text-center font-mono text-gray-400 text-[10px]">{m.ref}</td>
-                            <td className="px-3 py-3 text-center font-mono font-bold text-emerald-600">{m.movementType==="credit"?fmtH(m.amountHalalas):"—"}</td>
-                            <td className="px-3 py-3 text-center font-mono font-bold text-red-600">{m.movementType==="debit"?fmtH(m.amountHalalas):"—"}</td>
-                            <td className={`px-3 py-3 text-center font-mono font-bold ${balColor(m.runningBalanceHalalas)}`}>{fmtH(m.runningBalanceHalalas)}</td>
+                            <td className="px-3 py-3 text-center font-mono font-bold text-emerald-600">{m.movementType==="credit"?`+${fmtMoney(m.amountHalalas)}`:"—"}</td>
+                            <td className="px-3 py-3 text-center font-mono font-bold text-red-600">{m.movementType==="debit"?`−${fmtMoney(m.amountHalalas)}`:"—"}</td>
+                            <td className={`px-3 py-3 text-center font-mono font-bold ${balColor(m.runningBalanceHalalas)}`}>{fmtMoney(m.runningBalanceHalalas)}</td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot className="bg-gray-50 border-t-2 border-gray-200">
                         <tr>
                           <td colSpan={2} className="px-3 py-2.5 font-bold text-gray-700">{month?t("رصيد أول المدة","Opening"):t("الرصيد الحالي","Current balance")}</td>
-                          <td className="px-3 py-2.5 text-center font-mono text-gray-500">{month?fmtH(statement?.openingBalanceHalalas ?? 0):""}</td>
+                          <td className="px-3 py-2.5 text-center font-mono text-gray-500">{month?fmtMoney(statement?.openingBalanceHalalas ?? 0):""}</td>
                           <td colSpan={2} className="px-3 py-2.5 font-bold text-gray-700 text-left">{t("رصيد آخر المدة","Closing")}</td>
-                          <td className={`px-3 py-2.5 text-center font-mono font-black ${balColor(statement?.closingBalanceHalalas ?? 0)}`}>{fmtH(statement?.closingBalanceHalalas ?? 0)}</td>
+                          <td className={`px-3 py-2.5 text-center font-mono font-black ${balColor(statement?.closingBalanceHalalas ?? 0)}`}>{fmtMoney(statement?.closingBalanceHalalas ?? 0)}</td>
                         </tr>
                       </tfoot>
                     </table>
@@ -7703,10 +8425,10 @@ function AccCompanyEmployees() {
                 </>
               )}
 
-              {/* CUSTODY TAB TABLE */}
+              {/* CUSTODY TAB TABLE & MOBILE/TABLET CARDS */}
               {activeTab === "custody" && (
                 <>
-                  <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-center justify-between gap-3">
+                  <div className="px-4 sm:px-5 py-3 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-center justify-between gap-3">
                     <p className="font-bold text-gray-700 text-xs flex items-center gap-1.5">
                       <ArrowLeftRight size={13} className="text-purple-600" />
                       <span>{t("سجل حركات عهدة النقد", "Shift Cash Custody Movements")}</span>
@@ -7727,97 +8449,179 @@ function AccCompanyEmployees() {
                       )}
                     </div>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[650px] text-xs">
-                      <thead className="bg-gray-50 text-gray-600">
-                        <tr>
-                          <th className="px-3 py-2.5 text-right font-semibold">{t("تاريخ العمل / الوقت", "Date / Event At")}</th>
-                          <th className="px-3 py-2.5 text-right font-semibold">{t("نوع الحركة والبيان", "Description & Type")}</th>
-                          <th className="px-3 py-2.5 text-center font-semibold">{t("الإيصال / المرجع", "Receipt / Ref")}</th>
-                          <th className="px-3 py-2.5 text-center font-semibold">{t("الطرف المقابل", "Counterparty")}</th>
-                          <th className="px-3 py-2.5 text-center font-semibold">{t("وارد (نقد)", "Cash In")}</th>
-                          <th className="px-3 py-2.5 text-center font-semibold">{t("صادر (نقد)", "Cash Out")}</th>
-                          <th className="px-3 py-2.5 text-center font-semibold">{t("الرصيد", "Balance")}</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {isCustodyLoading && (
-                          <tr><td colSpan={7} className="text-center text-gray-400 py-8">{t("جارٍ تحميل كشف العهدة…", "Loading custody statement…")}</td></tr>
-                        )}
-                        {!isCustodyLoading && (custodyStatement?.entries ?? []).length === 0 && (
-                          <tr><td colSpan={7} className="text-center text-gray-400 py-8" data-testid="custody-empty-state">
-                            {custodyStatement?.identity_link_state === "unlinked"
-                              ? t("الحساب غير مرتبط بعهدة شيفتات", "Account is not linked to shift custody")
-                              : t("لا توجد حركات عهدة شيفتات في هذه الفترة", "No shift custody movements in this period")}
-                          </td></tr>
-                        )}
-                        {!isCustodyLoading && (custodyStatement?.entries ?? []).map(entry => (
-                          <tr key={entry.source_id} data-testid="custody-entry-row" className="hover:bg-gray-50">
-                            <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                              {(() => {
+                  {(() => {
+                    const renderSourceLabel = (entry: NonNullable<typeof custodyStatement>["entries"][number]) =>
+                      entry.source_type === "cashier_custody"
+                        ? t("عهدة كاشير", "Cashier custody")
+                        : entry.source_type === "personal_ledger"
+                        ? t("دفتر عهدة المدير", "Manager custody ledger")
+                        : entry.source_type;
+                    const renderStatusBadge = (entry: NonNullable<typeof custodyStatement>["entries"][number]) => {
+                      const state = entry.reversal_id ? "reversed" : entry.confirmation_state;
+                      const cfg =
+                        state === "confirmed"
+                          ? { cls: "bg-emerald-50 text-emerald-700 border-emerald-200", label: t("مؤكد", "Confirmed") }
+                          : state === "pending"
+                          ? { cls: "bg-amber-50 text-amber-800 border-amber-200", label: t("معلق", "Pending") }
+                          : state === "reversed"
+                          ? { cls: "bg-slate-100 text-slate-700 border-slate-200", label: t("معكوس", "Reversed") }
+                          : state === "cancelled" || state === "rejected"
+                          ? { cls: "bg-red-50 text-red-700 border-red-200", label: t("ملغى / مرفوض", "Cancelled") }
+                          : { cls: "bg-gray-50 text-gray-700 border-gray-200", label: state || t("مؤكد", "Confirmed") };
+                      return <span className={`inline-block px-1.5 py-0.5 rounded border text-[10px] font-semibold whitespace-nowrap ${cfg.cls}`}>{cfg.label}</span>;
+                    };
+                    const entries = custodyStatement?.entries ?? [];
+                    return (
+                      <>
+                        {/* Mobile & Tablet (< lg): Clean stacked cards with zero horizontal scrolling */}
+                        <div className="lg:hidden divide-y divide-gray-100">
+                          {isCustodyLoading && (
+                            <p className="text-center text-gray-400 text-xs py-8">{t("جارٍ تحميل كشف العهدة…", "Loading custody statement…")}</p>
+                          )}
+                          {!isCustodyLoading && entries.length === 0 && (
+                            <p className="text-center text-gray-400 text-xs py-8" data-testid="custody-empty-state">
+                              {custodyStatement?.identity_link_state === "unlinked"
+                                ? t("الحساب غير مرتبط بعهدة شيفتات", "Account is not linked to shift custody")
+                                : t("لا توجد حركات عهدة شيفتات في هذه الفترة", "No shift custody movements in this period")}
+                            </p>
+                          )}
+                          {!isCustodyLoading && entries.map(entry => {
+                            const postDate = entry.event_at ? entry.event_at.slice(0, 10) : "";
+                            const postTime = entry.event_at ? new Date(entry.event_at).toLocaleTimeString(lang === "ar" ? "ar-SA" : "en-US", { hour: "2-digit", minute: "2-digit" }) : "";
+                            const isDiff = Boolean(entry.business_date && postDate && entry.business_date !== postDate);
+                            return (
+                              <div key={entry.source_id} data-testid="custody-entry-row" className="p-3.5 space-y-2 text-xs">
+                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                  <div className="min-w-0 space-y-0.5">
+                                    <p className="font-bold text-gray-900">{lang === "ar" ? entry.label_ar : (entry.label_en || entry.label_ar)}</p>
+                                    <p className="text-[10px] text-gray-500">
+                                      {renderSourceLabel(entry)}
+                                      {entry.counterparty.name ? ` · ${entry.counterparty.name}` : ""}
+                                      {entry.source_shift_id ? ` · ${t("وردية", "Shift")} ${entry.source_shift_id.slice(0, 8)}` : ""}
+                                    </p>
+                                  </div>
+                                  {renderStatusBadge(entry)}
+                                </div>
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] bg-gray-50 rounded-lg px-2.5 py-2">
+                                  <div>
+                                    <span className="text-gray-500">{entry.cash_in > 0 ? t("دائن (+) — كاش داخل:", "Credit (+) — Cash in:") : t("مدين (−) — كاش خارج:", "Debit (−) — Cash out:")}</span>{" "}
+                                    {entry.cash_in > 0 ? (
+                                      <span className="font-mono font-bold text-emerald-700"><bdi>+{fmtMoney(entry.cash_in)}</bdi> {SAR}</span>
+                                    ) : (
+                                      <span className="font-mono font-bold text-red-700"><bdi>−{fmtMoney(entry.cash_out)}</bdi> {SAR}</span>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">{t("الرصيد الجاري:", "Balance:")}</span>{" "}
+                                    <span className={`font-mono font-black ${balColor(entry.running_balance)}`}><bdi>{fmtMoney(entry.running_balance)}</bdi> {SAR}</span>
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-gray-500">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="font-semibold text-gray-700" data-testid="custody-entry-business-date">{entry.business_date ?? postDate}</span>
+                                    {isDiff && <span data-testid="late-posting-badge" className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold border border-amber-200">{t("ترحيل متأخر", "Late post")}</span>}
+                                    <span className="font-mono" data-testid="custody-entry-posting-time">{postDate} {postTime}</span>
+                                  </div>
+                                  {entry.receipt_id ? (
+                                    <span className="font-mono px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
+                                      {t("إيصال", "Receipt")}: {entry.receipt_id}
+                                    </span>
+                                  ) : (
+                                    <span>{t("بدون إيصال", "No receipt")}</span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Desktop (>= lg): Full 7-column statement table fitting cleanly without horizontal clip */}
+                        <div className="hidden lg:block overflow-x-auto">
+                          <table className="w-full text-[11px]">
+                            <thead className="bg-gray-50 text-gray-600">
+                              <tr>
+                                <th className="px-2 py-2.5 text-start font-semibold whitespace-nowrap">{t("التاريخ / الترحيل", "Date / Posted")}</th>
+                                <th className="px-2 py-2.5 text-start font-semibold">{t("الحركة والمصدر", "Movement & Source")}</th>
+                                <th className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{t("الإيصال", "Receipt")}</th>
+                                <th className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{t("الحالة", "Status")}</th>
+                                <th className="px-1.5 py-2 text-center font-semibold leading-tight max-w-[96px]">{t("دائن (+) — كاش داخل", "Credit (+) — Cash In")}</th>
+                                <th className="px-1.5 py-2 text-center font-semibold leading-tight max-w-[96px]">{t("مدين (−) — كاش خارج", "Debit (−) — Cash Out")}</th>
+                                <th className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{t("الرصيد الجاري", "Running Bal.")}</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                              {isCustodyLoading && (
+                                <tr><td colSpan={7} className="text-center text-gray-400 py-8">{t("جارٍ تحميل كشف العهدة…", "Loading custody statement…")}</td></tr>
+                              )}
+                              {!isCustodyLoading && entries.length === 0 && (
+                                <tr><td colSpan={7} className="text-center text-gray-400 py-8" data-testid="custody-empty-state">
+                                  {custodyStatement?.identity_link_state === "unlinked"
+                                    ? t("الحساب غير مرتبط بعهدة شيفتات", "Account is not linked to shift custody")
+                                    : t("لا توجد حركات عهدة شيفتات في هذه الفترة", "No shift custody movements in this period")}
+                                </td></tr>
+                              )}
+                              {!isCustodyLoading && entries.map(entry => {
                                 const postDate = entry.event_at ? entry.event_at.slice(0, 10) : "";
-                                const postTime = entry.event_at ? new Date(entry.event_at).toLocaleTimeString(dir === "rtl" ? "ar-SA" : "en-US", { hour: "2-digit", minute: "2-digit" }) : "";
+                                const postTime = entry.event_at ? new Date(entry.event_at).toLocaleTimeString(lang === "ar" ? "ar-SA" : "en-US", { hour: "2-digit", minute: "2-digit" }) : "";
                                 const isDiff = Boolean(entry.business_date && postDate && entry.business_date !== postDate);
                                 return (
-                                  <div className="space-y-0.5">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="font-semibold text-gray-800" data-testid="custody-entry-business-date">{entry.business_date ?? postDate}</span>
-                                      {isDiff && (
-                                        <span data-testid="late-posting-badge" className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold border border-amber-200">
-                                          {t("ترحيل متأخر", "Late post")}
+                                  <tr key={entry.source_id} data-testid="custody-entry-row" className="hover:bg-gray-50">
+                                    <td className="px-2.5 py-2.5 text-gray-600 whitespace-nowrap">
+                                      <div className="space-y-0.5">
+                                        <div className="flex items-center gap-1">
+                                          <span className="font-semibold text-gray-800" data-testid="custody-entry-business-date">{entry.business_date ?? postDate}</span>
+                                          {isDiff && (
+                                            <span data-testid="late-posting-badge" className="text-[9px] px-1 py-0.5 rounded bg-amber-100 text-amber-800 font-bold border border-amber-200">
+                                              {t("متأخر", "Late")}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <span className="block text-[10px] text-gray-400 font-mono" data-testid="custody-entry-posting-time">
+                                          {postDate} {postTime}
                                         </span>
+                                      </div>
+                                    </td>
+                                    <td className="px-2.5 py-2.5 font-medium text-gray-800">
+                                      <span>{lang === "ar" ? entry.label_ar : (entry.label_en || entry.label_ar)}</span>
+                                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-gray-500">
+                                        <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 font-medium">{renderSourceLabel(entry)}</span>
+                                        {entry.counterparty.name && <span>· {entry.counterparty.name}</span>}
+                                        {entry.source_shift_id && <span className="font-mono text-gray-400">· {entry.source_shift_id.slice(0, 8)}</span>}
+                                      </div>
+                                    </td>
+                                    <td className="px-2.5 py-2.5 text-center font-mono text-gray-600 text-[10px] whitespace-nowrap">
+                                      {entry.receipt_id ? (
+                                        <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap" title={entry.receipt_id}>
+                                          {entry.receipt_id}
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-400">—</span>
                                       )}
-                                    </div>
-                                    <span className="block text-[10px] text-gray-400 font-mono" data-testid="custody-entry-posting-time">
-                                      {t("الترحيل", "Posted")}: {postDate} {postTime}
-                                    </span>
-                                  </div>
+                                      {entry.reversal_id && (
+                                        <span className="block text-[9px] text-amber-600 mt-0.5 font-sans">{t("عكس", "Reversal")}</span>
+                                      )}
+                                    </td>
+                                    <td className="px-2.5 py-2.5 text-center whitespace-nowrap">
+                                      {renderStatusBadge(entry)}
+                                    </td>
+                                    <td className="px-2.5 py-2.5 text-center font-mono font-bold text-emerald-600 whitespace-nowrap">
+                                      {entry.cash_in > 0 ? <bdi>+{fmtMoney(entry.cash_in)}</bdi> : "—"}
+                                    </td>
+                                    <td className="px-2.5 py-2.5 text-center font-mono font-bold text-red-600 whitespace-nowrap">
+                                      {entry.cash_out > 0 ? <bdi>−{fmtMoney(entry.cash_out)}</bdi> : "—"}
+                                    </td>
+                                    <td className={`px-2.5 py-2.5 text-center font-mono font-bold whitespace-nowrap ${balColor(entry.running_balance)}`}>
+                                      <bdi>{fmtMoney(entry.running_balance)}</bdi>
+                                    </td>
+                                  </tr>
                                 );
-                              })()}
-                            </td>
-                            <td className="px-3 py-3 font-medium text-gray-800">
-                              <span>{entry.label_ar}</span>
-                              <span className="block text-[10px] text-gray-400">{entry.label_en} · {entry.transaction_type}</span>
-                              {entry.source_shift_id && (
-                                <span className="block text-[9px] text-gray-400">
-                                  {t("وردية المصدر", "Source shift")}: {entry.source_shift_id.slice(0, 8)}
-                                  {entry.receiving_shift_id && ` → ${t("المستلم", "Recv")}: ${entry.receiving_shift_id.slice(0, 8)}`}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-center font-mono text-gray-500 text-[10px]">
-                              {entry.receipt_id ? (
-                                <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                                  {entry.receipt_id.slice(0, 8)}
-                                </span>
-                              ) : (
-                                <span className="text-gray-400">—</span>
-                              )}
-                              {entry.reversal_id && (
-                                <span className="block text-[9px] text-amber-600 mt-0.5 font-sans">{t("حركة عكس", "Reversal")}</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-center text-gray-700">
-                              {entry.counterparty.name ? (
-                                <span className="font-semibold text-xs">{entry.counterparty.name}</span>
-                              ) : (
-                                <span className="text-gray-400">—</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-center font-mono font-bold text-emerald-600">
-                              {entry.cash_in > 0 ? fmtH(entry.cash_in) : "—"}
-                            </td>
-                            <td className="px-3 py-3 text-center font-mono font-bold text-red-600">
-                              {entry.cash_out > 0 ? fmtH(entry.cash_out) : "—"}
-                            </td>
-                            <td className={`px-3 py-3 text-center font-mono font-bold ${balColor(entry.running_balance)}`}>
-                              {fmtH(entry.running_balance)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    );
+                  })()}
                   {custodyStatement && custodyStatement.pagination.totalPages > 1 && (
                     <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between text-xs">
                       <button

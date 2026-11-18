@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../client";
-import type { LookupRow } from "../types";
+import type { LookupRow, Page } from "../types";
 import type {
+  Employee,
   OperationEnumsCatalogue,
   RejectionReasonOption,
 } from "../types/company";
@@ -23,6 +24,8 @@ export function useLookup(type: LookupType, params?: Record<string, unknown>) {
 // Branch-scoped employee auto-fill by employee number (T04 §7).
 // Returns { empNumber, name }; 404s when unknown or in another branch.
 export interface EmployeeLookupResult {
+  id?: string;
+  employeeId?: string;
   empNumber: string;
   name: string;
 }
@@ -31,18 +34,71 @@ export function useBranchEmployeesLookup(
   branchId: string | null | undefined,
   empNumber?: string | null,
 ) {
+  const trimmed = empNumber?.trim() ?? "";
   return useQuery({
-    queryKey: ["lookups", "branch-employees", branchId, empNumber ?? ""] as const,
-    enabled: Boolean(branchId) && Boolean(empNumber),
+    queryKey: ["lookups", "branch-employees", branchId, trimmed] as const,
+    enabled: Boolean(branchId) && Boolean(trimmed),
     retry: false, // an unknown number → 404, don't hammer
     queryFn: async () => {
       const res = await api.get<EmployeeLookupResult>(
         `/company/me/branches/${branchId}/employees/lookup`,
-        { params: { empNumber } },
+        { params: { empNumber: trimmed } },
       );
       return res.data;
     },
     staleTime: 5 * 60_000,
+  });
+}
+
+export type BranchEmployeeNumberResolution =
+  | { status: "idle"; employee: null }
+  | { status: "resolved"; employee: { id: string; empNumber: string; name: string } }
+  | { status: "not_found"; employee: null }
+  | { status: "duplicate"; employee: null };
+
+export function resolveBranchEmployeeMatch(
+  employees: readonly Pick<Employee, "id" | "empNumber" | "name" | "status" | "branchId">[],
+  branchId: string | null | undefined,
+  empNumber: string | null | undefined,
+): BranchEmployeeNumberResolution {
+  const trimmed = empNumber?.trim() ?? "";
+  if (!branchId || !trimmed) return { status: "idle", employee: null };
+  const matches = employees.filter(
+    (emp) =>
+      emp.status === "active" &&
+      emp.empNumber.trim() === trimmed &&
+      (!emp.branchId || emp.branchId === branchId),
+  );
+  if (matches.length === 0) return { status: "not_found", employee: null };
+  if (matches.length > 1) return { status: "duplicate", employee: null };
+  const match = matches[0];
+  return {
+    status: "resolved",
+    employee: { id: match.id, empNumber: match.empNumber, name: match.name },
+  };
+}
+
+/**
+ * Branch-scoped employee resolution returning internal UUID + active name for
+ * shift shortage allocations (`POST /accountant/shifts/{id}/corrections`).
+ */
+export function useBranchEmployeeByNumber(
+  branchId: string | null | undefined,
+  empNumber?: string | null,
+) {
+  const trimmed = empNumber?.trim() ?? "";
+  return useQuery({
+    queryKey: ["lookups", "branch-employee-by-number", branchId, trimmed] as const,
+    enabled: Boolean(branchId) && trimmed.length > 0,
+    retry: false,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const res = await api.get<Page<Employee>>("/company/me/employees", {
+        params: { branchId, empNumber: trimmed, pageSize: 5 },
+      });
+      const rows = Array.isArray(res.data?.data) ? res.data.data : [];
+      return resolveBranchEmployeeMatch(rows, branchId, trimmed);
+    },
   });
 }
 

@@ -13,8 +13,8 @@ export type ShfAllocationOperation = {
   } | null;
 };
 
-export type ShfAllocationRow = { empNumber: string; amountSar: string };
-export type ShfAllocation = { empNumber: string; amountHalalas: number };
+export type ShfAllocationRow = { empNumber: string; amountSar: string; employeeId?: string };
+export type ShfAllocation = { empNumber: string; amountHalalas: number; employeeId?: string };
 
 const isShift = (op: ShfAllocationOperation) =>
   (op.module ?? op.moduleKey) === "shifts" && (op.moduleKey == null || op.moduleKey === "shifts");
@@ -57,7 +57,11 @@ export function prepareShfAllocations(rows: readonly ShfAllocationRow[], shortag
     const empNumber = row.empNumber.trim();
     const amountHalalas = parsePositiveSarHalalas(row.amountSar);
     if (!empNumber || amountHalalas === null) return null;
-    allocations.push({ empNumber, amountHalalas });
+    const item: ShfAllocation = { empNumber, amountHalalas };
+    if (row.employeeId?.trim()) {
+      item.employeeId = row.employeeId.trim();
+    }
+    allocations.push(item);
   }
   return allocations;
 }

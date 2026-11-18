@@ -61,3 +61,46 @@ export const hasEmployeeDebitWarning = (
 ): boolean => {
   return Boolean(statement?.hasDebitBalance ?? statement?.autoDeductFromSalary);
 };
+
+export interface DayCompletenessDisplayInput {
+  date: string;
+  pillLabelAr: string;
+  bannerAr: string;
+  requiredCount: number;
+  completedCount: number;
+  missingCount: number;
+  pillLabelEn?: string;
+  bannerEn?: string;
+}
+
+/** Localizes a sales day-completeness pill/header label to the active language. */
+export const formatDayCompletenessLabel = (
+  entry: DayCompletenessDisplayInput,
+  lang: DisplayLanguage,
+): string => {
+  if (lang === "ar") {
+    return entry.pillLabelAr || formatDateLong("ar", entry.date) || entry.date;
+  }
+  if (entry.pillLabelEn) return entry.pillLabelEn;
+  const parsed = new Date(`${entry.date.slice(0, 10)}T12:00:00Z`);
+  if (isNaN(parsed.getTime())) return entry.date;
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(parsed);
+};
+
+/** Localizes a sales day-completeness summary banner to the active language. */
+export const formatDayCompletenessBanner = (
+  entry: DayCompletenessDisplayInput,
+  lang: DisplayLanguage,
+): string => {
+  if (lang === "ar") return entry.bannerAr;
+  if (entry.bannerEn) return entry.bannerEn;
+  if (entry.missingCount > 0) {
+    return `${entry.completedCount} of ${entry.requiredCount} branches submitted · ${entry.missingCount} missing`;
+  }
+  return `All ${entry.requiredCount} branches submitted`;
+};
