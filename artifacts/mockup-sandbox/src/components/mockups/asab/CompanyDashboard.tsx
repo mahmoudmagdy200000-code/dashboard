@@ -12,6 +12,7 @@ import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRow
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT, HEAD_EXPENSE_EVIDENCE_HINT } from "./headReviewGuards";
 import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocationHalalas, runShfAllocationCorrection, type ShfAllocationRow } from "./shiftAllocationCorrection";
 import { hasEmployeeDebitWarning } from "./_shared/formatters";
+import { displayDigits } from "./_shared/displayDigits";
 import { ShiftReconciliationSummaryView } from "./ShiftReconciliationSummary.tsx";
 import { ShiftSalesOverview, ShiftSalesSection } from "./_pages/accountant/ShiftSalesSection";
 import { EmployeeClosedShiftSales, EmployeeShiftSalesTotal } from "./_pages/accountant/EmployeeClosedShiftSales";
@@ -1228,7 +1229,7 @@ function VarEmpRow({ branchId, row, onField, onRemove, onQuickFill, canRemove, d
 function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHead }:{
   op:COp; onApprove:()=>void; onReject:()=>void; onClarify?:()=>void; isPending:boolean; forHead:boolean;
 }) {
-  const { t } = useCLang();
+  const { t, lang } = useCLang();
   const detailQ = useSalesDetails(op.id);
   const recon = detailQ.reconciliation;
   const queryClient = useQueryClient();
@@ -1239,6 +1240,7 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
       financialDataReady: hasSalesReconciliationEvidence(detail?.reconciliation) };
   };
   const salesPolicy = getSalesActionPolicy(salesContext());
+  const fmtMoney = (h: number | null | undefined) => formatShiftHalalas(h, lang);
   const patchMut = usePatchSalesDetails();
   const assignMut = useAssignSalesVariance();
 
@@ -1322,16 +1324,16 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
   }
 
   const ChannelRow = ({ c }:{ c:typeof channels[number] }) => (
-    <div className={`flex items-center justify-between px-4 py-2.5 hover:bg-gray-50/60 ${c.status==="diff"?"bg-amber-50/40":""}`}>
-      <div className="flex items-center gap-2">
+    <div className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 hover:bg-gray-50/60 ${c.status==="diff"?"bg-amber-50/40":""}`}>
+      <div className="flex items-center gap-2 min-w-0">
         <span className="text-sm">{c.icon}</span><span className="text-xs text-gray-700">{c.labelAr}</span>
-        {c.diffHalalas != null && c.diffHalalas!==0 && <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold">{c.statusLabelAr} {c.diffHalalas>0?"+":""}{fmtH(c.diffHalalas)}</span>}
+        {c.diffHalalas != null && c.diffHalalas!==0 && <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md font-bold">{c.statusLabelAr} {c.diffHalalas>0?"+":""}{fmtMoney(c.diffHalalas)}</span>}
       </div>
       {editMode && salesPolicy.edit ? (
         <input type="number" value={draft[c.key] ?? String(c.actualAmountHalalas/100)}
           onChange={e=>setDraft(d=>({...d,[c.key]:e.target.value}))}
           className="w-32 text-center font-mono font-semibold border-2 border-purple-300 rounded-lg px-2 py-1 text-xs bg-purple-50 focus:outline-none"/>
-      ) : <span className="font-mono font-semibold text-gray-800 text-xs">{fmtH(c.actualAmountHalalas)} ر.س</span>}
+      ) : <span className="font-mono font-semibold text-gray-800 text-xs whitespace-nowrap"><bdi>{fmtMoney(c.actualAmountHalalas)}</bdi> {t("ر.س","SAR")}</span>}
     </div>
   );
 
@@ -1353,12 +1355,12 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
       {recon && !salesPolicy.pkg6 && !hasSalesReconciliationEvidence(recon) && <p role="note" className="text-xs text-gray-500">{t("بيانات التسوية غير مكتملة — التعديل غير متاح","Reconciliation data is incomplete — editing is unavailable")}</p>}
       {/* Reconciliation Panel */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-indigo-50/40">
+        <div className="px-4 py-3 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2 bg-indigo-50/40">
           <p className="text-xs font-bold text-gray-700">{t("تسوية المبيعات","Sales Reconciliation")}</p>
           {salesPolicy.edit && recon && (
             <button onClick={()=> editMode ? saveEdit() : beginEdit()} disabled={patchMut.isPending}
               className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border transition-all ${editMode?"bg-purple-600 text-white border-purple-600":"bg-white text-purple-600 border-purple-200 hover:bg-purple-50"}`}>
-              <Edit3 size={10}/> {editMode?(patchMut.isPending?"جارٍ الحفظ…":"💾 حفظ"):"تعديل الأرقام"}
+              <Edit3 size={10}/> {editMode?(patchMut.isPending?t("جارٍ الحفظ…","Saving…"):t("💾 حفظ","💾 Save")):t("تعديل الأرقام","Edit breakdown")}
             </button>
           )}
           {isLocked && <span className="flex items-center gap-1 text-[11px] text-slate-400"><Lock size={11}/> {t("مقفل","Locked")}</span>}
@@ -1378,13 +1380,13 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
         {recon && (
           <div className="divide-y divide-gray-100">
             {/* إجمالي المبيعات (locked branch total) */}
-            <div className="flex items-center justify-between px-4 py-3 bg-indigo-50/60">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-indigo-50/60">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-indigo-500"/>
                 <span className="text-xs font-bold text-indigo-900">{t("إجمالي المبيعات","Total Sales")}</span>
                 <span className="text-[10px] bg-indigo-100 text-indigo-500 px-1.5 py-0.5 rounded-md">{t("من رفع مدير الفرع — مقفل","From branch manager — locked")}</span>
               </div>
-              <span className="font-mono font-black text-indigo-800 text-sm">{fmtH(totals?.expectedTotalHalalas)} ر.س</span>
+              <span className="font-mono font-black text-indigo-800 text-sm whitespace-nowrap"><bdi>{fmtMoney(totals?.expectedTotalHalalas)}</bdi> {t("ر.س","SAR")}</span>
             </div>
 
             {/* Core channels */}
@@ -1409,12 +1411,12 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
 
             {/* تحميل الفرق على موظفين — يتاح فقط في حالة العجز وليس الفائض (ACC-F04) */}
             {isShortage && salesPolicy.assign && (
-              <div className="mx-4 my-2 bg-red-50 border border-red-200 rounded-xl overflow-hidden">
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-red-100/60 border-b border-red-200">
+              <div className="mx-3 sm:mx-4 my-2 bg-red-50 border border-red-200 rounded-xl overflow-hidden">
+                <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 bg-red-100/60 border-b border-red-200">
                   <AlertTriangle size={13} className="text-red-600 flex-shrink-0"/>
-                  <p className="text-xs font-bold text-red-800">{t("تحميل الفرق على موظفين","Allocate variance to employees")} — {t("العجز","Shortage")}: <span className="font-mono">{fmtH(Math.abs(varianceH))} ر.س</span></p>
-                  <span className={`mr-auto text-[10px] font-bold px-2 py-0.5 rounded-lg ${leftH != null && leftH<=0?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}`}>
-                    {leftH != null && leftH<=0?"✓ محمَّل بالكامل":`${t("متبقي","Remaining")} ${fmtH(leftH)} ر.س`}
+                  <p className="text-xs font-bold text-red-800">{t("تحميل الفرق على موظفين","Allocate variance to employees")} — {t("العجز","Shortage")}: <span className="font-mono"><bdi>{fmtMoney(Math.abs(varianceH))}</bdi> {t("ر.س","SAR")}</span></p>
+                  <span className={`ms-auto text-[10px] font-bold px-2 py-0.5 rounded-lg ${leftH != null && leftH<=0?"bg-emerald-100 text-emerald-700":"bg-red-100 text-red-700"}`}>
+                    {leftH != null && leftH<=0?t("✓ محمَّل بالكامل","✓ Fully allocated"):`${t("متبقي","Remaining")} ${fmtMoney(leftH)} ${t("ر.س","SAR")}`}
                   </span>
                 </div>
                 <div className="p-3 space-y-2">
@@ -1427,7 +1429,7 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
                   <input value={assignNotes} onChange={e=>setAssignNotes(e.target.value)}
                     placeholder={t("ملاحظات (اختياري)","Notes (optional)")}
                     className="w-full text-[10px] border border-red-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:border-red-400"/>
-                  <div className="flex items-center justify-between pt-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                     <button onClick={()=>setVarEmps(p=>[...p,{empId:"",amount:""}])} className="flex items-center gap-1 text-[10px] text-red-600 hover:underline font-semibold"><Plus size={10}/> {t("إضافة موظف آخر","Add another employee")}</button>
                     <Btn size="sm" variant="success" onClick={confirmAssign} disabled={assignMut.isPending || leftH == null || leftH>0}>
                       <CheckCircle2 size={10}/> {assignMut.isPending?t("جارٍ التحميل…","Uploading…"):t("تأكيد التحميل","Confirm Upload")}
@@ -1438,21 +1440,21 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
             )}
 
             {isSurplus && (
-              <div className="mx-4 my-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2">
+              <div className="mx-3 sm:mx-4 my-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2">
                 <CheckCircle2 size={13} className="text-emerald-600 flex-shrink-0"/>
-                <p className="text-xs font-bold text-emerald-800">{t("فائض في المبيعات — لا يتم تحميله كمديونية على الموظفين وفق القواعد","Sales surplus — not allocated as employee liability per rules")}: <span className="font-mono">+{fmtH(varianceH)} {t("ر.س","SAR")}</span></p>
+                <p className="text-xs font-bold text-emerald-800">{t("فائض في المبيعات — لا يتم تحميله كمديونية على الموظفين وفق القواعد","Sales surplus — not allocated as employee liability per rules")}: <span className="font-mono">+<bdi>{fmtMoney(varianceH)}</bdi> {t("ر.س","SAR")}</span></p>
               </div>
             )}
 
             {/* إجمالي التحصيل */}
-            <div className={`flex items-center justify-between px-4 py-3 font-bold border-t-2 ${varianceH===0?"bg-emerald-50/70 border-emerald-200":hasVariance?"bg-red-50/70 border-red-200":"bg-gray-50 border-gray-200"}`}>
+            <div className={`flex flex-wrap items-center justify-between gap-2 px-4 py-3 font-bold border-t-2 ${varianceH===0?"bg-emerald-50/70 border-emerald-200":hasVariance?"bg-red-50/70 border-red-200":"bg-gray-50 border-gray-200"}`}>
               <span className={`text-xs ${varianceH===0?"text-emerald-800":hasVariance?"text-red-800":"text-gray-500"}`}>{t("إجمالي التحصيل","Total Collection")}</span>
-              <span className={`font-mono text-sm ${varianceH===0?"text-emerald-700":hasVariance?"text-red-700":"text-gray-500"}`}>{fmtH(totals?.totalCollectionHalalas)} ر.س</span>
+              <span className={`font-mono text-sm whitespace-nowrap ${varianceH===0?"text-emerald-700":hasVariance?"text-red-700":"text-gray-500"}`}><bdi>{fmtMoney(totals?.totalCollectionHalalas)}</bdi> {t("ر.س","SAR")}</span>
             </div>
             {varianceH == null ? <p className="text-xs text-gray-400 px-4 py-2.5">{t("الفرق غير متاح —","Variance unavailable —")}</p> : varianceH!==0 ? (
-              <div className="flex items-center justify-between px-4 py-2.5 bg-red-100 border-t border-red-200">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-red-100 border-t border-red-200">
                 <div className="flex items-center gap-2"><AlertTriangle size={12} className="text-red-600"/><span className="text-xs font-bold text-red-800">{totals?.statusLabelAr ?? t("يوجد فرق","Variance")}</span></div>
-                <span className="font-mono font-black text-red-800 text-sm">{fmtH(varianceH)} ر.س</span>
+                <span className="font-mono font-black text-red-800 text-sm whitespace-nowrap"><bdi>{fmtMoney(varianceH)}</bdi> {t("ر.س","SAR")}</span>
               </div>
             ) : (
               <div className="flex items-center justify-center px-4 py-2.5 bg-emerald-50">
@@ -1466,14 +1468,43 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
       {/* Attachments */}
       <OperationAttachmentsPanel operationId={op.id}/>
 
-      {/* Action buttons */}
-      {isPending && !forHead && (
-        <div className="flex gap-2 justify-end">
-          {onClarify && (
-            <button onClick={e=>{e.stopPropagation();onClarify();}} className="px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold hover:bg-amber-100">❔ {t("طلب توضيح","Request Clarification")}</button>
+      {/* Action buttons + clear disabled explanations */}
+      {!forHead && (
+        <div className="space-y-2">
+          {isPending ? (
+            <div className="flex flex-wrap gap-2 justify-end">
+              {onClarify && (
+                <button type="button" onClick={e=>{e.stopPropagation();onClarify();}} className="min-h-[36px] px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold hover:bg-amber-100 whitespace-nowrap">
+                  ❔ {t("طلب توضيح","Request Clarification")}
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={!salesPolicy.return}
+                onClick={e=>{e.stopPropagation();runSalesAction(salesContext, "return", onReject);}}
+                title={!salesPolicy.return ? t("الرفض/الإرجاع معطل لهذا البيان (PKG-6 أو مقفل)","Reject/Return disabled for this statement (PKG-6 or locked)") : t("رفض","Reject")}
+                className="min-h-[36px] px-3.5 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold hover:bg-red-100 disabled:opacity-45 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                ✕ {t("رفض / إرجاع","Reject / Return")}
+              </button>
+              <button type="button" onClick={e=>{e.stopPropagation();onApprove();}} className="min-h-[36px] px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 whitespace-nowrap">
+                ✓ {t("موافقة وإرسال لرئيس الحسابات","Approve & Send to Head")}
+              </button>
+            </div>
+          ) : (
+            <p role="note" className="text-[11px] text-gray-600 bg-gray-100 border border-gray-200 rounded-lg px-3 py-2">
+              {isLocked
+                ? t("الإجراءات (الاعتماد / الإرجاع / طلب الإيضاح) مقفلة لأن البيان معتمد نهائياً.","Actions (Approve / Return / Clarify) are locked because this statement is final-approved.")
+                : op.status === "approved"
+                ? t("الاعتماد والإرجاع مقفلان لأن البيان بانتظار مراجعة رئيس الحسابات.","Approve and Return are locked while awaiting Head Accountant review.")
+                : t("البيان مرفوض حالياً بانتظار إعادة الرفع من الفرع.","Statement is currently rejected awaiting branch resubmission.")}
+            </p>
           )}
-          {salesPolicy.return && <button onClick={e=>{e.stopPropagation();runSalesAction(salesContext, "return", onReject);}} className="px-4 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold hover:bg-red-100">✕ {t("رفض","Reject")}</button>}
-          <button onClick={e=>{e.stopPropagation();onApprove();}} className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600">✓ {t("موافقة — إرسال لرئيس الحسابات","Approve — send to head")}</button>
+          {isPending && !salesPolicy.return && salesPolicy.pkg6 && (
+            <p role="note" className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+              {t("الإرجاع المباشر لبيان اليوم معطّل وفق PKG-6؛ أرجِع الوردية الفردية من قسم الورديات إذا لزم التعديل.","Direct return on workday summary is disabled per PKG-6; return the individual cashier shift if changes are needed.")}
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -2304,24 +2335,39 @@ function ShiftOpPanel({ op, forHead, detail, loading, error }:{ op:COp; forHead:
   );
 }
 
-function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle, forHead=false, actionsPending=false }:{
+export function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle, forHead=false, actionsPending=false }:{
   op:COp; onApprove:()=>void; onReject:()=>void; onClarify?:()=>void; onView:()=>void;
   expanded?:boolean; onToggle?:()=>void; forHead?:boolean; actionsPending?:boolean;
 }) {
-  const { t } = useCLang();
+  const { t, lang } = useCLang();
   const detailQ = useOperation(expanded && (op.module === "sales" || op.module === "shifts") ? op.id : null);
   const queryClient = useQueryClient();
+  const currentDetail = queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detailQ.data;
   const salesContext = () => ({ operation: op, role: forHead ? "head" : "accountant",
-    detail: queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detailQ.data });
+    detail: currentDetail });
   const salesPolicy = getSalesActionPolicy(salesContext());
-  const shiftPolicy = getShfReviewPolicy(op, forHead ? "head" : "accountant",
-    queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detailQ.data);
-  const headPolicy = getHeadReviewPolicy(op, forHead ? "head" : null,
-    queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detailQ.data);
+  const shiftPolicy = getShfReviewPolicy(op, forHead ? "head" : "accountant", currentDetail);
+  const headPolicy = getHeadReviewPolicy(op, forHead ? "head" : null, currentDetail);
   const isPending = op.status === "pending";
   const isApproved = op.status === "approved";
   const isLocked = op.status === "final-approved";
   const isRejected = op.status === "rejected";
+  const fmtSarLang = (sar: number | null | undefined) => sar == null ? "—" : formatShiftHalalas(Math.round(sar * 100), lang);
+  const fmtHalLang = (h: number | null | undefined) => formatShiftHalalas(h, lang);
+  const shiftGroup = op.module === "shifts" ? getShfReviewGroup(op) : null;
+  const shiftActionBlockReason = op.module !== "shifts" || forHead ? null
+    : shiftGroup === "head_returned"
+    ? t("مُعادة من رئيس الحسابات: الاعتماد وطلب الإيضاح معطلان؛ المتاح حاليًا هو الإرجاع لمدير الفرع.", "Returned by Head Accountant: Approve and Clarification are disabled; only Return to Branch Manager is available.")
+    : shiftGroup === "pending_unknown"
+    ? t("مرحلة المراجعة غير متاحة للمحاسب — الإجراءات مقفلة للقراءة فقط.", "Current review stage is unavailable to accountant — actions disabled.")
+    : shiftGroup === "head_review"
+    ? t("التقرير بانتظار مراجعة رئيس الحسابات — إجراءات المحاسب مقفلة.", "Report is awaiting Head Accountant review — accountant actions locked.")
+    : shiftGroup === "final_approved"
+    ? t("التقرير معتمد نهائيًا ومقفل — جميع الإجراءات معطلة.", "Report is final-approved and locked — all actions disabled.")
+    : shiftGroup === "manager_returned"
+    ? t("التقرير مُرجَع لمدير الفرع للتصحيح — بانتظار إعادة الرفع.", "Report returned to Branch Manager for correction — awaiting resubmission.")
+    : null;
+  const enModLabel = ({ sales:"Sales", expenses:"Expenses", purchases:"Purchases", inventory:"Inventory", assets:"Fixed Assets", shifts:"Shifts", employees:"Employees", cash:"Cash Custody", waste:"Waste" } as Record<string,string>)[op.module] ?? op.module;
   return (
     <div className={`border-b border-gray-50 last:border-0
       ${op.match==="diff"?"border-r-4 border-r-red-400":op.match==="review"?"border-r-4 border-r-amber-400":""}
@@ -2334,11 +2380,11 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
             <div className="w-1.5 h-4 rounded-full flex-shrink-0" style={{background:op.brandColor}}/>
             <span className="font-bold text-gray-800 text-sm break-words">{op.branch}</span>
             <Badge className="bg-gray-100 text-gray-600 text-[10px]">{op.brandName}</Badge>
-            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-100">{op.moduleLabel}</span>
+            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-100">{t(op.moduleLabel, enModLabel)}</span>
           </div>
           {op.amount != null && op.amount>0 && (
             <div className="font-mono font-extrabold text-gray-900 text-sm flex-shrink-0 tabular-nums whitespace-nowrap pt-0.5">
-              {fmt(op.amount)} <span className="text-xs font-sans font-normal text-gray-600">{t("ر.س","SAR")}</span>
+              <bdi>{fmtSarLang(op.amount)}</bdi> <span className="text-xs font-sans font-normal text-gray-600">{t("ر.س","SAR")}</span>
             </div>
           )}
         </div>
@@ -2356,7 +2402,12 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
           <div className="hidden lg:flex items-center gap-1.5 flex-wrap">
             <span className="font-semibold text-gray-800 text-sm">{op.branch}</span>
             <Badge className="bg-gray-100 text-gray-600 text-[10px]">{op.brandName}</Badge>
-            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-100">{op.moduleLabel}</span>
+            <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-100">{t(op.moduleLabel, enModLabel)}</span>
+            {op.origin === "mobile" && (
+              <span className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                {t("تطبيق الفرع","Branch app")}
+              </span>
+            )}
             <Badge className={`text-[10px] border ${MATCH_CFG[op.match].cls}`}>
               <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${MATCH_CFG[op.match].dot}`}/>
               {t(MATCH_CFG[op.match].label, EN_MATCH_CD[op.match])}
@@ -2371,6 +2422,11 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
 
           {/* Mobile/Tablet Badges Row */}
           <div className="flex lg:hidden items-center gap-1.5 flex-wrap">
+            {op.origin === "mobile" && (
+              <span className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                {t("تطبيق الفرع","Branch app")}
+              </span>
+            )}
             <Badge className={`text-[10px] border ${MATCH_CFG[op.match].cls}`}>
               <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${MATCH_CFG[op.match].dot}`}/>
               {t(MATCH_CFG[op.match].label, EN_MATCH_CD[op.match])}
@@ -2389,23 +2445,23 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
             <span className="lg:hidden text-gray-300">·</span>
             <span>{op.submittedBy}</span>
             <span>⏰ {op.timeAgo}</span>
-            <span className="flex items-center gap-0.5"><Paperclip size={9}/> {op.attachments} {t("مرفق","attach.")}</span>
+            <span className="flex items-center gap-0.5"><Paperclip size={9}/> {displayDigits(String(op.attachments), lang)} {t("مرفق","attach.")}</span>
           </div>
 
           {/* Sales matching breakdown (T04 §8) — cash/card/apps + collected/variance */}
           {op.module==="sales" && (
             <div className="flex items-center gap-2 mt-1 flex-wrap text-[10px]">
               {op.salesBreakdown ? (<>
-                <span className="text-gray-500">💵 {t("نقدي","Cash")}: <span className="font-mono text-gray-700">{fmt(op.salesBreakdown.cashHalalas/100)}</span></span>
-                <span className="text-gray-500">🏦 {t("كارت","Card")}: <span className="font-mono text-gray-700">{fmt(op.salesBreakdown.cardHalalas/100)}</span></span>
-                <span className="text-gray-500">🛵 {t("تطبيقات","Apps")}: <span className="font-mono text-gray-700">{fmt(op.salesBreakdown.appsHalalas/100)}</span></span>
+                <span className="text-gray-500">💵 {t("نقدي","Cash")}: <span className="font-mono text-gray-700"><bdi>{fmtHalLang(op.salesBreakdown.cashHalalas)}</bdi></span></span>
+                <span className="text-gray-500">🏦 {t("كارت","Card")}: <span className="font-mono text-gray-700"><bdi>{fmtHalLang(op.salesBreakdown.cardHalalas)}</bdi></span></span>
+                <span className="text-gray-500">🛵 {t("تطبيقات","Apps")}: <span className="font-mono text-gray-700"><bdi>{fmtHalLang(op.salesBreakdown.appsHalalas)}</bdi></span></span>
                 <span className="text-gray-400">·</span>
-                <span className="text-gray-500">{t("محصّل","Collected")}: <span className="font-mono text-gray-700">{fmt(op.salesBreakdown.collectedHalalas/100)}</span></span>
+                <span className="text-gray-500">{t("محصّل","Collected")}: <span className="font-mono text-gray-700"><bdi>{fmtHalLang(op.salesBreakdown.collectedHalalas)}</bdi></span></span>
                 <span className={`font-mono font-bold ${op.salesBreakdown.varianceHalalas===0?"text-emerald-600":"text-red-600"}`}>
-                  {op.salesBreakdown.varianceHalalas===0?"✓ 0":`${op.salesBreakdown.varianceHalalas>0?"+":""}${fmt(op.salesBreakdown.varianceHalalas/100)}`}
+                  {op.salesBreakdown.varianceHalalas===0?"✓ 0":`${op.salesBreakdown.varianceHalalas>0?"+":""}${fmtHalLang(op.salesBreakdown.varianceHalalas)}`}
                 </span>
               </>) : (
-                <span className="text-gray-300">{t("لم تتم التسوية بعد — لا يوجد تفصيل","Not reconciled — no breakdown")} «—»</span>
+                <span className="text-gray-400">{t("افتح «عرض» لمعاينة تفاصيل التسوية","Open View to inspect reconciliation breakdown")}</span>
               )}
             </div>
           )}
@@ -2413,19 +2469,37 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
 
         {/* Desktop Amount */}
         <div className="hidden lg:block text-left flex-shrink-0">
-          {op.amount != null && op.amount>0 && <p className="font-mono font-bold text-gray-800 text-sm whitespace-nowrap">{fmt(op.amount)} {t("ر.س","SAR")}</p>}
+          {op.amount != null && op.amount>0 && <p className="font-mono font-bold text-gray-800 text-sm whitespace-nowrap"><bdi>{fmtSarLang(op.amount)}</bdi> {t("ر.س","SAR")}</p>}
         </div>
 
         {/* Action Buttons: Responsive touch targets, clear alignment */}
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100/80 lg:border-0 lg:pt-0 w-full lg:w-auto flex-shrink-0" onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100/80 lg:border-0 lg:pt-0 w-full lg:w-auto flex-shrink-0 flex-wrap" onClick={e=>e.stopPropagation()}>
           {!forHead && isPending && (
             op.module === "expenses" ? (
               <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg">
                 {t("اعتماد المالك (EXP-06)","Owner approval (EXP-06)")}
               </span>
             ) : <>
-              {(op.module !== "shifts" || shiftPolicy.approve) && <button onClick={onApprove} title={t("موافقة","Approve")} className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center transition-all"><ThumbsUp size={13}/></button>}
-              {(op.module === "shifts" ? shiftPolicy.returnToManager : salesPolicy.return) && <button onClick={op.module === "shifts" ? onReject : ()=>runSalesAction(salesContext, "return", onReject)} title={op.module === "shifts" ? t("إرجاع لمدير الفرع","Return to branch manager") : t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all"><ThumbsDown size={13}/></button>}
+              <button
+                type="button"
+                disabled={op.module === "shifts" && !shiftPolicy.approve}
+                onClick={onApprove}
+                title={op.module === "shifts" && !shiftPolicy.approve ? (shiftActionBlockReason ?? t("الاعتماد معطل","Approve disabled")) : t("موافقة","Approve")}
+                aria-label={t("موافقة","Approve")}
+                className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all"
+              ><ThumbsUp size={13}/></button>
+              <button
+                type="button"
+                disabled={op.module === "shifts" ? !shiftPolicy.returnToManager : !salesPolicy.return}
+                onClick={op.module === "shifts" ? onReject : ()=>runSalesAction(salesContext, "return", onReject)}
+                title={
+                  (op.module === "shifts" ? !shiftPolicy.returnToManager : !salesPolicy.return)
+                    ? (salesPolicy.pkg6 ? t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en) : (shiftActionBlockReason ?? t("الإرجاع معطل","Return disabled")))
+                    : (op.module === "shifts" ? t("إرجاع لمدير الفرع","Return to branch manager") : t("رفض","Reject"))
+                }
+                aria-label={op.module === "shifts" ? t("إرجاع لمدير الفرع","Return to branch manager") : t("رفض","Reject")}
+                className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-all"
+              ><ThumbsDown size={13}/></button>
             </>
           )}
           {forHead && isApproved && (
@@ -2438,7 +2512,7 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
               {headPolicy.returnForReview && salesPolicy.return && <button disabled={actionsPending} onClick={()=>runSalesAction(salesContext, "return", onReject)} title={op.module === "shifts" ? t("إعادة للمحاسب للتعديل","Return to accountant for changes") : t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all disabled:opacity-50"><ThumbsDown size={13}/></button>}
             </>
           )}
-          {isLocked && <span className="flex items-center gap-1 text-xs text-slate-400 bg-slate-100 border border-slate-200 px-2 py-1.5 rounded-lg"><Lock size={11}/> {t("مُغلق","Locked")}</span>}
+          {isLocked && <span className="flex items-center gap-1 text-xs text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1.5 rounded-lg"><Lock size={11}/> {t("مُغلق","Locked")}</span>}
           <button
             type="button"
             className="h-8 px-2.5 rounded-lg bg-purple-50 border border-purple-200 text-purple-700 hover:bg-purple-100 flex items-center justify-center gap-1 text-xs font-semibold transition-all"
@@ -2452,13 +2526,54 @@ function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, onToggle,
         </div>
       </div>
       {salesPolicy.pkg6 && <p className="px-5 pb-2 text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</p>}
+      {shiftActionBlockReason && <p className="px-5 pb-2 text-xs text-amber-800">{shiftActionBlockReason}</p>}
       {forHead && headPolicy.blockedReason === "day_evidence_missing" && <p className="px-5 pb-2 text-xs text-amber-700">{t(HEAD_DAY_EVIDENCE_HINT.ar, HEAD_DAY_EVIDENCE_HINT.en)}</p>}
       {forHead && headPolicy.blockedReason === "expense_owner_decision_required" && <p className="px-5 pb-2 text-xs text-amber-700">{t("قرار اعتماد المصروف محجوز للمالك أو مدير العلامة التجارية وفق القاعدة EXP-06","Expense approval decision is reserved for the brand owner or manager per rule EXP-06")}</p>}
       {expanded && (
-        <div className="border-t border-gray-100 bg-gray-50/60 px-5 py-4 space-y-4">
+        <div className="border-t border-gray-100 bg-gray-50/60 px-4 sm:px-5 py-4 space-y-4">
           {op.module==="sales" && <SalesReconPanel op={op} onApprove={onApprove} onReject={onReject} onClarify={onClarify} isPending={isPending} forHead={forHead}/>}
-          {op.module==="shifts" && <ShiftOpPanel detail={detailQ.data} op={op} forHead={forHead} loading={detailQ.isLoading} error={detailQ.isError}/>}
-          {op.module==="shifts" && !forHead && shiftPolicy.clarify && onClarify && <button onClick={onClarify} className="text-xs font-semibold text-purple-700 underline">{t("طلب إيضاح","Request clarification")}</button>}
+          {op.module==="shifts" && (
+            <>
+              <ShiftOpPanel detail={detailQ.data} op={op} forHead={forHead} loading={detailQ.isLoading} error={detailQ.isError}/>
+              {!forHead && (
+                <div className="bg-white rounded-xl border border-gray-200 p-3 space-y-2" data-testid="shift-review-action-bar">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    {onClarify && (
+                      <button
+                        type="button"
+                        disabled={!shiftPolicy.clarify}
+                        onClick={onClarify}
+                        className="min-h-[36px] px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold hover:bg-amber-100 disabled:opacity-45 disabled:cursor-not-allowed whitespace-nowrap"
+                      >
+                        ❔ {t("طلب إيضاح","Request clarification")}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={!shiftPolicy.returnToManager}
+                      onClick={onReject}
+                      className="min-h-[36px] px-3 py-1.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold hover:bg-red-100 disabled:opacity-45 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      ✕ {t("إرجاع لمدير الفرع","Return to branch manager")}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!shiftPolicy.approve}
+                      onClick={onApprove}
+                      className="min-h-[36px] px-4 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 disabled:opacity-45 disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      ✓ {t("موافقة وإرسال لرئيس الحسابات","Approve & send to head")}
+                    </button>
+                  </div>
+                  {shiftActionBlockReason && (
+                    <p role="note" className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                      {shiftActionBlockReason}
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
           {op.module==="expenses" && (
             forHead ? (
               <div className="bg-amber-50/60 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
@@ -5236,8 +5351,8 @@ function AccDashboard({ navigate, ops }:{ navigate:(p:string)=>void; ops:COp[] }
 // ═══════════════════════════════════════════════════
 // ACCOUNTANT — SALES MODULE (Full Featured)
 // ═══════════════════════════════════════════════════
-function AccCompanySales({ ops, approve, reject, requestClarification, bulkApprove, onOpenReport }:{ ops:COp[]; approve:(id:string)=>void; reject:(id:string)=>void; requestClarification?:(id:string)=>void; bulkApprove:(ids:string[])=>void; onOpenReport?:(shiftId:string, opId?:string)=>void }) {
-  const { t, dir } = useCLang();
+export function AccCompanySales({ ops, approve, reject, requestClarification, bulkApprove, onOpenReport }:{ ops:COp[]; approve:(id:string)=>void; reject:(id:string)=>void; requestClarification?:(id:string)=>void; bulkApprove:(ids:string[])=>void; onOpenReport?:(shiftId:string, opId?:string)=>void }) {
+  const { t, dir, lang } = useCLang();
   const queryClient = useQueryClient();
   const exportOpsMut = useExportOperations();
   const [branchFilter, setBranchFilter] = useState("");
@@ -5298,14 +5413,49 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
   const clearFilters = () => { setBranchFilter(""); setStatusFilter(""); setMatchFilter(""); setBrandFilter("الكل"); setDateFilter("الكل"); setSearch(""); };
   const hasFilters = branchFilter||statusFilter||matchFilter||brandFilter!=="الكل"||dateFilter!=="الكل"||search;
   const totalShown = sumCOpAmounts(shown.filter(o=>o.status!=="rejected"));
+  const stmtTotalCount = mOps.length;
+  const stmtPendingCount = mOps.filter(o => o.status === "pending").length;
+  const stmtApprovedCount = mOps.filter(o => o.status === "approved" || o.status === "final-approved").length;
+  const stmtRejectedCount = mOps.filter(o => o.status === "rejected").length;
 
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-gray-800">{t("موديول المبيعات","Sales Module")}</h2><p className="text-gray-400 text-sm mt-0.5">{shownPending.length} {t("بيان معلق بانتظار مراجعتك (ضمن النطاق المحدد)","pending statements awaiting your review (within active scope)")}</p></div>
-        {bulkSalesIds.length>0 && <Btn variant="success" size="sm" onClick={()=>bulkApprove(bulkSalesIds)}>✓ {t("موافقة على الكل","Approve All")} ({bulkSalesIds.length})</Btn>}
-        {shownPending.some(isPkg6SalesReport) && <p className="text-xs text-amber-700">{t("تقارير اليوم تُعتمد فرديًا","Day reports are approved individually")}</p>}
+      {/* 1. Header & Approve All (Screenshot 06) */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">{t("موديول المبيعات","Sales Module")}</h2>
+          <p className="text-gray-400 text-sm mt-0.5">{displayDigits(String(shownPending.length), lang)} {t("بيان معلق بانتظار مراجعتك (ضمن النطاق المحدد)","pending statements awaiting your review (within active scope)")}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {bulkSalesIds.length>0 && <Btn variant="success" size="sm" onClick={()=>bulkApprove(bulkSalesIds)}>✓ {t("موافقة على الكل","Approve All")} ({displayDigits(String(bulkSalesIds.length), lang)})</Btn>}
+          {shownPending.some(isPkg6SalesReport) && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">{t("تقارير اليوم تُعتمد فرديًا (PKG-6)","Day reports are approved individually (PKG-6)")}</p>}
+        </div>
       </div>
+
+      {/* 2. Statements Summary Strip (Screenshot 06) + Shift Sales Overview */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" data-testid="sales-statements-summary">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3.5">
+          <p className="text-[11px] font-semibold text-gray-500">{t("إجمالي البيانات المرفوعة","Total Uploaded Statements")}</p>
+          <p className="mt-1 font-mono font-black text-xl text-gray-900">{displayDigits(String(stmtTotalCount), lang)}</p>
+          <p className="text-[10px] text-gray-400">{t("كل الحالات","All statuses")}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-amber-100 shadow-sm p-3.5">
+          <p className="text-[11px] font-semibold text-amber-700">{t("قيد المراجعة","Under Review")}</p>
+          <p className="mt-1 font-mono font-black text-xl text-amber-700">{displayDigits(String(stmtPendingCount), lang)}</p>
+          <p className="text-[10px] text-gray-400">{t("رُفعت من الفروع","Submitted by branches")}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-emerald-100 shadow-sm p-3.5">
+          <p className="text-[11px] font-semibold text-emerald-700">{t("تمت الموافقة","Approved")}</p>
+          <p className="mt-1 font-mono font-black text-xl text-emerald-700">{displayDigits(String(stmtApprovedCount), lang)}</p>
+          <p className="text-[10px] text-gray-400">{t("موافق + معتمد نهائياً","Approved + final")}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-red-100 shadow-sm p-3.5">
+          <p className="text-[11px] font-semibold text-red-700">{t("مرفوضة","Rejected")}</p>
+          <p className="mt-1 font-mono font-black text-xl text-red-600">{displayDigits(String(stmtRejectedCount), lang)}</p>
+          <p className="text-[10px] text-gray-400">{t("تحتاج إعادة رفع","Needs re-upload")}</p>
+        </div>
+      </div>
+
       <ShiftSalesOverview filterBranch={branchFilter} filterStatus={statusFilter} filterDate={salesDate} filterSearch={search} />
 
       {/* Variance branches banner (ACC-1.5) */}
@@ -5318,28 +5468,24 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
           <div className="flex flex-wrap gap-2">
             {kpis.varianceBranches.map(vb=>(
               <span key={vb.branchId} className="text-[11px] bg-white border border-red-200 text-red-700 px-2 py-1 rounded-lg font-semibold">
-                {vb.name}: <span className="font-mono">{fmtH(vb.varianceHalalas)} ر.س</span>
+                {vb.name}: <span className="font-mono"><bdi>{formatShiftHalalas(vb.varianceHalalas, lang)}</bdi> {t("ر.س","SAR")}</span>
               </span>
             ))}
           </div>
         </div>
       )}
 
-      <ShiftSalesSection
-        operations={ops as any}
-        filterBranch={branchFilter}
-        filterStatus={statusFilter}
-        filterDate={salesDate}
-        filterSearch={search}
-        onOpenReport={onOpenReport}
-      />
-
+      {/* 3. Search & Filters Card (Screenshots 04 & 06) */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3" dir={dir}>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-xs font-bold text-gray-800">{t("فلاتر البحث","Search & Filters")}</h3>
+          {hasFilters && <button onClick={clearFilters} className="flex items-center gap-1 text-xs text-purple-600 hover:underline"><RotateCcw size={10}/> {t("مسح الفلاتر","Clear filters")}</button>}
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={()=>setDateFilter("الكل")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${dateFilter==="الكل"?"bg-purple-600 text-white border-purple-600":"bg-white text-gray-600 border-gray-200 hover:border-purple-300"}`}>
             {t("الكل","All")}
-            <span className={`text-[9px] px-1 rounded-full ${dateFilter==="الكل"?"bg-purple-500 text-purple-100":"bg-gray-100 text-gray-500"}`}>{mOps.length}</span>
+            <span className={`text-[9px] px-1 rounded-full ${dateFilter==="الكل"?"bg-purple-500 text-purple-100":"bg-gray-100 text-gray-500"}`}>{displayDigits(String(mOps.length), lang)}</span>
           </button>
           {dayRows.map(d=>(
             <button key={d.date} onClick={()=>setDateFilter(d.date)}
@@ -5351,42 +5497,41 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع","Branch")}</label>
-            <select value={branchFilter} onChange={e=>setBranchFilter(e.target.value)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
+            <select value={branchFilter} onChange={e=>setBranchFilter(e.target.value)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2 bg-white">
               <option value="">{t("الكل","All")}</option>
               {branchOptions.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الحالة","Status")}</label>
-            <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value as any)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
+            <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value as any)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2 bg-white">
               <option value="">{t("الكل","All")}</option>
               {(Object.entries(STATUS_CFG) as [COpStatus,any][]).map(([k,v])=><option key={k} value={k}>{t(v.label, EN_STATUS_CD[k].label)}</option>)}
             </select>
           </div>
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المطابقة","Match")}</label>
-            <select value={matchFilter} onChange={e=>setMatchFilter(e.target.value as any)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
+            <select value={matchFilter} onChange={e=>setMatchFilter(e.target.value as any)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2 bg-white">
               <option value="">{t("الكل","All")}</option>
               {(Object.entries(MATCH_CFG) as [CMatch,any][]).map(([k,v])=><option key={k} value={k}>{t(v.label, EN_MATCH_CD[k])}</option>)}
             </select>
           </div>
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("العلامة التجارية","Brand")}</label>
-            <select value={brandFilter} onChange={e=>setBrandFilter(e.target.value)} disabled={brandNames.length===0} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2 disabled:bg-gray-50 disabled:text-gray-400">
-              <option>{t("الكل","All")}</option>
+            <select value={brandFilter} onChange={e=>setBrandFilter(e.target.value)} disabled={brandNames.length===0} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2 bg-white disabled:bg-gray-50 disabled:text-gray-400">
+              <option value="الكل">{t("الكل","All")}</option>
               {brandNames.map(n=><option key={n}>{n}</option>)}
             </select>
           </div>
-          <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("بحث","Search")}</label>
-            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-2">
+          <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("بحث / مرجعي","Search / Ref")}</label>
+            <div className="flex items-center gap-1 border border-gray-200 rounded-lg px-2 py-2 bg-white">
               <Search size={11} className="text-gray-400 flex-shrink-0"/>
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("بحث...","Search...")} className="flex-1 text-xs outline-none"/>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t("بحث...","Search...")} className="flex-1 text-xs outline-none min-w-0"/>
             </div>
           </div>
         </div>
-        {hasFilters && <button onClick={clearFilters} className="flex items-center gap-1 text-xs text-purple-600 hover:underline"><RotateCcw size={10}/> {t("مسح الفلاتر","Clear filters")}</button>}
       </div>
 
       {selectedDay && (
-        <div className={`rounded-xl border p-4 flex items-center gap-4 ${selectedDay.missingCount>0?"bg-amber-50 border-amber-200":"bg-emerald-50 border-emerald-200"}`} dir={dir}>
-          <div className="flex-1">
+        <div className={`rounded-xl border p-4 flex flex-wrap items-center gap-4 ${selectedDay.missingCount>0?"bg-amber-50 border-amber-200":"bg-emerald-50 border-emerald-200"}`} dir={dir}>
+          <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-gray-800">{selectedDay.pillLabelAr}</p>
             <p className="text-xs text-gray-500 mt-0.5">{selectedDay.bannerAr}</p>
             {selectedDay.missingBranches.length>0 && (
@@ -5398,23 +5543,27 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
             )}
           </div>
           <div className="flex gap-6 text-center">
-            <div><p className="text-lg font-black text-gray-800">{selectedDay.requiredCount}</p><p className="text-[10px] text-gray-500">{t("مطلوبة","Required")}</p></div>
-            <div><p className="text-lg font-black text-emerald-600">{selectedDay.completedCount}</p><p className="text-[10px] text-gray-500">{t("مكتملة","Done")}</p></div>
-            <div><p className={`text-lg font-black ${selectedDay.missingCount>0?"text-amber-600":"text-gray-300"}`}>{selectedDay.missingCount}</p><p className="text-[10px] text-gray-500">{t("ناقص","Missing")}</p></div>
+            <div><p className="text-lg font-black text-gray-800">{displayDigits(String(selectedDay.requiredCount), lang)}</p><p className="text-[10px] text-gray-500">{t("مطلوبة","Required")}</p></div>
+            <div><p className="text-lg font-black text-emerald-600">{displayDigits(String(selectedDay.completedCount), lang)}</p><p className="text-[10px] text-gray-500">{t("مكتملة","Done")}</p></div>
+            <div><p className={`text-lg font-black ${selectedDay.missingCount>0?"text-amber-600":"text-gray-300"}`}>{displayDigits(String(selectedDay.missingCount), lang)}</p><p className="text-[10px] text-gray-500">{t("ناقص","Missing")}</p></div>
           </div>
         </div>
       )}
 
+      {/* 4. Sales Statements List (Screenshots 07 & 08) */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-4 sm:px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-center justify-between gap-2">
-          <div><h3 className="font-bold text-gray-900 text-sm">{t("بيانات المبيعات","Sales Statements")}</h3><p className="text-[11px] text-gray-400 mt-0.5">{shown.length} {t("بيان · إجمالي","statements · total")} {fmt(totalShown)} {t("ر.س","SAR")}</p></div>
+          <div>
+            <h3 className="font-bold text-gray-900 text-sm">{t("بيانات المبيعات","Sales Statements")}</h3>
+            <p className="text-[11px] text-gray-400 mt-0.5">{displayDigits(String(shown.length), lang)} {t("بيان · إجمالي","statements · total")} <bdi className="font-mono">{totalShown == null ? "—" : formatShiftHalalas(Math.round(totalShown * 100), lang)}</bdi> {t("ر.س","SAR")}</p>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <button onClick={()=>exportOpsMut.mutate({moduleKey:"sales", format:"xlsx"})} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><Download size={11}/> Excel</button>
-            {bulkSalesIds.length>0 && <Btn size="sm" variant="success" onClick={()=>bulkApprove(bulkSalesIds)}>✓ موافقة جماعية ({bulkSalesIds.length})</Btn>}
+            {bulkSalesIds.length>0 && <Btn size="sm" variant="success" onClick={()=>bulkApprove(bulkSalesIds)}>✓ {t("موافقة جماعية","Bulk approve")} ({displayDigits(String(bulkSalesIds.length), lang)})</Btn>}
           </div>
         </div>
         {shown.length===0
-          ? <div className="py-10 text-center text-gray-400 text-sm">✅ لا توجد بيانات تطابق الفلاتر</div>
+          ? <div className="py-10 text-center text-gray-400 text-sm">✅ {t("لا توجد بيانات تطابق الفلاتر","No statements match the active filters")}</div>
           : shown.map(op=>(
               <OpRow key={op.id} op={op} onApprove={()=>approve(op.id)} onReject={()=>reject(op.id)}
                 onClarify={requestClarification?()=>requestClarification(op.id):undefined}
@@ -5423,6 +5572,16 @@ function AccCompanySales({ ops, approve, reject, requestClarification, bulkAppro
             ))
         }
       </div>
+
+      {/* 5. Cashier Shift Sales Reports (FE-01 / FE-02 entry) */}
+      <ShiftSalesSection
+        operations={ops as any}
+        filterBranch={branchFilter}
+        filterStatus={statusFilter}
+        filterDate={salesDate}
+        filterSearch={search}
+        onOpenReport={onOpenReport}
+      />
     </div>
   );
 }
@@ -7774,8 +7933,8 @@ function HeadSettlementActionModal({
   );
 }
 
-function AccCompanyEmployees() {
-  const { t, dir } = useCLang();
+export function AccCompanyEmployees() {
+  const { t, dir, lang } = useCLang();
   const [selectedEmp, setSelectedEmp] = useState<string|null>(null);
   const [searchTerm,  setSearchTerm]  = useState("");
   const [branchFilter,setBranchFilter]= useState("");
@@ -7784,7 +7943,13 @@ function AccCompanyEmployees() {
   const [showSettle,  setShowSettle]  = useState(false);
   const [headAction,  setHeadAction]  = useState<{ action: "approve" | "reject"; open: boolean } | null>(null);
 
-  const { data: employeesPage } = useEmployees({ q: searchTerm || undefined, branchId: branchFilter || undefined });
+  const trimmedEmpSearch = searchTerm.trim();
+  const isNumericEmpSearch = /^\d+$/.test(trimmedEmpSearch);
+  const { data: employeesPage } = useEmployees({
+    empNumber: isNumericEmpSearch ? trimmedEmpSearch : undefined,
+    q: !isNumericEmpSearch && trimmedEmpSearch ? trimmedEmpSearch : undefined,
+    branchId: branchFilter || undefined,
+  });
   const { data: statement } = useEmployeeMovements(selectedEmp, month || undefined);
 
   type EmpAccountTab = "dues" | "custody";
@@ -7827,6 +7992,11 @@ function AccCompanyEmployees() {
   const activeCount    = employees.filter(e=>e.status==="active").length;
 
   const SAR = t("ر.س","SAR");
+  const fmtMoney = (h: number | null | undefined) => formatShiftHalalas(h, lang);
+  const captionText = (balH: number, cap?: { key?: string; labelAr?: string } | null) =>
+    lang === "ar"
+      ? (cap?.labelAr ?? (balH > 0 ? "دائن" : balH < 0 ? "عليه" : "متوازن"))
+      : (cap?.key === "creditor" || balH > 0 ? "Creditor" : cap?.key === "debtor" || balH < 0 ? "Debtor" : "Balanced");
 
   const balColor = (h:number) => h<0 ? "text-red-600" : h>0 ? "text-emerald-600" : "text-gray-400";
 
@@ -7852,24 +8022,38 @@ function AccCompanyEmployees() {
           onClose={()=>setHeadAction(null)}
         />
       )}
-      <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-gray-800">{t("كشف حساب الموظفين","Employee Accounts")}</h2><p className="text-gray-400 text-sm mt-0.5">{t("الرواتب والحركات المالية للموظفين","Salaries and financial movements")}</p></div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div><h2 className="text-xl font-bold text-gray-800">{t("كشف حساب الموظفين وعهدة النقد","Employee Accounts & Cash Custody")}</h2><p className="text-gray-400 text-sm mt-0.5">{t("كشف عهدة النقد المستلم/المسلّم وتبويب مستقل للمستحقات والخصومات","Cash custody statement & separate dues and deductions")}</p></div>
         <button onClick={()=>exportPayrollMut.mutate(new Date().toISOString().slice(0,7))} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><Download size={12}/> {t("كشف الرواتب Excel","Payroll Excel")}</button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KpiCard label={t("إجمالي الرواتب","Total Salaries")}      value={fmtH(totalSalariesH)} sub={t("ر.س شهرياً","SAR / month")} icon={<Users size={18} className="text-blue-600"/>} accent="blue"/>
-        <KpiCard label={t("مستحق على الموظفين","Owed to company")} value={fmtH(owedToCompanyH)} sub={SAR} icon={<AlertTriangle size={18} className="text-red-500"/>} accent="red"/>
-        <KpiCard label={t("مستحق للموظفين","Owed to employees")}   value={fmtH(owedToEmpH)}     sub={SAR} icon={<Wallet size={18} className="text-amber-600"/>} accent="amber"/>
-        <KpiCard label={t("موظفون نشطون","Active Employees")}       value={String(activeCount)}  sub={`${t("من","of")} ${employees.length}`} icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
+        <KpiCard label={t("إجمالي الرواتب","Total Salaries")}      value={fmtMoney(totalSalariesH)} sub={t("ر.س شهرياً","SAR / month")} icon={<Users size={18} className="text-blue-600"/>} accent="blue"/>
+        <KpiCard label={t("مستحق على الموظفين","Owed to company")} value={fmtMoney(owedToCompanyH)} sub={SAR} icon={<AlertTriangle size={18} className="text-red-500"/>} accent="red"/>
+        <KpiCard label={t("مستحق للموظفين","Owed to employees")}   value={fmtMoney(owedToEmpH)}     sub={SAR} icon={<Wallet size={18} className="text-amber-600"/>} accent="amber"/>
+        <KpiCard label={t("موظفون نشطون","Active Employees")}       value={displayDigits(String(activeCount), lang)}  sub={`${t("من","of")} ${displayDigits(String(employees.length), lang)}`} icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
       </div>
-      {/* فلاتر */}
+      {/* فلاتر البحث بالرقم أو الاسم */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("بحث — اسم الموظف","Search — name")}</label>
-            <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2"><Search size={13} className="text-gray-400"/><input value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} placeholder={t("اسم الموظف...","Employee name...")} className="flex-1 text-sm outline-none"/></div>
+          <div className="sm:col-span-2">
+            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("بحث — رقم الموظف أو الاسم","Search — employee # or name")}</label>
+            <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 bg-white">
+              <Search size={13} className="text-gray-400 flex-shrink-0"/>
+              <input
+                value={searchTerm}
+                onChange={e=>setSearchTerm(e.target.value)}
+                placeholder={t("ابحث برقم الموظف (مثل 1001) أو الاسم…","Search by employee # (e.g. 1001) or name…")}
+                className="flex-1 text-sm outline-none min-w-0"
+              />
+              {searchTerm && (
+                <button type="button" onClick={()=>setSearchTerm("")} className="text-xs text-gray-400 hover:text-gray-600" aria-label={t("مسح البحث","Clear search")}>
+                  <X size={13}/>
+                </button>
+              )}
+            </div>
           </div>
           <div><label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع","Branch")}</label>
-            <select value={branchFilter} onChange={e=>setBranchFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
+            <select value={branchFilter} onChange={e=>setBranchFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white">
               <option value="">{t("كل الفروع","All branches")}</option>
               {[...new Map(employees.map(e=>[e.branchId,e.branchName])).entries()].map(([id,name])=><option key={id} value={id}>{name}</option>)}
             </select>
@@ -7879,11 +8063,11 @@ function AccCompanyEmployees() {
       {/* Two-panel layout */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
         {/* Left: Employee list */}
-        <div className="col-span-1 lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="col-span-1 lg:col-span-2 min-w-0 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/60">
-            <p className="font-bold text-gray-900 text-sm">{t("قائمة الموظفين","Employees")} ({employees.length})</p>
+            <p className="font-bold text-gray-900 text-sm">{t("قائمة الموظفين","Employees")} ({displayDigits(String(employees.length), lang)})</p>
           </div>
-          {employees.length===0 && <p className="text-center text-gray-400 text-sm py-8">{t("لا يوجد موظفون","No employees")}</p>}
+          {employees.length===0 && <p className="text-center text-gray-400 text-sm py-8">{t("لا يوجد موظفون مطابقون للبحث","No matching employees")}</p>}
           {employees.map(e=>{
             const rowSales = getEmployeeSales(e);
             return <button type="button" key={e.id} aria-expanded={selectedEmp===e.id}
@@ -7891,11 +8075,12 @@ function AccCompanyEmployees() {
               className={`flex w-full items-center gap-3 px-4 py-3.5 text-start border-b border-gray-50 last:border-0 cursor-pointer transition-all ${selectedEmp===e.id?"bg-purple-50 border-r-4 border-r-purple-500":"hover:bg-gray-50/70"} ${e.status!=="active"?"opacity-60":""}`}>
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">{e.name[0]}</div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <p className="font-semibold text-gray-800 text-sm truncate">{e.name}</p>
+                  {e.empNumber && <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">#{e.empNumber}</span>}
                   {e.status!=="active" && <Badge className="bg-red-50 text-red-700 border border-red-200 text-[9px]">{t("موقوف","inactive")}</Badge>}
                 </div>
-                <p className="text-[10px] text-gray-400 mt-0.5">{e.role} · {e.branchName}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5 truncate">{e.role} · {e.branchName}</p>
               </div>
               {rowSales.isCashier ? (
                 <EmployeeShiftSalesTotal shifts={rowSales.cashierShifts} />
@@ -7905,33 +8090,35 @@ function AccCompanyEmployees() {
                   custodyStatement={rowSales.custody}
                 />
               ) : <div className="text-left flex-shrink-0">
-                <p className={`font-mono font-bold text-xs ${balColor(e.balanceHalalas)}`}>{fmtH(e.balanceHalalas)}</p>
-                <p className="text-[9px] text-gray-400">{e.balanceCaption?.labelAr ?? t("الرصيد","balance")}</p>
+                <p className={`font-mono font-bold text-xs ${balColor(e.balanceHalalas)}`}>{fmtMoney(e.balanceHalalas)}</p>
+                <p className="text-[9px] text-gray-400">{captionText(e.balanceHalalas, e.balanceCaption)}</p>
               </div>}
             </button>;
           })}
         </div>
         {/* Right: Employee statement */}
-        <div className="col-span-3">
+        <div className="col-span-1 lg:col-span-3 min-w-0">
           {!selectedRow ? (
-            <div className="bg-white rounded-xl border border-dashed border-gray-200 h-64 flex flex-col items-center justify-center gap-2">
+            <div className="bg-white rounded-xl border border-dashed border-gray-200 h-64 flex flex-col items-center justify-center gap-2 p-4 text-center">
               <Users size={32} className="text-gray-300"/>
-              <p className="text-gray-400 text-sm">{t("اختر موظفاً من القائمة لعرض كشف حسابه","Pick an employee to view their statement")}</p>
+              <p className="text-gray-400 text-sm">{t("اختر موظفاً من القائمة لعرض كشف حسابه وعهدته النقدية","Pick an employee to view their dues & cash custody statement")}</p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-l from-purple-50/50 to-white">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-lg font-bold">{selectedRow.name[0]}</div>
-                  <div className="flex-1">
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden min-w-0">
+              <div className="px-4 sm:px-5 py-4 border-b border-gray-100 bg-gradient-to-l from-purple-50/50 to-white">
+                <div className="flex flex-wrap items-start gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-lg font-bold flex-shrink-0">{selectedRow.name[0]}</div>
+                  <div className="flex-1 min-w-0">
                     <p className="font-bold text-gray-900">{selectedRow.name}</p>
-                    <p className="text-xs text-gray-500">{selectedRow.role} · {selectedRow.branchName} · {selectedRow.empNumber}</p>
-                    <Badge className={`text-[10px] mt-1 ${(statement?.balanceCaption ?? selectedRow.balanceCaption)?.key==="creditor"?"bg-emerald-50 text-emerald-700 border border-emerald-200":(statement?.balanceHalalas ?? selectedRow.balanceHalalas)<0?"bg-red-50 text-red-700 border border-red-200":"bg-gray-50 text-gray-500 border border-gray-200"}`}>{(statement?.balanceCaption ?? selectedRow.balanceCaption)?.labelAr}</Badge>
-                    {selectedRow.settlementStatus === "under_review" && (
-                      <Badge className="text-[10px] mt-1 bg-amber-50 text-amber-700 border border-amber-200">
-                        {t("قيد المراجعة", "Under Review")}
-                      </Badge>
-                    )}
+                    <p className="text-xs text-gray-500 break-words">{selectedRow.role} · {selectedRow.branchName} · <span className="font-mono">#{selectedRow.empNumber}</span></p>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      <Badge className={`text-[10px] ${(statement?.balanceCaption ?? selectedRow.balanceCaption)?.key==="creditor"?"bg-emerald-50 text-emerald-700 border border-emerald-200":(statement?.balanceHalalas ?? selectedRow.balanceHalalas)<0?"bg-red-50 text-red-700 border border-red-200":"bg-gray-50 text-gray-500 border border-gray-200"}`}>{captionText(statement?.balanceHalalas ?? selectedRow.balanceHalalas, statement?.balanceCaption ?? selectedRow.balanceCaption)}</Badge>
+                      {selectedRow.settlementStatus === "under_review" && (
+                        <Badge className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200">
+                          {t("قيد المراجعة", "Under Review")}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   {activeTab === "dues" && (
                     <div className="flex flex-col gap-1.5">
@@ -7991,8 +8178,44 @@ function AccCompanyEmployees() {
                   />
                 )}
 
-                {/* Tabs Switcher: Dues & Deductions vs Shift Custody */}
-                <div className="flex items-center gap-2 border-b border-gray-100 pt-3 mt-3">
+                {/* Clear distinction: Shift Sales vs Cash Custody In */}
+                {(selectedIsCashier || selectedIsManager || custodyStatement?.balances?.is_available) && (
+                  <div
+                    data-testid="sales-vs-custody-distinction"
+                    className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50/60 p-3 space-y-1.5 text-xs"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-bold text-indigo-950">
+                        {t("تمييز مبيعات الوردية عن عهدة الكاش", "Shift Sales vs Cash Custody Distinction")}
+                      </span>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-[11px] text-gray-700">
+                          {t("إجمالي مبيعات الورديات:", "Shift sales total:")}{" "}
+                          <strong className="font-mono text-gray-900">
+                            <bdi>{selectedSales?.deliveredTotalHalalas != null ? fmtMoney(selectedSales.deliveredTotalHalalas) : "—"}</bdi>
+                            {selectedSales?.deliveredTotalHalalas != null ? ` ${SAR}` : ""}
+                          </strong>
+                        </span>
+                        <span className="text-[11px] text-emerald-800">
+                          {t("الكاش الداخل في العهدة:", "Cash into custody:")}{" "}
+                          <strong className="font-mono">
+                            <bdi>{custodyStatement?.balances?.is_available ? `+${fmtMoney(custodyStatement.balances.total_cash_in ?? 0)}` : "—"}</bdi>
+                            {custodyStatement?.balances?.is_available ? ` ${SAR}` : ""}
+                          </strong>
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-indigo-800 leading-relaxed">
+                      {t(
+                        "إجمالي مبيعات الوردية يشمل الكاش والشبكة والتطبيقات لأغراض مراجعة المبيعات؛ أما عهدة الموظف فتحسب النقد الفعلي الداخل (+) والصادر (−) والإيصالات المؤكدة فقط.",
+                        "Shift sales total combines cash, card, and delivery apps for sales reporting; employee custody counts only actual cash in (+), cash out (−), and confirmed receipts.",
+                      )}
+                    </p>
+                  </div>
+                )}
+
+                {/* Tabs Switcher: Dues & Deductions (Independent Tab) vs Cash Custody Statement */}
+                <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pt-3 mt-3">
                   <button
                     type="button"
                     onClick={() => setActiveTab("dues")}
@@ -8017,7 +8240,7 @@ function AccCompanyEmployees() {
                     }`}
                   >
                     <ArrowLeftRight size={13} />
-                    {t("عهدة الشيفتات", "Shift Custody")}
+                    {t("كشف عهدة النقد (عهدة الشيفتات)", "Cash Custody Statement")}
                   </button>
                 </div>
 
@@ -8027,19 +8250,19 @@ function AccCompanyEmployees() {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
                       <div className="bg-blue-50 rounded-xl p-2.5 text-center">
                         <p className="text-[10px] text-blue-600 font-semibold">{t("الراتب","Salary")}</p>
-                        <p className="font-mono font-bold text-blue-800 text-xs">{fmtH(selectedRow.monthlySalary)}</p>
+                        <p className="font-mono font-bold text-blue-800 text-xs">{fmtMoney(selectedRow.monthlySalary)}</p>
                       </div>
                       <div className="bg-emerald-50 rounded-xl p-2.5 text-center">
                         <p className="text-[10px] text-emerald-600 font-semibold">{t("إجمالي دائن","Total credit")}</p>
-                        <p className="font-mono font-bold text-emerald-800 text-xs">{fmtH(statement?.totalCredit ?? 0)}</p>
+                        <p className="font-mono font-bold text-emerald-800 text-xs">{fmtMoney(statement?.totalCredit ?? 0)}</p>
                       </div>
                       <div className="bg-red-50 rounded-xl p-2.5 text-center">
                         <p className="text-[10px] text-red-600 font-semibold">{t("إجمالي مدين","Total debit")}</p>
-                        <p className="font-mono font-bold text-red-800 text-xs">{fmtH(statement?.totalDebit ?? 0)}</p>
+                        <p className="font-mono font-bold text-red-800 text-xs">{fmtMoney(statement?.totalDebit ?? 0)}</p>
                       </div>
                       <div className="bg-gray-50 rounded-xl p-2.5 text-center border-2 border-gray-200">
-                        <p className="text-[10px] text-gray-600 font-semibold">{t("الرصيد","Balance")}</p>
-                        <p className={`font-mono font-black text-sm ${balColor(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}`}>{fmtH(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}</p>
+                        <p className="text-[10px] text-gray-600 font-semibold">{t("رصيد المستحقات","Dues Balance")}</p>
+                        <p className={`font-mono font-black text-sm ${balColor(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}`}>{fmtMoney(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}</p>
                       </div>
                     </div>
                     {hasEmployeeDebitWarning(statement) && (
@@ -8077,50 +8300,56 @@ function AccCompanyEmployees() {
                         <div className="bg-gray-50 rounded-xl p-2.5 text-center border border-gray-200">
                           <p className="text-[10px] text-gray-500 font-semibold">{t("رصيد أول المدة", "Opening Balance")}</p>
                           <p data-testid="custody-opening-balance" className={`font-mono font-bold text-xs ${balColor(custodyStatement.balances.opening_balance ?? 0)}`}>
-                            {fmtH(custodyStatement.balances.opening_balance ?? 0)}
+                            {fmtMoney(custodyStatement.balances.opening_balance ?? 0)}
                           </p>
                         </div>
                         <div className="bg-emerald-50 rounded-xl p-2.5 text-center border border-emerald-100">
-                          <p className="text-[10px] text-emerald-600 font-semibold">{t("إجمالي الوارد (نقد)", "Cash In")}</p>
+                          <p className="text-[10px] text-emerald-600 font-semibold">{t("الكاش الداخل (+)", "Cash In (+)")}</p>
                           <p className="font-mono font-bold text-emerald-800 text-xs">
-                            {fmtH(custodyStatement.balances.total_cash_in ?? 0)}
+                            +{fmtMoney(custodyStatement.balances.total_cash_in ?? 0)}
                           </p>
                         </div>
                         <div className="bg-red-50 rounded-xl p-2.5 text-center border border-red-100">
-                          <p className="text-[10px] text-red-600 font-semibold">{t("إجمالي الصادر (نقد)", "Cash Out")}</p>
+                          <p className="text-[10px] text-red-600 font-semibold">{t("الكاش الخارج (−)", "Cash Out (−)")}</p>
                           <p className="font-mono font-bold text-red-800 text-xs">
-                            {fmtH(custodyStatement.balances.total_cash_out ?? 0)}
+                            −{fmtMoney(custodyStatement.balances.total_cash_out ?? 0)}
                           </p>
                         </div>
                         <div className="bg-purple-50 rounded-xl p-2.5 text-center border-2 border-purple-200">
-                          <p className="text-[10px] text-purple-700 font-bold">{t("رصيد آخر المدة", "Closing Balance")}</p>
+                          <p className="text-[10px] text-purple-700 font-bold">{t("الرصيد الجاري للعهدة", "Closing Custody")}</p>
                           <p data-testid="custody-closing-balance" className={`font-mono font-black text-sm ${balColor(custodyStatement.balances.closing_balance ?? 0)}`}>
-                            {fmtH(custodyStatement.balances.closing_balance ?? 0)}
+                            {fmtMoney(custodyStatement.balances.closing_balance ?? 0)}
                           </p>
                         </div>
                       </div>
                     )}
                     {custodyStatement?.pending && custodyStatement.pending.length > 0 && (
                       <div data-testid="custody-pending-section" className="p-3 bg-purple-50/70 border border-purple-200 rounded-xl space-y-2">
-                        <div className="flex items-center gap-2 text-purple-900 font-bold text-xs">
-                          <Clock size={14} className="text-purple-600" />
-                          <span>{t("طلبات تسليم معلقة خارج الرصيد", "Pending handover requests (outside balance)")} ({custodyStatement.pending.length})</span>
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-purple-900 font-bold text-xs">
+                          <div className="flex items-center gap-2">
+                            <Clock size={14} className="text-purple-600 flex-shrink-0" />
+                            <span>{t("طلبات تسليم معلقة (خارج الرصيد)", "Pending handover requests (outside balance)")} ({displayDigits(String(custodyStatement.pending.length), lang)})</span>
+                          </div>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                            {t("لا يغيّر الرصيد الجاري", "Does not alter running balance")}
+                          </span>
                         </div>
                         <div className="space-y-1.5">
                           {custodyStatement.pending.map(p => (
-                            <div key={p.request_id} data-testid="custody-pending-item" className="bg-white rounded-lg p-2.5 border border-purple-100 flex items-center justify-between text-xs">
-                              <div className="space-y-0.5">
-                                <span className="font-semibold text-gray-800">
-                                  {p.request_type === "handover_sent" ? t("تسليم بانتظار التأكيد", "Handover sent (pending)") : t("استلام بانتظار التأكيد", "Handover received (pending)")}
+                            <div key={p.request_id} data-testid="custody-pending-item" className="bg-white rounded-lg p-2.5 border border-purple-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                              <div className="space-y-0.5 min-w-0">
+                                <span className="font-semibold text-gray-800 block">
+                                  {p.request_type === "handover_sent" ? t("تسليم بانتظار التأكيد (−)", "Handover sent — pending (−)") : t("استلام بانتظار التأكيد (+)", "Handover received — pending (+)")}
                                 </span>
-                                <p className="text-[10px] text-gray-400">
+                                <p className="text-[10px] text-gray-500">
+                                  {p.business_date ? `${p.business_date} · ` : ""}
                                   {p.counterparty.name ? `${t("الطرف المقابل", "Counterparty")}: ${p.counterparty.name}` : ""}
                                   {p.source_shift_id ? ` · ${t("وردية", "Shift")}: ${p.source_shift_id.slice(0, 8)}` : ""}
                                 </p>
                               </div>
-                              <div className="text-right">
-                                <span className="font-mono font-bold text-amber-600">{fmtH(p.amount)}</span>
-                                <Badge className="block text-[9px] bg-amber-50 text-amber-700 border border-amber-200 mt-0.5">{t("معلق", "Pending")}</Badge>
+                              <div className="text-end flex-shrink-0">
+                                <span className="font-mono font-bold text-amber-700"><bdi>{fmtMoney(p.amount)}</bdi> {SAR}</span>
+                                <Badge className="block text-[9px] bg-amber-50 text-amber-700 border border-amber-200 mt-0.5">{t("معلق — خارج الرصيد", "Pending · excluded")}</Badge>
                               </div>
                             </div>
                           ))}
@@ -8160,21 +8389,21 @@ function AccCompanyEmployees() {
                         )}
                         {(statement?.movements ?? []).map(m=>(
                           <tr key={m.id} className="hover:bg-gray-50">
-                            <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{new Date(m.movementDate).toLocaleDateString("ar-SA")}</td>
+                            <td className="px-3 py-3 text-gray-500 whitespace-nowrap">{new Date(m.movementDate).toLocaleDateString(lang === "ar" ? "ar-SA-u-ca-gregory" : "en-GB")}</td>
                             <td className="px-3 py-3 font-medium text-gray-800">{m.description}<span className="block text-[9px] text-gray-400">{m.categoryLabelAr}</span></td>
                             <td className="px-3 py-3 text-center font-mono text-gray-400 text-[10px]">{m.ref}</td>
-                            <td className="px-3 py-3 text-center font-mono font-bold text-emerald-600">{m.movementType==="credit"?fmtH(m.amountHalalas):"—"}</td>
-                            <td className="px-3 py-3 text-center font-mono font-bold text-red-600">{m.movementType==="debit"?fmtH(m.amountHalalas):"—"}</td>
-                            <td className={`px-3 py-3 text-center font-mono font-bold ${balColor(m.runningBalanceHalalas)}`}>{fmtH(m.runningBalanceHalalas)}</td>
+                            <td className="px-3 py-3 text-center font-mono font-bold text-emerald-600">{m.movementType==="credit"?`+${fmtMoney(m.amountHalalas)}`:"—"}</td>
+                            <td className="px-3 py-3 text-center font-mono font-bold text-red-600">{m.movementType==="debit"?`−${fmtMoney(m.amountHalalas)}`:"—"}</td>
+                            <td className={`px-3 py-3 text-center font-mono font-bold ${balColor(m.runningBalanceHalalas)}`}>{fmtMoney(m.runningBalanceHalalas)}</td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot className="bg-gray-50 border-t-2 border-gray-200">
                         <tr>
                           <td colSpan={2} className="px-3 py-2.5 font-bold text-gray-700">{month?t("رصيد أول المدة","Opening"):t("الرصيد الحالي","Current balance")}</td>
-                          <td className="px-3 py-2.5 text-center font-mono text-gray-500">{month?fmtH(statement?.openingBalanceHalalas ?? 0):""}</td>
+                          <td className="px-3 py-2.5 text-center font-mono text-gray-500">{month?fmtMoney(statement?.openingBalanceHalalas ?? 0):""}</td>
                           <td colSpan={2} className="px-3 py-2.5 font-bold text-gray-700 text-left">{t("رصيد آخر المدة","Closing")}</td>
-                          <td className={`px-3 py-2.5 text-center font-mono font-black ${balColor(statement?.closingBalanceHalalas ?? 0)}`}>{fmtH(statement?.closingBalanceHalalas ?? 0)}</td>
+                          <td className={`px-3 py-2.5 text-center font-mono font-black ${balColor(statement?.closingBalanceHalalas ?? 0)}`}>{fmtMoney(statement?.closingBalanceHalalas ?? 0)}</td>
                         </tr>
                       </tfoot>
                     </table>
@@ -8182,10 +8411,10 @@ function AccCompanyEmployees() {
                 </>
               )}
 
-              {/* CUSTODY TAB TABLE */}
+              {/* CUSTODY TAB TABLE & MOBILE/TABLET CARDS */}
               {activeTab === "custody" && (
                 <>
-                  <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-center justify-between gap-3">
+                  <div className="px-4 sm:px-5 py-3 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-center justify-between gap-3">
                     <p className="font-bold text-gray-700 text-xs flex items-center gap-1.5">
                       <ArrowLeftRight size={13} className="text-purple-600" />
                       <span>{t("سجل حركات عهدة النقد", "Shift Cash Custody Movements")}</span>
@@ -8206,97 +8435,179 @@ function AccCompanyEmployees() {
                       )}
                     </div>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[650px] text-xs">
-                      <thead className="bg-gray-50 text-gray-600">
-                        <tr>
-                          <th className="px-3 py-2.5 text-right font-semibold">{t("تاريخ العمل / الوقت", "Date / Event At")}</th>
-                          <th className="px-3 py-2.5 text-right font-semibold">{t("نوع الحركة والبيان", "Description & Type")}</th>
-                          <th className="px-3 py-2.5 text-center font-semibold">{t("الإيصال / المرجع", "Receipt / Ref")}</th>
-                          <th className="px-3 py-2.5 text-center font-semibold">{t("الطرف المقابل", "Counterparty")}</th>
-                          <th className="px-3 py-2.5 text-center font-semibold">{t("وارد (نقد)", "Cash In")}</th>
-                          <th className="px-3 py-2.5 text-center font-semibold">{t("صادر (نقد)", "Cash Out")}</th>
-                          <th className="px-3 py-2.5 text-center font-semibold">{t("الرصيد", "Balance")}</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {isCustodyLoading && (
-                          <tr><td colSpan={7} className="text-center text-gray-400 py-8">{t("جارٍ تحميل كشف العهدة…", "Loading custody statement…")}</td></tr>
-                        )}
-                        {!isCustodyLoading && (custodyStatement?.entries ?? []).length === 0 && (
-                          <tr><td colSpan={7} className="text-center text-gray-400 py-8" data-testid="custody-empty-state">
-                            {custodyStatement?.identity_link_state === "unlinked"
-                              ? t("الحساب غير مرتبط بعهدة شيفتات", "Account is not linked to shift custody")
-                              : t("لا توجد حركات عهدة شيفتات في هذه الفترة", "No shift custody movements in this period")}
-                          </td></tr>
-                        )}
-                        {!isCustodyLoading && (custodyStatement?.entries ?? []).map(entry => (
-                          <tr key={entry.source_id} data-testid="custody-entry-row" className="hover:bg-gray-50">
-                            <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                              {(() => {
+                  {(() => {
+                    const renderSourceLabel = (entry: NonNullable<typeof custodyStatement>["entries"][number]) =>
+                      entry.source_type === "cashier_custody"
+                        ? t("عهدة كاشير", "Cashier custody")
+                        : entry.source_type === "personal_ledger"
+                        ? t("دفتر عهدة المدير", "Manager custody ledger")
+                        : entry.source_type;
+                    const renderStatusBadge = (entry: NonNullable<typeof custodyStatement>["entries"][number]) => {
+                      const state = entry.reversal_id ? "reversed" : entry.confirmation_state;
+                      const cfg =
+                        state === "confirmed"
+                          ? { cls: "bg-emerald-50 text-emerald-700 border-emerald-200", label: t("مؤكد", "Confirmed") }
+                          : state === "pending"
+                          ? { cls: "bg-amber-50 text-amber-800 border-amber-200", label: t("معلق", "Pending") }
+                          : state === "reversed"
+                          ? { cls: "bg-slate-100 text-slate-700 border-slate-200", label: t("معكوس", "Reversed") }
+                          : state === "cancelled" || state === "rejected"
+                          ? { cls: "bg-red-50 text-red-700 border-red-200", label: t("ملغى / مرفوض", "Cancelled") }
+                          : { cls: "bg-gray-50 text-gray-700 border-gray-200", label: state || t("مؤكد", "Confirmed") };
+                      return <span className={`inline-block px-1.5 py-0.5 rounded border text-[10px] font-semibold whitespace-nowrap ${cfg.cls}`}>{cfg.label}</span>;
+                    };
+                    const entries = custodyStatement?.entries ?? [];
+                    return (
+                      <>
+                        {/* Mobile & Tablet (< lg): Clean stacked cards with zero horizontal scrolling */}
+                        <div className="lg:hidden divide-y divide-gray-100">
+                          {isCustodyLoading && (
+                            <p className="text-center text-gray-400 text-xs py-8">{t("جارٍ تحميل كشف العهدة…", "Loading custody statement…")}</p>
+                          )}
+                          {!isCustodyLoading && entries.length === 0 && (
+                            <p className="text-center text-gray-400 text-xs py-8" data-testid="custody-empty-state">
+                              {custodyStatement?.identity_link_state === "unlinked"
+                                ? t("الحساب غير مرتبط بعهدة شيفتات", "Account is not linked to shift custody")
+                                : t("لا توجد حركات عهدة شيفتات في هذه الفترة", "No shift custody movements in this period")}
+                            </p>
+                          )}
+                          {!isCustodyLoading && entries.map(entry => {
+                            const postDate = entry.event_at ? entry.event_at.slice(0, 10) : "";
+                            const postTime = entry.event_at ? new Date(entry.event_at).toLocaleTimeString(lang === "ar" ? "ar-SA" : "en-US", { hour: "2-digit", minute: "2-digit" }) : "";
+                            const isDiff = Boolean(entry.business_date && postDate && entry.business_date !== postDate);
+                            return (
+                              <div key={entry.source_id} data-testid="custody-entry-row" className="p-3.5 space-y-2 text-xs">
+                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                  <div className="min-w-0 space-y-0.5">
+                                    <p className="font-bold text-gray-900">{lang === "ar" ? entry.label_ar : (entry.label_en || entry.label_ar)}</p>
+                                    <p className="text-[10px] text-gray-500">
+                                      {renderSourceLabel(entry)}
+                                      {entry.counterparty.name ? ` · ${entry.counterparty.name}` : ""}
+                                      {entry.source_shift_id ? ` · ${t("وردية", "Shift")} ${entry.source_shift_id.slice(0, 8)}` : ""}
+                                    </p>
+                                  </div>
+                                  {renderStatusBadge(entry)}
+                                </div>
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] bg-gray-50 rounded-lg px-2.5 py-2">
+                                  <div>
+                                    <span className="text-gray-500">{entry.cash_in > 0 ? t("داخل (+):", "Cash in (+):") : t("خارج (−):", "Cash out (−):")}</span>{" "}
+                                    {entry.cash_in > 0 ? (
+                                      <span className="font-mono font-bold text-emerald-700"><bdi>+{fmtMoney(entry.cash_in)}</bdi> {SAR}</span>
+                                    ) : (
+                                      <span className="font-mono font-bold text-red-700"><bdi>−{fmtMoney(entry.cash_out)}</bdi> {SAR}</span>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">{t("الرصيد الجاري:", "Balance:")}</span>{" "}
+                                    <span className={`font-mono font-black ${balColor(entry.running_balance)}`}><bdi>{fmtMoney(entry.running_balance)}</bdi> {SAR}</span>
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-gray-500">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="font-semibold text-gray-700" data-testid="custody-entry-business-date">{entry.business_date ?? postDate}</span>
+                                    {isDiff && <span data-testid="late-posting-badge" className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold border border-amber-200">{t("ترحيل متأخر", "Late post")}</span>}
+                                    <span className="font-mono" data-testid="custody-entry-posting-time">{postDate} {postTime}</span>
+                                  </div>
+                                  {entry.receipt_id ? (
+                                    <span className="font-mono px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
+                                      {t("إيصال", "Receipt")}: {entry.receipt_id}
+                                    </span>
+                                  ) : (
+                                    <span>{t("بدون إيصال", "No receipt")}</span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Desktop (>= lg): Full 7-column statement table fitting cleanly without horizontal clip */}
+                        <div className="hidden lg:block overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead className="bg-gray-50 text-gray-600">
+                              <tr>
+                                <th className="px-2.5 py-2.5 text-start font-semibold whitespace-nowrap">{t("التاريخ / الترحيل", "Date / Posted")}</th>
+                                <th className="px-2.5 py-2.5 text-start font-semibold">{t("الحركة والمصدر", "Movement & Source")}</th>
+                                <th className="px-2.5 py-2.5 text-center font-semibold whitespace-nowrap">{t("الإيصال", "Receipt")}</th>
+                                <th className="px-2.5 py-2.5 text-center font-semibold whitespace-nowrap">{t("الحالة", "Status")}</th>
+                                <th className="px-2.5 py-2.5 text-center font-semibold whitespace-nowrap">{t("داخل (+)", "Cash In (+)")}</th>
+                                <th className="px-2.5 py-2.5 text-center font-semibold whitespace-nowrap">{t("خارج (−)", "Cash Out (−)")}</th>
+                                <th className="px-2.5 py-2.5 text-center font-semibold whitespace-nowrap">{t("الرصيد الجاري", "Running Bal.")}</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                              {isCustodyLoading && (
+                                <tr><td colSpan={7} className="text-center text-gray-400 py-8">{t("جارٍ تحميل كشف العهدة…", "Loading custody statement…")}</td></tr>
+                              )}
+                              {!isCustodyLoading && entries.length === 0 && (
+                                <tr><td colSpan={7} className="text-center text-gray-400 py-8" data-testid="custody-empty-state">
+                                  {custodyStatement?.identity_link_state === "unlinked"
+                                    ? t("الحساب غير مرتبط بعهدة شيفتات", "Account is not linked to shift custody")
+                                    : t("لا توجد حركات عهدة شيفتات في هذه الفترة", "No shift custody movements in this period")}
+                                </td></tr>
+                              )}
+                              {!isCustodyLoading && entries.map(entry => {
                                 const postDate = entry.event_at ? entry.event_at.slice(0, 10) : "";
-                                const postTime = entry.event_at ? new Date(entry.event_at).toLocaleTimeString(dir === "rtl" ? "ar-SA" : "en-US", { hour: "2-digit", minute: "2-digit" }) : "";
+                                const postTime = entry.event_at ? new Date(entry.event_at).toLocaleTimeString(lang === "ar" ? "ar-SA" : "en-US", { hour: "2-digit", minute: "2-digit" }) : "";
                                 const isDiff = Boolean(entry.business_date && postDate && entry.business_date !== postDate);
                                 return (
-                                  <div className="space-y-0.5">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="font-semibold text-gray-800" data-testid="custody-entry-business-date">{entry.business_date ?? postDate}</span>
-                                      {isDiff && (
-                                        <span data-testid="late-posting-badge" className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold border border-amber-200">
-                                          {t("ترحيل متأخر", "Late post")}
+                                  <tr key={entry.source_id} data-testid="custody-entry-row" className="hover:bg-gray-50">
+                                    <td className="px-2.5 py-2.5 text-gray-600 whitespace-nowrap">
+                                      <div className="space-y-0.5">
+                                        <div className="flex items-center gap-1">
+                                          <span className="font-semibold text-gray-800" data-testid="custody-entry-business-date">{entry.business_date ?? postDate}</span>
+                                          {isDiff && (
+                                            <span data-testid="late-posting-badge" className="text-[9px] px-1 py-0.5 rounded bg-amber-100 text-amber-800 font-bold border border-amber-200">
+                                              {t("متأخر", "Late")}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <span className="block text-[10px] text-gray-400 font-mono" data-testid="custody-entry-posting-time">
+                                          {postDate} {postTime}
                                         </span>
+                                      </div>
+                                    </td>
+                                    <td className="px-2.5 py-2.5 font-medium text-gray-800">
+                                      <span>{lang === "ar" ? entry.label_ar : (entry.label_en || entry.label_ar)}</span>
+                                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-gray-500">
+                                        <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 font-medium">{renderSourceLabel(entry)}</span>
+                                        {entry.counterparty.name && <span>· {entry.counterparty.name}</span>}
+                                        {entry.source_shift_id && <span className="font-mono text-gray-400">· {entry.source_shift_id.slice(0, 8)}</span>}
+                                      </div>
+                                    </td>
+                                    <td className="px-2.5 py-2.5 text-center font-mono text-gray-600 text-[10px] whitespace-nowrap">
+                                      {entry.receipt_id ? (
+                                        <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap" title={entry.receipt_id}>
+                                          {entry.receipt_id}
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-400">—</span>
                                       )}
-                                    </div>
-                                    <span className="block text-[10px] text-gray-400 font-mono" data-testid="custody-entry-posting-time">
-                                      {t("الترحيل", "Posted")}: {postDate} {postTime}
-                                    </span>
-                                  </div>
+                                      {entry.reversal_id && (
+                                        <span className="block text-[9px] text-amber-600 mt-0.5 font-sans">{t("عكس", "Reversal")}</span>
+                                      )}
+                                    </td>
+                                    <td className="px-2.5 py-2.5 text-center whitespace-nowrap">
+                                      {renderStatusBadge(entry)}
+                                    </td>
+                                    <td className="px-2.5 py-2.5 text-center font-mono font-bold text-emerald-600 whitespace-nowrap">
+                                      {entry.cash_in > 0 ? <bdi>+{fmtMoney(entry.cash_in)}</bdi> : "—"}
+                                    </td>
+                                    <td className="px-2.5 py-2.5 text-center font-mono font-bold text-red-600 whitespace-nowrap">
+                                      {entry.cash_out > 0 ? <bdi>−{fmtMoney(entry.cash_out)}</bdi> : "—"}
+                                    </td>
+                                    <td className={`px-2.5 py-2.5 text-center font-mono font-bold whitespace-nowrap ${balColor(entry.running_balance)}`}>
+                                      <bdi>{fmtMoney(entry.running_balance)}</bdi>
+                                    </td>
+                                  </tr>
                                 );
-                              })()}
-                            </td>
-                            <td className="px-3 py-3 font-medium text-gray-800">
-                              <span>{entry.label_ar}</span>
-                              <span className="block text-[10px] text-gray-400">{entry.label_en} · {entry.transaction_type}</span>
-                              {entry.source_shift_id && (
-                                <span className="block text-[9px] text-gray-400">
-                                  {t("وردية المصدر", "Source shift")}: {entry.source_shift_id.slice(0, 8)}
-                                  {entry.receiving_shift_id && ` → ${t("المستلم", "Recv")}: ${entry.receiving_shift_id.slice(0, 8)}`}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-center font-mono text-gray-500 text-[10px]">
-                              {entry.receipt_id ? (
-                                <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                                  {entry.receipt_id.slice(0, 8)}
-                                </span>
-                              ) : (
-                                <span className="text-gray-400">—</span>
-                              )}
-                              {entry.reversal_id && (
-                                <span className="block text-[9px] text-amber-600 mt-0.5 font-sans">{t("حركة عكس", "Reversal")}</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-center text-gray-700">
-                              {entry.counterparty.name ? (
-                                <span className="font-semibold text-xs">{entry.counterparty.name}</span>
-                              ) : (
-                                <span className="text-gray-400">—</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-center font-mono font-bold text-emerald-600">
-                              {entry.cash_in > 0 ? fmtH(entry.cash_in) : "—"}
-                            </td>
-                            <td className="px-3 py-3 text-center font-mono font-bold text-red-600">
-                              {entry.cash_out > 0 ? fmtH(entry.cash_out) : "—"}
-                            </td>
-                            <td className={`px-3 py-3 text-center font-mono font-bold ${balColor(entry.running_balance)}`}>
-                              {fmtH(entry.running_balance)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    );
+                  })()}
                   {custodyStatement && custodyStatement.pagination.totalPages > 1 && (
                     <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between text-xs">
                       <button

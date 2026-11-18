@@ -222,8 +222,11 @@ export function AccEmployees({ setModal }: PageProps) {
   const [month, setMonth] = useState("");
   const [showAdd, setShowAdd] = useState(false);
 
+  const trimmedEmpQ = empFilter.q.trim();
+  const isNumericEmpQ = /^\d+$/.test(trimmedEmpQ);
   const { data: employeesPage } = useEmployees({
-    q: empFilter.q || undefined,
+    empNumber: isNumericEmpQ ? trimmedEmpQ : undefined,
+    q: !isNumericEmpQ && trimmedEmpQ ? trimmedEmpQ : undefined,
     branchId: empFilter.branchId || undefined,
     brandId: empFilter.brandId || undefined,
   });
@@ -476,7 +479,7 @@ export function AccEmployees({ setModal }: PageProps) {
         <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">
-              اسم الموظف
+              رقم الموظف أو الاسم
             </label>
             <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2">
               <Search size={13} className="text-gray-400 flex-shrink-0" />
@@ -485,7 +488,7 @@ export function AccEmployees({ setModal }: PageProps) {
                 onChange={(e) =>
                   setEmpFilter((p) => ({ ...p, q: e.target.value }))
                 }
-                placeholder="ابحث باسم الموظف..."
+                placeholder="ابحث برقم الموظف أو الاسم..."
                 className="flex-1 text-sm outline-none"
               />
             </div>
@@ -571,9 +574,16 @@ export function AccEmployees({ setModal }: PageProps) {
                   {e.name[0]}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm text-gray-800">
-                    {e.name}
-                  </p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="font-semibold text-sm text-gray-800">
+                      {e.name}
+                    </p>
+                    {e.empNumber && (
+                      <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                        #{e.empNumber}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-400">
                     {e.role} · {e.branchName}
                   </p>
