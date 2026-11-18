@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -65,14 +65,25 @@ import { PipelineBar } from "../../_shared/PipelineOverview";
 import { LockBanner, buildAuditTrail } from "../../_shared/auditTrail";
 import type { PageProps, Op } from "../../_shared/types";
 
+type VEmp = { empId: string; amount: string; employeeId?: string };
+
 function AccVarEmpRow({ branchId, row, onField, onRemove, onQuickFill, canRemove, t }: {
-  branchId?: string; row: { empId: string; amount: string };
-  onField: (field: "empId" | "amount", val: string) => void; onRemove: () => void; onQuickFill: () => void;
+  branchId?: string; row: VEmp;
+  onField: (field: keyof VEmp, val: string) => void; onRemove: () => void; onQuickFill: () => void;
   canRemove: boolean; t: (ar: string, en: string) => string;
 }) {
   const trimmed = row.empId.trim();
   const lookup = useBranchEmployeesLookup(branchId, trimmed.length >= 1 ? trimmed : undefined);
   const empName = lookup.data?.name ?? "";
+  const resolvedId = lookup.data?.id ?? lookup.data?.employeeId;
+
+  useEffect(() => {
+    if (resolvedId && row.employeeId !== resolvedId) {
+      onField("employeeId", resolvedId);
+    } else if (!resolvedId && row.employeeId) {
+      onField("employeeId", "");
+    }
+  }, [resolvedId, row.employeeId, onField]);
   const isDuplicateErr = isApiError(lookup.error) && lookup.error.status === 409;
   const isNotFound = trimmed.length > 0 && !lookup.isFetching && lookup.isError && !isDuplicateErr;
   return (
@@ -186,7 +197,6 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
     });
   }
 
-  type VEmp = { empId: string; amount: string };
   const [varEmps, setVarEmps] = useState<VEmp[]>([{ empId: "", amount: "" }]);
   const setVarEmpField = (i: number, field: keyof VEmp, val: string) =>
     setVarEmps(p => p.map((e, j) => j === i ? { ...e, [field]: val } : e));
@@ -209,7 +219,11 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
       if (numbers.length !== new Set(numbers).size) return;
       const allocations = varEmps
         .filter(e => e.empId.trim() && (parseFloat(e.amount) || 0) > 0)
-        .map(e => ({ empNumber: e.empId.trim(), amountHalalas: Math.round((parseFloat(e.amount) || 0) * 100) }));
+        .map(e => ({
+          employeeId: e.employeeId?.trim() || undefined,
+          empNumber: e.empId.trim(),
+          amountHalalas: Math.round((parseFloat(e.amount) || 0) * 100),
+        }));
       const sumH = allocations.reduce((s, a) => s + a.amountHalalas, 0);
       if (allocations.length === 0 || sumH !== Math.abs(recon.totals.varianceHalalas)) return;
       assignMut.mutate({ operationId: op.id, payload: { allocations, notes: reconVarReason || undefined } });

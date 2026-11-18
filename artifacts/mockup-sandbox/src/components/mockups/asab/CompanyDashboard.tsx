@@ -1175,7 +1175,7 @@ function OperationAttachmentsPanel({ operationId }:{ operationId:string }) {
 // ═══════════════════════════════════════════════════
 // SALES: RECONCILIATION PANEL (inside expanded OpRow)
 // ═══════════════════════════════════════════════════
-type VEmpCD = { empId:string; amount:string };
+type VEmpCD = { empId:string; amount:string; employeeId?: string };
 
 // One variance-allocation row — owns its own employee-name lookup by empNumber.
 function VarEmpRow({ branchId, row, onField, onRemove, onQuickFill, canRemove, disabled=false, strictDecimal=false }:{
@@ -1186,6 +1186,15 @@ function VarEmpRow({ branchId, row, onField, onRemove, onQuickFill, canRemove, d
   const trimmed = row.empId.trim();
   const lookup = useBranchEmployeesLookup(branchId, trimmed.length >= 1 ? trimmed : undefined);
   const empName = lookup.data?.name ?? "";
+  const resolvedId = lookup.data?.id ?? lookup.data?.employeeId;
+
+  useEffect(() => {
+    if (resolvedId && row.employeeId !== resolvedId) {
+      onField("employeeId", resolvedId);
+    } else if (!resolvedId && row.employeeId) {
+      onField("employeeId", "");
+    }
+  }, [resolvedId, row.employeeId, onField]);
   const isDuplicateErr = isApiError(lookup.error) && lookup.error.status === 409;
   const isNotFound = trimmed.length > 0 && !lookup.isFetching && (lookup.isError && !isDuplicateErr);
   return (
@@ -1313,7 +1322,11 @@ function SalesReconPanel({ op, onApprove, onReject, onClarify, isPending, forHea
       if (numbers.length !== new Set(numbers).size) return;
       const allocations = filled
         .filter(e=>e.empId.trim() && (parseFloat(e.amount)||0)>0)
-        .map(e=>({ empNumber: e.empId.trim(), amountHalalas: Math.round((parseFloat(e.amount)||0)*100) }));
+        .map(e=>({
+          employeeId: e.employeeId?.trim() || undefined,
+          empNumber: e.empId.trim(),
+          amountHalalas: Math.round((parseFloat(e.amount)||0)*100),
+        }));
       const sumH = allocations.reduce((s,a)=>s+a.amountHalalas, 0);
       if (allocations.length===0 || sumH !== Math.abs(totals.varianceHalalas)) return;
       assignMut.mutate(
@@ -1568,9 +1581,9 @@ function ShiftAllocationForm({ op, shortageHalalas }:{ op:COp; shortageHalalas:n
   return <div className="space-y-2 rounded-xl border border-red-200 bg-red-50/40 p-3 text-xs">
     <h4 className="font-bold text-red-800">{t("تصحيح توزيع العجز","Correct shortage allocation")}</h4>
     <p>{t("كامل العجز المطلوب توزيعه","Full shortage to allocate")}: <bdi>{formatShiftHalalas(shortageHalalas,lang)}</bdi> {t("ر.س","SAR")}</p>
-    {rows.map((row,i)=><VarEmpRow key={i} branchId={op.branchId} row={{empId:row.empNumber,amount:row.amountSar}}
+    {rows.map((row,i)=><VarEmpRow key={i} branchId={op.branchId} row={{empId:row.empNumber,amount:row.amountSar,employeeId:row.employeeId}}
       disabled={pending || allocationMut.isPending} strictDecimal canRemove={rows.length>1}
-      onField={(field,value)=>setField(i,field==="empId" ? "empNumber" : "amountSar",value)}
+      onField={(field,value)=>setField(i,field==="empId" ? "empNumber" : (field==="employeeId" ? "employeeId" : "amountSar"),value)}
       onRemove={()=>setRows(current=>current.filter((_,index)=>index!==i))}/>)}
     <button onClick={()=>setRows(current=>[...current,{empNumber:"",amountSar:""}])} disabled={pending || allocationMut.isPending}
       className="rounded-lg border px-2 py-1.5 disabled:opacity-50">{t("إضافة موظف","Add employee")}</button>

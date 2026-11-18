@@ -24,6 +24,8 @@ export function useLookup(type: LookupType, params?: Record<string, unknown>) {
 // Branch-scoped employee auto-fill by employee number (T04 §7).
 // Returns { empNumber, name }; 404s when unknown or in another branch.
 export interface EmployeeLookupResult {
+  id?: string;
+  employeeId?: string;
   empNumber: string;
   name: string;
 }
