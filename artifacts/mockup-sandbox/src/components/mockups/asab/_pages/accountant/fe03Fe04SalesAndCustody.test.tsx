@@ -438,14 +438,20 @@ test("FE-04: AccCompanyEmployees searches by empNumber or name, separates Dues v
       );
     });
 
-    // Search by empNumber "1001" uses empNumber param (matching backend EmployeeController)
-    const searchInput = container.querySelector('input[placeholder*="1001"]') as HTMLInputElement;
+    // Search by empNumber "1001" and "EMP-0007" uses empNumber param (matching backend EmployeeController)
+    const searchInput = container.querySelector('input[placeholder*="EMP-0007"]') as HTMLInputElement;
     assert.ok(searchInput, "Search input advertises employee number and name");
     await act(async () => setInputValue(searchInput, "1001"));
     await flushUi();
     assert.ok(
       requestedEmployeeParams.some((p) => p.empNumber === "1001" && p.q === undefined),
       `Expected empNumber=1001 in requestedEmployeeParams, got: ${JSON.stringify(requestedEmployeeParams)}`,
+    );
+    await act(async () => setInputValue(searchInput, "EMP-0007"));
+    await flushUi();
+    assert.ok(
+      requestedEmployeeParams.some((p) => p.empNumber === "EMP-0007" && p.q === undefined),
+      `Expected empNumber=EMP-0007 in requestedEmployeeParams, got: ${JSON.stringify(requestedEmployeeParams)}`,
     );
 
     // Select employee row
