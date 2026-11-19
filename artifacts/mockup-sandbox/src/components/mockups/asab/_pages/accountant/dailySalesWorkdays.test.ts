@@ -100,3 +100,22 @@ test("excludes manual sales, corrections, and unproven daily-close payloads", ()
   assert.equal(dailySalesReportFromOperation(missingLink), null);
   assert.equal(groupDailySalesWorkdays([manual, correction, missingLink]).length, 0);
 });
+
+test("supports an unknown classifier with verified PKG-6 detail, but not a forged mobile day", () => {
+  const submitted = report("unknown");
+  submitted.workflowKind = "unknown";
+  assert.equal(dailySalesReportFromOperation(submitted)?.provenanceVerified, false);
+  const forged = report("forged");
+  forged.workflowKind = "unknown";
+  forged.origin = "mobile";
+  delete (forged.payload as Record<string, unknown>).pkg6Review;
+  assert.equal(dailySalesReportFromOperation(forged), null);
+});
+
+test("keeps a conflicting source/operation sales total explicitly unknown", () => {
+  const inconsistent = report("mismatch");
+  inconsistent.payload = { ...inconsistent.payload, totalSalesHalalas: 99999 } as Operation["payload"];
+  const [day] = groupDailySalesWorkdays([inconsistent]);
+  assert.equal(day.totalSalesHalalas, null);
+  assert.equal(day.cashHalalas, 9500);
+});

@@ -4,27 +4,33 @@ type DailyClosePayload = {
   date?: unknown;
   managerShiftId?: unknown;
   managerName?: unknown;
+  totalSalesHalalas?: unknown;
   cashHalalas?: unknown;
   cardHalalas?: unknown;
   appsHalalas?: unknown;
   varianceHalalas?: unknown;
+  notes?: unknown;
   pkg6Review?: { member_source_ids?: unknown } | null;
 };
 
 export interface DailySalesReport {
   operation: Operation;
+  provenanceVerified: boolean;
   workday: string;
   managerShiftId: string;
   managerName: string | null;
+  totalSalesHalalas: number | null;
   cashHalalas: number | null;
   cardHalalas: number | null;
   appsHalalas: number | null;
   varianceHalalas: number | null;
+  notes: string | null;
   memberShiftIds: string[];
 }
 
 export interface DailySalesWorkday {
   key: string;
+  provenanceVerified: boolean;
   branchId: string;
   branchName: string;
   date: string;
@@ -55,6 +61,10 @@ function sumVerified(values: Array<number | null>): number | null {
 export function dailySalesReportFromOperation(operation: Operation): DailySalesReport | null {
   if (operation.moduleKey !== "sales" || operation.isCorrection) return null;
   const payload = operation.payload as DailyClosePayload | undefined;
+  // A day report is identified by server review provenance, not by an ID,
+  // the mobile origin, or the presence of a day-shaped date alone.
+  const hasReviewEvidence = payload?.pkg6Review != null || operation.reportReview != null;
+  if (!hasReviewEvidence && operation.workflowKind !== "sal_day") return null;
   const date = payload?.date;
   const managerShiftId = payload?.managerShiftId;
   if (!operation.branchId || typeof date !== "string" ||
@@ -62,16 +72,24 @@ export function dailySalesReportFromOperation(operation: Operation): DailySalesR
       typeof managerShiftId !== "string" || !managerShiftId) return null;
 
   const members = payload?.pkg6Review?.member_source_ids;
+  const storedTotal = verifiedMoney(payload?.totalSalesHalalas);
+  const operationTotal = verifiedMoney(operation.amountHalalas);
+  const consistentTotal = storedTotal !== null && operationTotal !== null && storedTotal !== operationTotal
+    ? null : (storedTotal ?? operationTotal);
   return {
     operation,
+    provenanceVerified: operation.workflowKind === "sal_day",
     workday: date,
     managerShiftId,
     managerName: typeof payload?.managerName === "string" ? payload.managerName : null,
+    totalSalesHalalas: consistentTotal,
     cashHalalas: verifiedMoney(payload?.cashHalalas),
     cardHalalas: verifiedMoney(payload?.cardHalalas),
     appsHalalas: verifiedMoney(payload?.appsHalalas),
     varianceHalalas: verifiedMoney(payload?.varianceHalalas),
-    memberShiftIds: Array.isArray(members) ? members.filter((id): id is string => typeof id === "string") : [],
+    notes: typeof payload?.notes === "string" && payload.notes.trim() ? payload.notes : null,
+    memberShiftIds: Array.isArray(members)
+      ? Array.from(new Set(members.filter((id): id is string => typeof id === "string" && id.length > 0))) : [],
   };
 }
 
@@ -100,11 +118,12 @@ export function groupDailySalesWorkdays(operations: readonly Operation[]): Daily
     const memberShiftIds = Array.from(new Set(reports.flatMap((report) => report.memberShiftIds)));
     return {
       key,
+      provenanceVerified: reports.every((report) => report.provenanceVerified),
       branchId: first.branchId,
       branchName: first.branchName || first.branchId,
       date: reports[0].workday,
       reports: [...reports].sort((a, b) => b.operation.createdAt.localeCompare(a.operation.createdAt)),
-      totalSalesHalalas: sumVerified(reports.map((r) => verifiedMoney(r.operation.amountHalalas))),
+      totalSalesHalalas: sumVerified(reports.map((r) => r.totalSalesHalalas)),
       cashHalalas: sumVerified(reports.map((r) => r.cashHalalas)),
       cardHalalas: sumVerified(reports.map((r) => r.cardHalalas)),
       appsHalalas: sumVerified(reports.map((r) => r.appsHalalas)),

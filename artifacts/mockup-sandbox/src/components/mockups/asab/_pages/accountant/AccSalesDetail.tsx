@@ -52,6 +52,9 @@ import { PageHeader } from "../../components/PageHeader";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ClarifyModal } from "../../../../shared/ClarifyModal";
 import { useLang } from "../../_shared/LangContext";
+import { DailySalesShiftDetails } from "./DailySalesShiftDetails";
+import { dailySalesReportFromOperation } from "./dailySalesWorkdays";
+import { formatWorkdayDate } from "./ManagerDeliveredSales";
 import { fmtAmt, resolveAssetUrl, formatDateLong } from "../../_shared/formatters";
 import {
   MATCH_CFG,
@@ -138,8 +141,10 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
 
   // Real reconciliation rides on GET /operations/{id} (T04 §4). `detailId` accepts
   // uuid or publicId; the row's `id` is the publicId, so fetch by op.id.
-  const { data: detail } = useOperation(op?.id);
+  const detailQuery = useOperation(op?.id);
+  const { data: detail } = detailQuery;
   const recon = detail?.reconciliation ?? null;
+  const dayReport = detail ? dailySalesReportFromOperation(detail) : null;
   const queryClient = useQueryClient();
   const salesContext = () => {
     const currentDetail = op ? queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detail : undefined;
@@ -149,6 +154,8 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
     };
   };
   const salesPolicy = getSalesActionPolicy(salesContext());
+  const isDayOperation = salesPolicy.pkg6 || dayReport != null ||
+    (op?.workflowKind !== "legacy_sales" && (op?.reportReview != null || op?.origin === "mobile"));
   const assignMut = useAssignSalesVariance();
   const patchMut = usePatchSalesDetails();
   const clarifyMut = useRequestClarification();
@@ -161,7 +168,9 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
     ? apiAudit
     : (op ? buildAuditTrail(op) : []);
 
-  const totalSales = detail?.amountHalalas == null ? null : detail.amountHalalas / 100;
+  const totalSales = dayReport
+    ? (dayReport.totalSalesHalalas == null ? null : dayReport.totalSalesHalalas / 100)
+    : (detail?.amountHalalas == null ? null : detail.amountHalalas / 100);
   const fmtSales = (value: number | null | undefined) => value == null ? "—" : fmtAmt(value);
   const channels = recon?.channels ?? [];
   const coreCh = channels.filter(c => c.group === "core");
@@ -274,7 +283,11 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
                 <span className="text-2xl">💰</span>
                 <div>
                   <h2 className="font-bold text-gray-900 text-xl">{t("تقرير المبيعات اليومي", "Daily Sales Report")}</h2>
-                  <p className="text-gray-500 text-sm mt-0.5">{op?.branch}{op?.operationDate ? ` · ${formatDateLong(lang, op.operationDate)}` : ""} · {t("نهاية الشفت", "Shift End")}</p>
+                  <p className="text-gray-500 text-sm mt-0.5">
+                    {op?.branch}{dayReport
+                      ? ` · ${formatWorkdayDate(lang, dayReport.workday)} · ${t("إغلاق اليوم", "Daily close")}`
+                      : `${op?.operationDate ? ` · ${formatDateLong(lang, op.operationDate)}` : ""} · ${t("نهاية الشفت", "Shift End")}`}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 mt-3 flex-wrap">
@@ -283,8 +296,12 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
                   {isLocked && <Lock size={10} />}
                   {en ? (EN_STATUS_CFG[op?.status || "pending"] || STATUS_CFG[op?.status || "pending"].label) : STATUS_CFG[op?.status || "pending"].label}
                 </Badge>
-                <Badge className="bg-gray-50 text-gray-500 border border-gray-200">{t("مدير الفرع: أحمد الشمري", "Branch Manager: Ahmed Al-Shammari")}</Badge>
-                <Badge className="bg-gray-50 text-gray-500 border border-gray-200">📱 {t("أُرسل قبل ساعة", "Sent 1 hour ago")}</Badge>
+                {dayReport?.managerName && <Badge className="bg-gray-50 text-gray-500 border border-gray-200">
+                  {t("مدير الفرع:", "Branch manager:")} {dayReport.managerName}
+                </Badge>}
+                {detail?.submittedAt && <Badge className="bg-gray-50 text-gray-500 border border-gray-200">
+                  📱 {t("أُرسل:", "Submitted:")} {formatDateLong(lang, detail.submittedAt)}
+                </Badge>}
               </div>
             </div>
             <div className={`rounded-xl px-5 py-3 text-center ${isLocked ? "bg-emerald-50 border border-emerald-200" : op?.status === "approved" ? "bg-blue-50" : "bg-purple-50"}`}>
@@ -319,11 +336,24 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
           }>
             <div className="divide-y divide-gray-100" dir={dir}>
 
-              {!recon && (
+              {dayReport && <DailySalesShiftDetails report={dayReport} />}
+
+              {isDayOperation && !dayReport && (
+                <div role={detailQuery.isError ? "alert" : "status"} className="p-4 text-sm text-amber-800">
+                  {detailQuery.isPending
+                    ? t("جارٍ تحميل تفاصيل الإغلاق اليومي ووردياته…", "Loading daily close and linked shifts…")
+                    : t("لم يُرجع السيرفر تفاصيل يوم العمل الموثّقة لهذا التقرير.", "The server did not provide verifiable workday details for this report.")}
+                  {detailQuery.isError && <button className="mx-3 rounded-lg border border-amber-200 px-3 py-1.5 font-semibold" onClick={() => void detailQuery.refetch()}>
+                    {t("إعادة المحاولة", "Retry")}
+                  </button>}
+                </div>
+              )}
+
+              {!recon && !isDayOperation && (
                 <p className="text-sm text-gray-400 text-center py-6">{t("لم تتم التسوية بعد لهذه العملية", "This operation has not been reconciled yet")}</p>
               )}
 
-              {recon && <>
+              {recon && !isDayOperation && <>
                 {/* ── إجمالي المبيعات (مقفل — من رفع مدير الفرع) ── */}
                 <div className="flex items-center justify-between px-4 py-3.5 bg-indigo-50/60">
                   <div className="flex items-center gap-2">
@@ -464,6 +494,10 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
 
             </div>
           </Card>
+          <details open={!isDayOperation} className="rounded-xl border border-gray-100 bg-white">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-600">
+              {t("عرض سجل مراجعة التقرير ودورة حياته", "Show report review and lifecycle history")}
+            </summary>
           <Card title={t("سجل دورة حياة السجل", "Record Lifecycle Log")} actions={<span className="text-xs text-gray-400 font-mono">{op?.id}</span>}>
             <div className="p-4 space-y-0">
               {auditEvents.map((event, i, arr) => (
@@ -488,6 +522,7 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
               ))}
             </div>
           </Card>
+          </details>
         </div>
 
         <div className="space-y-4">
