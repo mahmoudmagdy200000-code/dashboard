@@ -22,7 +22,10 @@ import {
   ManagerDeliveredSalesSection,
   ManagerDeliveredSalesTotal,
 } from "./ManagerDeliveredSales";
-import { withNormalizedCashierRole } from "./employeeSalesHelpers";
+import {
+  summarizeShiftCustodyCreditDebit,
+  withNormalizedCashierRole,
+} from "./employeeSalesHelpers";
 import { useEmployeeDeliveredSales } from "./useEmployeeDeliveredSales";
 import {
   useCreateEmployeeMovement,
@@ -257,6 +260,7 @@ export function AccEmployees({ setModal }: PageProps) {
     ? employees.find((e) => e.id === selectedId)
     : undefined;
   const selectedCustody = custodyQuery.data;
+  const custodySummary = summarizeShiftCustodyCreditDebit(selectedCustody);
   const { getEmployeeSales, selectedSales } = useEmployeeDeliveredSales(
     employees,
     emp,
@@ -843,6 +847,64 @@ export function AccEmployees({ setModal }: PageProps) {
                         ? "—"
                         : `${formatShiftHalalas(deliveredSalesSummaryHalalas, lang)} ${t("ر.س", "SAR")}`}
                     </span>
+                  </div>
+                )}
+                {(custodySummary.isAvailable || custodySummary.pendingDeliveredHalalas > 0 || (selectedCustody?.entries?.length ?? 0) > 0) && (
+                  <div
+                    data-testid="acc-employees-custody-section"
+                    className="mb-3 rounded-xl border border-purple-200 bg-purple-50/40 p-3 space-y-2.5"
+                    dir={dir}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-purple-900">
+                        {t("عهدة النقد (تسليمات الشيفتات)", "Shift Cash Custody")}
+                      </span>
+                      {custodySummary.pendingDeliveredHalalas > 0 && (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                          {t("تسليم معلق بانتظار التأكيد:", "Pending handover:")}{" "}
+                          <bdi className="font-mono">{formatShiftHalalas(custodySummary.pendingDeliveredHalalas, lang)}</bdi> {t("ر.س", "SAR")}
+                        </span>
+                      )}
+                    </div>
+                    {custodySummary.isAvailable && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                        <div className="bg-white rounded-lg p-2 border border-gray-200">
+                          <p className="text-[10px] text-gray-500">{t("رصيد أول المدة", "Opening")}</p>
+                          <p className="font-mono font-bold text-xs text-gray-700">{formatShiftHalalas(custodySummary.openingBalanceHalalas, lang)}</p>
+                        </div>
+                        <div className="bg-emerald-50 rounded-lg p-2 border border-emerald-200">
+                          <p className="text-[10px] text-emerald-700">{t("إجمالي الدائن (المسلّم)", "Credit (Handed Over)")}</p>
+                          <p className="font-mono font-bold text-xs text-emerald-700">+{formatShiftHalalas(custodySummary.creditDeliveredHalalas, lang)}</p>
+                        </div>
+                        <div className="bg-red-50 rounded-lg p-2 border border-red-200">
+                          <p className="text-[10px] text-red-700">{t("إجمالي المدين (كاش داخل)", "Debit (Cash In)")}</p>
+                          <p className="font-mono font-bold text-xs text-red-700">−{formatShiftHalalas(custodySummary.debitReceivedHalalas, lang)}</p>
+                        </div>
+                        <div className="bg-white rounded-lg p-2 border border-purple-200">
+                          <p className="text-[10px] text-purple-700 font-semibold">{t("الرصيد الجاري للعهدة", "Closing")}</p>
+                          <p className={`font-mono font-bold text-xs ${balColor(custodySummary.closingBalanceHalalas)}`}>
+                            {formatShiftHalalas(custodySummary.closingBalanceHalalas, lang)}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {(selectedCustody?.entries?.length ?? 0) > 0 && (
+                      <div className="space-y-1">
+                        {selectedCustody!.entries.slice(0, 5).map((entry) => (
+                          <div key={entry.source_id} className="bg-white rounded-lg px-2.5 py-1.5 border border-purple-100 flex items-center justify-between gap-2 text-[11px]">
+                            <div className="min-w-0 truncate">
+                              <span className="font-semibold text-gray-800">{lang === "ar" ? entry.label_ar : (entry.label_en || entry.label_ar)}</span>
+                              {entry.counterparty?.name && <span className="text-gray-500"> · {entry.counterparty.name}</span>}
+                            </div>
+                            <span className={`font-mono font-bold whitespace-nowrap ${entry.cash_out > 0 ? "text-emerald-700" : "text-red-700"}`}>
+                              {entry.cash_out > 0
+                                ? `+${formatShiftHalalas(entry.cash_out, lang)}`
+                                : `−${formatShiftHalalas(entry.cash_in, lang)}`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
                 {hasEmployeeDebitWarning(statement) && (

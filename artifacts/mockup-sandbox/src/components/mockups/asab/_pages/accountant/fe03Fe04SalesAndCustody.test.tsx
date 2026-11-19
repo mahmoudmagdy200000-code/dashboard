@@ -454,35 +454,351 @@ test("FE-04: AccCompanyEmployees searches by empNumber or name, separates Dues v
       `Expected empNumber=EMP-0007 in requestedEmployeeParams, got: ${JSON.stringify(requestedEmployeeParams)}`,
     );
 
-    // Select employee row
+    // Select employee row -> defaults directly to Shift Cash Custody tab for cashier
     const empBtn = Array.from(container.querySelectorAll("button")).find((b) => (b.textContent ?? "").includes("فهد العتيبي"))!;
     await act(async () => empBtn.click());
 
-    // Clear distinction between Shift Sales (18,340) vs Cash Into Custody (+4,700)
+    // Clear distinction between Shift Sales (18,340), Credit Handed Over (+3,200), Debit Cash In (−4,700), and pending (400)
     const distinction = container.querySelector('[data-testid="sales-vs-custody-distinction"]')!;
     assert.match(distinction.textContent ?? "", /١٨٬٣٤٠٫٠٠/);
-    assert.match(distinction.textContent ?? "", /\+٤٬٧٠٠٫٠٠/);
+    assert.match(container.querySelector('[data-testid="summary-custody-credit-delivered"]')?.textContent ?? "", /\+٣٬٢٠٠٫٠٠/);
+    assert.match(container.querySelector('[data-testid="summary-custody-debit-received"]')?.textContent ?? "", /−٤٬٧٠٠٫٠٠/);
+    assert.match(container.querySelector('[data-testid="summary-custody-pending-delivered"]')?.textContent ?? "", /٤٠٠٫٠٠/);
 
-    // Dues & Deductions tab is independent from Custody tab
+    // Custody tab is active immediately without manual click, showing Credit (cash_out) & Debit (cash_in)
     const duesTab = container.querySelector('[data-testid="tab-emp-dues"]')!;
     const custodyTab = container.querySelector('[data-testid="tab-emp-custody"]')!;
     assert.match(duesTab.textContent ?? "", /المستحقات والخصومات/);
-    await act(async () => (custodyTab as HTMLButtonElement).click());
+    assert.match(custodyTab.className, /border-purple-600/);
+    assert.match(container.querySelector('[data-testid="custody-total-credit"]')?.textContent ?? "", /\+٣٬٢٠٠٫٠٠/);
+    assert.match(container.querySelector('[data-testid="custody-total-debit"]')?.textContent ?? "", /−٤٬٧٠٠٫٠٠/);
 
-    // Custody entries show +, −, source, receipt, status, running balance, and pending outside balance
     const text = container.textContent ?? "";
     assert.match(text, /لا يغيّر الرصيد الجاري/);
     assert.match(text, /٤٠٠٫٠٠/);
     assert.match(text, /١٬٥٠٠٫٠٠/);
-    assert.match(text, /\+٤٬٢٠٠٫٠٠/);
-    assert.match(text, /−٢٬٧٠٠٫٠٠/);
+    assert.match(text, /\+٢٬٧٠٠٫٠٠/);
+    assert.match(text, /−٤٬٢٠٠٫٠٠/);
     assert.match(text, /عهدة كاشير/);
     assert.match(text, /RCP-9001/);
     assert.match(text, /مؤكد/);
-    assert.match(text, /دائن \(\+\) — كاش داخل/);
-    assert.match(text, /مدين \(−\) — كاش خارج/);
+    assert.match(text, /دائن — مسلّم \(كاش خارج\)/);
+    assert.match(text, /مدين — عليه \(كاش داخل\)/);
+
+    // Switching to Dues tab exposes cross-link back to Shift Cash Custody
+    await act(async () => (duesTab as HTMLButtonElement).click());
+    const crossLink = container.querySelector('[data-testid="dues-custody-crosslink"]');
+    assert.ok(crossLink, "Dues tab displays custody cross-link banner");
   } finally {
     api.get = origGet;
+    await act(async () => root.unmount());
+    container.remove();
+    qc.clear();
+  }
+});
+
+test("FE-04 regression: 200 SAR cashier shift handed over (90 handover + 5 shortage repayment) shows 95.00 in Credit immediately without zeroes", async () => {
+  const createRoot = await loadCreateRoot();
+  const qc = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
+
+  const cashierEmp: Employee = {
+    id: "emp-cashier-200",
+    empNumber: "0042",
+    name: "يوسف الدوسري",
+    phone: "0500000042",
+    role: "كاشير",
+    branchId: "branch-200",
+    branchName: "فرع الملقا",
+    monthlySalary: 300000,
+    status: "active",
+    balanceHalalas: 0,
+    balanceCaption: { key: "balanced", labelAr: "متوازن" },
+  };
+  const shift200: Shift = {
+    id: "shift-200",
+    branchId: "branch-200",
+    branchName: "فرع الملقا",
+    cashierEmployeeId: cashierEmp.id,
+    cashierName: cashierEmp.name,
+    role: "cashier",
+    shiftType: "first",
+    shiftNo: 1,
+    startedAt: "2026-11-19T08:00:00Z",
+    endedAt: "2026-11-19T16:00:00Z",
+    status: "closed",
+    isLate: false,
+    ordersCount: 10,
+    salesHalalas: 20000,
+    openingFloatHalalas: 0,
+    cashActualHalalas: 9000,
+    cashExpectedHalalas: 9500,
+    varianceHalalas: -500,
+    cashCountState: "counted",
+    reportReview: { operation_id: "op-200", public_id: "SHF-200" },
+  };
+
+  qc.setQueryData(queryKeys.employees({ empNumber: undefined, q: undefined, branchId: undefined }), {
+    data: [cashierEmp],
+    meta: { total: 1, page: 1, pageSize: 20, totalPages: 1 },
+  });
+  qc.setQueryData(queryKeys.employeeMovements(cashierEmp.id, undefined), {
+    employeeId: cashierEmp.id,
+    employeeName: cashierEmp.name,
+    openingBalanceHalalas: 0,
+    closingBalanceHalalas: 0,
+    balanceHalalas: 0,
+    balanceCaption: { key: "balanced", labelAr: "متوازن" },
+    totalCredit: 0,
+    totalDebit: 0,
+    movements: [],
+  });
+  qc.setQueryData(queryKeys.shiftCustodyStatement(cashierEmp.id, { from: undefined, to: undefined, page: 1, pageSize: 10 }), {
+    unit: "halala",
+    identity_link_state: "linked",
+    identity: {
+      employee_id: cashierEmp.id,
+      name: cashierEmp.name,
+      role: "cashier",
+      linked_type: "cashier",
+      linked_id: "cashier-200",
+      branch_id: "branch-200",
+      branch_name: "فرع الملقا",
+    },
+    period: { from: null, to: null },
+    balances: {
+      is_available: true,
+      opening_balance: 0,
+      closing_balance: -500,
+      total_cash_in: 9000,
+      total_cash_out: 9500,
+      net_period_change: -500,
+    },
+    entries: [
+      {
+        source_type: "cashier_custody",
+        source_id: "tx-sales-90",
+        event_at: "2026-11-19T16:00:00Z",
+        business_date: "2026-11-19",
+        branch: { id: "branch-200", name: "فرع الملقا" },
+        transaction_type: "Total Sales",
+        classification: "sales_collection",
+        label_ar: "تحصيل مبيعات",
+        label_en: "Sales collection",
+        source_shift_id: "shift-200",
+        receiving_shift_id: null,
+        receipt_id: null,
+        counterparty: { type: null, id: null, name: null },
+        cash_in: 9000,
+        cash_out: 0,
+        running_balance: 9000,
+        confirmation_state: "confirmed",
+        lineage_key: null,
+        reversal_id: null,
+      },
+      {
+        source_type: "cashier_custody",
+        source_id: "tx-ho-90",
+        event_at: "2026-11-19T16:05:00Z",
+        business_date: "2026-11-19",
+        branch: { id: "branch-200", name: "فرع الملقا" },
+        transaction_type: "Handover Sent",
+        classification: "handover_sent",
+        label_ar: "تسليم عهدة",
+        label_en: "Handover sent",
+        source_shift_id: "shift-200",
+        receiving_shift_id: null,
+        receipt_id: "RCP-2001",
+        counterparty: { type: "branch_manager", id: "bm-1", name: "ماجد المدير" },
+        cash_in: 0,
+        cash_out: 9000,
+        running_balance: 0,
+        confirmation_state: "confirmed",
+        lineage_key: null,
+        reversal_id: null,
+      },
+      {
+        source_type: "cashier_custody",
+        source_id: "tx-repay-5",
+        event_at: "2026-11-19T16:06:00Z",
+        business_date: "2026-11-19",
+        branch: { id: "branch-200", name: "فرع الملقا" },
+        transaction_type: "Debt Repayment",
+        classification: "debt_repayment",
+        label_ar: "سداد مديونية",
+        label_en: "Debt repayment",
+        source_shift_id: null,
+        receiving_shift_id: null,
+        receipt_id: null,
+        counterparty: { type: "branch_manager", id: "bm-1", name: "ماجد المدير" },
+        cash_in: 0,
+        cash_out: 500,
+        running_balance: -500,
+        confirmation_state: "confirmed",
+        lineage_key: null,
+        reversal_id: null,
+      },
+    ],
+    pending: [],
+    pagination: { page: 1, pageSize: 10, total: 3, totalPages: 1 },
+  });
+  qc.setQueryData(["shifts", "employee-closed", "branch-200"], { [cashierEmp.id]: [shift200] });
+
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={qc}>
+          <AuthContext.Provider value={authValue}>
+            <LangContext.Provider value={langCtx("ar")}>
+              <CLangContext.Provider value={langCtx("ar")}>
+                <AccCompanyEmployees />
+              </CLangContext.Provider>
+            </LangContext.Provider>
+          </AuthContext.Provider>
+        </QueryClientProvider>,
+      );
+    });
+
+    const empBtn = Array.from(container.querySelectorAll("button")).find((b) => (b.textContent ?? "").includes("يوسف الدوسري"))!;
+    await act(async () => empBtn.click());
+
+    // Shift sales total 200.00 SAR, Credit handed over +95.00 SAR, Debit cash in −90.00 SAR shown immediately
+    assert.match(container.querySelector('[data-testid="sales-vs-custody-distinction"]')?.textContent ?? "", /٢٠٠٫٠٠/);
+    assert.match(container.querySelector('[data-testid="summary-custody-credit-delivered"]')?.textContent ?? "", /\+٩٥٫٠٠/);
+    assert.match(container.querySelector('[data-testid="custody-total-credit"]')?.textContent ?? "", /\+٩٥٫٠٠/);
+    assert.match(container.querySelector('[data-testid="custody-total-debit"]')?.textContent ?? "", /−٩٠٫٠٠/);
+
+    const creditCells = Array.from(container.querySelectorAll('[data-testid="custody-cell-credit"]')).map((el) => el.textContent ?? "");
+    const debitCells = Array.from(container.querySelectorAll('[data-testid="custody-cell-debit"]')).map((el) => el.textContent ?? "");
+    assert.ok(creditCells.some((c) => c.includes("+٩٠٫٠٠")), `Expected +90.00 in Credit cells, got ${JSON.stringify(creditCells)}`);
+    assert.ok(creditCells.some((c) => c.includes("+٥٫٠٠")), `Expected +5.00 in Credit cells, got ${JSON.stringify(creditCells)}`);
+    assert.ok(debitCells.some((c) => c.includes("−٩٠٫٠٠")), `Expected -90.00 in Debit cells, got ${JSON.stringify(debitCells)}`);
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+    qc.clear();
+  }
+});
+
+test("FE-04 pending handover regression: unconfirmed 95.00 SAR handover shows pending badge immediately on cashier selection", async () => {
+  const createRoot = await loadCreateRoot();
+  const qc = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
+
+  const cashierPending: Employee = {
+    id: "emp-cashier-pending",
+    empNumber: "0043",
+    name: "سعد القحطاني",
+    phone: "0500000043",
+    role: "cashier",
+    branchId: "branch-201",
+    branchName: "فرع النخيل",
+    monthlySalary: 300000,
+    status: "active",
+    balanceHalalas: 0,
+    balanceCaption: { key: "balanced", labelAr: "متوازن" },
+  };
+  const shiftPending: Shift = {
+    id: "shift-201",
+    branchId: "branch-201",
+    branchName: "فرع النخيل",
+    cashierEmployeeId: cashierPending.id,
+    cashierName: cashierPending.name,
+    role: "cashier",
+    shiftType: "first",
+    shiftNo: 1,
+    startedAt: "2026-11-19T08:00:00Z",
+    endedAt: "2026-11-19T16:00:00Z",
+    status: "closed",
+    isLate: false,
+    ordersCount: 10,
+    salesHalalas: 20000,
+    openingFloatHalalas: 0,
+    cashActualHalalas: 9000,
+    cashExpectedHalalas: 9500,
+    varianceHalalas: -500,
+    cashCountState: "counted",
+    reportReview: { operation_id: "op-201", public_id: "SHF-201" },
+  };
+
+  qc.setQueryData(queryKeys.employees({ empNumber: undefined, q: undefined, branchId: undefined }), {
+    data: [cashierPending],
+    meta: { total: 1, page: 1, pageSize: 20, totalPages: 1 },
+  });
+  qc.setQueryData(queryKeys.employeeMovements(cashierPending.id, undefined), {
+    employeeId: cashierPending.id,
+    employeeName: cashierPending.name,
+    openingBalanceHalalas: 0,
+    closingBalanceHalalas: 0,
+    balanceHalalas: 0,
+    balanceCaption: { key: "balanced", labelAr: "متوازن" },
+    totalCredit: 0,
+    totalDebit: 0,
+    movements: [],
+  });
+  qc.setQueryData(queryKeys.shiftCustodyStatement(cashierPending.id, { from: undefined, to: undefined, page: 1, pageSize: 10 }), {
+    unit: "halala",
+    identity_link_state: "linked",
+    identity: {
+      employee_id: cashierPending.id,
+      name: cashierPending.name,
+      role: "cashier",
+      linked_type: "cashier",
+      linked_id: "cashier-201",
+      branch_id: "branch-201",
+      branch_name: "فرع النخيل",
+    },
+    period: { from: null, to: null },
+    balances: {
+      is_available: true,
+      opening_balance: 0,
+      closing_balance: 9000,
+      total_cash_in: 9000,
+      total_cash_out: 0,
+      net_period_change: 9000,
+    },
+    entries: [],
+    pending: [
+      {
+        request_type: "handover_sent",
+        request_id: "pend-9500",
+        created_at: "2026-11-19T16:05:00Z",
+        business_date: "2026-11-19",
+        amount: 9500,
+        counterparty: { type: "branch_manager", id: "bm-1", name: "ماجد المدير" },
+        source_shift_id: "shift-201",
+        status: "pending",
+      },
+    ],
+    pagination: { page: 1, pageSize: 10, total: 0, totalPages: 0 },
+  });
+  qc.setQueryData(["shifts", "employee-closed", "branch-201"], { [cashierPending.id]: [shiftPending] });
+
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  try {
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={qc}>
+          <AuthContext.Provider value={authValue}>
+            <LangContext.Provider value={langCtx("ar")}>
+              <CLangContext.Provider value={langCtx("ar")}>
+                <AccCompanyEmployees />
+              </CLangContext.Provider>
+            </LangContext.Provider>
+          </AuthContext.Provider>
+        </QueryClientProvider>,
+      );
+    });
+
+    const empBtn = Array.from(container.querySelectorAll("button")).find((b) => (b.textContent ?? "").includes("سعد القحطاني"))!;
+    await act(async () => empBtn.click());
+
+    assert.match(container.querySelector('[data-testid="summary-custody-pending-delivered"]')?.textContent ?? "", /٩٥٫٠٠/);
+    assert.match(container.querySelector('[data-testid="custody-pending-section"]')?.textContent ?? "", /٩٥٫٠٠/);
+  } finally {
     await act(async () => root.unmount());
     container.remove();
     qc.clear();
