@@ -26,6 +26,18 @@ export interface ManagerCustodyHandoversSummary {
   pendingTotalHalalas: number;
 }
 
+export interface ShiftCustodyCreditDebitSummary {
+  isAvailable: boolean;
+  openingBalanceHalalas: number;
+  /** Cash handed over / settled to manager or next cashier (cash_out). */
+  creditDeliveredHalalas: number;
+  /** Cash received into employee custody from shift sales / incoming handovers (cash_in). */
+  debitReceivedHalalas: number;
+  closingBalanceHalalas: number;
+  pendingDeliveredHalalas: number;
+  pendingReceivedHalalas: number;
+}
+
 const CASHIER_ROLES = new Set([
   "cashier",
   "head cashier",
@@ -314,4 +326,54 @@ export function extractManagerCustodyHandovers(
     confirmedTotalHalalas,
     pendingTotalHalalas,
   };
+}
+
+/**
+ * Summarizes an employee's shift cash custody statement in employee-account Credit/Debit terms:
+ * - Credit (دائن): cash handed over / settled by the employee to the manager or next cashier (`total_cash_out`).
+ * - Debit (مدين): cash received into custody from shift sales or incoming transfers (`total_cash_in`).
+ */
+export function summarizeShiftCustodyCreditDebit(
+  custody?: ShiftCustodyStatement | null,
+): ShiftCustodyCreditDebitSummary {
+  const balances = custody?.balances;
+  const isAvailable = Boolean(balances?.is_available);
+
+  let pendingDeliveredHalalas = 0;
+  let pendingReceivedHalalas = 0;
+  for (const item of custody?.pending ?? []) {
+    if (item.status && item.status !== "pending") continue;
+    const amt = typeof item.amount === "number" && Number.isFinite(item.amount) ? item.amount : 0;
+    if (item.request_type === "handover_sent" || item.request_type === "manager_transfer_sent") {
+      pendingDeliveredHalalas += amt;
+    } else if (
+      item.request_type === "handover_received" ||
+      item.request_type === "manager_transfer_received"
+    ) {
+      pendingReceivedHalalas += amt;
+    }
+  }
+
+  return {
+    isAvailable,
+    openingBalanceHalalas: isAvailable ? (balances?.opening_balance ?? 0) : 0,
+    creditDeliveredHalalas: isAvailable ? (balances?.total_cash_out ?? 0) : 0,
+    debitReceivedHalalas: isAvailable ? (balances?.total_cash_in ?? 0) : 0,
+    closingBalanceHalalas: isAvailable ? (balances?.closing_balance ?? 0) : 0,
+    pendingDeliveredHalalas,
+    pendingReceivedHalalas,
+  };
+}
+
+/** True when employee statement should open directly on Shift Cash Custody instead of payroll Dues. */
+export function shouldDefaultToCustodyTab(
+  employee?: Pick<Employee, "role"> | null,
+  custody?: ShiftCustodyStatement | null,
+): boolean {
+  const linkedType = custody?.identity?.linked_type;
+  return (
+    isCashierEmployeeRole(employee?.role, linkedType) ||
+    isBranchManagerEmployeeRole(employee?.role, linkedType) ||
+    custody?.identity_link_state === "linked"
+  );
 }

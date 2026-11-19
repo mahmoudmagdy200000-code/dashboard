@@ -17,7 +17,13 @@ import { ShiftReconciliationSummaryView } from "./ShiftReconciliationSummary.tsx
 import { ShiftSalesOverview, ShiftSalesSection } from "./_pages/accountant/ShiftSalesSection";
 import { EmployeeClosedShiftSales, EmployeeShiftSalesTotal } from "./_pages/accountant/EmployeeClosedShiftSales";
 import { ManagerDeliveredSalesSection, ManagerDeliveredSalesTotal } from "./_pages/accountant/ManagerDeliveredSales";
-import { withNormalizedCashierRole } from "./_pages/accountant/employeeSalesHelpers";
+import {
+  isBranchManagerEmployeeRole,
+  isCashierEmployeeRole,
+  shouldDefaultToCustodyTab,
+  summarizeShiftCustodyCreditDebit,
+  withNormalizedCashierRole,
+} from "./_pages/accountant/employeeSalesHelpers";
 import { useEmployeeDeliveredSales } from "./_pages/accountant/useEmployeeDeliveredSales";
 import { LangContext } from "./_shared/LangContext.tsx";
 import { api, generateCommandId } from "../../../api/client";
@@ -7968,6 +7974,7 @@ export function AccCompanyEmployees() {
 
   type EmpAccountTab = "dues" | "custody";
   const [activeTab, setActiveTab] = useState<EmpAccountTab>("dues");
+  const [hasManualTabChoice, setHasManualTabChoice] = useState(false);
   const [custodyPage, setCustodyPage] = useState(1);
   const [custodyFrom, setCustodyFrom] = useState("");
   const [custodyTo, setCustodyTo] = useState("");
@@ -7979,6 +7986,7 @@ export function AccCompanyEmployees() {
     pageSize: 10,
   });
   const custodyStatement = custodyQuery.data;
+  const custodySummary = summarizeShiftCustodyCreditDebit(custodyStatement);
   const isCustodyLoading = custodyQuery.isLoading;
   const isCustodyError = custodyQuery.isError;
   const { user, isRole } = useAuth();
@@ -7998,6 +8006,19 @@ export function AccCompanyEmployees() {
   );
   const selectedIsCashier = selectedSales?.isCashier ?? false;
   const selectedIsManager = selectedSales?.isManager ?? false;
+
+  useEffect(() => {
+    if (!selectedEmp || hasManualTabChoice) return;
+    if (shouldDefaultToCustodyTab(selectedRow, custodyStatement)) {
+      setActiveTab("custody");
+    }
+  }, [
+    selectedEmp,
+    selectedRow?.role,
+    custodyStatement?.identity_link_state,
+    custodyStatement?.identity?.linked_type,
+    hasManualTabChoice,
+  ]);
 
   // Header KPIs derived from the list contract (salary + standing balances).
   const totalSalariesH = employees.reduce((s,e)=>s+(e.monthlySalary ?? 0),0);
@@ -8085,7 +8106,16 @@ export function AccCompanyEmployees() {
           {employees.map(e=>{
             const rowSales = getEmployeeSales(e);
             return <button type="button" key={e.id} aria-expanded={selectedEmp===e.id}
-              onClick={()=>{ setSelectedEmp(selectedEmp===e.id?null:e.id); setMonth(""); setCustodyPage(1); }}
+              onClick={()=>{
+                const nextId = selectedEmp===e.id ? null : e.id;
+                setSelectedEmp(nextId);
+                setMonth("");
+                setCustodyPage(1);
+                setHasManualTabChoice(false);
+                if (nextId) {
+                  setActiveTab(isCashierEmployeeRole(e.role) || isBranchManagerEmployeeRole(e.role) ? "custody" : "dues");
+                }
+              }}
               className={`flex w-full items-center gap-3 px-4 py-3.5 text-start border-b border-gray-50 last:border-0 cursor-pointer transition-all ${selectedEmp===e.id?"bg-purple-50 border-r-4 border-r-purple-500":"hover:bg-gray-50/70"} ${e.status!=="active"?"opacity-60":""}`}>
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">{e.name[0]}</div>
               <div className="flex-1 min-w-0">
@@ -8192,8 +8222,8 @@ export function AccCompanyEmployees() {
                   />
                 )}
 
-                {/* Clear distinction: Shift Sales vs Cash Custody In */}
-                {(selectedIsCashier || selectedIsManager || custodyStatement?.balances?.is_available) && (
+                {/* Clear distinction: Shift Sales vs Cash Custody Credit/Debit */}
+                {(selectedIsCashier || selectedIsManager || custodySummary.isAvailable || custodySummary.pendingDeliveredHalalas > 0) && (
                   <div
                     data-testid="sales-vs-custody-distinction"
                     className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50/60 p-3 space-y-1.5 text-xs"
@@ -8211,28 +8241,47 @@ export function AccCompanyEmployees() {
                           </strong>
                         </span>
                         <span className="text-[11px] text-emerald-800">
-                          {t("الكاش الداخل في العهدة:", "Cash into custody:")}{" "}
-                          <strong className="font-mono">
-                            <bdi>{custodyStatement?.balances?.is_available ? `+${fmtMoney(custodyStatement.balances.total_cash_in ?? 0)}` : "—"}</bdi>
-                            {custodyStatement?.balances?.is_available ? ` ${SAR}` : ""}
+                          {t("دائن (المسلّم للمدير/العهدة):", "Credit (Handed over):")}{" "}
+                          <strong data-testid="summary-custody-credit-delivered" className="font-mono">
+                            <bdi>{custodySummary.isAvailable ? `+${fmtMoney(custodySummary.creditDeliveredHalalas)}` : "—"}</bdi>
+                            {custodySummary.isAvailable ? ` ${SAR}` : ""}
+                          </strong>
+                        </span>
+                        <span className="text-[11px] text-red-800">
+                          {t("مدين (الكاش الداخل للعهدة):", "Debit (Cash into custody):")}{" "}
+                          <strong data-testid="summary-custody-debit-received" className="font-mono">
+                            <bdi>{custodySummary.isAvailable ? `−${fmtMoney(custodySummary.debitReceivedHalalas)}` : "—"}</bdi>
+                            {custodySummary.isAvailable ? ` ${SAR}` : ""}
                           </strong>
                         </span>
                       </div>
                     </div>
+                    {custodySummary.pendingDeliveredHalalas > 0 && (
+                      <div data-testid="summary-custody-pending-delivered" className="text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1 inline-flex items-center gap-1.5">
+                        <Clock size={12} className="text-amber-600 flex-shrink-0" />
+                        <span>
+                          {t("تسليم معلق بانتظار التأكيد:", "Pending handover awaiting confirmation:")}{" "}
+                          <bdi className="font-mono">{fmtMoney(custodySummary.pendingDeliveredHalalas)}</bdi> {SAR}
+                        </span>
+                      </div>
+                    )}
                     <p className="text-[11px] text-indigo-800 leading-relaxed">
                       {t(
-                        "إجمالي مبيعات الوردية يشمل الكاش والشبكة والتطبيقات لأغراض مراجعة المبيعات؛ أما عهدة الموظف فتحسب النقد الفعلي الداخل (+) والصادر (−) والإيصالات المؤكدة فقط.",
-                        "Shift sales total combines cash, card, and delivery apps for sales reporting; employee custody counts only actual cash in (+), cash out (−), and confirmed receipts.",
+                        "إجمالي مبيعات الوردية يشمل الكاش والشبكة والتطبيقات لأغراض مراجعة المبيعات؛ أما عهدة الموظف فتُظهر المبالغ المسلّمة للمدير/التالي كـ(دائن +) والكاش الداخل للعهدة كـ(مدين −).",
+                        "Shift sales total combines cash, card, and delivery apps for sales reporting; employee cash custody displays cash handed over to manager/next cashier as Credit (+) and cash received into custody as Debit (−).",
                       )}
                     </p>
                   </div>
                 )}
 
-                {/* Tabs Switcher: Dues & Deductions (Independent Tab) vs Cash Custody Statement */}
+                {/* Tabs Switcher: Shift Cash Custody vs Payroll Dues & Deductions */}
                 <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pt-3 mt-3">
                   <button
                     type="button"
-                    onClick={() => setActiveTab("dues")}
+                    onClick={() => {
+                      setHasManualTabChoice(true);
+                      setActiveTab("dues");
+                    }}
                     data-testid="tab-emp-dues"
                     className={`flex items-center gap-1.5 pb-2 px-3 text-xs font-bold border-b-2 transition-all ${
                       activeTab === "dues"
@@ -8245,7 +8294,10 @@ export function AccCompanyEmployees() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveTab("custody")}
+                    onClick={() => {
+                      setHasManualTabChoice(true);
+                      setActiveTab("custody");
+                    }}
                     data-testid="tab-emp-custody"
                     className={`flex items-center gap-1.5 pb-2 px-3 text-xs font-bold border-b-2 transition-all ${
                       activeTab === "custody"
@@ -8279,6 +8331,26 @@ export function AccCompanyEmployees() {
                         <p className={`font-mono font-black text-sm ${balColor(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}`}>{fmtMoney(statement?.balanceHalalas ?? selectedRow.balanceHalalas)}</p>
                       </div>
                     </div>
+                    {custodySummary.isAvailable && (custodySummary.creditDeliveredHalalas > 0 || custodySummary.debitReceivedHalalas > 0 || custodySummary.pendingDeliveredHalalas > 0) && (
+                      <div data-testid="dues-custody-crosslink" className="mt-3 flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-lg bg-purple-50 border border-purple-200 text-[11px]">
+                        <span className="text-purple-900 font-medium">
+                          {t(
+                            "حركات تسليم عهدة الشيفتات (دائن مسلّم / مدين كاش داخل) معروضة في تبويب كشف عهدة النقد.",
+                            "Shift cash handover totals (Credit handed over / Debit cash in) appear under Cash Custody Statement.",
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHasManualTabChoice(true);
+                            setActiveTab("custody");
+                          }}
+                          className="font-bold text-purple-700 hover:underline whitespace-nowrap"
+                        >
+                          {t("عرض كشف عهدة النقد", "View Cash Custody")}
+                        </button>
+                      </div>
+                    )}
                     {hasEmployeeDebitWarning(statement) && (
                       <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
                         <AlertTriangle size={13} className="text-amber-600 flex-shrink-0"/>
@@ -8309,30 +8381,35 @@ export function AccCompanyEmployees() {
                         </div>
                       </div>
                     )}
-                    {custodyStatement?.balances?.is_available && (
+                    {custodySummary.isAvailable && (
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <div className="bg-gray-50 rounded-xl p-2.5 text-center border border-gray-200">
                           <p className="text-[10px] text-gray-500 font-semibold">{t("رصيد أول المدة", "Opening Balance")}</p>
-                          <p data-testid="custody-opening-balance" className={`font-mono font-bold text-xs ${balColor(custodyStatement.balances.opening_balance ?? 0)}`}>
-                            {fmtMoney(custodyStatement.balances.opening_balance ?? 0)}
+                          <p data-testid="custody-opening-balance" className={`font-mono font-bold text-xs ${balColor(custodySummary.openingBalanceHalalas)}`}>
+                            {fmtMoney(custodySummary.openingBalanceHalalas)}
                           </p>
                         </div>
                         <div className="bg-emerald-50 rounded-xl p-2.5 text-center border border-emerald-100">
-                          <p className="text-[10px] text-emerald-600 font-semibold">{t("الكاش الداخل (+)", "Cash In (+)")}</p>
-                          <p className="font-mono font-bold text-emerald-800 text-xs">
-                            +{fmtMoney(custodyStatement.balances.total_cash_in ?? 0)}
+                          <p className="text-[10px] text-emerald-600 font-semibold">{t("إجمالي الدائن (المسلّم)", "Total Credit (Handed Over)")}</p>
+                          <p data-testid="custody-total-credit" className="font-mono font-bold text-emerald-800 text-xs">
+                            +{fmtMoney(custodySummary.creditDeliveredHalalas)}
                           </p>
+                          {custodySummary.pendingDeliveredHalalas > 0 && (
+                            <p className="text-[9px] text-amber-700 font-semibold mt-0.5">
+                              {t("معلق بانتظار التأكيد:", "Pending confirmation:")} <bdi className="font-mono">{fmtMoney(custodySummary.pendingDeliveredHalalas)}</bdi> {SAR}
+                            </p>
+                          )}
                         </div>
                         <div className="bg-red-50 rounded-xl p-2.5 text-center border border-red-100">
-                          <p className="text-[10px] text-red-600 font-semibold">{t("الكاش الخارج (−)", "Cash Out (−)")}</p>
-                          <p className="font-mono font-bold text-red-800 text-xs">
-                            −{fmtMoney(custodyStatement.balances.total_cash_out ?? 0)}
+                          <p className="text-[10px] text-red-600 font-semibold">{t("إجمالي المدين (كاش داخل العهدة)", "Total Debit (Cash In)")}</p>
+                          <p data-testid="custody-total-debit" className="font-mono font-bold text-red-800 text-xs">
+                            −{fmtMoney(custodySummary.debitReceivedHalalas)}
                           </p>
                         </div>
                         <div className="bg-purple-50 rounded-xl p-2.5 text-center border-2 border-purple-200">
                           <p className="text-[10px] text-purple-700 font-bold">{t("الرصيد الجاري للعهدة", "Closing Custody")}</p>
-                          <p data-testid="custody-closing-balance" className={`font-mono font-black text-sm ${balColor(custodyStatement.balances.closing_balance ?? 0)}`}>
-                            {fmtMoney(custodyStatement.balances.closing_balance ?? 0)}
+                          <p data-testid="custody-closing-balance" className={`font-mono font-black text-sm ${balColor(custodySummary.closingBalanceHalalas)}`}>
+                            {fmtMoney(custodySummary.closingBalanceHalalas)}
                           </p>
                         </div>
                       </div>
@@ -8504,11 +8581,11 @@ export function AccCompanyEmployees() {
                                 </div>
                                 <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] bg-gray-50 rounded-lg px-2.5 py-2">
                                   <div>
-                                    <span className="text-gray-500">{entry.cash_in > 0 ? t("دائن (+) — كاش داخل:", "Credit (+) — Cash in:") : t("مدين (−) — كاش خارج:", "Debit (−) — Cash out:")}</span>{" "}
-                                    {entry.cash_in > 0 ? (
-                                      <span className="font-mono font-bold text-emerald-700"><bdi>+{fmtMoney(entry.cash_in)}</bdi> {SAR}</span>
+                                    <span className="text-gray-500">{entry.cash_out > 0 ? t("دائن — مسلّم (كاش خارج):", "Credit — Handed Over (Out):") : t("مدين — عليه (كاش داخل):", "Debit — Cash In:")}</span>{" "}
+                                    {entry.cash_out > 0 ? (
+                                      <span className="font-mono font-bold text-emerald-700"><bdi>+{fmtMoney(entry.cash_out)}</bdi> {SAR}</span>
                                     ) : (
-                                      <span className="font-mono font-bold text-red-700"><bdi>−{fmtMoney(entry.cash_out)}</bdi> {SAR}</span>
+                                      <span className="font-mono font-bold text-red-700"><bdi>−{fmtMoney(entry.cash_in)}</bdi> {SAR}</span>
                                     )}
                                   </div>
                                   <div>
@@ -8544,8 +8621,8 @@ export function AccCompanyEmployees() {
                                 <th className="px-2 py-2.5 text-start font-semibold">{t("الحركة والمصدر", "Movement & Source")}</th>
                                 <th className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{t("الإيصال", "Receipt")}</th>
                                 <th className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{t("الحالة", "Status")}</th>
-                                <th className="px-1.5 py-2 text-center font-semibold leading-tight max-w-[96px]">{t("دائن (+) — كاش داخل", "Credit (+) — Cash In")}</th>
-                                <th className="px-1.5 py-2 text-center font-semibold leading-tight max-w-[96px]">{t("مدين (−) — كاش خارج", "Debit (−) — Cash Out")}</th>
+                                <th className="px-1.5 py-2 text-center font-semibold leading-tight max-w-[96px]">{t("دائن — مسلّم (كاش خارج)", "Credit — Handed Over (Out)")}</th>
+                                <th className="px-1.5 py-2 text-center font-semibold leading-tight max-w-[96px]">{t("مدين — عليه (كاش داخل)", "Debit — Cash In")}</th>
                                 <th className="px-2 py-2.5 text-center font-semibold whitespace-nowrap">{t("الرصيد الجاري", "Running Bal.")}</th>
                               </tr>
                             </thead>
@@ -8604,11 +8681,11 @@ export function AccCompanyEmployees() {
                                     <td className="px-2.5 py-2.5 text-center whitespace-nowrap">
                                       {renderStatusBadge(entry)}
                                     </td>
-                                    <td className="px-2.5 py-2.5 text-center font-mono font-bold text-emerald-600 whitespace-nowrap">
-                                      {entry.cash_in > 0 ? <bdi>+{fmtMoney(entry.cash_in)}</bdi> : "—"}
+                                    <td data-testid="custody-cell-credit" className="px-2.5 py-2.5 text-center font-mono font-bold text-emerald-600 whitespace-nowrap">
+                                      {entry.cash_out > 0 ? <bdi>+{fmtMoney(entry.cash_out)}</bdi> : "—"}
                                     </td>
-                                    <td className="px-2.5 py-2.5 text-center font-mono font-bold text-red-600 whitespace-nowrap">
-                                      {entry.cash_out > 0 ? <bdi>−{fmtMoney(entry.cash_out)}</bdi> : "—"}
+                                    <td data-testid="custody-cell-debit" className="px-2.5 py-2.5 text-center font-mono font-bold text-red-600 whitespace-nowrap">
+                                      {entry.cash_in > 0 ? <bdi>−{fmtMoney(entry.cash_in)}</bdi> : "—"}
                                     </td>
                                     <td className={`px-2.5 py-2.5 text-center font-mono font-bold whitespace-nowrap ${balColor(entry.running_balance)}`}>
                                       <bdi>{fmtMoney(entry.running_balance)}</bdi>
