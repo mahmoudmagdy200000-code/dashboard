@@ -108,8 +108,8 @@ export function DailySalesWorkdays({ references, filters = {}, renderOperation, 
   const grandTotal = totalValue !== null && Number.isSafeInteger(totalValue) ? totalValue : null;
 
   return (
-    <section data-testid="daily-sales-workdays" className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-gray-50/70 px-4 py-4 sm:px-5">
+    <section data-testid="daily-sales-workdays" className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-white px-4 py-4 sm:px-5">
         <div>
           <h3 className="font-bold text-gray-900 text-base">{t("تقارير المبيعات اليومية", "Daily Sales Reports")}</h3>
           <p className="mt-0.5 text-xs text-gray-500">
@@ -156,12 +156,12 @@ export function DailySalesWorkdays({ references, filters = {}, renderOperation, 
           : "bg-blue-50 text-blue-700 border-blue-200";
 
         return (
-          <article key={day.key} data-testid="daily-sales-workday-card" className="border-b border-gray-100 last:border-b-0 p-3 sm:p-4">
+          <article key={day.key} data-testid="daily-sales-workday-card" className="border-b border-gray-100 p-3 last:border-b-0 sm:p-4">
             <button
               type="button"
               aria-expanded={expanded}
               onClick={() => setExpandedKey(expanded ? null : day.key)}
-              className="flex w-full flex-wrap items-center gap-3 rounded-xl px-2 py-3 text-start hover:bg-gray-50/80 sm:px-3"
+              className="flex w-full flex-wrap items-center gap-3 rounded-lg px-2 py-2.5 text-start transition-colors hover:bg-purple-50/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600 sm:px-3"
             >
               <span className="rounded-xl bg-purple-50 p-2.5 text-purple-700"><CalendarDays size={20} /></span>
               <span className="min-w-0 flex-1">
@@ -183,16 +183,16 @@ export function DailySalesWorkdays({ references, filters = {}, renderOperation, 
               {expanded ? <ChevronUp size={17} className="text-gray-500" /> : <ChevronDown size={17} className="text-gray-500" />}
             </button>
 
-            <dl className="grid grid-cols-2 gap-2 rounded-xl bg-gray-50/70 p-3 sm:grid-cols-4">
+            <dl className="mt-1 grid grid-cols-2 overflow-hidden rounded-lg border border-gray-100 bg-slate-50/70 sm:grid-cols-4">
               {([
                 [t("النقد المحصّل", "Cash collected"), day.cashHalalas, <Wallet size={14} />],
                 [t("مدفوعات الشبكة", "Card payments"), day.cardHalalas, <CreditCard size={14} />],
                 [t("تطبيقات التوصيل", "Delivery apps"), day.appsHalalas, <Smartphone size={14} />],
                 [t("فرق النقد", "Cash variance"), day.varianceHalalas, <FileText size={14} />],
               ] as const).map(([label, value, icon]) => (
-                <div key={label} className="rounded-lg border border-gray-100 bg-white p-3">
+                <div key={label} className="border-b border-gray-100 px-3 py-2.5 last:border-b-0 sm:border-b-0 sm:border-e sm:last:border-e-0">
                   <dt className="flex items-center gap-1.5 text-[11px] text-gray-500">{icon}{label}</dt>
-                  <dd className="mt-1 font-mono text-sm font-bold text-gray-800"><bdi>{money(value, lang)}</bdi> {t("ر.س", "SAR")}</dd>
+                  <dd className={`mt-1 font-mono text-sm font-bold tabular-nums ${label === t("فرق النقد", "Cash variance") && value != null && value < 0 ? "text-red-700" : "text-gray-800"}`}><bdi>{money(value, lang)}</bdi> {t("ر.س", "SAR")}</dd>
                 </div>
               ))}
             </dl>
@@ -200,7 +200,7 @@ export function DailySalesWorkdays({ references, filters = {}, renderOperation, 
             {day.reports.length === 1 && onOpenOperation && (
               <button type="button" onClick={() => onOpenOperation(day.reports[0].operation.id)}
                 className="mt-3 inline-flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-bold text-purple-700 hover:bg-purple-100">
-                <Eye size={15} /> {t("عرض التقرير اليومي وتفاصيل الورديات", "View daily report and shift details")}
+                <Eye size={15} /> {t("عرض التفاصيل", "View details")}
               </button>
             )}
 
