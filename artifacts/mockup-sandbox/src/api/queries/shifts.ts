@@ -399,6 +399,8 @@ export function useAccountantShiftReportCorrection() {
       qc.invalidateQueries({ queryKey: ["operations"] });
       qc.invalidateQueries({ queryKey: queryKeys.operation(vars.operationId) });
       qc.invalidateQueries({ queryKey: ["shifts"] });
+      qc.invalidateQueries({ queryKey: ["sales", "submitted-daily-workdays"] });
+      qc.invalidateQueries({ queryKey: ["sales", "daily-report-shifts"] });
       qc.invalidateQueries({ queryKey: queryKeys.accDashboard });
       toast.success("تم تصحيح تقرير الوردية");
     },

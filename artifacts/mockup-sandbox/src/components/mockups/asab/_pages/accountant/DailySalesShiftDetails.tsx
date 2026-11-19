@@ -1,10 +1,15 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, CreditCard, FileText, Smartphone, Wallet } from "lucide-react";
+import { AlertTriangle, CreditCard, FileText, Pencil, Smartphone, Wallet } from "lucide-react";
 import { api } from "../../../../../api/client";
-import type { Page } from "../../../../../api/types";
+import type { Operation, Page } from "../../../../../api/types";
 import type { Shift } from "../../../../../api/types/company";
+import { useOperation } from "../../../../../api/queries/operations";
 import { useLang } from "../../_shared/LangContext";
 import { formatShiftHalalas } from "../../shiftCountEvidence";
+import { ShiftReportCorrectionForm } from "../../CompanyDashboard";
+import { apiOpToCOp } from "../../operationMapping";
+import { getShiftCorrectionEvidence, getShiftCorrectionIneligibilityReason, getShiftCorrectionNextStep } from "../../shiftReportCorrection";
 import { formatWorkdayDate } from "./ManagerDeliveredSales";
 import type { DailySalesReport } from "./dailySalesWorkdays";
 
@@ -71,8 +76,59 @@ export async function loadDailyReportMemberShifts(
   };
 }
 
+/** A day is a read-only rollup. Corrections belong to a verified member's
+ * pending shift operation and must use COR-05, never legacy sales-details. */
+function DailyReportMemberEdit({ shift, managerShiftId }: { shift: Shift; managerShiftId: string }) {
+  const { t, lang } = useLang();
+  const operationId = shift.reportReview?.operation_id;
+  const operationQuery = useOperation(operationId);
+  const operation = operationQuery.data;
+  const linked = operation && operation.moduleKey === "shifts" &&
+    operation.branchId === shift.branchId &&
+    (operation.id === operationId || operation.publicId === operationId) &&
+    operation.payload?.shiftId === shift.id &&
+    shift.reportReview?.memberships?.some(member => member.day_id === managerShiftId);
+  const validOperation: Operation | null = linked ? operation : null;
+  const correctionEvidence = validOperation
+    ? getShiftCorrectionEvidence(apiOpToCOp(validOperation), validOperation, "accountant") : null;
+
+  if (!operationId) return <p role="note" className="text-xs text-amber-800">
+    {t("لا يوجد تقرير مراجعة موثّق مرتبط بهذه الوردية؛ لا يمكن تعديل بياناتها من هنا.",
+      "No verified review operation is linked to this shift; editing is unavailable here.")}
+  </p>;
+  if (operationQuery.isPending) return <p role="status" className="text-xs text-gray-500">
+    {t("جارٍ التحقق من صلاحية تعديل الوردية…", "Checking shift correction eligibility…")}
+  </p>;
+  if (operationQuery.isError) return <div role="alert" className="flex flex-wrap items-center gap-2 text-xs text-red-700">
+    <span>{t("تعذر جلب تقرير الوردية للتحقق من التعديل.", "Could not verify the shift report for editing.")}</span>
+    <button type="button" onClick={() => void operationQuery.refetch()} className="rounded-md border border-red-200 px-2 py-1 font-semibold">
+      {t("إعادة المحاولة", "Retry")}
+    </button>
+  </div>;
+  if (!validOperation) return <p role="alert" className="text-xs text-amber-800">
+    {t("تقرير الوردية لا يطابق عضوية يوم العمل المحدد؛ تم منع التعديل.",
+      "Shift report does not match this workday membership; editing is blocked.")}
+  </p>;
+  if (!correctionEvidence) return <div className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+    <p className="font-semibold">{t("التعديل غير متاح لهذه الوردية حالياً.", "This shift is not editable right now.")}</p>
+    <p>{getShiftCorrectionIneligibilityReason(apiOpToCOp(validOperation), validOperation, "accountant", lang)}</p>
+    <p>{getShiftCorrectionNextStep(apiOpToCOp(validOperation), validOperation, "accountant", lang)}</p>
+  </div>;
+
+  return <div className="space-y-3" data-testid="daily-sales-member-edit-form">
+    <p className="text-xs text-purple-800">{t(
+      "عدّل قنوات الدفع أو النقد المجرود مع ذكر السبب؛ إجمالي المبيعات الأصلي لا يُعدَّل. تحفظ التغييرات كنسخة جديدة من تقرير الوردية.",
+      "Adjust channels or counted cash with a reason; original gross sales stay locked. Changes create a new shift report revision.")}</p>
+    <ShiftReportCorrectionForm
+      key={`${validOperation.id}:${correctionEvidence.reportRevision}`}
+      op={apiOpToCOp(validOperation)} detail={validOperation}
+    />
+  </div>;
+}
+
 export function DailySalesShiftDetails({ report }: { report: DailySalesReport }) {
   const { lang, t } = useLang();
+  const [editOpen, setEditOpen] = useState(false);
   const money = (value: number | null | undefined) => isMoney(value)
     ? `${formatShiftHalalas(value, lang)} ${t("ر.س", "SAR")}` : "—";
   const paid = [report.cashHalalas, report.cardHalalas, report.appsHalalas];
@@ -100,11 +156,26 @@ export function DailySalesShiftDetails({ report }: { report: DailySalesReport })
             {report.operation.branchName} · {formatWorkdayDate(lang, report.workday)} · {report.managerName || t("مدير الفرع", "Branch manager")}
           </p>
         </div>
-        <span className="rounded-xl bg-purple-50 px-4 py-3 text-end">
-          <span className="block text-[11px] text-gray-500">{t("إجمالي المبيعات", "Total sales")}</span>
-          <bdi className="font-mono text-lg font-extrabold text-purple-800">{money(report.totalSalesHalalas)}</bdi>
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" data-testid="daily-sales-edit-toggle" aria-expanded={editOpen}
+            onClick={() => setEditOpen(open => !open)}
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-purple-200 bg-purple-600 px-3 py-2 text-sm font-semibold text-white hover:bg-purple-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600">
+            <Pencil size={15} /> {editOpen ? t("إغلاق التعديل", "Close editing") : t("تعديل الأرقام", "Edit figures")}
+          </button>
+          <span className="rounded-xl bg-purple-50 px-4 py-3 text-end">
+            <span className="block text-[11px] text-gray-500">{t("إجمالي المبيعات", "Total sales")}</span>
+            <bdi className="font-mono text-lg font-extrabold text-purple-800">{money(report.totalSalesHalalas)}</bdi>
+          </span>
+        </div>
       </div>
+      {editOpen && <div role="region" aria-label={t("تعديل تفاصيل ورديات اليوم", "Edit daily shift details")}
+        className="rounded-xl border border-purple-200 bg-purple-50/60 p-3 text-xs text-purple-900">
+        {report.provenanceVerified && report.operation.status === "pending" && report.memberShiftIds.length > 0
+          ? t("اختر وردية الكاشير المعنية أدناه لتعديل قنواتها. تعديل إجمالي إغلاق المدير مباشرة غير متاح.",
+            "Use the relevant cashier shift below to correct channels. The manager's consolidated close cannot be edited directly.")
+          : t("هذا التقرير غير مؤهل للتعديل المباشر: قد يكون مُعتمدًا أو ينقصه إثبات ربط الورديات. راجع تفاصيل كل وردية وحالة الاعتماد.",
+            "Direct editing is unavailable: this report may be approved or lack verified shift links. Check each shift's approval status.")}
+      </div>}
 
       <div className="overflow-hidden rounded-xl border border-gray-200">
         <div className="flex items-center justify-between gap-3 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-900">
@@ -182,6 +253,16 @@ export function DailySalesShiftDetails({ report }: { report: DailySalesReport })
                   <div key={label}><dt className="text-[11px] text-gray-500">{label}</dt><dd className="mt-1 font-mono text-xs font-semibold text-gray-800">{money(value)}</dd></div>
                 ))}
               </dl>
+              {editOpen && <div className="mt-4 border-t border-purple-100 pt-4">
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-bold text-purple-900"><Pencil size={15} />
+                  {t("تعديل بيانات الوردية", "Edit shift figures")}
+                </h4>
+                {report.provenanceVerified && report.operation.status === "pending"
+                  ? <DailyReportMemberEdit shift={shift} managerShiftId={report.managerShiftId} />
+                  : <p role="note" className="text-xs text-amber-800">{t(
+                    "التعديل مقفول: تقرير اليوم غير مؤكد أو خرج من مرحلة مراجعة المحاسب.",
+                    "Editing locked: this daily report is unverified or no longer awaiting accountant review.")}</p>}
+              </div>}
             </article>
           ))}
           {members.data.missingCount > 0 && <p role="note" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
