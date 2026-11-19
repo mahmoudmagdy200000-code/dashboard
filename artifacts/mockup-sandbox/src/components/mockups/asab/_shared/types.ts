@@ -43,6 +43,7 @@ export interface Op {
   attachments: number;
   status: OpStatus;
   reportReview?: ApiOperation["reportReview"];
+  workflowKind?: ApiOperation["workflowKind"];
   diff?: string;
   salesBreakdown?: { cashHalalas: number; cardHalalas: number; appsHalalas: number; totalSalesHalalas: number; collectedHalalas: number; varianceHalalas: number } | null;
   rejectReason?: string;

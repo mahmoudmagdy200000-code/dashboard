@@ -27,6 +27,7 @@ import {
 } from "../../_shared/filterOps";
 import { OpRow } from "../../_shared/OpRow";
 import { ShiftSalesOverview, ShiftSalesSection } from "./ShiftSalesSection";
+import { DailySalesWorkdays } from "./DailySalesWorkdays";
 import type { PageProps, Filters, OpStatus, PageId } from "../../_shared/types";
 
 export function AccSalesPage({
@@ -135,8 +136,6 @@ export function AccSalesPage({
         )}
       </div>
 
-      <ShiftSalesOverview filterBranch={filters.branch} filterStatus={filters.status} filterDate={salesDate} filterSearch={filters.search} />
-
       {kpis && kpis.varianceBranches.length > 0 && (
         <div
           className="rounded-xl border border-red-200 bg-red-50 p-4"
@@ -167,23 +166,6 @@ export function AccSalesPage({
           </div>
         </div>
       )}
-
-      <ShiftSalesSection
-        operations={ops}
-        filterBranch={filters.branch}
-        filterStatus={filters.status}
-        filterDate={salesDate}
-        filterSearch={filters.search}
-        onOpenReport={(shiftId, opId) => {
-          if (opId) {
-            setDetailId(opId);
-            navigate(opDetailPage("shifts") as PageId);
-          } else if (shiftId) {
-            setDetailId(shiftId);
-            navigate(opDetailPage("shifts") as PageId);
-          }
-        }}
-      />
 
       <div
         className="bg-white rounded-xl border border-gray-100 shadow-sm p-4"
@@ -374,6 +356,31 @@ export function AccSalesPage({
         </div>
       )}
 
+      <DailySalesWorkdays
+        references={mOps.map((op) => ({
+          id: op.id,
+          status: op.status,
+          workflowKind: op.workflowKind,
+          reportReview: op.reportReview,
+        }))}
+        filters={{
+          branchId: filters.branch,
+          date: salesDate,
+          status: filters.status,
+          match: filters.match,
+          brandId: brand || undefined,
+          search: filters.search,
+        }}
+        onOpenOperation={(id) => {
+          setDetailId(id);
+          navigate(opDetailPage("sales") as PageId);
+        }}
+      />
+
+      <details className="rounded-xl border border-gray-200 bg-white">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-700">
+          {t("سجل عمليات المبيعات والمراجعة (تفصيلي)", "Sales operations and review register (detailed)")}
+        </summary>
       <Card
         title={t("بيانات المبيعات", "Sales Entries")}
         actions={
@@ -428,6 +435,30 @@ export function AccSalesPage({
           ))
         )}
       </Card>
+      </details>
+
+      <details className="rounded-xl border border-gray-200 bg-white">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-700">
+          {t("عرض الشيفتات الفردية وتفاصيلها", "Show individual cashier shifts and their details")}
+        </summary>
+        <ShiftSalesOverview
+          filterBranch={filters.branch}
+          filterStatus={filters.status}
+          filterDate={salesDate}
+          filterSearch={filters.search}
+        />
+        <ShiftSalesSection
+          operations={ops}
+          filterBranch={filters.branch}
+          filterStatus={filters.status}
+          filterDate={salesDate}
+          filterSearch={filters.search}
+          onOpenReport={(shiftId, opId) => {
+            setDetailId(opId || shiftId);
+            navigate(opDetailPage("shifts") as PageId);
+          }}
+        />
+      </details>
     </div>
   );
 }

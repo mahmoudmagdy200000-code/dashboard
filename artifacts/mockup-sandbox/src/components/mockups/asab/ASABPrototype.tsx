@@ -417,6 +417,7 @@ interface Op {
   attachments: number;
   status: OpStatus;
   reportReview?: ApiOperation["reportReview"];
+  workflowKind?: ApiOperation["workflowKind"];
   diff?: string;
   // Sales matching breakdown (T04 §8) — null until reconciled
   salesBreakdown?: { cashHalalas: number; cardHalalas: number; appsHalalas: number; totalSalesHalalas: number; collectedHalalas: number; varianceHalalas: number } | null;
@@ -2086,6 +2087,7 @@ function mapApiOpToOp(a: any): Op {
     id: a.publicId ?? a.id ?? "",
     sourceId: typeof a.sourceId === "string" ? a.sourceId : undefined,
     reportReview: a.reportReview,
+    workflowKind: a.workflowKind,
     // Display the name only — the backend now always sends branchName ("" for a
     // deleted branch). branchId is kept below for filtering/links, never shown as
     // a label (it was the raw UUID leaking into «اسم الفرع»).

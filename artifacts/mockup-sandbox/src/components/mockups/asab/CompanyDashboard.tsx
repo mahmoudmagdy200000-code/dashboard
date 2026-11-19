@@ -15,6 +15,7 @@ import { formatDayCompletenessBanner, formatDayCompletenessLabel, hasEmployeeDeb
 import { displayDigits } from "./_shared/displayDigits";
 import { ShiftReconciliationSummaryView } from "./ShiftReconciliationSummary.tsx";
 import { ShiftSalesOverview, ShiftSalesSection } from "./_pages/accountant/ShiftSalesSection";
+import { DailySalesWorkdays } from "./_pages/accountant/DailySalesWorkdays";
 import { EmployeeClosedShiftSales, EmployeeShiftSalesTotal } from "./_pages/accountant/EmployeeClosedShiftSales";
 import { ManagerDeliveredSalesSection, ManagerDeliveredSalesTotal } from "./_pages/accountant/ManagerDeliveredSales";
 import {
@@ -5475,8 +5476,6 @@ export function AccCompanySales({ ops, approve, reject, requestClarification, bu
         </div>
       </div>
 
-      <ShiftSalesOverview filterBranch={branchFilter} filterStatus={statusFilter} filterDate={salesDate} filterSearch={search} />
-
       {/* Variance branches banner (ACC-1.5) */}
       {(kpis?.varianceBranches?.length ?? 0) > 0 && kpis && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4" dir={dir}>
@@ -5570,7 +5569,35 @@ export function AccCompanySales({ ops, approve, reject, requestClarification, bu
         </div>
       )}
 
-      {/* 4. Sales Statements List (Screenshots 07 & 08) */}
+      {/* Authoritative daily workday grouping; cashier shift rows remain drill-down only. */}
+      <DailySalesWorkdays
+        references={mOps.map(op => ({
+          id: op.id, status: op.status, workflowKind: op.workflowKind, reportReview: op.reportReview,
+        }))}
+        filters={{
+          branchId: branchFilter,
+          date: salesDate,
+          status: statusFilter,
+          match: matchFilter,
+          brandName: brandFilter === "الكل" ? undefined : brandFilter,
+          search,
+        }}
+        renderOperation={id => {
+          const op = mOps.find(item => item.id === id);
+          return op ? (
+            <OpRow key={op.id} op={op} onApprove={() => approve(op.id)} onReject={() => reject(op.id)}
+              onClarify={requestClarification ? () => requestClarification(op.id) : undefined}
+              onView={() => setExpandedId(expandedId === op.id ? null : op.id)}
+              expanded={expandedId === op.id} onToggle={() => setExpandedId(expandedId === op.id ? null : op.id)} />
+          ) : null;
+        }}
+      />
+
+      {/* Legacy sales statements retained for explicit audit and correction. */}
+      <details className="rounded-xl border border-gray-200 bg-white">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-700">
+          {t("سجل بيانات المبيعات والمراجعة (تفصيلي)", "Sales statements and review register (detailed)")}
+        </summary>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-4 sm:px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -5592,8 +5619,14 @@ export function AccCompanySales({ ops, approve, reject, requestClarification, bu
             ))
         }
       </div>
+      </details>
 
-      {/* 5. Cashier Shift Sales Reports (FE-01 / FE-02 entry) */}
+      {/* Individual cashier shifts are historical drill-down, not daily totals. */}
+      <details className="rounded-xl border border-gray-200 bg-white">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-700">
+          {t("عرض الشيفتات الفردية وتفاصيلها", "Show individual cashier shifts and their details")}
+        </summary>
+      <ShiftSalesOverview filterBranch={branchFilter} filterStatus={statusFilter} filterDate={salesDate} filterSearch={search} />
       <ShiftSalesSection
         operations={ops as any}
         filterBranch={branchFilter}
@@ -5602,6 +5635,7 @@ export function AccCompanySales({ ops, approve, reject, requestClarification, bu
         filterSearch={search}
         onOpenReport={onOpenReport}
       />
+      </details>
     </div>
   );
 }
