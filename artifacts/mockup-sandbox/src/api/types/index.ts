@@ -164,6 +164,8 @@ export interface Operation {
   /** Human ID, e.g. "OPS-2401". */
   publicId: string;
   moduleKey: ModuleKey;
+  /** Server-verified workflow provenance; sal_day is the manager daily close. */
+  workflowKind?: "sal_day" | "legacy_sales" | "unknown";
   sourceModule?: string | null;
   sourceId?: string | null;
   status: OperationStatus;
