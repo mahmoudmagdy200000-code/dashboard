@@ -360,6 +360,7 @@ export function AccSalesPage({
         references={mOps.map((op) => ({
           id: op.id,
           status: op.status,
+          origin: op.origin,
           workflowKind: op.workflowKind,
           reportReview: op.reportReview,
         }))}

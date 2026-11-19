@@ -69,10 +69,50 @@ test("renders a single branch workday card, drills into manager figures, and ign
     const expand = cards[0].querySelector("button")!;
     await act(async () => expand.click());
     assert.equal(expand.getAttribute("aria-expanded"), "true");
-    assert.match(cards[0].textContent ?? "", /Cash sales/);
+    assert.match(cards[0].textContent ?? "", /Cash collected/);
     assert.match(cards[0].textContent ?? "", /278\.00/);
     assert.match(cards[0].textContent ?? "", /OPS-one/);
     assert.match(cards[0].textContent ?? "", /OPS-two/);
+  } finally {
+    api.get = originalGet;
+    await act(async () => root.unmount());
+    rootNode.remove();
+    qc.clear();
+  }
+});
+
+test("unclassified mobile/PKG-6 reports are inspected but legacy records are not treated as daily closes", async () => {
+  const originalGet = api.get.bind(api);
+  const day = dayOperation("unknown", 100000, 37800);
+  day.workflowKind = "unknown";
+  day.reportReview = { phase: "accountant_review" };
+  const requests: string[] = [];
+  api.get = (async (url: string) => {
+    requests.push(url);
+    if (url.endsWith("OPS-unknown")) return { data: day };
+    throw new Error(`Unexpected detail lookup: ${url}`);
+  }) as typeof api.get;
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const rootNode = document.createElement("div");
+  document.body.appendChild(rootNode);
+  const root = createRoot(rootNode);
+  try {
+    await act(async () => root.render(
+      <QueryClientProvider client={qc}>
+        <LangContext.Provider value={{ lang: "ar", dir: "rtl", setLang: () => {}, t: (ar) => ar }}>
+          <DailySalesWorkdays references={[
+            { id: "OPS-unknown", status: "pending", workflowKind: "unknown", reportReview: { phase: "accountant_review" }, origin: "mobile" },
+            { id: "OPS-legacy", status: "pending", workflowKind: "legacy_sales", origin: "mobile" },
+            { id: "OPS-browser", status: "pending", workflowKind: "unknown", origin: "system" },
+          ]} />
+        </LangContext.Provider>
+      </QueryClientProvider>
+    ));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 25)); });
+    assert.deepEqual(requests, ["/operations/OPS-unknown"]);
+    assert.equal(rootNode.querySelectorAll('[data-testid="daily-sales-workday-card"]').length, 1);
+    assert.match(rootNode.textContent ?? "", /1,000|١٬٠٠٠|1000/);
+    assert.match(rootNode.textContent ?? "", /المصدر بانتظار التحقق/);
   } finally {
     api.get = originalGet;
     await act(async () => root.unmount());
