@@ -145,6 +145,8 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
   const { data: detail } = detailQuery;
   const recon = detail?.reconciliation ?? null;
   const dayReport = detail ? dailySalesReportFromOperation(detail) : null;
+  const [editingDayOperationId, setEditingDayOperationId] = useState<string | null>(null);
+  const dayEditOpen = dayReport != null && editingDayOperationId === dayReport.operation.id;
   const queryClient = useQueryClient();
   const salesContext = () => {
     const currentDetail = op ? queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detail : undefined;
@@ -241,7 +243,7 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
 
   return (
     <div className="space-y-4">
-      {salesPolicy.pkg6 && (
+      {salesPolicy.pkg6 && !dayReport && (
         <div role="note" className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
           <p className="font-semibold">{t("التعديل المباشر على بيان المبيعات اليومي مقفول (PKG-6).", "Direct edit on daily sales summary is locked (PKG-6).")}</p>
           <p>{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</p>
@@ -280,7 +282,7 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
-                <span className="text-2xl">💰</span>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-700"><FileText size={18} /></span>
                 <div>
                   <h2 className="font-bold text-gray-900 text-xl">{t("تقرير المبيعات اليومي", "Daily Sales Report")}</h2>
                   <p className="text-gray-500 text-sm mt-0.5">
@@ -327,7 +329,12 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="col-span-1 lg:col-span-2 space-y-4">
           <Card title={t("تسوية المبيعات", "Sales Reconciliation")} actions={
-            salesPolicy.edit && recon && (
+            dayReport ? <button type="button" data-testid="daily-sales-edit-toggle" aria-expanded={dayEditOpen}
+              aria-controls={`daily-sales-edit-${dayReport.operation.id}`}
+              onClick={() => setEditingDayOperationId(current => current === dayReport.operation.id ? null : dayReport.operation.id)}
+              className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600 ${dayEditOpen ? "border-purple-600 bg-purple-600 text-white" : "border-purple-200 bg-white text-purple-700 hover:bg-purple-50"}`}>
+              <Edit3 size={13} />{dayEditOpen ? t("إغلاق التعديل", "Close editing") : t("تعديل الأرقام", "Edit figures")}
+            </button> : salesPolicy.edit && recon && (
               <button onClick={() => reconEditMode ? saveEdit() : beginEdit()} disabled={patchMut.isPending}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all ${reconEditMode ? "bg-purple-600 text-white border-purple-600" : "bg-white text-purple-600 border-purple-200 hover:bg-purple-50"}`}>
                 <Edit3 size={11} /> {reconEditMode ? (patchMut.isPending ? t("جارٍ الحفظ…", "Saving…") : t("💾 حفظ التعديلات", "💾 Save Changes")) : t("تعديل الأرقام", "Edit Figures")}
@@ -336,7 +343,7 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
           }>
             <div className="divide-y divide-gray-100" dir={dir}>
 
-              {dayReport && <DailySalesShiftDetails report={dayReport} />}
+              {dayReport && <DailySalesShiftDetails report={dayReport} embedded editOpen={dayEditOpen} />}
 
               {isDayOperation && !dayReport && (
                 <div role={detailQuery.isError ? "alert" : "status"} className="p-4 text-sm text-amber-800">

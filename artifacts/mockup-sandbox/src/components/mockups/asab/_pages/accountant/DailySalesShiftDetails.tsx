@@ -126,9 +126,16 @@ function DailyReportMemberEdit({ shift, managerShiftId }: { shift: Shift; manage
   </div>;
 }
 
-export function DailySalesShiftDetails({ report }: { report: DailySalesReport }) {
+export function DailySalesShiftDetails({ report, embedded = false, editOpen: controlledEditOpen }: {
+  report: DailySalesReport;
+  /** The sales-reconciliation card owns the heading and edit action in the live dashboard. */
+  embedded?: boolean;
+  editOpen?: boolean;
+}) {
   const { lang, t } = useLang();
-  const [editOpen, setEditOpen] = useState(false);
+  const [localEditOpen, setLocalEditOpen] = useState(false);
+  const [editingShiftId, setEditingShiftId] = useState<string | null>(null);
+  const editOpen = controlledEditOpen ?? localEditOpen;
   const money = (value: number | null | undefined) => isMoney(value)
     ? `${formatShiftHalalas(value, lang)} ${t("ر.س", "SAR")}` : "—";
   const paid = [report.cashHalalas, report.cardHalalas, report.appsHalalas];
@@ -142,14 +149,16 @@ export function DailySalesShiftDetails({ report }: { report: DailySalesReport })
     staleTime: 30_000,
     retry: 1,
   });
+  const selectedShift = members.data?.shifts.find((shift) => shift.id === editingShiftId)
+    ?? members.data?.shifts[0] ?? null;
 
   return (
-    <div data-testid="daily-sales-shift-details" className="space-y-5 p-4 sm:p-5">
-      {!report.provenanceVerified && <p role="note" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+    <div data-testid="daily-sales-shift-details" className={embedded ? "bg-white" : "overflow-hidden rounded-xl border border-gray-200 bg-white"}>
+      {!report.provenanceVerified && <p role="note" className="m-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
         {t("بيانات التقرير موجودة، لكن السيرفر لم يؤكد تصنيفه كتقرير إغلاق يومي؛ الأرقام معروضة للفحص فقط وليست إجماليًا ماليًا معتمدًا.",
           "The report payload is present, but the server has not verified its daily-close classification. These amounts are for inspection only, not approved financial totals.")}
       </p>}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {!embedded && <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-4 sm:px-5">
         <div>
           <h3 className="text-base font-bold text-gray-900">{t("تسوية مبيعات اليوم", "Daily sales breakdown")}</h3>
           <p className="mt-1 text-xs text-gray-500">
@@ -158,67 +167,91 @@ export function DailySalesShiftDetails({ report }: { report: DailySalesReport })
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" data-testid="daily-sales-edit-toggle" aria-expanded={editOpen}
-            onClick={() => setEditOpen(open => !open)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-purple-200 bg-purple-600 px-3 py-2 text-sm font-semibold text-white hover:bg-purple-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600">
+            aria-controls={`daily-sales-edit-${report.operation.id}`}
+            onClick={() => setLocalEditOpen(open => !open)}
+            className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-purple-200 bg-white px-3 py-2 text-xs font-bold text-purple-700 hover:bg-purple-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600">
             <Pencil size={15} /> {editOpen ? t("إغلاق التعديل", "Close editing") : t("تعديل الأرقام", "Edit figures")}
           </button>
-          <span className="rounded-xl bg-purple-50 px-4 py-3 text-end">
-            <span className="block text-[11px] text-gray-500">{t("إجمالي المبيعات", "Total sales")}</span>
-            <bdi className="font-mono text-lg font-extrabold text-purple-800">{money(report.totalSalesHalalas)}</bdi>
-          </span>
         </div>
-      </div>
-      {editOpen && <div role="region" aria-label={t("تعديل تفاصيل ورديات اليوم", "Edit daily shift details")}
-        className="rounded-xl border border-purple-200 bg-purple-50/60 p-3 text-xs text-purple-900">
-        {report.provenanceVerified && report.operation.status === "pending" && report.memberShiftIds.length > 0
-          ? t("اختر وردية الكاشير المعنية أدناه لتعديل قنواتها. تعديل إجمالي إغلاق المدير مباشرة غير متاح.",
-            "Use the relevant cashier shift below to correct channels. The manager's consolidated close cannot be edited directly.")
-          : t("هذا التقرير غير مؤهل للتعديل المباشر: قد يكون مُعتمدًا أو ينقصه إثبات ربط الورديات. راجع تفاصيل كل وردية وحالة الاعتماد.",
-            "Direct editing is unavailable: this report may be approved or lack verified shift links. Check each shift's approval status.")}
       </div>}
 
-      <div className="overflow-hidden rounded-xl border border-gray-200">
-        <div className="flex items-center justify-between gap-3 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-900">
-          <span>{t("إجمالي المبيعات (من إغلاق مدير الفرع — مقفل)", "Total sales (from manager close — locked)")}</span>
-          <bdi className="font-mono">{money(report.totalSalesHalalas)}</bdi>
+      <div className="divide-y divide-gray-100">
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-indigo-50/80 px-4 py-3.5 text-sm font-bold text-indigo-900">
+          <span className="flex flex-wrap items-center gap-2"><span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full bg-indigo-500" />
+            {t("إجمالي المبيعات", "Total sales")}
+            <span className="rounded-md bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">{t("من إغلاق مدير الفرع — مقفل", "Manager close — locked")}</span>
+          </span>
+          <bdi className="font-mono text-base font-extrabold tabular-nums">{money(report.totalSalesHalalas)}</bdi>
         </div>
         {([
           [t("النقد المحصّل", "Cash collected"), report.cashHalalas, <Wallet size={16} />],
           [t("مدفوعات الشبكة", "Card payments"), report.cardHalalas, <CreditCard size={16} />],
-          [t("تطبيقات التوصيل", "Delivery apps"), report.appsHalalas, <Smartphone size={16} />],
         ] as const).map(([label, value, icon]) => (
-          <div key={label} className="flex items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 text-sm">
-            <span className="flex items-center gap-2 font-medium text-gray-700">{icon}{label}</span>
-            <bdi className="font-mono font-semibold text-gray-800">{money(value)}</bdi>
+          <div key={label} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 text-sm transition-colors hover:bg-slate-50/60">
+            <span className="flex items-center gap-2 font-medium text-gray-700"><span className="text-gray-500">{icon}</span>{label}</span>
+            <bdi className="font-mono font-semibold tabular-nums text-gray-800">{money(value)}</bdi>
           </div>
         ))}
-        <div className="flex items-center justify-between gap-3 border-t border-emerald-100 bg-emerald-50/70 px-4 py-3 text-sm font-bold text-emerald-900">
-          <span>{t("إجمالي قنوات البيع", "Sales channel total")}</span>
-          <bdi className="font-mono">{money(channelTotal)}</bdi>
+        <div className="bg-slate-50 px-4 py-2.5 text-xs font-semibold text-gray-600">{t("تطبيقات التوصيل", "Delivery apps")}</div>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 text-sm transition-colors hover:bg-slate-50/60">
+          <span className="flex items-center gap-2 font-medium text-gray-700"><Smartphone size={16} className="text-gray-500" />{t("إجمالي تطبيقات التوصيل", "Delivery apps total")}</span>
+          <bdi className="font-mono font-semibold tabular-nums text-gray-800">{money(report.appsHalalas)}</bdi>
         </div>
-        {channelMatch === true && <p className="bg-emerald-50 px-4 pb-3 text-xs font-semibold text-emerald-700">
-          ✓ {t("إجمالي قنوات البيع يساوي إجمالي المبيعات المرفوع", "Channel total matches submitted sales")}
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-emerald-50/80 px-4 py-3.5 text-sm font-bold text-emerald-900">
+          <span>{t("إجمالي التحصيل", "Total collected")}</span>
+          <bdi className="font-mono text-base font-extrabold tabular-nums">{money(channelTotal)}</bdi>
+        </div>
+        {channelMatch === true && <p className="bg-emerald-50 px-4 py-2.5 text-center text-xs font-semibold text-emerald-700">
+          ✓ {t("إجمالي التحصيل مطابق لإجمالي المبيعات تماماً", "Total collected matches submitted sales exactly")}
         </p>}
         {channelMatch === false && <p role="alert" className="flex items-center gap-2 border-t border-amber-100 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">
           <AlertTriangle size={14} />{t("يوجد اختلاف بين إجمالي المبيعات وتفصيل القنوات في التقرير المُرسل.", "Submitted sales do not match the channel total.")}
         </p>}
-        <div className="flex items-center justify-between gap-3 border-t border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-800">
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-800">
           <span>{t("فرق الجرد النقدي (من التقرير)", "Cash-count variance (reported)")}</span>
           <bdi className={`font-mono ${report.varianceHalalas != null && report.varianceHalalas < 0 ? "text-red-700" : "text-gray-800"}`}>
             {money(report.varianceHalalas)}
           </bdi>
         </div>
       </div>
-      <p className="text-xs text-gray-500">
+      {editOpen && <section id={`daily-sales-edit-${report.operation.id}`} role="region"
+        aria-label={t("تعديل تفاصيل ورديات اليوم", "Edit daily shift details")}
+        className="mx-4 my-4 space-y-3 rounded-xl border border-purple-200 bg-purple-50/50 p-3 sm:p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h4 className="flex items-center gap-2 text-sm font-bold text-purple-900"><Pencil size={15}/>{t("تعديل الأرقام", "Edit figures")}</h4>
+          <span className="rounded-md bg-white px-2 py-1 text-[11px] font-semibold text-purple-700">{t("تصحيح وردية موثّق", "Verified shift correction")}</span>
+        </div>
+        <p className="text-xs leading-relaxed text-purple-900">
+          {report.provenanceVerified && report.operation.status === "pending" && report.memberShiftIds.length > 0
+            ? t("اختر وردية الكاشير لتصحيح قنوات الدفع أو النقد المجرود. إجمالي إغلاق المدير الأصلي مقفل.",
+              "Select a cashier shift to correct payment channels or counted cash. The manager's consolidated close cannot be edited directly.")
+            : t("هذا التقرير غير مؤهل للتعديل المباشر: قد يكون مُعتمدًا أو تنقصه بيانات الربط الموثّقة.",
+              "Direct editing is unavailable: this report may be approved or lack verified shift links.")}
+        </p>
+        {report.provenanceVerified && report.operation.status === "pending" && members.isSuccess && members.data.shifts.length > 0 && <>
+          {members.data.shifts.length > 1 && <div className="flex flex-wrap items-center gap-2" aria-label={t("اختر الوردية المراد تعديلها", "Choose a shift to edit")}>
+            {members.data.shifts.map(shift => <button key={shift.id} type="button" aria-pressed={selectedShift?.id === shift.id}
+              onClick={() => setEditingShiftId(shift.id)}
+              className={`min-h-9 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${selectedShift?.id === shift.id ? "border-purple-600 bg-purple-600 text-white" : "border-purple-200 bg-white text-purple-800 hover:bg-purple-100"}`}>
+              {shift.cashierName || t("الكاشير", "Cashier")} · {t("وردية", "Shift")} {shift.shiftNo}
+            </button>)}
+          </div>}
+          {selectedShift && <DailyReportMemberEdit key={selectedShift.id} shift={selectedShift} managerShiftId={report.managerShiftId} />}
+        </>}
+        {report.provenanceVerified && report.operation.status === "pending" && members.isSuccess && members.data.shifts.length === 0 && <p role="note" className="text-xs text-amber-800">
+          {t("لا توجد ورديات مرتبطة مؤكدة يمكن تصحيحها.", "No verified linked shifts are available for correction.")}
+        </p>}
+      </section>}
+      <p className="px-4 py-3 text-xs leading-relaxed text-gray-500">
         {t("هذه أرقام تقرير الإغلاق المرسل فعليًا؛ تفصيل كل تطبيق توصيل غير موجود في هذا المصدر. تصحيح الورديات يتم عبر دورة PKG-6، وليس تعديل سجل المبيعات القديم.",
           "These figures are from the actual submitted close. Per-app breakdown is not in this source. PKG-6 shift correction is separate from legacy sales editing.")}
       </p>
-      {report.notes && <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs">
+      {report.notes && <div className="mx-4 mb-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs">
         <p className="mb-1 font-bold text-gray-700">{t("ملاحظات إغلاق اليوم", "Daily close notes")}</p>
         <p className="whitespace-pre-wrap text-gray-600">{report.notes}</p>
       </div>}
 
-      <div className="space-y-3 border-t border-gray-100 pt-4">
+      <div className="space-y-3 border-t border-gray-100 bg-slate-50/40 px-4 py-4 sm:px-5">
         <div className="flex items-center gap-2"><FileText size={17} className="text-purple-700" />
           <h3 className="text-sm font-bold text-gray-900">{t("تفاصيل ورديات الكاشير المشمولة", "Included cashier shift details")}</h3>
           <span className="text-xs text-gray-500">({report.memberShiftIds.length})</span>
@@ -253,16 +286,6 @@ export function DailySalesShiftDetails({ report }: { report: DailySalesReport })
                   <div key={label}><dt className="text-[11px] text-gray-500">{label}</dt><dd className="mt-1 font-mono text-xs font-semibold text-gray-800">{money(value)}</dd></div>
                 ))}
               </dl>
-              {editOpen && <div className="mt-4 border-t border-purple-100 pt-4">
-                <h4 className="mb-3 flex items-center gap-2 text-sm font-bold text-purple-900"><Pencil size={15} />
-                  {t("تعديل بيانات الوردية", "Edit shift figures")}
-                </h4>
-                {report.provenanceVerified && report.operation.status === "pending"
-                  ? <DailyReportMemberEdit shift={shift} managerShiftId={report.managerShiftId} />
-                  : <p role="note" className="text-xs text-amber-800">{t(
-                    "التعديل مقفول: تقرير اليوم غير مؤكد أو خرج من مرحلة مراجعة المحاسب.",
-                    "Editing locked: this daily report is unverified or no longer awaiting accountant review.")}</p>}
-              </div>}
             </article>
           ))}
           {members.data.missingCount > 0 && <p role="note" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
