@@ -38,6 +38,11 @@ function WorkdayReviewDetails({ id }: { id: string }) {
     {open && query.isError && <p role="alert">{t("تعذر تحميل التسوية", "Could not load settlement")}</p>}
     {open && detail?.workdaySettlement && <WorkdaySettlement key={detail.workdaySettlement.revision}
       id={id} branchId={detail.branchId ?? ""} data={detail.workdaySettlement} editing={false} t={t} lang={lang} />}
+    {open && detail?.workdayReview?.correctionNote && (
+      <div className="p-2 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg my-1.5">
+        <strong>{t("ملاحظة إعادة الإرسال:", "Resubmission note:")}</strong> {detail.workdayReview.correctionNote}
+      </div>
+    )}
     {open && detail?.workdayReview?.questions.map(question => <div className="p-2 text-sm" key={question.id}>
       <strong>{question.shiftLabel}</strong> · {question.message} · {question.reply ?? t("بانتظار التوضيح", "Awaiting reply")}
     </div>)}
@@ -281,20 +286,20 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
                 const diffCount = grp.ops.filter(o => o.match === "diff").length;
                 return (
                   <div key={grp.key} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                    <button onClick={() => toggleGroup(grp.key)} className="w-full px-4 sm:px-5 py-3.5 bg-gray-50/60 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2 hover:bg-gray-100/60 transition-colors">
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <div className="w-full px-4 sm:px-5 py-3.5 bg-gray-50/60 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2 hover:bg-gray-100/60 transition-colors">
+                      <button type="button" onClick={() => toggleGroup(grp.key)} className="flex flex-wrap items-center gap-2 sm:gap-3 text-start">
                         <ChevronRight size={14} className={`text-gray-400 transition-transform ${isCollapsed ? "rotate-0" : "-rotate-90"}`} />
                         <span className="font-bold text-gray-900 text-sm">{grp.label}</span>
                         <Badge className="bg-amber-50 text-amber-700 border border-amber-100 text-[10px]">{grp.ops.length} {t("عملية", "ops")}</Badge>
                         {diffCount > 0 && <Badge className="bg-red-50 text-red-700 border border-red-100 text-[10px]">⚠️ {diffCount} {t("فروقات", "diffs")}</Badge>}
-                      </div>
+                      </button>
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <span className="font-mono text-sm font-bold text-gray-700">{fmtAmt(grpAmt)} {t("ر.س", "SAR")}</span>
-                        <Btn size="sm" variant="success" onClick={e => { e.stopPropagation(); bulkApprove(grp.ops.map(o => o.id)); }}>
+                        <Btn size="sm" variant="success" onClick={() => bulkApprove(grp.ops.map(o => o.id))}>
                           <CheckCircle2 size={11} /> {t("اعتماد المجموعة", "Approve Group")}
                         </Btn>
                       </div>
-                    </button>
+                    </div>
                     {!isCollapsed && grp.ops.map(op => <OpRow key={op.id} op={op} />)}
                   </div>
                 );

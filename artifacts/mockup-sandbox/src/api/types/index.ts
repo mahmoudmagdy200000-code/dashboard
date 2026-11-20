@@ -191,7 +191,9 @@ export interface Operation {
   workdayShifts?: { id: string; cashierName: string | null; salesHalalas: number | null }[];
   workdayReview?: {
     confirmation: string;
-    questions: { id: string; shiftLabel: string; message: string; reply: string | null }[];
+    correctionNote?: string | null;
+    returnReason?: string | null;
+    questions: { id: string; shiftId?: string; shiftLabel: string; message: string; reply: string | null }[];
   };
   /** Present on GET /operations/{id} for SHF operations. */
   reportRevision?: number | null;

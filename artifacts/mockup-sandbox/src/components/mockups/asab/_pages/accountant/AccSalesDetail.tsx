@@ -357,6 +357,41 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
                 key={`${dayReport.operation.id}:${dayEditOpen ? "edit" : daySettlement.revision}`}
                 id={dayReport.operation.id} branchId={detail.branchId} data={daySettlement} editing={dayEditOpen}
                 t={t} lang={lang} onSaved={() => setEditingDayOperationId(null)} />}
+              {detail?.workdayReview && (detail.workdayReview.correctionNote || detail.workdayReview.returnReason || detail.workdayReview.questions.length > 0) && (
+                <div data-testid="workday-review-summary" className="p-4 space-y-2.5 bg-slate-50/70 text-xs">
+                  {detail.workdayReview.returnReason && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800">
+                      <span className="font-bold">{t("سبب الإرجاع:", "Return reason:")}</span> {detail.workdayReview.returnReason}
+                    </div>
+                  )}
+                  {detail.workdayReview.correctionNote && (
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-900">
+                      <span className="font-bold">{t("ملاحظة إعادة الإرسال من مدير الفرع:", "Branch manager resubmission note:")}</span> {detail.workdayReview.correctionNote}
+                    </div>
+                  )}
+                  {detail.workdayReview.questions.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="font-bold text-gray-700">{t("طلبات التوضيح على الشفتات", "Shift clarification requests")}</p>
+                      {detail.workdayReview.questions.map(q => (
+                        <div key={q.id} className="rounded-lg border border-blue-200 bg-blue-50/70 px-3 py-2 text-blue-950 space-y-1">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="font-bold text-blue-900">{q.shiftLabel}</span>
+                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${q.reply ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                              {q.reply ? t("تم الرد", "Replied") : t("بانتظار التوضيح", "Awaiting reply")}
+                            </span>
+                          </div>
+                          <p>{q.message}</p>
+                          {q.reply && (
+                            <p className="border-t border-blue-200/70 pt-1 text-emerald-800">
+                              <span className="font-bold">{t("رد مدير الفرع:", "Branch manager reply:")}</span> {q.reply}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               {dayReport && <DailySalesShiftDetails report={dayReport} embedded showDayCollection={false} editOpen={false} />}
 
               {isDayOperation && !dayReport && (
