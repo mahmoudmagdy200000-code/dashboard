@@ -53,7 +53,9 @@ import { Breadcrumb } from "../../components/Breadcrumb";
 import { ClarifyModal } from "../../../../shared/ClarifyModal";
 import { useLang } from "../../_shared/LangContext";
 import { DailySalesShiftDetails } from "./DailySalesShiftDetails";
-import { dailySalesReportFromOperation } from "./dailySalesWorkdays";
+import { WorkdaySettlement } from "./WorkdaySettlement";
+import { useReturnWorkday } from "@/api/queries/operations";
+import { dailySalesReportFromOperation } from "./workdaySalesReport";
 import { formatWorkdayDate } from "./ManagerDeliveredSales";
 import { fmtAmt, resolveAssetUrl, formatDateLong } from "../../_shared/formatters";
 import {
@@ -146,7 +148,9 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
   const recon = detail?.reconciliation ?? null;
   const dayReport = detail ? dailySalesReportFromOperation(detail) : null;
   const [editingDayOperationId, setEditingDayOperationId] = useState<string | null>(null);
-  const dayEditOpen = dayReport != null && editingDayOperationId === dayReport.operation.id;
+  const daySettlement = detail?.workdaySettlement;
+  const canEditDay = dayReport != null && daySettlement != null && role === "accountant" && detail?.status === "pending";
+  const dayEditOpen = canEditDay && editingDayOperationId === dayReport.operation.id;
   const queryClient = useQueryClient();
   const salesContext = () => {
     const currentDetail = op ? queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)) ?? detail : undefined;
@@ -163,6 +167,9 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
   const clarifyMut = useRequestClarification();
   const correctMut = useCorrectOperation();
   const [clarifyOpen, setClarifyOpen] = useState(false);
+  const [clarificationShift, setClarificationShift] = useState("");
+  const [returnOpen, setReturnOpen] = useState(false);
+  const returnWorkday = useReturnWorkday();
   // Real record-lifecycle log from GET /operations/{id}/audit-trail; fall back to
   // the locally-derived timeline only until the server events arrive.
   const { data: apiAudit } = useAuditTrail(op?.id);
@@ -212,12 +219,16 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
   const setVarEmpField = (i: number, field: keyof VEmp, val: string) =>
     setVarEmps(p => p.map((e, j) => j === i ? { ...e, [field]: val } : e));
 
-  const totalCollection = recon?.totals?.totalCollectionHalalas == null ? null : recon.totals.totalCollectionHalalas / 100;
-  // Prefer the server-computed variance when reconciliation is present.
-  const variance = recon?.totals?.varianceHalalas == null ? null : recon.totals.varianceHalalas / 100;
-  const hasVariance = recon?.totals?.varianceHalalas != null && recon.totals.varianceHalalas !== 0;
-  const isShortage = recon?.totals?.varianceHalalas != null && recon.totals.varianceHalalas < 0;
-  const isSurplus = recon?.totals?.varianceHalalas != null && recon.totals.varianceHalalas > 0;
+  const dayCollected = daySettlement ? daySettlement.cashHalalas + daySettlement.cardsHalalas +
+    daySettlement.delivery.reduce((sum, row) => sum + row.amountHalalas, 0) : null;
+  const dayVariance = dayCollected == null || !daySettlement ? null : dayCollected - daySettlement.grossHalalas;
+  const totalCollection = dayCollected != null ? dayCollected / 100
+    : recon?.totals?.totalCollectionHalalas == null ? null : recon.totals.totalCollectionHalalas / 100;
+  const varianceHalalas = dayVariance ?? recon?.totals?.varianceHalalas ?? null;
+  const variance = varianceHalalas == null ? null : varianceHalalas / 100;
+  const hasVariance = varianceHalalas != null && varianceHalalas !== 0;
+  const isShortage = varianceHalalas != null && varianceHalalas < 0;
+  const isSurplus = varianceHalalas != null && varianceHalalas > 0;
   const assignedTotal = varEmps.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
   const remaining = variance == null ? null : Math.round((Math.abs(variance) - assignedTotal) * 100) / 100;
 
@@ -329,8 +340,7 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="col-span-1 lg:col-span-2 space-y-4">
           <Card title={t("تسوية المبيعات", "Sales Reconciliation")} actions={
-            dayReport ? <button type="button" data-testid="daily-sales-edit-toggle" aria-expanded={dayEditOpen}
-              aria-controls={`daily-sales-edit-${dayReport.operation.id}`}
+            canEditDay ? <button type="button" data-testid="daily-sales-edit-toggle" aria-expanded={dayEditOpen}
               onClick={() => setEditingDayOperationId(current => current === dayReport.operation.id ? null : dayReport.operation.id)}
               className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600 ${dayEditOpen ? "border-purple-600 bg-purple-600 text-white" : "border-purple-200 bg-white text-purple-700 hover:bg-purple-50"}`}>
               <Edit3 size={13} />{dayEditOpen ? t("إغلاق التعديل", "Close editing") : t("تعديل الأرقام", "Edit figures")}
@@ -343,7 +353,11 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
           }>
             <div className="divide-y divide-gray-100" dir={dir}>
 
-              {dayReport && <DailySalesShiftDetails report={dayReport} embedded editOpen={dayEditOpen} />}
+              {dayReport && daySettlement && detail?.branchId && <WorkdaySettlement
+                key={`${dayReport.operation.id}:${dayEditOpen ? "edit" : daySettlement.revision}`}
+                id={dayReport.operation.id} branchId={detail.branchId} data={daySettlement} editing={dayEditOpen}
+                t={t} lang={lang} onSaved={() => setEditingDayOperationId(null)} />}
+              {dayReport && <DailySalesShiftDetails report={dayReport} embedded showDayCollection={false} editOpen={false} />}
 
               {isDayOperation && !dayReport && (
                 <div role={detailQuery.isError ? "alert" : "status"} className="p-4 text-sm text-amber-800">
@@ -591,7 +605,10 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
                 {salesPolicy.return && <button onClick={() => runSalesAction(salesContext, "return", () => { setDetailId(op.id); setModal("reject"); })} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-50 text-red-700 font-semibold text-sm hover:bg-red-100 border border-red-200">
                   <XCircle size={15} /> {t("رفض — إعادة لمدير الفرع", "Reject — Return to Branch Manager")}
                 </button>}
-                <button onClick={() => setClarifyOpen(true)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-50 text-blue-700 font-semibold text-sm hover:bg-blue-100 border border-blue-200">
+                {dayReport && detail?.workdayReview && <button onClick={() => setReturnOpen(true)} className="w-full rounded-xl bg-red-50 border border-red-200 py-2.5 text-sm font-semibold text-red-700">
+                  {t("إرجاع تقرير اليوم لمدير الفرع", "Return daily report to branch manager")}
+                </button>}
+                <button onClick={() => { setClarificationShift(""); setClarifyOpen(true); }} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-50 text-blue-700 font-semibold text-sm hover:bg-blue-100 border border-blue-200">
                   <MessageSquare size={15} /> {t("طلب توضيح", "Request Clarification")}
                 </button>
               </div>
@@ -624,10 +641,28 @@ export function AccSalesDetail({ navigate, setModal, setDetailId, detailId, ops,
           open={clarifyOpen}
           subject={op.id}
           onClose={() => setClarifyOpen(false)}
-          onSubmit={({ message }) => clarifyMut.mutateAsync({ id: op.id, message })}
+          fieldsValid={!detail?.workdayReview || Boolean(clarificationShift)}
+          fields={detail?.workdayReview && <label className="block mb-3 text-sm">
+            {t("الشفت المعني", "Shift")}
+            <select className="mt-1 block w-full rounded border p-2" value={clarificationShift}
+              onChange={event => setClarificationShift(event.target.value)}>
+              <option value="">{t("اختر شفتًا", "Select a shift")}</option>
+              {detail.workdayShifts?.map((shift, index) => <option key={shift.id} value={shift.id}>
+                {index + 1} · {shift.cashierName} · {shift.salesHalalas === null ? "—" : fmtAmt(shift.salesHalalas / 100)}
+              </option>)}
+            </select>
+          </label>}
+          onSubmit={({ message }) => clarifyMut.mutateAsync({ id: op.id, message, shiftId: clarificationShift || undefined })}
           t={t}
         />
       )}
+      {op && dayReport && <ClarifyModal open={returnOpen} subject={op.id}
+        title={t("إرجاع تقرير اليوم", "Return daily report")}
+        description={t("يعود التقرير إلى مدير الفرع مع سبب الإرجاع.", "The branch manager receives the report and return reason.")}
+        submitLabel={t("إرجاع", "Return")} maxLength={1000}
+        onClose={() => setReturnOpen(false)}
+        onSubmit={({ message }) => returnWorkday.mutateAsync({ id: op.id, reason: message })}
+        t={t} />}
     </div>
   );
 }

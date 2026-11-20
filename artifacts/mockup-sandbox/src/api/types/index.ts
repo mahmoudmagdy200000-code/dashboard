@@ -159,6 +159,16 @@ export interface ShiftLiability {
   }> | null;
 }
 
+export interface WorkdaySettlementData {
+  revision: number;
+  grossHalalas: number;
+  cashHalalas: number;
+  cardsHalalas: number;
+  delivery: { id: string; name: string | null; amountHalalas: number }[];
+  allocations: { empNumber: string; name: string; amountHalalas: number }[];
+  reason: string | null;
+}
+
 export interface Operation {
   id: string;
   /** Human ID, e.g. "OPS-2401". */
@@ -177,6 +187,12 @@ export interface Operation {
   origin?: OperationOrigin | null;
   /** Both SHF and daily sales rows expose the server's review metadata here. */
   reportReview?: Record<string, unknown> | null;
+  workdaySettlement?: WorkdaySettlementData;
+  workdayShifts?: { id: string; cashierName: string | null; salesHalalas: number | null }[];
+  workdayReview?: {
+    confirmation: string;
+    questions: { id: string; shiftLabel: string; message: string; reply: string | null }[];
+  };
   /** Present on GET /operations/{id} for SHF operations. */
   reportRevision?: number | null;
   /** Present on GET /operations/{id}; this is not the report revision. */

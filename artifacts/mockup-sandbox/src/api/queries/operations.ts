@@ -70,8 +70,8 @@ export function useAuditTrail(operationId: string | null | undefined) {
 export function useApproveOperation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, note }: { id: string; note?: string }) => {
-      const res = await api.post<Operation>(`/operations/${id}/approve`, { note });
+    mutationFn: async ({ id, note, workdayConfirmation }: { id: string; note?: string; workdayConfirmation?: string }) => {
+      const res = await api.post<Operation>(`/operations/${id}/approve`, { note, workdayConfirmation });
       return res.data;
     },
     onSuccess: (op) => {
@@ -133,19 +133,36 @@ export function useRejectOperation() {
 export function useRequestClarification() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, message }: { id: string; message: string }) => {
+    mutationFn: async ({ id, message, shiftId }: { id: string; message: string; shiftId?: string }) => {
       const res = await api.post<Operation>(
-        `/company/me/operations/${id}/request-clarification`,
-        { message },
+        `/operations/${id}/request-clarification`,
+        { message, shiftId },
       );
       return res.data;
     },
-    onSuccess: (op) => {
+    onSuccess: (op, { id }) => {
       qc.invalidateQueries({ queryKey: ["operations"] });
       qc.invalidateQueries({ queryKey: queryKeys.operationAudit(op.id) });
+      qc.invalidateQueries({ queryKey: queryKeys.operation(id) });
       toast.success("تم إرسال طلب التوضيح");
     },
     onError: (e) => toast.error(getErrorMessage(e, "ar")),
+  });
+}
+
+export function useReturnWorkday() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => api.post(`/operations/${id}/return-workday`, { reason }),
+    onSuccess: async (_result, { id }) => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["operations"] }),
+        qc.invalidateQueries({ queryKey: queryKeys.operation(id) }),
+        qc.invalidateQueries({ queryKey: queryKeys.operationAudit(id) }),
+        qc.invalidateQueries({ queryKey: ["platform", "accountant"] }),
+      ]);
+      toast.success("أُعيد تقرير اليوم لمدير الفرع");
+    },
   });
 }
 
@@ -155,14 +172,16 @@ export function useBulkApprove() {
     mutationFn: async ({
       operationIds,
       note,
+      workdayConfirmations,
     }: {
       operationIds: string[];
       note?: string;
+      workdayConfirmations?: Record<string, string>;
     }) => {
       const res = await api.post<{
         approved: string[];
         failed: Array<{ id: string; code: string }>;
-      }>("/operations/bulk-approve", { operationIds, note });
+      }>("/operations/bulk-approve", { operationIds, note, workdayConfirmations });
       return res.data;
     },
     onSuccess: (data) => {

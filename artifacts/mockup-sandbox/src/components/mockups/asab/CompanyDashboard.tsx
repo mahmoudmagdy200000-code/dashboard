@@ -8,6 +8,7 @@ import { queryKeys } from "../../../api/queries/keys";
 import { chooseGrantedRole, companyRoles, financialAccessFingerprint, financialAccessGeneration, isFinancialSessionActive, grantedRoleKeys, hasRoleGrant, pageForRole, purgeFinancialQueries, registerFinancialRequest } from "../../../auth/roleAccess";
 import { historyBranchOptions, historyPageTarget } from "../../../api/queries/shifts";
 import { getSalesActionPolicy, hasSalesReconciliationEvidence, isPkg6SalesReport, runSalesAction, runSalesBulkApproval, salesBulkApprovalIds, SALES_RETURN_HINT } from "./salesActionGuards";
+import { prepareWorkdayBulkApproval } from "./workdayBulkApproval";
 import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRows, shfReviewPageTarget, type ShfReviewAction, type ShfReviewGroup } from "./shiftReviewQueue";
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT, HEAD_EXPENSE_EVIDENCE_HINT } from "./headReviewGuards";
 import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocationHalalas, runShfAllocationCorrection, type ShfAllocationRow } from "./shiftAllocationCorrection";
@@ -5046,7 +5047,11 @@ function useSharedOps(role: CRole | null, fingerprint: string) {
 
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [clarifyingId, setClarifyingId] = useState<string | null>(null);
-  const clearDialogs = () => { setRejectingId(null); setClarifyingId(null); };
+  const [clarificationShift, setClarificationShift] = useState("");
+  const clarifyingOp = clarifyingId ? operationFor(clarifyingId) : undefined;
+  const clarificationDetail = useOperation(clarifyingId);
+  const isDailyCloseClarification = clarifyingOp?.workflowKind === "sal_day" || clarificationDetail.data?.workflowKind === "sal_day";
+  const clearDialogs = () => { setRejectingId(null); setClarifyingId(null); setClarificationShift(""); };
 
   // Reject reasons scoped to the module of the op being rejected (T03 §13).
   const rejectingOp = rejectingId ? operationFor(rejectingId) : undefined;
@@ -5056,6 +5061,16 @@ function useSharedOps(role: CRole | null, fingerprint: string) {
   const approve            = (id:string)    => {
     const op = operationFor(id);
     if (op && ("module" in op ? op.module : op.moduleKey) === "expenses") return;
+    if (op?.workflowKind === "sal_day") {
+      void loadFreshDetail(id).then(report => {
+        const { workdayConfirmations, openQuestions } = prepareWorkdayBulkApproval([report]);
+        if (openQuestions.length > 0 && !window.confirm(
+          `توجد طلبات توضيح مفتوحة على الشفتات التالية:\n${openQuestions.join("\n")}\n\nسيُرسل تقرير اليوم لرئيس الحسابات مع بقاء الأسئلة مفتوحة. هل تريد المتابعة؟`,
+        )) return;
+        return approveMut.mutateAsync({ id, workdayConfirmation: workdayConfirmations[report.publicId] });
+      }).catch(error => toast.error(getErrorMessage(error, "ar")));
+      return;
+    }
     runOperationAction(id, "approve", () => approveMut.mutate({ id }));
   };
   const reject             = (id:string)    => {
@@ -5088,7 +5103,42 @@ function useSharedOps(role: CRole | null, fingerprint: string) {
         toast.error(getErrorMessage(error, "ar")); // mutation hook already translates its errors
     } finally { if (mounted.current) setActionsPending(false); }
   };
-  const bulkApprove        = (ids:string[]) => { runSalesBulkApproval(currentOps.current, ids, currentRole.current, eligible => bulkMut.mutate({ operationIds: eligible }), detailFor); };
+  const bulkApprove        = async (ids:string[]) => {
+    const eligible = salesBulkApprovalIds(currentOps.current, ids, currentRole.current, detailFor);
+    if (eligible.length === 0) return;
+    const workdayIds = eligible.filter(id => currentOps.current.find(op => op.id === id)?.workflowKind === "sal_day");
+    if (workdayIds.length === 0) {
+      runSalesBulkApproval(currentOps.current, eligible, currentRole.current, approved => bulkMut.mutate({ operationIds: approved }), detailFor);
+      return;
+    }
+    // Daily close rows need a fresh, server-issued review token. Older synchronous
+    // adapters cannot provide that proof and must leave these rows untouched.
+    if (typeof (bulkMut as any).mutateAsync !== "function") {
+      const legacyIds = eligible.filter(id => !workdayIds.includes(id));
+      if (legacyIds.length > 0) runSalesBulkApproval(currentOps.current, legacyIds, currentRole.current,
+        approved => bulkMut.mutate({ operationIds: approved }), detailFor);
+      return;
+    }
+    if (actionLock.current) return;
+    const context = captureAccess();
+    if (!context) return;
+    actionLock.current = true;
+    setActionsPending(true);
+    let mutationStarted = false;
+    try {
+      const fresh = await Promise.all(workdayIds.map(id => loadFreshDetail(id)));
+      if (!accessStillCurrent(context)) throw new FinancialAccessChangedError();
+      const { workdayConfirmations, openQuestions } = prepareWorkdayBulkApproval(fresh);
+      if (openQuestions.length > 0 && !window.confirm(
+        `توجد طلبات توضيح مفتوحة على الشفتات التالية:\n${openQuestions.join("\n")}\n\nسيُرسل تقرير اليوم لرئيس الحسابات مع بقاء الأسئلة مفتوحة. هل تريد المتابعة؟`,
+      )) return;
+      if (!accessStillCurrent(context)) throw new FinancialAccessChangedError();
+      mutationStarted = true;
+      await bulkMut.mutateAsync({ operationIds: eligible, workdayConfirmations });
+    } catch (error) {
+      if (!mutationStarted && !(error instanceof FinancialAccessChangedError) && accessStillCurrent(context)) toast.error(getErrorMessage(error, "ar"));
+    } finally { actionLock.current = false; if (mounted.current) setActionsPending(false); }
+  };
   const bulkFinalApprove = async (ids:string[]) => {
     if (actionLock.current || ids.length===0 || headLegacyBulkIds(currentOps.current, ids, currentRole.current, detailFor).length !== new Set(ids).size) return;
     const context = captureAccess();
@@ -5180,22 +5230,35 @@ function useSharedOps(role: CRole | null, fingerprint: string) {
     },
   };
 
-  const clarifyingOp = clarifyingId ? operationFor(clarifyingId) : undefined;
   const clarifyModalProps = {
     open: clarifyingId !== null,
     subject: clarifyingOp && ("refNum" in clarifyingOp ? clarifyingOp.refNum : clarifyingOp.publicId),
-    onClose: () => setClarifyingId(null),
+    fieldsValid: !isDailyCloseClarification || Boolean(clarificationShift),
+    fields: isDailyCloseClarification && <label className="mb-3 block text-sm">
+      الشفت المعني / Relevant shift
+      <select className="mt-1 block w-full rounded border p-2" value={clarificationShift}
+        onChange={event => setClarificationShift(event.target.value)}>
+        <option value="">{clarificationDetail.isPending ? "جارٍ تحميل الشفتات… / Loading shifts…" : "اختر شفتًا / Select a shift"}</option>
+        {clarificationDetail.data?.workdayShifts?.map((shift, index) => <option key={shift.id} value={shift.id}>
+          {index + 1} · {shift.cashierName ?? "Cashier"} · {shift.salesHalalas === null ? "—" : (shift.salesHalalas / 100).toFixed(2)} SAR
+        </option>)}
+      </select>
+      {clarificationDetail.isError && <span role="alert" className="mt-1 block text-xs text-red-700">تعذر تحميل شفتات التقرير؛ أعد المحاولة بفتح التقرير مباشرة.</span>}
+    </label>,
+    onClose: () => { setClarifyingId(null); setClarificationShift(""); },
     onSubmit: async ({ message }: { message: string }) => {
       if (!clarifyingId || actionLock.current) throw new Error("Action unavailable or already in progress");
+      if (isDailyCloseClarification && !clarificationShift) throw new Error("Select the cashier shift before requesting clarification");
       actionLock.current = true; setActionsPending(true);
       try {
         let request: Promise<unknown> | undefined;
         const allowed = runOperationAction(clarifyingId, "clarify", () => {
-          request = clarifyMut.mutateAsync({ id: clarifyingId, message });
+          request = clarifyMut.mutateAsync({ id: clarifyingId, message, shiftId: clarificationShift || undefined });
         });
         if (!allowed || !request) throw new Error("Operation changed; refresh before requesting clarification");
         await request;
         setClarifyingId(null);
+        setClarificationShift("");
       } finally { actionLock.current = false; setActionsPending(false); }
     },
   };

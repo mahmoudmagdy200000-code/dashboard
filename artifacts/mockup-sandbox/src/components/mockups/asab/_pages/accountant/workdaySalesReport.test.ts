@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Operation } from "../../../../../api/types";
-import { dailySalesReportFromOperation, groupDailySalesWorkdays } from "./dailySalesWorkdays.ts";
+import { dailySalesReportFromOperation, groupDailySalesWorkdays } from "./workdaySalesReport.ts";
 
 function report(id: string, data: {
   branchId?: string;
@@ -118,4 +118,22 @@ test("keeps a conflicting source/operation sales total explicitly unknown", () =
   const [day] = groupDailySalesWorkdays([inconsistent]);
   assert.equal(day.totalSalesHalalas, null);
   assert.equal(day.cashHalalas, 9500);
+});
+
+test("daily sales channel summary follows the saved settlement while gross sales remain locked to source", () => {
+  const corrected = report("settled", { amountHalalas: 1_000_000, cashHalalas: 400_000, cardHalalas: 300_000, appsHalalas: 300_000 });
+  corrected.workdaySettlement = {
+    revision: 1,
+    grossHalalas: 1_000_000,
+    cashHalalas: 400_000,
+    cardsHalalas: 300_000,
+    delivery: [{ id: "app-1", name: "Delivery", amountHalalas: 299_500 }],
+    allocations: [], reason: "Corrected delivery reconciliation",
+  };
+  const [day] = groupDailySalesWorkdays([corrected]);
+  assert.equal(day.totalSalesHalalas, 1_000_000);
+  assert.equal(day.cashHalalas, 400_000);
+  assert.equal(day.cardHalalas, 300_000);
+  assert.equal(day.appsHalalas, 299_500);
+  assert.equal(day.varianceHalalas, 500); // historical cash variance stays source-backed
 });

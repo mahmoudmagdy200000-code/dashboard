@@ -13,6 +13,7 @@ import {
 import {
   usePendingOperations,
   useExportHeadOperations,
+  useOperation,
 } from "../../../../../api/queries";
 import { useLang } from "../../_shared/LangContext";
 import { fmtAmt } from "../../_shared/formatters";
@@ -24,6 +25,24 @@ import { Btn } from "../../components/Btn";
 import { Badge } from "../../components/Badge";
 import { EmptyState } from "../../components/EmptyState";
 import { KpiCard } from "../../components/KpiCard";
+import { WorkdaySettlement } from "../accountant/WorkdaySettlement";
+
+function WorkdayReviewDetails({ id }: { id: string }) {
+  const { t, lang } = useLang();
+  const [open, setOpen] = useState(false);
+  const query = useOperation(open ? id : undefined);
+  const detail = query.data;
+  return <details className="px-5 pb-3" onToggle={event => setOpen(event.currentTarget.open)}>
+    <summary className="cursor-pointer text-sm text-purple-700">{t("مراجعة تسوية اليوم", "Review daily settlement")}</summary>
+    {open && query.isPending && <p role="status">{t("جارٍ تحميل التسوية…", "Loading settlement…")}</p>}
+    {open && query.isError && <p role="alert">{t("تعذر تحميل التسوية", "Could not load settlement")}</p>}
+    {open && detail?.workdaySettlement && <WorkdaySettlement key={detail.workdaySettlement.revision}
+      id={id} branchId={detail.branchId ?? ""} data={detail.workdaySettlement} editing={false} t={t} lang={lang} />}
+    {open && detail?.workdayReview?.questions.map(question => <div className="p-2 text-sm" key={question.id}>
+      <strong>{question.shiftLabel}</strong> · {question.message} · {question.reply ?? t("بانتظار التوضيح", "Awaiting reply")}
+    </div>)}
+  </details>;
+}
 
 export function HeadPending({ navigate, setModal, setDetailId, ops, finalApproveOp, rejectOp, bulkApprove, returnForReview }: PageProps) {
   const { t, lang, dir } = useLang();
@@ -123,6 +142,7 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
             </div>
           </div>
         </div>
+        {op.workflowKind === "sal_day" && <WorkdayReviewDetails id={op.id} />}
         {isCond && (
           <div className="px-5 pb-4 bg-amber-50/40 border-t border-amber-100">
             <p className="text-[11px] font-bold text-amber-800 mb-2 pt-2">{t("تفاصيل الاعتماد المشروط", "Conditional Approval Details")}</p>

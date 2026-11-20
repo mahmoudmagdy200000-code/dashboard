@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Operation as ApiOperation } from "../../../api/types";
 import { queryKeys } from "../../../api/queries/keys";
 import { runSalesAction, salesBulkApprovalIds } from "./salesActionGuards";
+import { prepareWorkdayBulkApproval } from "./workdayBulkApproval";
 import { headLegacyBulkIds, shouldUpdateHeadOps, runFinancialMutation, validateConditionalApproval, executeMixedBulkApproval } from "./headReviewGuards";
 import { EmptyState } from "./components/EmptyState";
 import { SimplePage } from "./components/SimplePage";
@@ -2361,12 +2362,22 @@ export function ASABPrototype() {
       id,
       inFlightOps.current,
       async () => {
+        let workdayConfirmation: string | undefined;
+        if (targetOp?.workflowKind === "sal_day") {
+          const { data } = await api.get<{ workdayReview?: { confirmation: string; questions: { shiftLabel: string; reply: string | null }[] } }>(`/operations/${id}`);
+          const review = data.workdayReview;
+          const open = review?.questions.filter(question => question.reply === null) ?? [];
+          if (open.length > 0 && !window.confirm(`توجد ${open.length} طلبات توضيح مفتوحة على: ${open.map(question => question.shiftLabel).join("، ")}. هل تريد إرسال التقرير لرئيس الحسابات؟`)) {
+            throw new Error("Workday approval cancelled");
+          }
+          workdayConfirmation = review?.confirmation;
+        }
         if (typeof (approveMut as any).mutateAsync === "function") {
-          return await (approveMut as any).mutateAsync({ id });
+          return await (approveMut as any).mutateAsync({ id, workdayConfirmation });
         }
         if (typeof (approveMut as any).mutate === "function") {
           return await new Promise((resolve, reject) => {
-            (approveMut as any).mutate({ id }, { onSuccess: resolve, onError: reject });
+            (approveMut as any).mutate({ id, workdayConfirmation }, { onSuccess: resolve, onError: reject });
           });
         }
         throw new Error("No mutation handler available for approval");
@@ -2506,14 +2517,18 @@ export function ASABPrototype() {
 
     // Synchronous execution path for test harnesses and synchronous mutations
     if (typeof (bulkApproveMut as any)?.mutateAsync !== "function" && typeof (bulkFinalMut as any)?.mutateAsync !== "function") {
-      if (pendingIds.length > 0 && typeof (bulkApproveMut as any)?.mutate === "function") {
-        (bulkApproveMut as any).mutate({ operationIds: pendingIds });
+      // Workday approval requires fresh server-issued confirmation evidence. A
+      // synchronous/legacy mutation adapter cannot safely approve these rows.
+      const synchronousPendingIds = pendingIds.filter(id =>
+        currentSalesOps.current.find(op => op.id === id)?.workflowKind !== "sal_day");
+      if (synchronousPendingIds.length > 0 && typeof (bulkApproveMut as any)?.mutate === "function") {
+        (bulkApproveMut as any).mutate({ operationIds: synchronousPendingIds });
       }
       if (approvedIds.length > 0 && typeof (bulkFinalMut as any)?.mutate === "function") {
         (bulkFinalMut as any).mutate({ operationIds: approvedIds });
       }
       setOps(p => p.map(o => {
-        if (pendingIds.includes(o.id) && o.status === "pending") {
+        if (synchronousPendingIds.includes(o.id) && o.status === "pending") {
           return { ...o, status: "approved" as OpStatus, approvedBy: "المحاسب المختص", approvedAt: ts };
         }
         if (approvedIds.includes(o.id) && o.status === "approved") {
@@ -2521,7 +2536,7 @@ export function ASABPrototype() {
         }
         return o;
       }));
-      return Promise.resolve({ pendingSucceeded: pendingIds.length > 0, approvedSucceeded: approvedIds.length > 0, isPartial: false });
+      return Promise.resolve({ pendingSucceeded: synchronousPendingIds.length > 0, approvedSucceeded: approvedIds.length > 0, isPartial: false });
     }
 
     const fnMutation = typeof runFinancialMutation === "function"
@@ -2546,7 +2561,35 @@ export function ASABPrototype() {
           approvedIds,
           approvePendingFn: async (pIds: string[]) => {
             if (typeof (bulkApproveMut as any).mutateAsync === "function") {
-              return await (bulkApproveMut as any).mutateAsync({ operationIds: pIds });
+              const workdayIds = pIds.filter(id =>
+                currentSalesOps.current.find(op => op.id === id)?.workflowKind === "sal_day");
+              const workdayReports: { id: string; publicId?: string; workflowKind: string; workdayReview?: {
+                confirmation?: string; questions?: { shiftLabel: string; reply: string | null }[];
+              } }[] = [];
+              for (const id of workdayIds) {
+                const { data } = await api.get<{ publicId?: string; workdayReview?: {
+                  confirmation?: string;
+                  questions?: { shiftLabel: string; reply: string | null }[];
+                } }>(`/operations/${id}`);
+                workdayReports.push({ id, ...data, workflowKind: "sal_day" });
+              }
+              const { workdayConfirmations, openQuestions } = prepareWorkdayBulkApproval(workdayReports);
+              if (openQuestions.length > 0 && !window.confirm(
+                `توجد طلبات توضيح مفتوحة على الشفتات التالية:\n${openQuestions.join("\n")}\n\nسيُرسل تقرير اليوم لرئيس الحسابات مع بقاء الأسئلة مفتوحة. هل تريد المتابعة؟`,
+              )) {
+                throw new Error("تم إلغاء الإرسال الجماعي");
+              }
+              const result = await (bulkApproveMut as any).mutateAsync({
+                operationIds: pIds,
+                ...(workdayIds.length > 0 ? { workdayConfirmations } : {}),
+              });
+              if (Array.isArray(result?.failed) && result.failed.length > 0) {
+                const partialError: any = new Error(`اعتمد الخادم ${result.approved?.length ?? 0} تقريرًا ورفض ${result.failed.length}.`);
+                partialError.isPartial = true;
+                partialError.succeededIds = result.approved ?? [];
+                throw partialError;
+              }
+              return result;
             }
             if (typeof (bulkApproveMut as any).mutate === "function") {
               return (bulkApproveMut as any).mutate({ operationIds: pIds });
@@ -2581,7 +2624,7 @@ export function ASABPrototype() {
     ).catch(err => {
       if (err?.isPartial) {
         setOps(p => p.map(o => {
-          if (err.pendingSucceeded && pendingIds.includes(o.id) && o.status === "pending") {
+          if ((Array.isArray(err.succeededIds) ? err.succeededIds.includes(o.id) : err.pendingSucceeded && pendingIds.includes(o.id)) && o.status === "pending") {
             return { ...o, status: "approved" as OpStatus, approvedBy: "المحاسب المختص", approvedAt: ts };
           }
           if (err.approvedSucceeded && approvedIds.includes(o.id) && o.status === "approved") {

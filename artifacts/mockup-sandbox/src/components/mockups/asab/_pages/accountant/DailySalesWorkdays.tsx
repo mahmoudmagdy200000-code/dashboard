@@ -7,7 +7,7 @@ import { useLang } from "../../_shared/LangContext";
 import { displayDigits } from "../../_shared/displayDigits";
 import { formatShiftHalalas } from "../../shiftCountEvidence";
 import { formatWorkdayDate } from "./ManagerDeliveredSales";
-import { dailySalesReportFromOperation, groupDailySalesWorkdays } from "./dailySalesWorkdays";
+import { dailySalesReportFromOperation, groupDailySalesWorkdays } from "./workdaySalesReport";
 
 export type SalesOperationReference = {
   id: string;

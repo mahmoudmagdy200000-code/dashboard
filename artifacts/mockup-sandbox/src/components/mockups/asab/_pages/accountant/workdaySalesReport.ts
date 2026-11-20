@@ -76,6 +76,10 @@ export function dailySalesReportFromOperation(operation: Operation): DailySalesR
   const operationTotal = verifiedMoney(operation.amountHalalas);
   const consistentTotal = storedTotal !== null && operationTotal !== null && storedTotal !== operationTotal
     ? null : (storedTotal ?? operationTotal);
+  const settlement = operation.workdaySettlement;
+  const settlementDelivery = settlement
+    ? sumVerified(settlement.delivery.map((channel) => verifiedMoney(channel.amountHalalas)))
+    : null;
   return {
     operation,
     provenanceVerified: operation.workflowKind === "sal_day",
@@ -83,9 +87,11 @@ export function dailySalesReportFromOperation(operation: Operation): DailySalesR
     managerShiftId,
     managerName: typeof payload?.managerName === "string" ? payload.managerName : null,
     totalSalesHalalas: consistentTotal,
-    cashHalalas: verifiedMoney(payload?.cashHalalas),
-    cardHalalas: verifiedMoney(payload?.cardHalalas),
-    appsHalalas: verifiedMoney(payload?.appsHalalas),
+    // The day list follows the saved final reconciliation when present. The
+    // source payload remains the fallback for reports not yet corrected.
+    cashHalalas: settlement ? verifiedMoney(settlement.cashHalalas) : verifiedMoney(payload?.cashHalalas),
+    cardHalalas: settlement ? verifiedMoney(settlement.cardsHalalas) : verifiedMoney(payload?.cardHalalas),
+    appsHalalas: settlement ? settlementDelivery : verifiedMoney(payload?.appsHalalas),
     varianceHalalas: verifiedMoney(payload?.varianceHalalas),
     notes: typeof payload?.notes === "string" && payload.notes.trim() ? payload.notes : null,
     memberShiftIds: Array.isArray(members)

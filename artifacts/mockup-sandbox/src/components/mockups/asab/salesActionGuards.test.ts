@@ -11,7 +11,7 @@ import {
 import { getHeadReviewPolicy, headLegacyBulkIds } from "./headReviewGuards.ts";
 
 const legacy = { id: "legacy", moduleKey: "sales", status: "pending" };
-const day = { ...legacy, id: "day", reportReview: { phase: "accountant_review" } };
+const day = { ...legacy, id: "day", workflowKind: "sal_day" as const, reportReview: { phase: "accountant_review" } };
 const shf = { id: "shf", moduleKey: "shifts", status: "pending", reportReview: { phase: "accountant_review" } };
 const nullableLegacyRecon = {
   channels: [{ key: "cash", actualAmountHalalas: 0, posAmountHalalas: null, diffHalalas: null }],
@@ -24,12 +24,19 @@ test("PKG-6 sales guards prevent legacy effects for accountant and head", () => 
   const requests: string[] = [];
   for (const role of ["accountant", "head"]) {
     for (const status of ["pending", "approved", "final-approved"]) {
-      for (const action of forbidden) {
+      for (const action of forbidden.filter(action => !(role === "accountant" && action === "bulkApprove"))) {
         assert.equal(runSalesAction({ operation: { ...day, status }, role }, action, () => requests.push(action)), false);
       }
     }
   }
   assert.deepEqual(requests, [], "no legacy mutation or return request may be sent");
+});
+
+test("only explicitly classified pending workday reports may enter accountant bulk approval", () => {
+  assert.equal(getSalesActionPolicy({ operation: day, role: "accountant" }).bulkApprove, true);
+  assert.equal(getSalesActionPolicy({ operation: { ...day, status: "approved" }, role: "accountant" }).bulkApprove, false);
+  assert.equal(getSalesActionPolicy({ operation: { ...legacy, workflowKind: "unknown", reportReview: day.reportReview }, role: "accountant" }).bulkApprove, false);
+  assert.equal(getSalesActionPolicy({ operation: day, detail: shf, role: "accountant" }).bulkApprove, false);
 });
 
 test("legacy accountant edit/save/assign/return and pending bulk approval remain active", () => {
@@ -246,9 +253,9 @@ test("accountant bulk selection excludes SHF across mixed selections and detail 
   for (const [requested, expected] of [
     [["shf"], []],
     [["shf", "legacy"], ["legacy"]],
-    [["shf", "day", "legacy"], ["legacy"]],
+    [["shf", "day", "legacy"], ["day", "legacy"]],
     [["shf", "expense"], []],
-    [["day"], []],
+    [["day"], ["day"]],
     [["legacy"], ["legacy"]],
   ] as const) {
     const sent: string[][] = [];
@@ -345,22 +352,23 @@ test("a modal opened as legacy rechecks current API evidence before sending", ()
   assert.deepEqual(requests, []);
 });
 
-test("sales bulk approval sends only loaded eligible legacy IDs; expense and PKG-6 are excluded", () => {
+test("sales bulk approval admits verified day reports and loaded eligible legacy IDs", () => {
   const expense = { id: "expense", moduleKey: "expenses", status: "pending", reportReview: {} };
   const operations = [legacy, day, expense, { ...legacy, id: "approved", status: "approved" }];
   const requested = ["day", "legacy", "expense", "missing", "approved", "legacy"];
   const before = structuredClone(operations);
   const sent: string[][] = [];
   const ids = runSalesBulkApproval(operations, requested, "accountant", payload => sent.push(payload));
-  assert.deepEqual(ids, ["legacy"]);
-  assert.deepEqual(sent, [["legacy"]]);
+  assert.deepEqual(ids, ["day", "legacy"]);
+  assert.deepEqual(sent, [["day", "legacy"]]);
   assert.deepEqual(operations, before);
   assert.deepEqual(salesBulkApprovalIds(operations, ["day", "legacy"], "head"), []);
 });
 
-test("an all-PKG-6 or empty selection sends no bulk request, including detail-only review", () => {
-  for (const requested of [[], ["day"], ["missing"]]) {
-    runSalesBulkApproval([day], requested, "accountant", () => assert.fail("empty bulk request"));
+test("empty and unknown-review selections send no bulk request, including detail-only review", () => {
+  const unknownReview = { ...legacy, id: "unknown-review", workflowKind: "unknown" as const, reportReview: day.reportReview };
+  for (const requested of [[], ["unknown-review"], ["missing"]]) {
+    runSalesBulkApproval([unknownReview], requested, "accountant", () => assert.fail("empty bulk request"));
   }
   const details = () => day;
   assert.deepEqual(runSalesBulkApproval([legacy], ["legacy"], "accountant", () => assert.fail("detail review bypass"), details), []);
