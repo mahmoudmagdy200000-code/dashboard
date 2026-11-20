@@ -807,26 +807,20 @@ export function AccEmployees({ setModal }: PageProps) {
                     </p>
                   </div>
                 )}
-                <div className="bg-gray-50 rounded-xl p-3 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                  <div>
-                    <p className="text-[10px] text-gray-400">الراتب</p>
-                    <p className="font-bold text-sm text-blue-700">
-                      {fmtAmt((emp.monthlySalary ?? 0) / 100)}
-                    </p>
-                  </div>
-                  <div>
+                <div className="bg-gray-50 rounded-xl p-3 mb-3 grid grid-cols-3 gap-2 text-center">
+                  <div className="min-w-0">
                     <p className="text-[10px] text-gray-400">إجمالي الدائن</p>
                     <p className="font-bold text-emerald-600">
                       +{fmtAmt((statement?.totalCredit ?? 0) / 100)}
                     </p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[10px] text-gray-400">إجمالي المدين</p>
                     <p className="font-bold text-red-600">
                       -{fmtAmt((statement?.totalDebit ?? 0) / 100)}
                     </p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[10px] text-gray-400">الرصيد</p>
                     <p className={`font-bold text-base ${balColor(bal)}`}>
                       {fmtAmt(bal / 100)} ر.س
