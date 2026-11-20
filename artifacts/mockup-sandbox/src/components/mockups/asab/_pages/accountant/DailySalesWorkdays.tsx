@@ -198,7 +198,7 @@ export function DailySalesWorkdays({ references, filters = {}, renderOperation, 
             </dl>
 
             {day.reports.length === 1 && onOpenOperation && (
-              <button type="button" onClick={() => onOpenOperation(day.reports[0].operation.id)}
+              <button type="button" onClick={() => onOpenOperation(day.reports[0].operation.publicId || day.reports[0].operation.id)}
                 className="mt-3 inline-flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-bold text-purple-700 hover:bg-purple-100">
                 <Eye size={15} /> {t("عرض التفاصيل", "View details")}
               </button>
@@ -212,7 +212,7 @@ export function DailySalesWorkdays({ references, filters = {}, renderOperation, 
                     <span className="font-semibold text-gray-800">{item.managerName ?? t("مدير الفرع", "Branch manager")} · <bdi>{item.operation.publicId}</bdi></span>
                     <span className="font-mono text-gray-800">{money(item.totalSalesHalalas, lang)} {t("ر.س", "SAR")}</span>
                   </div>
-                  {onOpenOperation && <button type="button" onClick={() => onOpenOperation(item.operation.id)}
+                  {onOpenOperation && <button type="button" onClick={() => onOpenOperation(item.operation.publicId || item.operation.id)}
                     className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-700">
                     <Eye size={13}/>{t("عرض التقرير وتفاصيل الورديات", "Open report and shifts")}
                   </button>}
