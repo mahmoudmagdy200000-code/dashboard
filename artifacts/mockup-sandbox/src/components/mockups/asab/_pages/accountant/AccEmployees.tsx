@@ -11,6 +11,7 @@ import {
   Check,
   Plus,
   Phone,
+  Printer,
 } from "lucide-react";
 import { useShiftCustodyStatement } from "../../../../../api/queries/employees";
 import { formatShiftHalalas } from "../../shiftCountEvidence";
@@ -266,9 +267,6 @@ export function AccEmployees({ setModal }: PageProps) {
     emp,
     selectedCustody,
   );
-  const selectedIsCashier = Boolean(selectedSales?.isCashier);
-  const selectedIsManager = Boolean(selectedSales?.isManager);
-  const deliveredSalesSummaryHalalas = selectedSales?.deliveredTotalHalalas ?? null;
   const balColor = (h: number) =>
     h < 0 ? "text-red-600" : h > 0 ? "text-emerald-600" : "text-gray-400";
   const bal = statement?.balanceHalalas ?? emp?.balanceHalalas ?? 0;
@@ -480,12 +478,12 @@ export function AccEmployees({ setModal }: PageProps) {
         className="bg-white rounded-xl border border-gray-100 shadow-sm p-4"
         dir="rtl"
       >
-        <div className="grid grid-cols-3 gap-3">
-          <div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="min-w-0">
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">
               رقم الموظف أو الاسم
             </label>
-            <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 min-w-0">
               <Search size={13} className="text-gray-400 flex-shrink-0" />
               <input
                 value={empFilter.q}
@@ -493,11 +491,11 @@ export function AccEmployees({ setModal }: PageProps) {
                   setEmpFilter((p) => ({ ...p, q: e.target.value }))
                 }
                 placeholder="ابحث برقم الموظف أو الاسم..."
-                className="flex-1 text-sm outline-none"
+                className="min-w-0 w-full flex-1 text-sm outline-none bg-transparent"
               />
             </div>
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">
               العلامة التجارية
             </label>
@@ -521,7 +519,7 @@ export function AccEmployees({ setModal }: PageProps) {
               ))}
             </select>
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">
               الفرع
             </label>
@@ -556,7 +554,7 @@ export function AccEmployees({ setModal }: PageProps) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
         <Card title={`قائمة الموظفين (${employees.length})`}>
           <div className="divide-y divide-gray-100">
             {employees.length === 0 && (
@@ -627,7 +625,7 @@ export function AccEmployees({ setModal }: PageProps) {
             <Card
               title={`كشف حساب: ${emp.name}`}
               actions={
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setShowAdd(true)}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold hover:bg-purple-100"
@@ -652,6 +650,13 @@ export function AccEmployees({ setModal }: PageProps) {
                   {statement?.settlementStatus === "under_review" && (
                     <span className="text-xs font-semibold text-amber-700">طلب التسوية قيد مراجعة رئيس الحسابات</span>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold hover:bg-blue-100"
+                  >
+                    <Printer size={11} /> طباعة
+                  </button>
                   <button
                     onClick={() =>
                       selectedId &&
@@ -799,56 +804,6 @@ export function AccEmployees({ setModal }: PageProps) {
                     </p>
                   </div>
                 )}
-                <div className="bg-gray-50 rounded-xl p-3 mb-3 grid grid-cols-4 gap-2 text-center">
-                  <div>
-                    <p className="text-[10px] text-gray-400">الراتب</p>
-                    <p className="font-bold text-sm text-blue-700">
-                      {fmtAmt((emp.monthlySalary ?? 0) / 100)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-400">إجمالي الدائن</p>
-                    <p className="font-bold text-emerald-600">
-                      +{fmtAmt((statement?.totalCredit ?? 0) / 100)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-400">إجمالي المدين</p>
-                    <p className="font-bold text-red-600">
-                      -{fmtAmt((statement?.totalDebit ?? 0) / 100)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-400">الرصيد</p>
-                    <p className={`font-bold text-base ${balColor(bal)}`}>
-                      {fmtAmt(bal / 100)} ر.س
-                    </p>
-                  </div>
-                </div>
-                {(selectedIsCashier || selectedIsManager) && (
-                  <div
-                    data-testid="statement-delivered-sales-summary"
-                    className="mb-3 px-3 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-2"
-                    dir={dir}
-                  >
-                    <span className="text-xs font-semibold text-emerald-900">
-                      {selectedIsCashier
-                        ? t(
-                            "إجمالي مبيعات الورديات المسلمة",
-                            "Total handed-over shift sales",
-                          )
-                        : t(
-                            "إجمالي المبيعات المسلمة",
-                            "Total delivered sales",
-                          )}
-                    </span>
-                    <span className="font-mono font-bold text-sm text-emerald-700">
-                      {deliveredSalesSummaryHalalas == null
-                        ? "—"
-                        : `${formatShiftHalalas(deliveredSalesSummaryHalalas, lang)} ${t("ر.س", "SAR")}`}
-                    </span>
-                  </div>
-                )}
                 {(custodySummary.isAvailable || custodySummary.pendingDeliveredHalalas > 0 || (selectedCustody?.entries?.length ?? 0) > 0) && (
                   <div
                     data-testid="acc-employees-custody-section"
@@ -867,42 +822,120 @@ export function AccEmployees({ setModal }: PageProps) {
                       )}
                     </div>
                     {custodySummary.isAvailable && (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                        <div className="bg-white rounded-lg p-2 border border-gray-200">
-                          <p className="text-[10px] text-gray-500">{t("رصيد أول المدة", "Opening")}</p>
-                          <p className="font-mono font-bold text-xs text-gray-700">{formatShiftHalalas(custodySummary.openingBalanceHalalas, lang)}</p>
-                        </div>
-                        <div className="bg-emerald-50 rounded-lg p-2 border border-emerald-200">
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-emerald-50 rounded-lg p-2 border border-emerald-200 min-w-0">
                           <p className="text-[10px] text-emerald-700">{t("إجمالي الدائن (المسلّم)", "Credit (Handed Over)")}</p>
                           <p className="font-mono font-bold text-xs text-emerald-700">+{formatShiftHalalas(custodySummary.creditDeliveredHalalas, lang)}</p>
                         </div>
-                        <div className="bg-red-50 rounded-lg p-2 border border-red-200">
+                        <div className="bg-red-50 rounded-lg p-2 border border-red-200 min-w-0">
                           <p className="text-[10px] text-red-700">{t("إجمالي المدين (كاش داخل)", "Debit (Cash In)")}</p>
                           <p className="font-mono font-bold text-xs text-red-700">−{formatShiftHalalas(custodySummary.debitReceivedHalalas, lang)}</p>
                         </div>
-                        <div className="bg-white rounded-lg p-2 border border-purple-200">
+                        <div className="bg-white rounded-lg p-2 border border-purple-200 min-w-0">
                           <p className="text-[10px] text-purple-700 font-semibold">{t("الرصيد الجاري للعهدة", "Closing")}</p>
-                          <p className={`font-mono font-bold text-xs ${balColor(custodySummary.closingBalanceHalalas)}`}>
+                          <p
+                            className={`font-mono font-bold text-xs ${
+                              custodySummary.closingBalanceHalalas > 0
+                                ? "text-amber-700"
+                                : custodySummary.closingBalanceHalalas < 0
+                                  ? "text-emerald-700"
+                                  : "text-gray-500"
+                            }`}
+                          >
                             {formatShiftHalalas(custodySummary.closingBalanceHalalas, lang)}
                           </p>
                         </div>
                       </div>
                     )}
                     {(selectedCustody?.entries?.length ?? 0) > 0 && (
-                      <div className="space-y-1">
-                        {selectedCustody!.entries.slice(0, 5).map((entry) => (
-                          <div key={entry.source_id} className="bg-white rounded-lg px-2.5 py-1.5 border border-purple-100 flex items-center justify-between gap-2 text-[11px]">
-                            <div className="min-w-0 truncate">
-                              <span className="font-semibold text-gray-800">{lang === "ar" ? entry.label_ar : (entry.label_en || entry.label_ar)}</span>
-                              {entry.counterparty?.name && <span className="text-gray-500"> · {entry.counterparty.name}</span>}
+                      <div className="space-y-1.5 pt-1">
+                        <div className="flex items-center justify-between px-0.5">
+                          <span className="text-[11px] font-bold text-purple-900/80">
+                            {t("سجل حركات العهدة", "Custody Movements")}
+                          </span>
+                          <span className="text-[10px] text-purple-700 font-medium">
+                            {selectedCustody!.entries.length} {t("حركة", "entries")}
+                          </span>
+                        </div>
+                        {[...selectedCustody!.entries]
+                          .map((entry, idx) => ({ entry, idx }))
+                          .sort((a, b) => {
+                            const cmp = (b.entry.event_at || b.entry.business_date || "").localeCompare(
+                              a.entry.event_at || a.entry.business_date || "",
+                            );
+                            return cmp !== 0 ? cmp : b.idx - a.idx;
+                          })
+                          .slice(0, 5)
+                          .map(({ entry }) => {
+                          const isCredit = entry.cash_out > 0;
+                          const entryDate = entry.business_date || (entry.event_at ? entry.event_at.slice(0, 10) : "");
+                          return (
+                            <div
+                              key={entry.source_id}
+                              className="bg-white rounded-xl px-3 py-2.5 border border-purple-100 flex items-center justify-between gap-3 shadow-2xs"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div
+                                  className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 border ${
+                                    isCredit
+                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                      : "bg-red-50 text-red-600 border-red-200"
+                                  }`}
+                                >
+                                  {isCredit ? "⬆" : "⬇"}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="text-xs font-bold text-gray-800 truncate">
+                                      {lang === "ar" ? entry.label_ar : (entry.label_en || entry.label_ar)}
+                                    </span>
+                                    <span
+                                      className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-md border ${
+                                        isCredit
+                                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                          : "bg-red-50 text-red-700 border-red-200"
+                                      }`}
+                                    >
+                                      {isCredit
+                                        ? t("دائن · تسليم", "Credit · Handover")
+                                        : t("مدين · كاش داخل", "Debit · Cash In")}
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-gray-500">
+                                    {entryDate && <span className="font-mono">{entryDate}</span>}
+                                    {entry.counterparty?.name && <span>· {entry.counterparty.name}</span>}
+                                    {entry.receipt_id && (
+                                      <span className="font-mono px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">
+                                        {entry.receipt_id}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-end flex-shrink-0">
+                                <span
+                                  className={`font-mono font-bold text-xs whitespace-nowrap block ${
+                                    isCredit ? "text-emerald-700" : "text-red-600"
+                                  }`}
+                                >
+                                  <bdi>
+                                    {isCredit
+                                      ? `+${formatShiftHalalas(entry.cash_out, lang)}`
+                                      : `−${formatShiftHalalas(entry.cash_in, lang)}`}
+                                  </bdi>{" "}
+                                  {t("ر.س", "SAR")}
+                                </span>
+                                {typeof entry.running_balance === "number" && (
+                                  <span className="text-[10px] text-gray-400 font-mono block mt-0.5">
+                                    {t("الرصيد:", "Bal:")}{" "}
+                                    <bdi>{formatShiftHalalas(entry.running_balance, lang)}</bdi>{" "}
+                                    {t("ر.س", "SAR")}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <span className={`font-mono font-bold whitespace-nowrap ${entry.cash_out > 0 ? "text-emerald-700" : "text-red-700"}`}>
-                              {entry.cash_out > 0
-                                ? `+${formatShiftHalalas(entry.cash_out, lang)}`
-                                : `−${formatShiftHalalas(entry.cash_in, lang)}`}
-                            </span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

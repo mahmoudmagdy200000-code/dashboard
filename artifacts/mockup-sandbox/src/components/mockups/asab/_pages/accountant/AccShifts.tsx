@@ -619,9 +619,41 @@ export function AccShifts({ setModal, detailId, ops }: PageProps) {
         </div>
       )}
 
-      {/* Reserved for SHF review. */}
+      {/* Reserved for SHF review (read-only for Accountant; closure is role-gated to mobile Cashier/Branch Manager). */}
       {tab === "close" && (
-        <p className="text-sm text-gray-500" role="note">مراجعة الورديات — التفاصيل ستتاح هنا لاحقاً</p>
+        <Card title="مراجعة الورديات">
+          <div className="p-4 space-y-3">
+            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2" role="note">
+              مراجعة الورديات — إغلاق الشفت متاح لصلاحية الكاشير ومدير الفرع حسب حالة الشفت، وتظهر هنا حالة المراجعة والنقد المتوقع والفرق.
+            </p>
+            {historyBusy && <p role="status" className="text-center text-gray-400 text-sm py-6">جارٍ تحميل الورديات…</p>}
+            {!historyBusy && shiftHistory.length === 0 && (
+              <p className="text-center text-gray-400 text-sm py-6">لا توجد ورديات للمراجعة حالياً</p>
+            )}
+            {!historyBusy && shiftHistory.length > 0 && (
+              <div className="space-y-2">
+                {shiftHistory.map(sh => {
+                  const evidence = getShiftCountEvidence(sh, lang);
+                  const statusDisplay = getShiftStatusDisplay(sh.status, lang);
+                  return (
+                    <div key={sh.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3 text-xs">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-gray-800">{sh.branchName} · {sh.cashierName}</p>
+                        <p className="text-gray-500 mt-0.5">{fmtDate(sh.endedAt)} · {fmtTime(sh.startedAt)} → {fmtTime(sh.endedAt)} · {sh.shiftType}</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="font-mono text-gray-700">المتوقع: <bdi className="font-bold">{evidence.expectedCash}</bdi> ر.س</span>
+                        <span className="font-mono text-purple-700">المبيعات: <bdi className="font-bold">{evidence.sales}</bdi> ر.س</span>
+                        <span className={`font-mono font-bold ${evidence.variance.cls}`}><bdi>{evidence.variance.text}</bdi></span>
+                        <Badge className={statusDisplay.cls}>{lang === "ar" ? (sh.statusLabelAr ?? statusDisplay.label) : statusDisplay.label}</Badge>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </Card>
       )}
 
       {/* ── TAB: HISTORY (T08 §3/§7 — canonical shape + Excel export) ──────────── */}
@@ -731,7 +763,8 @@ export function AccShifts({ setModal, detailId, ops }: PageProps) {
                         <td className="px-4 py-3 text-center font-mono font-bold text-purple-700"><bdi>{evidence.sales}</bdi> ر.س</td>
                         <td className="px-4 py-3 text-center">
                           <span className={`font-mono font-bold text-sm ${evidence.variance.cls}`}><bdi>{evidence.variance.text}</bdi></span>
-                          <p className="text-[10px] text-gray-500 mt-1">نقد وارد معلق (خارج الفرق): <bdi className="font-mono">{evidence.pendingIncoming}</bdi> ر.س</p>
+                          <p className="text-[10px] text-gray-500 mt-1">النقد المتوقع: <bdi className="font-mono">{evidence.expectedCash}</bdi> ر.س</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">نقد وارد معلق (خارج الفرق): <bdi className="font-mono">{evidence.pendingIncoming}</bdi> ر.س</p>
                         </td>
                         <td className="px-4 py-3 text-center"><Badge className={statusDisplay.cls}>{sh.statusLabelAr ?? statusDisplay.label}</Badge></td>
                       </tr>

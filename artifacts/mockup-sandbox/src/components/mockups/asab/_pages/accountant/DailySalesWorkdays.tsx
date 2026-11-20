@@ -7,7 +7,7 @@ import { useLang } from "../../_shared/LangContext";
 import { displayDigits } from "../../_shared/displayDigits";
 import { formatShiftHalalas } from "../../shiftCountEvidence";
 import { formatWorkdayDate } from "./ManagerDeliveredSales";
-import { dailySalesReportFromOperation, groupDailySalesWorkdays } from "./dailySalesWorkdays";
+import { dailySalesReportFromOperation, groupDailySalesWorkdays } from "./workdaySalesReport";
 
 export type SalesOperationReference = {
   id: string;
@@ -185,20 +185,33 @@ export function DailySalesWorkdays({ references, filters = {}, renderOperation, 
 
             <dl className="mt-1 grid grid-cols-2 overflow-hidden rounded-lg border border-gray-100 bg-slate-50/70 sm:grid-cols-4">
               {([
-                [t("النقد المحصّل", "Cash collected"), day.cashHalalas, <Wallet size={14} />],
-                [t("مدفوعات الشبكة", "Card payments"), day.cardHalalas, <CreditCard size={14} />],
-                [t("تطبيقات التوصيل", "Delivery apps"), day.appsHalalas, <Smartphone size={14} />],
-                [t("فرق النقد", "Cash variance"), day.varianceHalalas, <FileText size={14} />],
-              ] as const).map(([label, value, icon]) => (
+                [t("النقد المحصّل", "Cash collected"), day.cashHalalas, <Wallet size={14} />, false],
+                [t("مدفوعات الشبكة", "Card payments"), day.cardHalalas, <CreditCard size={14} />, false],
+                [t("تطبيقات التوصيل", "Delivery apps"), day.appsHalalas, <Smartphone size={14} />, false],
+                [
+                  day.reports.some((r) => r.operation.workdaySettlement != null)
+                    ? t("فرق التحصيل النهائي", "Final collection variance")
+                    : t("فرق النقد", "Cash variance"),
+                  day.varianceHalalas,
+                  <FileText size={14} />,
+                  true,
+                ],
+              ] as const).map(([label, value, icon, isVariance]) => (
                 <div key={label} className="border-b border-gray-100 px-3 py-2.5 last:border-b-0 sm:border-b-0 sm:border-e sm:last:border-e-0">
                   <dt className="flex items-center gap-1.5 text-[11px] text-gray-500">{icon}{label}</dt>
-                  <dd className={`mt-1 font-mono text-sm font-bold tabular-nums ${label === t("فرق النقد", "Cash variance") && value != null && value < 0 ? "text-red-700" : "text-gray-800"}`}><bdi>{money(value, lang)}</bdi> {t("ر.س", "SAR")}</dd>
+                  <dd className={`mt-1 font-mono text-sm font-bold tabular-nums ${isVariance && value != null && value < 0 ? "text-red-700" : "text-gray-800"}`}><bdi>{money(value, lang)}</bdi> {t("ر.س", "SAR")}</dd>
                 </div>
               ))}
             </dl>
+            {day.reportedCashVarianceHalalas != null && day.reportedCashVarianceHalalas !== day.varianceHalalas && (
+              <p data-testid="historical-shift-cash-variance" className="mt-1.5 text-[11px] text-gray-500">
+                {t("فرق جرد النقد التاريخي للورديات (من الإغلاق الأصلي):", "Historical shift cash-count variance (original close):")}{" "}
+                <bdi className="font-mono font-semibold text-gray-700">{money(day.reportedCashVarianceHalalas, lang)}</bdi> {t("ر.س", "SAR")}
+              </p>
+            )}
 
             {day.reports.length === 1 && onOpenOperation && (
-              <button type="button" onClick={() => onOpenOperation(day.reports[0].operation.id)}
+              <button type="button" onClick={() => onOpenOperation(day.reports[0].operation.publicId || day.reports[0].operation.id)}
                 className="mt-3 inline-flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-bold text-purple-700 hover:bg-purple-100">
                 <Eye size={15} /> {t("عرض التفاصيل", "View details")}
               </button>
@@ -212,7 +225,7 @@ export function DailySalesWorkdays({ references, filters = {}, renderOperation, 
                     <span className="font-semibold text-gray-800">{item.managerName ?? t("مدير الفرع", "Branch manager")} · <bdi>{item.operation.publicId}</bdi></span>
                     <span className="font-mono text-gray-800">{money(item.totalSalesHalalas, lang)} {t("ر.س", "SAR")}</span>
                   </div>
-                  {onOpenOperation && <button type="button" onClick={() => onOpenOperation(item.operation.id)}
+                  {onOpenOperation && <button type="button" onClick={() => onOpenOperation(item.operation.publicId || item.operation.id)}
                     className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-700">
                     <Eye size={13}/>{t("عرض التقرير وتفاصيل الورديات", "Open report and shifts")}
                   </button>}

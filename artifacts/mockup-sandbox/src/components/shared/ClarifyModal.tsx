@@ -6,6 +6,13 @@ interface Props {
   open: boolean;
   /** What's being clarified, e.g. operation publicId, for display only. */
   subject?: string;
+  title?: string;
+  description?: string;
+  submitLabel?: string;
+  fields?: React.ReactNode;
+  fieldsValid?: boolean;
+  placeholder?: string;
+  maxLength?: number;
   onClose: () => void;
   onSubmit: (payload: { message: string }) => void | Promise<unknown>;
   /** Optional translate function. */
@@ -19,6 +26,13 @@ interface Props {
 export function ClarifyModal({
   open,
   subject,
+  title,
+  description,
+  submitLabel,
+  fields,
+  fieldsValid = true,
+  placeholder,
+  maxLength = 500,
   onClose,
   onSubmit,
   t = (ar) => ar,
@@ -34,7 +48,7 @@ export function ClarifyModal({
 
   if (!open) return null;
 
-  const canSubmit = message.trim().length > 0 && !isSubmitting;
+  const canSubmit = fieldsValid && message.trim().length > 0 && !isSubmitting;
 
   async function handleSubmit() {
     if (!canSubmit || submitLock.current) return;
@@ -114,7 +128,7 @@ export function ClarifyModal({
               }}
             >
               <HelpCircle size={18} style={{ color: "#f59e0b" }} />
-              {t("طلب توضيح", "Request Clarification")}
+              {title ?? t("طلب توضيح", "Request Clarification")}
             </div>
             {subject && (
               <div
@@ -136,7 +150,7 @@ export function ClarifyModal({
                 lineHeight: 1.5,
               }}
             >
-              {t(
+              {description ?? t(
                 "سيُرسل الطلب إلى من رفع العملية دون تغيير حالتها.",
                 "The request is sent to the submitter without changing the operation's status.",
               )}
@@ -158,6 +172,7 @@ export function ClarifyModal({
           </button>
         </div>
 
+        {fields}
         <label htmlFor="clarify-message"
           style={{
             display: "block",
@@ -171,10 +186,11 @@ export function ClarifyModal({
         </label>
         <textarea id="clarify-message" disabled={isSubmitting}
           value={message}
+          maxLength={maxLength}
           onChange={(e) => setMessage(e.target.value)}
           rows={4}
           autoFocus
-          placeholder={t("مثال: أرفق تقرير POS", "e.g. Attach the POS report")}
+          placeholder={placeholder ?? t("مثال: أرفق تقرير POS", "e.g. Attach the POS report")}
           style={{
             width: "100%",
             padding: "10px 12px",
@@ -219,7 +235,7 @@ export function ClarifyModal({
               fontFamily: "inherit",
             }}
           >
-            {t("إرسال الطلب", "Send Request")}
+            {submitLabel ?? t("إرسال الطلب", "Send Request")}
           </button>
           <button
             disabled={isSubmitting}

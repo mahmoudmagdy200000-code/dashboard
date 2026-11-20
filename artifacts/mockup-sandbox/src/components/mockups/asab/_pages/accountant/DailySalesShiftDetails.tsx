@@ -11,7 +11,7 @@ import { ShiftReportCorrectionForm } from "../../CompanyDashboard";
 import { apiOpToCOp } from "../../operationMapping";
 import { getShiftCorrectionEvidence, getShiftCorrectionIneligibilityReason, getShiftCorrectionNextStep } from "../../shiftReportCorrection";
 import { formatWorkdayDate } from "./ManagerDeliveredSales";
-import type { DailySalesReport } from "./dailySalesWorkdays";
+import type { DailySalesReport } from "./workdaySalesReport";
 
 function isMoney(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value);
@@ -126,10 +126,11 @@ function DailyReportMemberEdit({ shift, managerShiftId }: { shift: Shift; manage
   </div>;
 }
 
-export function DailySalesShiftDetails({ report, embedded = false, editOpen: controlledEditOpen }: {
+export function DailySalesShiftDetails({ report, embedded = false, showDayCollection = true, editOpen: controlledEditOpen }: {
   report: DailySalesReport;
   /** The sales-reconciliation card owns the heading and edit action in the live dashboard. */
   embedded?: boolean;
+  showDayCollection?: boolean;
   editOpen?: boolean;
 }) {
   const { lang, t } = useLang();
@@ -175,7 +176,7 @@ export function DailySalesShiftDetails({ report, embedded = false, editOpen: con
         </div>
       </div>}
 
-      <div className="divide-y divide-gray-100">
+      {showDayCollection && <div className="divide-y divide-gray-100">
         <div className="flex flex-wrap items-center justify-between gap-3 bg-indigo-50/80 px-4 py-3.5 text-sm font-bold text-indigo-900">
           <span className="flex flex-wrap items-center gap-2"><span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full bg-indigo-500" />
             {t("إجمالي المبيعات", "Total sales")}
@@ -208,12 +209,22 @@ export function DailySalesShiftDetails({ report, embedded = false, editOpen: con
           <AlertTriangle size={14} />{t("يوجد اختلاف بين إجمالي المبيعات وتفصيل القنوات في التقرير المُرسل.", "Submitted sales do not match the channel total.")}
         </p>}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-800">
-          <span>{t("فرق الجرد النقدي (من التقرير)", "Cash-count variance (reported)")}</span>
+          <span>
+            {report.operation.workdaySettlement != null
+              ? t("فرق التحصيل النهائي", "Final collection variance")
+              : t("فرق الجرد النقدي (من التقرير)", "Cash-count variance (reported)")}
+          </span>
           <bdi className={`font-mono ${report.varianceHalalas != null && report.varianceHalalas < 0 ? "text-red-700" : "text-gray-800"}`}>
             {money(report.varianceHalalas)}
           </bdi>
         </div>
-      </div>
+        {report.reportedCashVarianceHalalas != null && report.reportedCashVarianceHalalas !== report.varianceHalalas && (
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-50/60 px-4 py-2.5 text-xs font-semibold text-gray-600">
+            <span>{t("فرق الجرد النقدي التاريخي للورديات (من التقرير الأصلي)", "Historical shift cash-count variance (original report)")}</span>
+            <bdi className="font-mono text-gray-700">{money(report.reportedCashVarianceHalalas)}</bdi>
+          </div>
+        )}
+      </div>}
       {editOpen && <section id={`daily-sales-edit-${report.operation.id}`} role="region"
         aria-label={t("تعديل تفاصيل ورديات اليوم", "Edit daily shift details")}
         className="mx-4 my-4 space-y-3 rounded-xl border border-purple-200 bg-purple-50/50 p-3 sm:p-4">

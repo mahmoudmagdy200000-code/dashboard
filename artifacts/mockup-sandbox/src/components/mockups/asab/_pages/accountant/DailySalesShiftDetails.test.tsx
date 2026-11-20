@@ -10,7 +10,7 @@ import type { Shift } from "../../../../../api/types/company";
 import { AuthContext } from "../../../../../auth/AuthContext";
 import { LangContext } from "../../_shared/LangContext";
 import { DailySalesShiftDetails, loadDailyReportMemberShifts } from "./DailySalesShiftDetails";
-import { dailySalesReportFromOperation } from "./dailySalesWorkdays";
+import { dailySalesReportFromOperation } from "./workdaySalesReport";
 
 const window = new GlobalWindow();
 Object.assign(globalThis, { window, document: window.document, React, IS_REACT_ACT_ENVIRONMENT: true });

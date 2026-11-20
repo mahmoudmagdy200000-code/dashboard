@@ -21,7 +21,7 @@ import { useLang } from "../../_shared/LangContext";
 import { formatTodayLong, opDetailPage } from "../../_shared/formatters";
 import { displayDigits } from "../../_shared/displayDigits";
 import { STATUS_CFG, EN_STATUS_CFG } from "../../_shared/displayConfig";
-import { applyFilters, BRANCHES } from "../../_shared/filterOps";
+import { applyFilters } from "../../_shared/filterOps";
 import { PipelineOverview } from "../../_shared/PipelineOverview";
 import { ExceptionPanel } from "../../_shared/ExceptionPanel";
 import { OpRow } from "../../_shared/OpRow";
@@ -29,9 +29,30 @@ import type {
   PageProps,
   ModuleKey,
   Filters,
+  Op,
   OpStatus,
   PageId,
 } from "../../_shared/types";
+
+function opWorkdayKey(op: Op): string {
+  const raw = op.operationDate ?? "";
+  return typeof raw === "string" && raw.length >= 10 ? raw.slice(0, 10) : "";
+}
+
+function inSelectedPeriod(op: Op, period: "all" | "today" | "week" | "month"): boolean {
+  if (period === "all") return true;
+  const dateKey = opWorkdayKey(op);
+  if (!dateKey) return false;
+  const now = new Date();
+  const todayKey = now.toISOString().slice(0, 10);
+  if (period === "today") return dateKey === todayKey;
+  const opTime = new Date(`${dateKey}T00:00:00Z`).getTime();
+  const todayTime = new Date(`${todayKey}T00:00:00Z`).getTime();
+  if (!Number.isFinite(opTime) || !Number.isFinite(todayTime)) return false;
+  const diffDays = (todayTime - opTime) / 86_400_000;
+  if (period === "week") return diffDays >= 0 && diffDays <= 7;
+  return dateKey.slice(0, 7) === todayKey.slice(0, 7);
+}
 
 export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, rejectOp, bulkApprove, role }: PageProps) {
   const { t, lang } = useLang();
@@ -39,29 +60,43 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
   const { data: dashData } = useAccountantDashboardPlatform();
   const kpis = dashData?.kpis;
   const apiModules = dashData?.modules;
-  const [filters, setFilters] = useState<Filters>({ branch: "", status: "pending", match: "", search: "" });
-  const [period, setPeriod] = useState<"today" | "week" | "month">("today");
+  const [filters, setFilters] = useState<Filters & { date: string }>({ branch: "", status: "pending", match: "", search: "", date: "" });
+  const [period, setPeriod] = useState<"all" | "today" | "week" | "month">("all");
   const [showAllOperations, setShowAllOperations] = useState(false);
 
-  const pending = ops.filter(o => o.status === "pending");
-  const approved = ops.filter(o => o.status === "approved");
-  const rejected = ops.filter(o => o.status === "rejected");
-  const finalApprovedOps = ops.filter(o => o.status === "final-approved");
+  const branchOptions = Array.from(
+    new Map(ops.filter(o => o.branch).map(o => [o.branchId || o.branch, { id: o.branchId || o.branch, name: o.branch }])).values(),
+  );
+  const scopedOps = ops.filter(o => {
+    if (filters.branch && o.branch !== filters.branch && o.branchId !== filters.branch) return false;
+    if (filters.date && opWorkdayKey(o) !== filters.date) return false;
+    if (!inSelectedPeriod(o, period)) return false;
+    return true;
+  });
+  const hasScopeFilter = Boolean(filters.branch || filters.date || period !== "all");
 
-  // Prefer backend counts when available; fall back to client-computed from ops.
-  const awaitingReviewCount = kpis?.awaitingReview ?? pending.length;
-  const iApprovedCount = kpis?.iApproved ?? approved.length;
-  const finalApprovedCount = kpis?.finalApproved ?? finalApprovedOps.length;
-  const approvalRate = kpis?.approvalRate ?? (ops.length > 0 ? Math.round((approved.length + finalApprovedOps.length) / ops.length * 100) : 0);
+  const pending = scopedOps.filter(o => o.status === "pending");
+  const approved = scopedOps.filter(o => o.status === "approved");
+  const finalApprovedOps = scopedOps.filter(o => o.status === "final-approved");
+
+  // Prefer backend counts when unfiltered; derive from scopedOps whenever branch/date/period narrows the view.
+  const awaitingReviewCount = !hasScopeFilter && kpis?.awaitingReview != null ? kpis.awaitingReview : pending.length;
+  const iApprovedCount = !hasScopeFilter && kpis?.iApproved != null ? kpis.iApproved : approved.length;
+  const finalApprovedCount = !hasScopeFilter && kpis?.finalApproved != null ? kpis.finalApproved : finalApprovedOps.length;
+  const approvalRate = !hasScopeFilter && kpis?.approvalRate != null
+    ? kpis.approvalRate
+    : (scopedOps.length > 0 ? Math.round((approved.length + finalApprovedOps.length) / scopedOps.length * 100) : 0);
   const localOverdue = pending.filter(o => {
     const daysAgo = (o.timeAgo ?? "").includes("يوم") ? parseInt(o.timeAgo ?? "") || 2 : (o.timeAgo ?? "").includes("أمس") ? 1 : 0;
     return daysAgo >= 2;
   }).length;
-  const overdueCount = kpis?.overdueCount ?? localOverdue;
+  const overdueCount = !hasScopeFilter && kpis?.overdueCount != null ? kpis.overdueCount : localOverdue;
 
-  // Backend `modules[]` keyed by `.key` — used to override client-computed counts per module.
+  // Backend `modules[]` keyed by `.key` — used to override client-computed counts per module when unfiltered.
   const apiModulesByKey: Record<string, { pendingCount: number; totalCount: number }> = {};
-  apiModules?.forEach(m => { if (m.key) apiModulesByKey[m.key] = { pendingCount: m.pendingCount, totalCount: m.totalCount }; });
+  if (!hasScopeFilter) {
+    apiModules?.forEach(m => { if (m.key) apiModulesByKey[m.key] = { pendingCount: m.pendingCount, totalCount: m.totalCount }; });
+  }
 
   const pendingByModule: Record<ModuleKey, number> = {} as any;
   pending.forEach(o => { pendingByModule[o.moduleKey] = (pendingByModule[o.moduleKey] || 0) + 1; });
@@ -78,7 +113,7 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
     { id: "acc-cash", label: t("العهد النقدية", "Cash Custody"), icon: "💼", color: "bg-orange-500", key: "cash" as ModuleKey },
   ];
 
-  const displayed = applyFilters(ops, filters);
+  const displayed = applyFilters(scopedOps, filters);
   const queryClient = useQueryClient();
   const pendingIds = salesBulkApprovalIds(pending, pending.map(o => o.id), role,
     op => queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id)));
@@ -97,10 +132,10 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
             </div>
           )}
           <div className="flex bg-gray-100 rounded-lg p-1 gap-0.5">
-            {(["today", "week", "month"] as const).map(p => (
+            {(["all", "today", "week", "month"] as const).map(p => (
               <button key={p} onClick={() => setPeriod(p)}
                 className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${period === p ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
-                {p === "today" ? t("اليوم", "Today") : p === "week" ? t("الأسبوع", "Week") : t("الشهر", "Month")}
+                {p === "all" ? t("الكل", "All") : p === "today" ? t("اليوم", "Today") : p === "week" ? t("الأسبوع", "Week") : t("الشهر", "Month")}
               </button>
             ))}
           </div>
@@ -114,25 +149,25 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
         </div>
         <KpiCard label={t("وافقت عليها", "I Approved")} value={displayDigits(iApprovedCount, lang)} sub={t("بانتظار الاعتماد النهائي", "Awaiting final approval")} icon={<CheckCircle2 size={20} className="text-sky-600" />} accent="blue" />
         <KpiCard label={t("معتمدة نهائياً", "Final Approved")} value={displayDigits(finalApprovedCount, lang)} sub={t("مُغلقة — تنتظر ERP أو مُرحَّلة", "Closed — awaiting ERP or posted")} icon={<Lock size={20} className="text-emerald-600" />} accent="emerald" />
-        <KpiCard label={t("معدل الموافقة", "Approval Rate")} value={displayDigits(`${approvalRate}%`, lang)} sub={`${t("هذا", "This")} ${period === "today" ? t("اليوم", "Day") : period === "week" ? t("الأسبوع", "Week") : t("الشهر", "Month")}`} icon={<TrendingUp size={20} className="text-purple-600" />} accent="purple" />
+        <KpiCard label={t("معدل الموافقة", "Approval Rate")} value={displayDigits(`${approvalRate}%`, lang)} sub={period === "all" ? t("كل الفترات", "All periods") : `${t("هذا", "This")} ${period === "today" ? t("اليوم", "Day") : period === "week" ? t("الأسبوع", "Week") : t("الشهر", "Month")}`} icon={<TrendingUp size={20} className="text-purple-600" />} accent="purple" />
       </div>
 
       {/* Daily progress bar */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
-          <h3 className="font-bold text-gray-800 text-sm">🎯 {t("تقدم اليوم", "Today's Progress")}</h3>
+          <h3 className="font-bold text-gray-800 text-sm">🎯 {t("تقدم الفترة المحددة", "Selected Period Progress")}</h3>
           <span className="text-xs text-gray-400">{t("الهدف: مراجعة جميع العمليات المعلقة", "Goal: Review all pending operations")}</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[
-            { label: t("المراجعة", "Review"), done: ops.filter(o => o.status !== "pending").length, total: ops.length, color: "bg-purple-500" },
-            { label: t("الموافقة", "Approval"), done: ops.filter(o => o.status === "approved" || o.status === "final-approved").length, total: ops.length, color: "bg-emerald-500" },
-            { label: t("التوثيق", "Documentation"), done: ops.filter(o => o.status === "final-approved" && o.erpPosted).length, total: ops.filter(o => o.status === "final-approved").length || 1, color: "bg-blue-500" },
+            { label: t("المراجعة", "Review"), done: scopedOps.filter(o => o.status !== "pending").length, total: scopedOps.length, color: "bg-purple-500" },
+            { label: t("الموافقة", "Approval"), done: scopedOps.filter(o => o.status === "approved" || o.status === "final-approved").length, total: scopedOps.length, color: "bg-emerald-500" },
+            { label: t("التوثيق", "Documentation"), done: scopedOps.filter(o => o.status === "final-approved" && o.erpPosted).length, total: scopedOps.filter(o => o.status === "final-approved").length || 1, color: "bg-blue-500" },
             // Backend dashboard does not expose completedBranches/totalBranches — fall back to a
             // derived signal: fully-processed branches vs. total branches touched by any op.
             (() => {
               const perBranch = new Map<string, { done: number; total: number }>();
-              ops.forEach(o => {
+              scopedOps.forEach(o => {
                 const cur = perBranch.get(o.branch) ?? { done: 0, total: 0 };
                 cur.total++;
                 if (o.status !== "pending") cur.done++;
@@ -160,9 +195,9 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
         </div>
       </div>
 
-      <PipelineOverview ops={ops} navigate={navigate} />
+      <PipelineOverview ops={scopedOps} navigate={navigate} />
 
-      <ExceptionPanel ops={ops} forRole="accountant" navigate={navigate} />
+      <ExceptionPanel ops={scopedOps} forRole="accountant" navigate={navigate} />
 
       <div data-testid="modules-and-filters-section" className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
         <div className="col-span-1 lg:col-span-2">
@@ -171,7 +206,7 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
               {modules.map(m => {
                 const apiRow = m.key ? apiModulesByKey[m.key] : undefined;
                 const mod_pending = apiRow?.pendingCount ?? (m.key ? (pendingByModule[m.key] || 0) : 0);
-                const mod_total = apiRow?.totalCount ?? (m.key ? ops.filter(o => o.moduleKey === m.key).length : 0);
+                const mod_total = apiRow?.totalCount ?? (m.key ? scopedOps.filter(o => o.moduleKey === m.key).length : 0);
                 return (
                   <button key={m.id} onClick={() => navigate(m.id)}
                     className="flex flex-col items-center gap-1.5 p-2.5 sm:p-3 rounded-xl border border-gray-100 hover:border-purple-300 hover:bg-purple-50/40 transition-all relative cursor-pointer">
@@ -191,27 +226,35 @@ export function AccDashboard({ navigate, setModal, setDetailId, ops, approveOp, 
         <div className="col-span-1">
           <Card title={t("فلاتر البحث", "Search Filters")}>
             <div className="p-3 sm:p-4 space-y-3">
-              {[
-                { label: t("🏪 الفرع", "🏪 Branch"), key: "branch" as const, opts: [t("الكل", "All"), ...BRANCHES] },
-                { label: t("🔄 الحالة", "🔄 Status"), key: "status" as const, opts: [t("الكل", "All"), "pending", "approved", "rejected", "final-approved"] },
-              ].map(f => (
-                <div key={f.key}>
-                  <label className="text-xs font-semibold text-gray-500 block mb-1">{f.label}</label>
-                  <select value={filters[f.key]} onChange={e => setFilters(p => ({ ...p, [f.key]: e.target.value === t("الكل", "All") ? "" : e.target.value }))}
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-600 bg-white">
-                    {f.opts.map(o => {
-                      const label = o === t("الكل", "All") ? t("الكل", "All") : (lang === "ar" ? (STATUS_CFG[o as OpStatus]?.label || o) : (EN_STATUS_CFG[o as OpStatus] || STATUS_CFG[o as OpStatus]?.label || o));
-                      return <option key={o} value={o === t("الكل", "All") ? "" : o}>{label}</option>;
-                    })}
-                  </select>
-                </div>
-              ))}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">{t("🏪 الفرع", "🏪 Branch")}</label>
+                <select value={filters.branch} onChange={e => setFilters(p => ({ ...p, branch: e.target.value }))}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-600 bg-white">
+                  <option value="">{t("الكل", "All")}</option>
+                  {branchOptions.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">{t("📅 يوم العمل", "📅 Workday")}</label>
+                <input type="date" value={filters.date} onChange={e => setFilters(p => ({ ...p, date: e.target.value }))}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-600 bg-white" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">{t("🔄 الحالة", "🔄 Status")}</label>
+                <select value={filters.status} onChange={e => setFilters(p => ({ ...p, status: e.target.value }))}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-600 bg-white">
+                  <option value="">{t("الكل", "All")}</option>
+                  {(["pending", "approved", "rejected", "final-approved"] as OpStatus[]).map(s => (
+                    <option key={s} value={s}>{lang === "ar" ? (STATUS_CFG[s]?.label || s) : (EN_STATUS_CFG[s] || STATUS_CFG[s]?.label || s)}</option>
+                  ))}
+                </select>
+              </div>
               <div className="flex items-center gap-2 mt-1">
                 <Search size={13} className="text-gray-400 flex-shrink-0" />
                 <input value={filters.search} onChange={e => setFilters(p => ({ ...p, search: e.target.value }))} placeholder={t("بحث...", "Search...")} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 text-gray-600 bg-white" />
               </div>
-              {(filters.branch || filters.status !== "pending" || filters.match || filters.search) &&
-                <button onClick={() => setFilters({ branch: "", status: "pending", match: "", search: "" })} className="text-xs text-purple-600 hover:underline flex items-center gap-1"><RotateCcw size={11} /> {t("مسح الفلاتر", "Clear Filters")}</button>
+              {(filters.branch || filters.date || period !== "all" || filters.status !== "pending" || filters.match || filters.search) &&
+                <button onClick={() => { setPeriod("all"); setFilters({ branch: "", status: "pending", match: "", search: "", date: "" }); }} className="text-xs text-purple-600 hover:underline flex items-center gap-1"><RotateCcw size={11} /> {t("مسح الفلاتر", "Clear Filters")}</button>
               }
             </div>
           </Card>

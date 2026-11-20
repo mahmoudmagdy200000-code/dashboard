@@ -541,12 +541,11 @@ test("AccEmployees shows immediate cashier shift sales + totals and branch manag
     await act(async () => cashierBtn.click());
     await flushUi();
 
-    const cashierSummary = container.querySelector('[data-testid="statement-delivered-sales-summary"]');
-    assert.match(cashierSummary?.textContent ?? "", /6,000\.00 SAR/);
     const sideStatementCard = Array.from(container.querySelectorAll(".space-y-4")).find((el) =>
       (el.textContent ?? "").includes("كشف حساب: QA Cashier A"),
     );
     assert.ok(sideStatementCard, "side statement card rendered for QA Cashier A");
+    assert.match(sideStatementCard.textContent ?? "", /6,000\.00/);
     assert.match(sideStatementCard.textContent ?? "", /1,000\.00/);
     assert.match(sideStatementCard.textContent ?? "", /2,000\.00/);
     assert.match(sideStatementCard.textContent ?? "", /3,000\.00/);
@@ -560,10 +559,12 @@ test("AccEmployees shows immediate cashier shift sales + totals and branch manag
     await act(async () => arCashierBtn.click());
     await flushUi();
 
-    const arSummary = container.querySelector('[data-testid="statement-delivered-sales-summary"]');
-    assert.match(arSummary?.textContent ?? "", /1,250\.00 SAR/);
+    const arSideStatementCard = Array.from(container.querySelectorAll(".space-y-4")).find((el) =>
+      (el.textContent ?? "").includes("كشف حساب: كاشير المساء"),
+    );
+    assert.match(arSideStatementCard?.textContent ?? "", /1,250\.00 SAR/);
 
-    // Click QA Manager ("مدير فرع") -> side panel shows day-by-day handed-over breakdown + 4,000.00 total + custody handover + debit alert preserved
+    // Click QA Manager ("مدير فرع") -> side panel shows day-by-day handed-over breakdown + 3,500.00 total + custody handover + debit alert preserved
     const managerBtn = Array.from(container.querySelectorAll("button")).find((b) =>
       (b.textContent ?? "").includes("QA Manager"),
     );
@@ -571,8 +572,6 @@ test("AccEmployees shows immediate cashier shift sales + totals and branch manag
     await act(async () => managerBtn.click());
     await flushUi();
 
-    const managerSummary = container.querySelector('[data-testid="statement-delivered-sales-summary"]');
-    assert.match(managerSummary?.textContent ?? "", /4,000\.00 SAR/);
     const managerSection = container.querySelector('[data-testid="manager-delivered-sales-section"]');
     assert.match(managerSection?.textContent ?? "", /November 15, 2026/);
     assert.match(managerSection?.textContent ?? "", /2,500\.00 SAR/);
@@ -808,9 +807,8 @@ test("AccEmployees falls back to custody handover total when manager has 0 daily
     await act(async () => retryBtn.click());
     await flushUi();
 
-    const summary = container.querySelector('[data-testid="statement-delivered-sales-summary"]');
-    assert.match(summary?.textContent ?? "", /٢٬٢٠٠٫٠٠|2,200\.00/);
     const custodySection = container.querySelector('[data-testid="manager-custody-handovers-section"]');
+    assert.match(custodySection?.textContent ?? "", /٢٬٢٠٠٫٠٠|2,200\.00/);
     assert.match(custodySection?.textContent ?? "", /تسليم لمالك العلامة/);
   } finally {
     api.get = originalGet;

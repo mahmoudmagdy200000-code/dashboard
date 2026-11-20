@@ -60,6 +60,7 @@ export function AccWaste({}: PageProps) {
   }
   interface WasteEntry {
     id: string;
+    publicId?: string;
     branch: string;
     date: string;
     status: "pending" | "approved" | "rejected";
@@ -442,7 +443,7 @@ export function AccWaste({}: PageProps) {
                       {entry.branch}
                     </span>
                     <span className="font-mono text-xs text-rose-600">
-                      {entry.id}
+                      {entry.publicId || entry.id}
                     </span>
                     <Badge className={`${statusCls} text-[10px]`}>
                       {statusLbl}

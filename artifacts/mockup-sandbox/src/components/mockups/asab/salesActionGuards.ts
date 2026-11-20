@@ -1,6 +1,7 @@
 export type SalesAction = "edit" | "save" | "assign" | "return" | "returnForReview" | "correct" | "bulkApprove";
 export type SalesGuardOperation = {
   id: string;
+  workflowKind?: "sal_day" | "legacy_sales" | "unknown";
   module?: string | null;
   moduleKey?: string | null;
   status?: string | null;
@@ -55,7 +56,8 @@ export function getSalesActionPolicy({ operation, detail, role, locked, financia
     returnForReview: !!operation && !expenses && (!sales || (!pkg6 && !isLocked && role === "head" && status === "approved")),
     correct: !!operation && !expenses && (!sales || (!pkg6 && status === "final-approved" &&
       (role === "accountant" || role === "head"))),
-    bulkApprove: !!operation && !shf && !expenses && (!sales || (!pkg6 && role === "accountant" && status === "pending")),
+    bulkApprove: !!operation && !shf && !expenses && (!sales || (role === "accountant" && status === "pending" &&
+      (operation.workflowKind === "sal_day" || (!pkg6 && operation.workflowKind !== "unknown")))),
   };
 }
 
