@@ -81,6 +81,25 @@ test("PKG-6 day cannot be final approved from unlinked membership revision IDs",
   );
 });
 
+test("a workday needs fresh positive server evidence for individual head approval", async () => {
+  const workday = { ...day, workflowKind: "sal_day" };
+  const ready = { ...workday, workdayFinalApprovalReady: true };
+  const blocked = { ...ready, workdayFinalApprovalReady: false };
+  const sent: string[] = [];
+  const send = async (id: string) => { sent.push(id); };
+  const lock = { current: false };
+
+  assert.equal(getHeadReviewPolicy(ready, "head").finalApprove, false);
+  assert.equal(getHeadReviewPolicy(workday, "head", { ...ready, id: "other" }).finalApprove, false);
+  assert.equal(getHeadReviewPolicy(workday, "head", { ...ready, status: "final-approved" }).finalApprove, false);
+  assert.equal(getHeadReviewPolicy(workday, "accountant", ready).finalApprove, false);
+  assert.deepEqual(headLegacyBulkIds([workday], [workday.id], "head", () => ready), []);
+  assert.equal(await runHeadFinalApproval(workday, "head", async () => blocked, send, lock, ready), false);
+  assert.deepEqual(sent, []);
+  assert.equal(await runHeadFinalApproval(workday, "head", async () => ready, send, lock, ready), true);
+  assert.deepEqual(sent, [workday.id]);
+});
+
 test("mixed and protected bulk are blocked while independent Legacy bulk stays available", () => {
   assert.deepEqual(headLegacyBulkIds([legacy], ["legacy"], "head"), ["legacy"]);
   for (const ids of [["shf"], ["day"], ["legacy", "shf"], ["legacy", "day"]]) {
@@ -201,7 +220,7 @@ test("existing head screens expand SHF details, hide final actions and disable p
   assert.match(modulePage, /expandedId/);
   assert.match(modulePage, /expanded=\{expandedId===op\.id\} onToggle=/);
   assert.doesNotMatch(modulePage, /alert\(/);
-  assert.match(row, /op\.module==="shifts" && <ShiftOpPanel/);
+  assert.match(row, /op\.module==="shifts" && \(\s*<>\s*<ShiftOpPanel/);
   assert.match(row, /headPolicy\.finalApprove/);
   assert.match(row, /headPolicy\.returnForReview/);
   assert.match(row, /\{isLocked && <span/);

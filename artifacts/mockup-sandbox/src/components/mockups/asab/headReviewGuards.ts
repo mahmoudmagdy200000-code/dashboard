@@ -5,6 +5,8 @@ export type HeadOperation = {
   moduleKey?: string | null;
   status: string;
   reportReview?: unknown;
+  workflowKind?: string;
+  workdayFinalApprovalReady?: boolean;
 };
 
 const moduleOf = (op: HeadOperation) => op.moduleKey ?? op.module;
@@ -15,10 +17,10 @@ const phaseOf = (op: HeadOperation) =>
     ? op.reportReview.phase
     : undefined;
 const isDay = (op: HeadOperation) =>
-  moduleOf(op) === "sales" && op.reportReview != null;
+  moduleOf(op) === "sales" && (op.workflowKind === "sal_day" || op.reportReview != null);
 export const HEAD_DAY_EVIDENCE_HINT = {
-  ar: "دليل حالات جميع ورديات التقرير الحالي غير متاح؛ يجب اعتماد الورديات نهائيًا أولًا",
-  en: "Current member shift statuses are unavailable; final approve the shifts first",
+  ar: "افتح تفاصيل تقرير اليوم للتحقق من اعتماد الورديات المرتبطة",
+  en: "Open the daily report to check approval of its linked shifts",
 };
 export const HEAD_EXPENSE_EVIDENCE_HINT = {
   ar: "قرار اعتماد المصروف محجوز للمالك أو مدير العلامة التجارية وفق القاعدة EXP-06",
@@ -60,11 +62,16 @@ export function getHeadReviewPolicy(
       return denied;
     return { finalApprove: true, returnForReview: true, blockedReason: null };
   }
-  if (isDay(op) || (detail && isDay(detail)))
+  if (isDay(op) || (detail && isDay(detail))) {
+    if (detail?.workflowKind === "sal_day" && phaseOf(detail) === "head_review"
+      && detail.workdayFinalApprovalReady === true) {
+      return { ...denied, finalApprove: true };
+    }
     return {
       ...denied,
       blockedReason: "day_evidence_missing",
     };
+  }
   return { finalApprove: true, returnForReview: true, blockedReason: null };
 }
 
@@ -80,12 +87,9 @@ export function headLegacyBulkIds(
   const unique = [...new Set(ids)];
   return unique.every((id) => {
     const op = byId.get(id);
-    return (
-      op &&
-      moduleOf(op) !== "shifts" &&
-      moduleOf(op) !== "expenses" &&
-      getHeadReviewPolicy(op, role, detailFor?.(op)).finalApprove
-    );
+    if (!op || moduleOf(op) === "shifts" || moduleOf(op) === "expenses" || isDay(op)) return false;
+    const detail = detailFor?.(op);
+    return !(detail && isDay(detail)) && getHeadReviewPolicy(op, role, detail).finalApprove;
   })
     ? unique
     : [];
@@ -98,8 +102,9 @@ export async function runHeadFinalApproval(
   loadDetail: (id: string) => Promise<HeadOperation>,
   send: (id: string) => Promise<unknown>,
   lock: { current: boolean },
+  currentDetail?: HeadOperation,
 ): Promise<boolean> {
-  if (lock.current || !op || !getHeadReviewPolicy(op, role).finalApprove)
+  if (lock.current || !op || !getHeadReviewPolicy(op, role, currentDetail).finalApprove)
     return false;
   lock.current = true;
   try {
