@@ -120,20 +120,26 @@ test("keeps a conflicting source/operation sales total explicitly unknown", () =
   assert.equal(day.cashHalalas, 9500);
 });
 
-test("daily sales channel summary follows the saved settlement while gross sales remain locked to source", () => {
-  const corrected = report("settled", { amountHalalas: 1_000_000, cashHalalas: 400_000, cardHalalas: 300_000, appsHalalas: 300_000 });
+test("daily sales channel summary and final collection variance follow the saved settlement while gross sales and historical shift cash variance remain preserved", () => {
+  const corrected = report("settled", { amountHalalas: 1_000_000, cashHalalas: 400_000, cardHalalas: 300_000, appsHalalas: 300_000, varianceHalalas: 500 });
   corrected.workdaySettlement = {
     revision: 1,
     grossHalalas: 1_000_000,
     cashHalalas: 400_000,
     cardsHalalas: 300_000,
     delivery: [{ id: "app-1", name: "Delivery", amountHalalas: 299_500 }],
-    allocations: [], reason: "Corrected delivery reconciliation",
+    allocations: [
+      { empNumber: "2101", name: "Cashier 1", amountHalalas: 200 },
+      { empNumber: "2010", name: "Branch Manager", amountHalalas: 300 },
+    ],
+    reason: "Corrected delivery reconciliation",
   };
   const [day] = groupDailySalesWorkdays([corrected]);
-  assert.equal(day.totalSalesHalalas, 1_000_000);
-  assert.equal(day.cashHalalas, 400_000);
-  assert.equal(day.cardHalalas, 300_000);
-  assert.equal(day.appsHalalas, 299_500);
-  assert.equal(day.varianceHalalas, 500); // historical cash variance stays source-backed
+  assert.equal(day.totalSalesHalalas, 1_000_000); // Gross Sales = 10,000 SAR (locked)
+  assert.equal(day.cashHalalas, 400_000); // Cash = 4,000 SAR
+  assert.equal(day.cardHalalas, 300_000); // Cards = 3,000 SAR
+  assert.equal(day.appsHalalas, 299_500); // Delivery = 2,995 SAR
+  assert.equal(day.cashHalalas! + day.cardHalalas! + day.appsHalalas!, 999_500); // Total Collected = 9,995 SAR
+  assert.equal(day.varianceHalalas, -500); // Final collection variance = -5.00 SAR (Shortage = 5 SAR)
+  assert.equal(day.reportedCashVarianceHalalas, 500); // Historical shift cash variance stays preserved separately
 });

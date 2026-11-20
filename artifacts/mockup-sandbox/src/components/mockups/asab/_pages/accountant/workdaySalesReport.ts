@@ -24,6 +24,7 @@ export interface DailySalesReport {
   cardHalalas: number | null;
   appsHalalas: number | null;
   varianceHalalas: number | null;
+  reportedCashVarianceHalalas: number | null;
   notes: string | null;
   memberShiftIds: string[];
 }
@@ -40,6 +41,7 @@ export interface DailySalesWorkday {
   cardHalalas: number | null;
   appsHalalas: number | null;
   varianceHalalas: number | null;
+  reportedCashVarianceHalalas: number | null;
   memberShiftIds: string[];
 }
 
@@ -80,6 +82,16 @@ export function dailySalesReportFromOperation(operation: Operation): DailySalesR
   const settlementDelivery = settlement
     ? sumVerified(settlement.delivery.map((channel) => verifiedMoney(channel.amountHalalas)))
     : null;
+  const cashHalalas = settlement ? verifiedMoney(settlement.cashHalalas) : verifiedMoney(payload?.cashHalalas);
+  const cardHalalas = settlement ? verifiedMoney(settlement.cardsHalalas) : verifiedMoney(payload?.cardHalalas);
+  const appsHalalas = settlement ? settlementDelivery : verifiedMoney(payload?.appsHalalas);
+  const collectedHalalas = sumVerified([cashHalalas, cardHalalas, appsHalalas]);
+  const reportedCashVarianceHalalas = verifiedMoney(payload?.varianceHalalas);
+  const settlementVarianceHalalas = settlement
+    ? (consistentTotal !== null && collectedHalalas !== null && Number.isSafeInteger(collectedHalalas - consistentTotal)
+      ? collectedHalalas - consistentTotal
+      : null)
+    : null;
   return {
     operation,
     provenanceVerified: operation.workflowKind === "sal_day",
@@ -89,10 +101,11 @@ export function dailySalesReportFromOperation(operation: Operation): DailySalesR
     totalSalesHalalas: consistentTotal,
     // The day list follows the saved final reconciliation when present. The
     // source payload remains the fallback for reports not yet corrected.
-    cashHalalas: settlement ? verifiedMoney(settlement.cashHalalas) : verifiedMoney(payload?.cashHalalas),
-    cardHalalas: settlement ? verifiedMoney(settlement.cardsHalalas) : verifiedMoney(payload?.cardHalalas),
-    appsHalalas: settlement ? settlementDelivery : verifiedMoney(payload?.appsHalalas),
-    varianceHalalas: verifiedMoney(payload?.varianceHalalas),
+    cashHalalas,
+    cardHalalas,
+    appsHalalas,
+    varianceHalalas: settlement ? settlementVarianceHalalas : reportedCashVarianceHalalas,
+    reportedCashVarianceHalalas,
     notes: typeof payload?.notes === "string" && payload.notes.trim() ? payload.notes : null,
     memberShiftIds: Array.isArray(members)
       ? Array.from(new Set(members.filter((id): id is string => typeof id === "string" && id.length > 0))) : [],
@@ -134,6 +147,7 @@ export function groupDailySalesWorkdays(operations: readonly Operation[]): Daily
       cardHalalas: sumVerified(reports.map((r) => r.cardHalalas)),
       appsHalalas: sumVerified(reports.map((r) => r.appsHalalas)),
       varianceHalalas: sumVerified(reports.map((r) => r.varianceHalalas)),
+      reportedCashVarianceHalalas: sumVerified(reports.map((r) => r.reportedCashVarianceHalalas)),
       memberShiftIds,
     };
   }).sort((a, b) => b.date.localeCompare(a.date) || a.branchName.localeCompare(b.branchName));

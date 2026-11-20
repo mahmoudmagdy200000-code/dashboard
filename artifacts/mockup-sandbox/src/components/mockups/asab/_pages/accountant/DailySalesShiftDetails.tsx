@@ -209,11 +209,21 @@ export function DailySalesShiftDetails({ report, embedded = false, showDayCollec
           <AlertTriangle size={14} />{t("يوجد اختلاف بين إجمالي المبيعات وتفصيل القنوات في التقرير المُرسل.", "Submitted sales do not match the channel total.")}
         </p>}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-50 px-4 py-3 text-sm font-bold text-gray-800">
-          <span>{t("فرق الجرد النقدي (من التقرير)", "Cash-count variance (reported)")}</span>
+          <span>
+            {report.operation.workdaySettlement != null
+              ? t("فرق التحصيل النهائي", "Final collection variance")
+              : t("فرق الجرد النقدي (من التقرير)", "Cash-count variance (reported)")}
+          </span>
           <bdi className={`font-mono ${report.varianceHalalas != null && report.varianceHalalas < 0 ? "text-red-700" : "text-gray-800"}`}>
             {money(report.varianceHalalas)}
           </bdi>
         </div>
+        {report.reportedCashVarianceHalalas != null && report.reportedCashVarianceHalalas !== report.varianceHalalas && (
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-50/60 px-4 py-2.5 text-xs font-semibold text-gray-600">
+            <span>{t("فرق الجرد النقدي التاريخي للورديات (من التقرير الأصلي)", "Historical shift cash-count variance (original report)")}</span>
+            <bdi className="font-mono text-gray-700">{money(report.reportedCashVarianceHalalas)}</bdi>
+          </div>
+        )}
       </div>}
       {editOpen && <section id={`daily-sales-edit-${report.operation.id}`} role="region"
         aria-label={t("تعديل تفاصيل ورديات اليوم", "Edit daily shift details")}

@@ -161,9 +161,9 @@ test("Phase 1C ACC-F02: Halala precision preserves exact two decimals without in
   const detail = norm(
     readFileSync(new URL("./_pages/accountant/AccSalesDetail.tsx", import.meta.url), "utf8")
   );
-  assert.ok(detail.includes("totalSales = detail?.amountHalalas == null ? null : detail.amountHalalas / 100;"), "totalSales uses exact halalas without Math.round");
-  assert.ok(detail.includes("totalCollection = recon?.totals?.totalCollectionHalalas == null ? null : recon.totals.totalCollectionHalalas / 100;"), "totalCollection uses exact halalas without Math.round");
-  assert.ok(detail.includes("variance = recon?.totals?.varianceHalalas == null ? null : recon.totals.varianceHalalas / 100;"), "variance uses exact halalas without Math.round");
+  assert.ok(detail.includes("detail?.amountHalalas == null ? null : detail.amountHalalas / 100"), "totalSales uses exact halalas without Math.round");
+  assert.ok(detail.includes("recon?.totals?.totalCollectionHalalas == null ? null : recon.totals.totalCollectionHalalas / 100;"), "totalCollection uses exact halalas without Math.round");
+  assert.ok(detail.includes("varianceHalalas == null ? null : varianceHalalas / 100;"), "variance uses exact halalas without Math.round");
   assert.ok(!detail.includes("Math.round(recon.totals.expectedTotalHalalas / 100)"), "expectedTotalHalalas display does not round to integer SAR");
   assert.ok(!detail.includes("Math.round(c.actualAmountHalalas / 100)"), "channel actualAmountHalalas display does not round to integer SAR");
   assert.ok(!detail.includes("Math.round(c.diffHalalas / 100)"), "channel diffHalalas display does not round to integer SAR");

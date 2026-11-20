@@ -857,7 +857,16 @@ export function AccEmployees({ setModal }: PageProps) {
                             {selectedCustody!.entries.length} {t("حركة", "entries")}
                           </span>
                         </div>
-                        {selectedCustody!.entries.slice(0, 5).map((entry) => {
+                        {[...selectedCustody!.entries]
+                          .map((entry, idx) => ({ entry, idx }))
+                          .sort((a, b) => {
+                            const cmp = (b.entry.event_at || b.entry.business_date || "").localeCompare(
+                              a.entry.event_at || a.entry.business_date || "",
+                            );
+                            return cmp !== 0 ? cmp : b.idx - a.idx;
+                          })
+                          .slice(0, 5)
+                          .map(({ entry }) => {
                           const isCredit = entry.cash_out > 0;
                           const entryDate = entry.business_date || (entry.event_at ? entry.event_at.slice(0, 10) : "");
                           return (
