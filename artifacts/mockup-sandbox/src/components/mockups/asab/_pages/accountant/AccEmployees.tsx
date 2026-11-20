@@ -822,20 +822,16 @@ export function AccEmployees({ setModal }: PageProps) {
                       )}
                     </div>
                     {custodySummary.isAvailable && (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                        <div className="bg-white rounded-lg p-2 border border-gray-200">
-                          <p className="text-[10px] text-gray-500">{t("رصيد أول المدة", "Opening")}</p>
-                          <p className="font-mono font-bold text-xs text-gray-700">{formatShiftHalalas(custodySummary.openingBalanceHalalas, lang)}</p>
-                        </div>
-                        <div className="bg-emerald-50 rounded-lg p-2 border border-emerald-200">
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-emerald-50 rounded-lg p-2 border border-emerald-200 min-w-0">
                           <p className="text-[10px] text-emerald-700">{t("إجمالي الدائن (المسلّم)", "Credit (Handed Over)")}</p>
                           <p className="font-mono font-bold text-xs text-emerald-700">+{formatShiftHalalas(custodySummary.creditDeliveredHalalas, lang)}</p>
                         </div>
-                        <div className="bg-red-50 rounded-lg p-2 border border-red-200">
+                        <div className="bg-red-50 rounded-lg p-2 border border-red-200 min-w-0">
                           <p className="text-[10px] text-red-700">{t("إجمالي المدين (كاش داخل)", "Debit (Cash In)")}</p>
                           <p className="font-mono font-bold text-xs text-red-700">−{formatShiftHalalas(custodySummary.debitReceivedHalalas, lang)}</p>
                         </div>
-                        <div className="bg-white rounded-lg p-2 border border-purple-200">
+                        <div className="bg-white rounded-lg p-2 border border-purple-200 min-w-0">
                           <p className="text-[10px] text-purple-700 font-semibold">{t("الرصيد الجاري للعهدة", "Closing")}</p>
                           <p
                             className={`font-mono font-bold text-xs ${
