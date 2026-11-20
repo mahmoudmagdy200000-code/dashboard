@@ -989,7 +989,7 @@ export function Shell({ role, page, navigate, onLogout, children, headPendingCou
           </select>
         </div>
       )}
-      <nav className="flex-1 px-3 py-3 overflow-y-auto">
+      <nav className="flex-1 px-3 py-3 overflow-y-auto sidebar-scroll">
         {nav.map((entry, i) => {
           if (isSection(entry)) return (
             <p key={i} className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-2 mt-4 mb-1 first:mt-0">

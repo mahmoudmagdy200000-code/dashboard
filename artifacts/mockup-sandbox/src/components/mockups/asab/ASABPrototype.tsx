@@ -1447,7 +1447,7 @@ function Sidebar({ role, ops, page, navigate, logout, collapsed, setCollapsed, m
         </button>
       )}
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
+      <nav className="flex-1 overflow-y-auto sidebar-scroll py-2 px-2 space-y-0.5">
         {navEntries.map((entry, i) => {
           if (isSection(entry)) return !collapsed
             ? <div key={i} className="text-white/30 text-[10px] font-bold uppercase tracking-widest px-3 pt-4 pb-1">{tSection(entry.section)}</div>
