@@ -11,6 +11,7 @@ import {
   Check,
   Plus,
   Phone,
+  Printer,
 } from "lucide-react";
 import { useShiftCustodyStatement } from "../../../../../api/queries/employees";
 import { formatShiftHalalas } from "../../shiftCountEvidence";
@@ -480,12 +481,12 @@ export function AccEmployees({ setModal }: PageProps) {
         className="bg-white rounded-xl border border-gray-100 shadow-sm p-4"
         dir="rtl"
       >
-        <div className="grid grid-cols-3 gap-3">
-          <div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="min-w-0">
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">
               رقم الموظف أو الاسم
             </label>
-            <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 min-w-0">
               <Search size={13} className="text-gray-400 flex-shrink-0" />
               <input
                 value={empFilter.q}
@@ -493,11 +494,11 @@ export function AccEmployees({ setModal }: PageProps) {
                   setEmpFilter((p) => ({ ...p, q: e.target.value }))
                 }
                 placeholder="ابحث برقم الموظف أو الاسم..."
-                className="flex-1 text-sm outline-none"
+                className="min-w-0 w-full flex-1 text-sm outline-none bg-transparent"
               />
             </div>
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">
               العلامة التجارية
             </label>
@@ -521,7 +522,7 @@ export function AccEmployees({ setModal }: PageProps) {
               ))}
             </select>
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">
               الفرع
             </label>
@@ -556,7 +557,7 @@ export function AccEmployees({ setModal }: PageProps) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
         <Card title={`قائمة الموظفين (${employees.length})`}>
           <div className="divide-y divide-gray-100">
             {employees.length === 0 && (
@@ -627,7 +628,7 @@ export function AccEmployees({ setModal }: PageProps) {
             <Card
               title={`كشف حساب: ${emp.name}`}
               actions={
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setShowAdd(true)}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold hover:bg-purple-100"
@@ -652,6 +653,13 @@ export function AccEmployees({ setModal }: PageProps) {
                   {statement?.settlementStatus === "under_review" && (
                     <span className="text-xs font-semibold text-amber-700">طلب التسوية قيد مراجعة رئيس الحسابات</span>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold hover:bg-blue-100"
+                  >
+                    <Printer size={11} /> طباعة
+                  </button>
                   <button
                     onClick={() =>
                       selectedId &&
@@ -799,7 +807,7 @@ export function AccEmployees({ setModal }: PageProps) {
                     </p>
                   </div>
                 )}
-                <div className="bg-gray-50 rounded-xl p-3 mb-3 grid grid-cols-4 gap-2 text-center">
+                <div className="bg-gray-50 rounded-xl p-3 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
                   <div>
                     <p className="text-[10px] text-gray-400">الراتب</p>
                     <p className="font-bold text-sm text-blue-700">
