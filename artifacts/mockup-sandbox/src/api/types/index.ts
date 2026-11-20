@@ -188,7 +188,8 @@ export interface Operation {
   /** Both SHF and daily sales rows expose the server's review metadata here. */
   reportReview?: Record<string, unknown> | null;
   workdaySettlement?: WorkdaySettlementData;
-  workdayShifts?: { id: string; cashierName: string | null; salesHalalas: number | null }[];
+  workdayFinalApprovalReady?: boolean;
+  workdayShifts?: { id: string; cashierName: string | null; salesHalalas: number | null; reportStatus?: OperationStatus | null }[];
   workdayReview?: {
     confirmation: string;
     correctionNote?: string | null;

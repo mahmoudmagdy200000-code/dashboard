@@ -2369,6 +2369,8 @@ export function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, on
   const salesPolicy = getSalesActionPolicy(salesContext());
   const shiftPolicy = getShfReviewPolicy(op, forHead ? "head" : "accountant", currentDetail);
   const headPolicy = getHeadReviewPolicy(op, forHead ? "head" : null, currentDetail);
+  const headDay = forHead && (op.workflowKind === "sal_day" || salesPolicy.pkg6);
+  const dayShifts = detailQ.data?.workdayShifts;
   const isPending = op.status === "pending";
   const isApproved = op.status === "approved";
   const isLocked = op.status === "final-approved";
@@ -2529,7 +2531,7 @@ export function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, on
                 {t("اعتماد المالك (EXP-06)","Owner approval (EXP-06)")}
               </span>
             ) : <>
-              {headPolicy.finalApprove && <button disabled={actionsPending} onClick={onApprove} title={t("اعتماد نهائي","Final Approve")} className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center transition-all disabled:opacity-50"><ThumbsUp size={13}/></button>}
+              {!headDay && headPolicy.finalApprove && <button disabled={actionsPending} onClick={onApprove} title={t("اعتماد نهائي","Final Approve")} className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center justify-center transition-all disabled:opacity-50"><ThumbsUp size={13}/></button>}
               {headPolicy.returnForReview && salesPolicy.return && <button disabled={actionsPending} onClick={()=>runSalesAction(salesContext, "return", onReject)} title={op.module === "shifts" ? t("إعادة للمحاسب للتعديل","Return to accountant for changes") : t("رفض","Reject")} className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 flex items-center justify-center transition-all disabled:opacity-50"><ThumbsDown size={13}/></button>}
             </>
           )}
@@ -2548,10 +2550,41 @@ export function OpRow({ op, onApprove, onReject, onClarify, onView, expanded, on
       </div>
       {salesPolicy.pkg6 && <p className="px-5 pb-2 text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</p>}
       {shiftActionBlockReason && <p className="px-5 pb-2 text-xs text-amber-800">{shiftActionBlockReason}</p>}
-      {forHead && headPolicy.blockedReason === "day_evidence_missing" && <p className="px-5 pb-2 text-xs text-amber-700">{t(HEAD_DAY_EVIDENCE_HINT.ar, HEAD_DAY_EVIDENCE_HINT.en)}</p>}
+      {headDay && isApproved && !expanded && <p className="px-5 pb-2 text-xs text-gray-600">{t(HEAD_DAY_EVIDENCE_HINT.ar, HEAD_DAY_EVIDENCE_HINT.en)}</p>}
       {forHead && headPolicy.blockedReason === "expense_owner_decision_required" && <p className="px-5 pb-2 text-xs text-amber-700">{t("قرار اعتماد المصروف محجوز للمالك أو مدير العلامة التجارية وفق القاعدة EXP-06","Expense approval decision is reserved for the brand owner or manager per rule EXP-06")}</p>}
       {expanded && (
         <div className="border-t border-gray-100 bg-gray-50/60 px-4 sm:px-5 py-4 space-y-4">
+          {headDay && <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-4" aria-label={t("الورديات المرتبطة بالتقرير","Shifts linked to this report")}>
+            <h3 className="text-sm font-semibold">{t("الورديات المرتبطة بالتقرير","Shifts linked to this report")}</h3>
+            {detailQ.isFetching && <p role="status" className="text-xs text-gray-600">{t("جارٍ التحقق من حالة الورديات…","Checking shift approval statuses…")}</p>}
+            {detailQ.isError && <div className="flex items-center gap-2 text-xs">
+              <p role="alert" className="text-amber-800">{t("تعذر التحقق من حالة الورديات","Could not verify shift approval statuses")}</p>
+              <button type="button" onClick={() => void detailQ.refetch()} className="font-semibold text-purple-700 underline">{t("إعادة المحاولة","Retry")}</button>
+            </div>}
+            {!detailQ.isError && dayShifts?.length ? <ul className="divide-y divide-gray-100 text-xs">
+              {dayShifts.map(shift => <li key={shift.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <span>{shift.cashierName ?? t("وردية كاشير","Cashier shift")}</span>
+                <bdi>{fmtHalLang(shift.salesHalalas)} {t("ر.س","SAR")}</bdi>
+                <span className={shift.reportStatus === "final-approved" ? "text-emerald-700" : "text-amber-800"}>
+                  {shift.reportStatus === "final-approved" ? t("معتمدة نهائيًا","Final-approved")
+                    : shift.reportStatus === "approved" ? t("بانتظار الاعتماد النهائي","Awaiting final approval")
+                    : shift.reportStatus === "pending" ? t("قيد المراجعة","Under review")
+                    : shift.reportStatus === "rejected" ? t("مرفوضة","Rejected")
+                    : t("حالة الاعتماد غير متاحة","Approval status unavailable")}
+                </span>
+              </li>)}
+            </ul> : null}
+            {isApproved && <div className="flex flex-wrap items-center gap-2">
+              <Btn variant="success" size="sm" disabled={actionsPending || detailQ.isFetching || detailQ.isError || !headPolicy.finalApprove} onClick={onApprove}>
+                <Lock size={12}/> {t("اعتماد نهائي (م4)","Final Approve (S4)")}
+              </Btn>
+              {!detailQ.isFetching && !detailQ.isError && !headPolicy.finalApprove && <p className="text-xs text-amber-800">
+                {dayShifts?.some(shift => shift.reportStatus === "approved" || shift.reportStatus === "pending" || shift.reportStatus === "rejected")
+                  ? t("يجب اعتماد كل الورديات المرتبطة نهائيًا أولًا.","Final approve every linked shift first.")
+                  : t("السيرفر لم يؤكد جاهزية تقرير اليوم للاعتماد النهائي.","The server has not confirmed that this report is ready for final approval.")}
+              </p>}
+            </div>}
+          </section>}
           {op.module==="sales" && <SalesReconPanel op={op} onApprove={onApprove} onReject={onReject} onClarify={onClarify} isPending={isPending} forHead={forHead}/>}
           {op.module==="shifts" && (
             <>
@@ -4478,7 +4511,7 @@ function HeadPending({ ops, finalApprove, reject, bulkFinalApprove, actionsPendi
             {selected===op.id && (
               <div className="px-5 pb-4 space-y-3 border-t border-gray-50 pt-3">
                 <CPipelineBar op={op}/>
-                <div className="flex gap-2">
+                {op.workflowKind !== "sal_day" && !isPkg6SalesReport(op) && <div className="flex gap-2">
                   <Btn variant="success" size="sm" disabled={actionsPending || !getHeadReviewPolicy(op,"head").finalApprove} onClick={()=>{ finalApprove(op.id); setSelected(null); }}>
                     <Lock size={12}/> {t("اعتماد نهائي (م4)","Final Approve (S4)")}
                   </Btn>
@@ -4490,7 +4523,7 @@ function HeadPending({ ops, finalApprove, reject, bulkFinalApprove, actionsPendi
                   ) : getHeadReviewPolicy(op,"head").blockedReason ? (
                     <p className="text-xs text-amber-700">{t(HEAD_DAY_EVIDENCE_HINT.ar, HEAD_DAY_EVIDENCE_HINT.en)}</p>
                   ) : null}
-                </div>
+                </div>}
               </div>
             )}
           </div>
@@ -5086,7 +5119,8 @@ function useSharedOps(role: CRole | null, fingerprint: string) {
   const finalApprove       = async (id:string) => {
     if (actionLock.current) return;
     const operation = operationFor(id);
-    if (!getHeadReviewPolicy(operation, currentRole.current, operation && detailFor(operation)).finalApprove) return;
+    const currentDetail = operation && detailFor(operation);
+    if (!getHeadReviewPolicy(operation, currentRole.current, currentDetail).finalApprove) return;
     const context = captureAccess();
     if (!context) return;
     setActionsPending(true);
@@ -5096,7 +5130,7 @@ function useSharedOps(role: CRole | null, fingerprint: string) {
         if (!accessStillCurrent(context)) throw new FinancialAccessChangedError();
         mutationStarted = true;
         await finalMut.mutateAsync({ id:operationId });
-      }, actionLock);
+      }, actionLock, currentDetail);
       if (!completed && accessStillCurrent(context)) toast.error("تغيرت حالة العملية؛ حدّث القائمة وأعد المراجعة");
     } catch (error) {
       if (!mutationStarted && !(error instanceof FinancialAccessChangedError) && accessStillCurrent(context))
