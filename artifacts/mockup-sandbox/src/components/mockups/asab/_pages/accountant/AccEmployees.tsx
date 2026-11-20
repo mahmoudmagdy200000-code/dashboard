@@ -267,9 +267,6 @@ export function AccEmployees({ setModal }: PageProps) {
     emp,
     selectedCustody,
   );
-  const selectedIsCashier = Boolean(selectedSales?.isCashier);
-  const selectedIsManager = Boolean(selectedSales?.isManager);
-  const deliveredSalesSummaryHalalas = selectedSales?.deliveredTotalHalalas ?? null;
   const balColor = (h: number) =>
     h < 0 ? "text-red-600" : h > 0 ? "text-emerald-600" : "text-gray-400";
   const bal = statement?.balanceHalalas ?? emp?.balanceHalalas ?? 0;
@@ -807,50 +804,6 @@ export function AccEmployees({ setModal }: PageProps) {
                     </p>
                   </div>
                 )}
-                <div className="bg-gray-50 rounded-xl p-3 mb-3 grid grid-cols-3 gap-2 text-center">
-                  <div className="min-w-0">
-                    <p className="text-[10px] text-gray-400">إجمالي الدائن</p>
-                    <p className="font-bold text-emerald-600">
-                      +{fmtAmt((statement?.totalCredit ?? 0) / 100)}
-                    </p>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] text-gray-400">إجمالي المدين</p>
-                    <p className="font-bold text-red-600">
-                      -{fmtAmt((statement?.totalDebit ?? 0) / 100)}
-                    </p>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] text-gray-400">الرصيد</p>
-                    <p className={`font-bold text-base ${balColor(bal)}`}>
-                      {fmtAmt(bal / 100)} ر.س
-                    </p>
-                  </div>
-                </div>
-                {(selectedIsCashier || selectedIsManager) && (
-                  <div
-                    data-testid="statement-delivered-sales-summary"
-                    className="mb-3 px-3 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-2"
-                    dir={dir}
-                  >
-                    <span className="text-xs font-semibold text-emerald-900">
-                      {selectedIsCashier
-                        ? t(
-                            "إجمالي مبيعات الورديات المسلمة",
-                            "Total handed-over shift sales",
-                          )
-                        : t(
-                            "إجمالي المبيعات المسلمة",
-                            "Total delivered sales",
-                          )}
-                    </span>
-                    <span className="font-mono font-bold text-sm text-emerald-700">
-                      {deliveredSalesSummaryHalalas == null
-                        ? "—"
-                        : `${formatShiftHalalas(deliveredSalesSummaryHalalas, lang)} ${t("ر.س", "SAR")}`}
-                    </span>
-                  </div>
-                )}
                 {(custodySummary.isAvailable || custodySummary.pendingDeliveredHalalas > 0 || (selectedCustody?.entries?.length ?? 0) > 0) && (
                   <div
                     data-testid="acc-employees-custody-section"
@@ -891,20 +844,85 @@ export function AccEmployees({ setModal }: PageProps) {
                       </div>
                     )}
                     {(selectedCustody?.entries?.length ?? 0) > 0 && (
-                      <div className="space-y-1">
-                        {selectedCustody!.entries.slice(0, 5).map((entry) => (
-                          <div key={entry.source_id} className="bg-white rounded-lg px-2.5 py-1.5 border border-purple-100 flex items-center justify-between gap-2 text-[11px]">
-                            <div className="min-w-0 truncate">
-                              <span className="font-semibold text-gray-800">{lang === "ar" ? entry.label_ar : (entry.label_en || entry.label_ar)}</span>
-                              {entry.counterparty?.name && <span className="text-gray-500"> · {entry.counterparty.name}</span>}
+                      <div className="space-y-1.5 pt-1">
+                        <div className="flex items-center justify-between px-0.5">
+                          <span className="text-[11px] font-bold text-purple-900/80">
+                            {t("سجل حركات العهدة", "Custody Movements")}
+                          </span>
+                          <span className="text-[10px] text-purple-700 font-medium">
+                            {selectedCustody!.entries.length} {t("حركة", "entries")}
+                          </span>
+                        </div>
+                        {selectedCustody!.entries.slice(0, 5).map((entry) => {
+                          const isCredit = entry.cash_out > 0;
+                          const entryDate = entry.business_date || (entry.event_at ? entry.event_at.slice(0, 10) : "");
+                          return (
+                            <div
+                              key={entry.source_id}
+                              className="bg-white rounded-xl px-3 py-2.5 border border-purple-100 flex items-center justify-between gap-3 shadow-2xs"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div
+                                  className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 border ${
+                                    isCredit
+                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                      : "bg-red-50 text-red-600 border-red-200"
+                                  }`}
+                                >
+                                  {isCredit ? "⬆" : "⬇"}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="text-xs font-bold text-gray-800 truncate">
+                                      {lang === "ar" ? entry.label_ar : (entry.label_en || entry.label_ar)}
+                                    </span>
+                                    <span
+                                      className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-md border ${
+                                        isCredit
+                                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                          : "bg-red-50 text-red-700 border-red-200"
+                                      }`}
+                                    >
+                                      {isCredit
+                                        ? t("دائن · تسليم", "Credit · Handover")
+                                        : t("مدين · كاش داخل", "Debit · Cash In")}
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-gray-500">
+                                    {entryDate && <span className="font-mono">{entryDate}</span>}
+                                    {entry.counterparty?.name && <span>· {entry.counterparty.name}</span>}
+                                    {entry.receipt_id && (
+                                      <span className="font-mono px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">
+                                        {entry.receipt_id}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-end flex-shrink-0">
+                                <span
+                                  className={`font-mono font-bold text-xs whitespace-nowrap block ${
+                                    isCredit ? "text-emerald-700" : "text-red-600"
+                                  }`}
+                                >
+                                  <bdi>
+                                    {isCredit
+                                      ? `+${formatShiftHalalas(entry.cash_out, lang)}`
+                                      : `−${formatShiftHalalas(entry.cash_in, lang)}`}
+                                  </bdi>{" "}
+                                  {t("ر.س", "SAR")}
+                                </span>
+                                {typeof entry.running_balance === "number" && (
+                                  <span className="text-[10px] text-gray-400 font-mono block mt-0.5">
+                                    {t("الرصيد:", "Bal:")}{" "}
+                                    <bdi>{formatShiftHalalas(entry.running_balance, lang)}</bdi>{" "}
+                                    {t("ر.س", "SAR")}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <span className={`font-mono font-bold whitespace-nowrap ${entry.cash_out > 0 ? "text-emerald-700" : "text-red-700"}`}>
-                              {entry.cash_out > 0
-                                ? `+${formatShiftHalalas(entry.cash_out, lang)}`
-                                : `−${formatShiftHalalas(entry.cash_in, lang)}`}
-                            </span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
