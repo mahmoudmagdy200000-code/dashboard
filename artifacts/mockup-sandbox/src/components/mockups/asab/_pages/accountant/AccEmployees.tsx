@@ -837,7 +837,15 @@ export function AccEmployees({ setModal }: PageProps) {
                         </div>
                         <div className="bg-white rounded-lg p-2 border border-purple-200">
                           <p className="text-[10px] text-purple-700 font-semibold">{t("الرصيد الجاري للعهدة", "Closing")}</p>
-                          <p className={`font-mono font-bold text-xs ${balColor(custodySummary.closingBalanceHalalas)}`}>
+                          <p
+                            className={`font-mono font-bold text-xs ${
+                              custodySummary.closingBalanceHalalas > 0
+                                ? "text-amber-700"
+                                : custodySummary.closingBalanceHalalas < 0
+                                  ? "text-emerald-700"
+                                  : "text-gray-500"
+                            }`}
+                          >
                             {formatShiftHalalas(custodySummary.closingBalanceHalalas, lang)}
                           </p>
                         </div>
