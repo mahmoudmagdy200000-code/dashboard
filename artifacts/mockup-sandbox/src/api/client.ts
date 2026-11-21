@@ -167,10 +167,10 @@ class SessionChangedError extends Error {
 
 api.interceptors.response.use(
   (res) => res,
-  async (err: AxiosError<ApiErrorBody>) => {
+  async (err: AxiosError<unknown>) => {
     const cfg = err.config as RetriableConfig | undefined;
     const status = err.response?.status;
-    const body = err.response?.data;
+    let body = err.response?.data;
     const url = cfg?.url ?? "";
 
     if (
@@ -209,11 +209,31 @@ api.interceptors.response.use(
       }
     }
 
+    // Axios returns non-2xx JSON as a Blob when the request was a download.
+    // Decode it so a 403/500 is not falsely reported as a network outage.
+    if (typeof Blob !== "undefined" && body instanceof Blob) {
+      try {
+        body = JSON.parse(await body.text()) as unknown;
+      } catch {
+        body = undefined;
+      }
+    }
+
     if (isErrorBody(body)) {
       throw new ApiError(body as ApiErrorBody, status ?? 0);
     }
 
-    // No structured body — network or non-JSON response.
+    if (status !== undefined) {
+      throw new ApiError({
+        error: {
+          code: `HTTP_${status}`,
+          message: `Request failed with HTTP ${status}`,
+          messageAr: `فشل طلب التنزيل أو البيانات (HTTP ${status})`,
+        },
+      }, status);
+    }
+
+    // No HTTP response — actual network failure.
     throw new ApiError(
       {
         error: {
@@ -253,5 +273,7 @@ export async function downloadBlob(
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(objectUrl);
+  // Let the browser begin consuming the blob before releasing its object URL.
+  // Revoking synchronously can cancel the download in Chromium/Edge.
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronsRight } from "lucide-react";
 import { useLang } from "../../_shared/LangContext";
 import { fmtAmt } from "../../_shared/formatters";
@@ -17,7 +17,7 @@ export type ModuleAggState =
 export interface ModuleAggCfg { label: string; sublabel: string; step: number; cls: string; dot: string; headerCls: string }
 export const MODULE_AGG_CFG: Record<ModuleAggState, ModuleAggCfg> = {
   empty: { label: "لا بيانات", sublabel: "لم يُرفع أي بيان", step: 0, cls: "bg-gray-50 text-gray-400 border-gray-200", dot: "bg-gray-300", headerCls: "text-gray-400" },
-  incomplete: { label: "غير مكتمل", sublabel: "توجد بيانات معلقة في المراجعة", step: 1, cls: "bg-red-50 text-red-700 border-red-200", dot: "bg-red-500", headerCls: "text-red-700" },
+  incomplete: { label: "غير مكتمل", sublabel: "توجد عمليات بحاجة إلى مراجعة", step: 1, cls: "bg-red-50 text-red-700 border-red-200", dot: "bg-red-500", headerCls: "text-red-700" },
   ready_consolidation: { label: "جاهز للتجميع", sublabel: "كل البيانات راجعة — ابدأ التجميع", step: 2, cls: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500", headerCls: "text-amber-700" },
   consolidated: { label: "مُجمَّع", sublabel: "قيد محاسبي مُغلق — جاهز للدفعة", step: 3, cls: "bg-sky-50 text-sky-700 border-sky-200", dot: "bg-sky-500", headerCls: "text-sky-700" },
   ready_erp: { label: "جاهز لـ ERP", sublabel: "دفعة جاهزة للإرسال", step: 4, cls: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500", headerCls: "text-emerald-700" },
@@ -41,6 +41,21 @@ export function getModuleAggState(moduleOps: Op[]): ModuleAggState {
   return "consolidated";
 }
 
+function getModuleAggStateFromCounts(summary: ModuleSummary): ModuleAggState {
+  const pending = summary.pending ?? summary.counts?.pending ?? 0;
+  const approved = summary.approved ?? summary.counts?.approved ?? 0;
+  const final = summary.final ?? summary.counts?.final ?? 0;
+  const rejected = summary.rejected ?? 0;
+  const erp = summary.erp ?? summary.counts?.erp ?? 0;
+  if ((summary.total ?? 0) === 0) return "empty";
+  if (pending > 0 || rejected > 0) return "incomplete";
+  if (final > 0 && erp >= final && approved === 0) return "exported";
+  if (final > 0 && approved === 0) return "ready_erp";
+  if (final === 0 && approved > 0) return "ready_consolidation";
+  if (final > 0 && approved > 0) return "consolidated";
+  return "incomplete";
+}
+
 // ── English for MODULE_META labels ───────────────────────────────────────────
 export const EN_MODULE_META: Record<string, string> = {
   "المبيعات": "Sales", "المصروفات": "Expenses", "المشتريات": "Purchases",
@@ -51,7 +66,7 @@ export const EN_MODULE_META: Record<string, string> = {
 // ── English for MODULE_AGG_CFG ───────────────────────────────────────────────
 export const EN_MODULE_AGG: Record<string, { label: string; sublabel: string }> = {
   empty: { label: "No Data", sublabel: "No entries uploaded" },
-  incomplete: { label: "Incomplete", sublabel: "Pending entries in review" },
+  incomplete: { label: "Needs Review", sublabel: "Entries need review" },
   ready_consolidation: { label: "Ready to Consolidate", sublabel: "All entries reviewed — start consolidation" },
   consolidated: { label: "Consolidated", sublabel: "Accounting entry locked — ready to batch" },
   ready_erp: { label: "Ready for ERP", sublabel: "Batch ready to send" },
@@ -73,12 +88,44 @@ export const MODULE_META = [
 // Pipeline step labels shown in the legend
 export const EXPORT_PIPELINE_STEPS: ModuleAggState[] = ["incomplete", "ready_consolidation", "consolidated", "ready_erp", "exported", "erp_imported"];
 
-export function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate: (p: PageId) => void }) {
+type ModuleSummary = {
+  moduleKey: string;
+  pending?: number;
+  approved?: number;
+  final?: number;
+  rejected?: number;
+  erp?: number;
+  total?: number;
+  totalAmount?: number;
+  recentOperations?: Array<{
+    id: string;
+    branch: string;
+    status: "pending" | "approved" | "final-approved" | "rejected";
+    amountHalalas: number;
+    operationDate?: string | null;
+    erpPosted: boolean;
+  }>;
+  counts?: { pending: number; approved: number; final: number; erp: number };
+};
+
+export function ModuleAggregationGrid({ ops, moduleAggregation = [], navigate }: { ops: Op[]; moduleAggregation?: ModuleSummary[]; navigate: (p: PageId) => void }) {
   const { lang, dir, t } = useLang();
   const en = lang === "en";
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const detailsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (selectedKey) detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [selectedKey]);
   const selectedMeta = selectedKey ? MODULE_META.find(m => (m.key || m.label) === selectedKey) : null;
   const selectedOps = selectedMeta?.key ? ops.filter(o => o.moduleKey === selectedMeta.key) : [];
+  const selectedSummary = selectedMeta?.key ? moduleAggregation.find(item => item.moduleKey === selectedMeta.key) : undefined;
+  const recentOperations = selectedSummary?.recentOperations ?? [];
+  const statusLabel = (status: string) => ({
+    pending: t("معلق", "Pending"),
+    approved: t("مراجع", "Reviewed"),
+    "final-approved": t("معتمد نهائياً", "Final approved"),
+    rejected: t("مرفوض", "Rejected"),
+  }[status] ?? status);
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden" dir={dir}>
@@ -113,23 +160,30 @@ export function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate: 
           const cardKey = m.key || m.label;
           const mLabel = en ? (EN_MODULE_META[m.label] || m.label) : m.label;
           const mOps = m.key ? ops.filter(o => o.moduleKey === m.key) : [];
-          const state = getModuleAggState(mOps);
+          const summary = moduleAggregation.find(item => item.moduleKey === m.key);
+          const state = summary
+            ? getModuleAggStateFromCounts(summary)
+            : getModuleAggState(mOps);
           const cfg = MODULE_AGG_CFG[state];
           const cfgLabel = en ? (EN_MODULE_AGG[state]?.label || cfg.label) : cfg.label;
           const cfgSublabel = en ? (EN_MODULE_AGG[state]?.sublabel || cfg.sublabel) : cfg.sublabel;
           const counts = {
-            pending: mOps.filter(o => o.status === "pending").length,
-            approved: mOps.filter(o => o.status === "approved").length,
-            final: mOps.filter(o => o.status === "final-approved").length,
-            erp: mOps.filter(o => o.erpPosted).length,
+            pending: summary?.pending ?? summary?.counts?.pending ?? mOps.filter(o => o.status === "pending").length,
+            approved: summary?.approved ?? summary?.counts?.approved ?? mOps.filter(o => o.status === "approved").length,
+            final: summary?.final ?? summary?.counts?.final ?? mOps.filter(o => o.status === "final-approved").length,
+            rejected: summary?.rejected ?? mOps.filter(o => o.status === "rejected").length,
+            erp: summary?.erp ?? summary?.counts?.erp ?? mOps.filter(o => o.erpPosted).length,
           };
-          const total = mOps.some(o => o.amount == null) ? null : mOps.reduce((s, o) => s + (o.amount ?? 0), 0);
+          const total = summary?.totalAmount != null
+            ? summary.totalAmount / 100
+            : (mOps.some(o => o.amount == null) ? null : mOps.reduce((s, o) => s + (o.amount ?? 0), 0));
+          const totalCount = summary?.total ?? mOps.length;
           const stepNum = cfg.step;
           const maxStep = 5;
           const isSelected = selectedKey === cardKey;
 
           return (
-            <button key={cardKey} onClick={() => setSelectedKey(isSelected ? null : cardKey)}
+            <button key={cardKey} aria-expanded={isSelected} aria-controls={isSelected ? "module-accounting-package-details" : undefined} onClick={() => setSelectedKey(isSelected ? null : cardKey)}
               className={`rounded-xl border ${dir === "ltr" ? "text-left" : "text-right"} overflow-hidden transition-all
                 ${cfg.cls} ${isSelected ? "ring-2 ring-offset-1 ring-purple-400 shadow-md" : "hover:brightness-95"}`}>
               <div className="h-1 bg-gray-200/60">
@@ -143,12 +197,13 @@ export function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate: 
                 <p className="font-bold text-sm text-gray-800 mb-0.5">{mLabel}</p>
                 <p className={`text-[10px] font-semibold mb-1 ${cfg.headerCls}`}>{cfgLabel}</p>
                 <p className="text-[9px] text-gray-400 mb-2 leading-tight">{cfgSublabel}</p>
-                {mOps.length > 0 ? (
+                {totalCount > 0 ? (
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-1 flex-wrap">
                       {counts.pending > 0 && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-semibold">{counts.pending} {t("معلق", "Pending")}</span>}
                       {counts.approved > 0 && <span className="text-[9px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-semibold">{counts.approved} {t("راجع", "Reviewed")}</span>}
                       {counts.final > 0 && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-semibold">{counts.final} {t("مُجمَّع", "Consolidated")}</span>}
+                      {counts.rejected > 0 && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-semibold">{counts.rejected} {t("مرفوض", "Rejected")}</span>}
                       {counts.erp > 0 && <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-semibold">{counts.erp} ERP</span>}
                     </div>
                     {total != null && total > 0 && <p className="text-[10px] font-mono font-bold text-gray-600">{(total / 1000).toFixed(1)}K {t("ر.س", "SAR")}</p>}
@@ -163,7 +218,7 @@ export function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate: 
       </div>
 
       {selectedMeta && (
-        <div className="border-t border-gray-100 bg-gray-50/60 p-5" dir={dir}>
+        <div ref={detailsRef} id="module-accounting-package-details" className="scroll-mt-4 border-t border-gray-100 bg-gray-50/60 p-5" dir={dir}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <span className="text-xl">{selectedMeta.icon}</span>
@@ -186,9 +241,35 @@ export function ModuleAggregationGrid({ ops, navigate }: { ops: Op[]; navigate: 
             </div>
           </div>
 
-          {selectedOps.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-4">{t("لا توجد بيانات في هذا الموديول", "No data in this module")}</p>
-          ) : (
+          {recentOperations.length > 0 && (
+            <div className="mb-4 bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-4 py-2 bg-white border-b border-gray-100 flex items-center justify-between">
+                <span className="text-[11px] font-bold text-gray-700">{t("أحدث العمليات المسجلة", "Recent recorded operations")}</span>
+                <span className="text-[10px] text-gray-400">{t("معاينة من جميع مراحل العمل", "Preview across all workflow stages")}</span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {recentOperations.map(operation => (
+                  <div key={operation.id} className="px-4 py-2 flex items-center gap-3 text-xs">
+                    <span className="font-mono text-gray-500 flex-shrink-0" title={operation.id}>{operation.id.length > 12 ? `${operation.id.slice(0, 8)}…` : operation.id}</span>
+                    <span className="text-gray-600 flex-shrink-0">{operation.branch}</span>
+                    <span className="flex-1" />
+                    <span className="text-[10px] text-gray-500">{statusLabel(operation.status)}</span>
+                    <span className="font-mono font-bold text-gray-700">{fmtAmt(operation.amountHalalas / 100)} {t("ر.س", "SAR")}</span>
+                    {operation.erpPosted && <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-bold">ERP ✓</span>}
+                    {operation.operationDate && <span className="text-[9px] text-gray-400">{new Date(operation.operationDate).toLocaleDateString(en ? "en" : "ar")}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {selectedOps.length === 0 && recentOperations.length === 0 ? (
+            <div className="text-center py-4 space-y-2">
+              <p className="text-sm text-gray-600">{selectedMeta.key && (selectedSummary?.total ?? 0) > 0
+                ? t("توجد سجلات في هذا الموديول، لكن تفاصيلها تظهر في شاشة الموديول حسب مرحلة المراجعة.", "Records exist in this module. Open the module to review details by workflow stage.")
+                : t("لا توجد بيانات في هذا الموديول", "No data in this module")}</p>
+            </div>
+          ) : selectedOps.length === 0 ? null : (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-3">
                 {selectedOps.filter(o => o.status === "final-approved").length > 0 && (

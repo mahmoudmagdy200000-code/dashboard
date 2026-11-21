@@ -158,6 +158,24 @@ function resetAdapters() {
   axios.defaults.adapter = (async config => response(config, {})) as AxiosAdapter;
 }
 
+test("download HTTP errors encoded as Blob preserve the server error instead of reporting a network outage", async () => {
+  resetAdapters();
+  api.defaults.adapter = (async config => {
+    const data = new Blob([JSON.stringify({
+      error: { code: "REPORT_EXPORT_FORBIDDEN", message: "Not allowed", messageAr: "ليس لديك صلاحية تنزيل هذا التقرير" },
+    })], { type: "application/json" });
+    throw new AxiosError("Request failed with status code 403", "ERR_BAD_REQUEST", config, undefined,
+      response(config, data, 403));
+  }) as AxiosAdapter;
+
+  await assert.rejects(api.get("/reports/internal/export", { responseType: "blob" }), (error: any) => {
+    assert.equal(error.code, "REPORT_EXPORT_FORBIDDEN");
+    assert.equal(error.status, 403);
+    assert.equal(error.messageAr, "ليس لديك صلاحية تنزيل هذا التقرير");
+    return true;
+  });
+});
+
 test("password login returns tokens without writing before its session controller accepts them", async () => {
   resetAdapters();
   tokens.setTokens(pair("existing"));

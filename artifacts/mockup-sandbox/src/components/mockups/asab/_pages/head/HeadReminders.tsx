@@ -27,7 +27,7 @@ export function HeadReminders({ }: PageProps) {
   const timeOf = (r: any) => r.timeAr ?? (r.dueAt ?? r.createdAt ? new Date(r.dueAt ?? r.createdAt).toLocaleString("ar-SA", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
 
   const Row = ({ r }: { r: any }) => (
-    <div className={`px-5 py-3.5 flex items-center gap-3 border-b border-gray-50 last:border-0 ${isDone(r) ? "opacity-60" : ""}`}>
+    <div className={`px-5 py-3.5 flex flex-col sm:flex-row sm:items-center gap-3 border-b border-gray-50 last:border-0 ${isDone(r) ? "opacity-60" : ""}`}>
       <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center text-base flex-shrink-0">{r.icon ?? "🔔"}</div>
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-semibold ${isDone(r) ? "text-gray-400 line-through" : "text-gray-800"}`}>{titleOf(r)}</p>
@@ -45,7 +45,7 @@ export function HeadReminders({ }: PageProps) {
 
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("التذكيرات", "Reminders")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{open.length} {t("تذكير مفتوح", "open reminders")} · {done.length} {t("منجز", "done")}</p>

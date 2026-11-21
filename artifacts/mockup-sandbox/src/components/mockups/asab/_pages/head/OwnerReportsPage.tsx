@@ -11,6 +11,19 @@ import type { PageProps, ModuleKey } from "../../_shared/types";
 import { aggregateOpsAmount } from "../../headReviewGuards";
 import { Btn } from "../../components/Btn";
 import { Badge } from "../../components/Badge";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "../../../../ui/dialog";
+import { STATUS_CFG, EN_STATUS_CFG } from "../../_shared/displayConfig";
+
+type InternalReportPreview = { moduleKey: ModuleKey; title: string; count?: number; total?: number };
+
+function formatReportDate(value: string | undefined, locale: string) {
+  if (!value) return "—";
+  const day = value.slice(0, 10);
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(day) ? new Date(`${day}T12:00:00Z`) : new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value.slice(0, 10)
+    : new Intl.DateTimeFormat(locale, { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" }).format(date);
+}
 
 // ─────────────────────────────────────────────
 // HA-F14: removed static fake SEPT_BASELINE and SEPT_NET.
@@ -20,11 +33,13 @@ export function OwnerReportsPage({ ops }: PageProps) {
   const { t, lang, dir } = useLang();
   const en = lang === "en";
   const [tab, setTab] = useState<"internal" | "owner">("owner");
+  const [previewReport, setPreviewReport] = useState<InternalReportPreview | null>(null);
   // B-H5: internal report catalogue + owner headline come from the API now.
   const { data: internalReportsApi } = useReportsInternalPlatform();
   const { data: ownerApi } = useReportsOwnerPlatform();
   const dlReport = useDownloadHeadReport();
   const internalReports = (((internalReportsApi as any)?.data ?? internalReportsApi ?? []) as any[]);
+  const previewOperations = previewReport ? ops.filter(op => op.moduleKey === previewReport.moduleKey) : [];
   // T15.18 — HEAD-7 financial-report cards, delivered under meta.financialReports.
   const financialReports = (((internalReportsApi as any)?.meta?.financialReports ?? []) as any[]);
 
@@ -150,13 +165,30 @@ export function OwnerReportsPage({ ops }: PageProps) {
           {financialReports.length > 0 && (
             <div className="mb-4">
               <h3 className="font-bold text-gray-800 text-sm mb-3">{t("التقارير المالية", "Financial Reports")}</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {financialReports.map((f: any, i: number) => (
-                  <div key={f.key ?? i} className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-                    <div className="flex items-center gap-2 mb-1"><BarChart3 size={15} className="text-purple-600" /><p className="font-bold text-gray-800 text-sm">{f.labelAr ?? f.key}</p></div>
-                    {f.note && <p className="text-[11px] text-gray-400 mb-2">{f.note}</p>}
+                  <div key={f.key ?? i} className="min-w-0 bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                    {(() => {
+                      const identity = `${f.key ?? ""} ${f.labelAr ?? ""} ${f.labelEn ?? ""} ${f.endpoint ?? ""}`.toLowerCase();
+                      const branchComparison = /branch|مقارنة الفروع|الفروع/.test(identity);
+                      const profitLoss = /profit|loss|income|الدخل|العلامة/.test(identity);
+                      const title = branchComparison
+                        ? t("مقارنة أداء الفروع", "Branch Performance Comparison")
+                        : profitLoss
+                          ? t("قائمة الدخل لكل علامة تجارية", "Income Statement by Brand")
+                          : (en ? f.labelEn : f.labelAr) ?? f.labelAr ?? f.labelEn ?? f.key;
+                      const description = branchComparison
+                        ? t("يعرض الأداء الفعلي للفروع التي تختارها. تتم مقارنة النتائج بالمستهدف الشهري المسجل في نظرة الفرع.", "Shows actual performance for the branches you select. Results are compared with the monthly target recorded in Branch Overview.")
+                        : profitLoss
+                          ? t("يعرض الإيرادات والمصروفات وصافي النتيجة لكل علامة تجارية تختارها.", "Shows revenue, expenses, and net result for each brand you select.")
+                          : f.note;
+                      return <>
+                        <div className="flex items-start gap-2 mb-2 min-w-0"><BarChart3 size={15} className="text-purple-600 mt-0.5 flex-shrink-0" /><p className="min-w-0 font-bold text-gray-800 text-sm leading-relaxed break-words">{title}</p></div>
+                        {description && <p className="text-xs text-gray-600 mb-3 leading-relaxed break-words">{description}</p>}
+                      </>;
+                    })()}
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <Badge className="bg-gray-50 text-gray-500 text-[10px] font-mono">{f.method} {f.endpoint}</Badge>
+                      {(f.formats ?? []).length > 0 && <span className="text-[10px] text-gray-500">{t("الصيغ المتاحة:", "Available formats:")}</span>}
                       {(f.formats ?? []).map((fmt: string) => <Badge key={fmt} className="bg-purple-50 text-purple-700 text-[10px] uppercase">{fmt}</Badge>)}
                     </div>
                   </div>
@@ -169,7 +201,7 @@ export function OwnerReportsPage({ ops }: PageProps) {
               {t("لا توجد تقارير داخلية متاحة بعد", "No internal reports available yet")}
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {internalReports.map((r: any, i: number) => {
                 const title = (en ? r.labelEn : r.labelAr) ?? r.labelAr ?? r.labelEn ?? r.title ?? "";
                 // B-H5 contract: { moduleKey, labelAr, labelEn, count, total(halalas), downloadUrl }
@@ -185,7 +217,7 @@ export function OwnerReportsPage({ ops }: PageProps) {
                     <p className="font-bold text-gray-800 text-sm">{title}</p>
                     <p className="text-xs text-gray-400 mt-1 mb-3">{desc}</p>
                     <div className="flex items-center gap-2">
-                      <Btn size="sm" onClick={doDownload} disabled={!url}><Eye size={11} /> {t("عرض", "View")}</Btn>
+                      <Btn size="sm" onClick={() => r.moduleKey && setPreviewReport({ moduleKey: r.moduleKey as ModuleKey, title, count: r.count, total: r.total })} disabled={!r.moduleKey}><Eye size={11} /> {t("عرض", "View")}</Btn>
                       <Btn size="sm" onClick={doDownload} disabled={!url}><Download size={11} /> {t("تحميل", "Download")}</Btn>
                     </div>
                   </div>
@@ -472,6 +504,57 @@ export function OwnerReportsPage({ ops }: PageProps) {
           )}
         </div>
       )}
+
+      <Dialog open={previewReport !== null} onOpenChange={open => { if (!open) setPreviewReport(null); }}>
+        {previewReport && (
+          <DialogContent dir={dir} className="max-h-[90dvh] max-w-5xl overflow-y-auto">
+            <DialogTitle>{previewReport.title}</DialogTitle>
+            <DialogDescription>{t("معاينة داخلية لعمليات الموديول", "Internal preview of module operations")}</DialogDescription>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">{t("عدد العمليات في التقرير", "Operations in report")}</p>
+                <p className="mt-1 text-lg font-bold text-gray-800">{previewReport.count ?? previewOperations.length}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                <p className="text-xs text-gray-500">{t("إجمالي الموديول", "Module total")}</p>
+                <p className="mt-1 text-lg font-bold text-gray-800">{previewReport.total != null ? fmtAmt(previewReport.total / 100, lang) : fmtAmt(aggregateOpsAmount(previewOperations) ?? 0, lang)} {t("ر.س", "SAR")}</p>
+              </div>
+            </div>
+            {previewOperations.length === 0 ? (
+              <div className="rounded-lg border border-gray-100 p-8 text-center text-sm text-gray-400">
+                {t("لا توجد تفاصيل عمليات متاحة لهذا الموديول", "No operation details are available for this module")}
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-gray-100">
+                <table className="w-full min-w-[720px] text-sm">
+                  <thead className="bg-gray-50 text-xs text-gray-500">
+                    <tr>
+                      <th className="px-3 py-2 text-start">{t("رقم العملية", "Operation")}</th>
+                      <th className="px-3 py-2 text-start">{t("الفرع", "Branch")}</th>
+                      <th className="px-3 py-2 text-start">{t("الحالة", "Status")}</th>
+                      <th className="px-3 py-2 text-start">{t("التاريخ", "Date")}</th>
+                      <th className="px-3 py-2 text-end">{t("المبلغ", "Amount")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewOperations.map(op => (
+                      <tr key={op.id} className="border-t border-gray-100">
+                        <td className="max-w-48 px-3 py-2 font-mono text-xs text-gray-600 break-all">{op.id}</td>
+                        <td className="px-3 py-2 text-gray-700">{op.branch}</td>
+                        <td className="px-3 py-2">
+                          <Badge className={STATUS_CFG[op.status].cls}>{en ? EN_STATUS_CFG[op.status] : STATUS_CFG[op.status].label}</Badge>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 text-gray-500">{formatReportDate(op.operationDate, en ? "en-GB" : "ar-EG")}</td>
+                        <td className="whitespace-nowrap px-3 py-2 text-end font-mono font-semibold">{op.amount == null ? "—" : `${fmtAmt(op.amount, lang)} ${t("ر.س", "SAR")}`}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }

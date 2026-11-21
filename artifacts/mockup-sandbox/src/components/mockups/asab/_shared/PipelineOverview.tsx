@@ -82,19 +82,50 @@ export function OpStagePill({ op }: { op: Op }) {
 }
 
 // Pipeline overview widget — summary counts by stage
-export function PipelineOverview({ ops, navigate }: { ops: Op[]; navigate: (p: PageId) => void }) {
+type ModuleSummary = {
+  pending?: number;
+  approved?: number;
+  final?: number;
+  rejected?: number;
+  erp?: number;
+  total?: number;
+  counts?: { pending: number; approved: number; final: number; erp: number };
+};
+
+type PipelineTotals = {
+  total: number;
+  pending: number;
+  approved: number;
+  final: number;
+  rejected: number;
+  erp: number;
+};
+
+export function PipelineOverview({ ops, moduleAggregation, navigate }: { ops: Op[]; moduleAggregation?: ModuleSummary[]; navigate: (p: PageId) => void }) {
   const { lang, t } = useLang();
+  const hasCompanySummary = moduleAggregation !== undefined;
+  const totals = moduleAggregation?.reduce<PipelineTotals>((sum, item) => ({
+    total: sum.total + (item.total ?? 0),
+    pending: sum.pending + (item.pending ?? item.counts?.pending ?? 0),
+    approved: sum.approved + (item.approved ?? item.counts?.approved ?? 0),
+    final: sum.final + (item.final ?? item.counts?.final ?? 0),
+    rejected: sum.rejected + (item.rejected ?? 0),
+    erp: sum.erp + (item.erp ?? item.counts?.erp ?? 0),
+  }), { total: 0, pending: 0, approved: 0, final: 0, rejected: 0, erp: 0 });
   const stageCounts = PIPELINE_STAGES.map((s, i) => ({
     ...s,
-    count: ops.filter(o => getPipelineStage(o) === i).length,
+    count: hasCompanySummary
+      ? [totals?.total, totals?.pending, totals?.approved, totals?.final, totals?.erp, 0][i] ?? 0
+      : ops.filter(o => getPipelineStage(o) === i).length,
     shortLabel: lang === "ar" ? s.labelShort : (EN_PIPELINE[s.id]?.labelShort || s.labelShort),
   }));
-  const rejected = ops.filter(o => o.status === "rejected").length;
+  const rejected = hasCompanySummary ? totals?.rejected ?? 0 : ops.filter(o => o.status === "rejected").length;
+  const total = hasCompanySummary ? totals?.total ?? 0 : ops.length;
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="px-4 sm:px-5 py-3 sm:py-3.5 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between flex-wrap gap-2">
         <h3 className="font-bold text-gray-900 text-sm tracking-tight">{t("مسار العمليات — رؤية شاملة للخط الزمني", "Operations Pipeline — Full Timeline View")}</h3>
-        <span className="text-xs text-gray-400">{displayDigits(ops.length, lang)} {t("عملية إجمالاً", "operations total")}</span>
+        <span className="text-xs text-gray-400">{displayDigits(total, lang)} {t("عملية إجمالاً", "operations total")}</span>
       </div>
       <div data-testid="pipeline-overview-grid" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 lg:gap-0 p-3 sm:p-4 lg:p-0 lg:divide-x lg:divide-x-reverse divide-gray-100">
         {stageCounts.map((s, i) => {
