@@ -1,5 +1,11 @@
 import { useState } from "react";
+import { useShiftCustodyStatement } from "../../../../../api/queries/employees";
 import { useHeadEmployeeStatement, useHeadEmployees } from "../../../../../api/queries/platform/head";
+import { EmployeeClosedShiftSales } from "../accountant/EmployeeClosedShiftSales";
+import { ManagerDeliveredSalesSection } from "../accountant/ManagerDeliveredSales";
+import { useEmployeeDeliveredSales } from "../accountant/useEmployeeDeliveredSales";
+import { summarizeShiftCustodyCreditDebit } from "../accountant/employeeSalesHelpers";
+import { formatShiftHalalas } from "../../shiftCountEvidence";
 import { useLang } from "../../_shared/LangContext";
 
 function money(halalas: number | undefined, lang: "ar" | "en") {
@@ -20,8 +26,15 @@ export function HeadEmployeeLedger() {
     ? selectedId
     : employees[0]?.id;
   const statementQuery = useHeadEmployeeStatement(selectedIdOrFirst);
+  // The accountant's screenshot is backed by the shift-custody statement, not
+  // the payroll/dues ledger above. Read the same tenant-scoped endpoint for the
+  // head role and include closed-shift sales linked to the employee identity.
+  const custodyQuery = useShiftCustodyStatement(selectedIdOrFirst, { pageSize: 100 });
   const statement = statementQuery.data;
   const selectedEmployee = employees.find(employee => employee.id === selectedIdOrFirst);
+  const selectedCustody = custodyQuery.data;
+  const custodySummary = summarizeShiftCustodyCreditDebit(selectedCustody);
+  const { selectedSales } = useEmployeeDeliveredSales(employees, selectedEmployee, selectedCustody);
   const displayCurrency = (value: number | undefined) => `${money(value, lang)} ${t("ر.س", "SAR")}`;
 
   return (
@@ -69,6 +82,63 @@ export function HeadEmployeeLedger() {
             </div>
           </div>
 
+      {selectedEmployee && (
+        <section data-testid="head-employees-custody-section" className="min-w-0 overflow-hidden rounded-xl border border-purple-200 bg-purple-50/40 p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h4 className="text-sm font-bold text-purple-900">{t("عهدة النقد (تسليمات الشفتات)", "Shift cash custody")}</h4>
+              <p className="mt-1 text-xs text-gray-600">{t("حركات الاستلام والتسليم المرتبطة بهذا الموظف من سجل العهدة الفعلي", "Actual shift cash handovers and receipts linked to this employee")}</p>
+            </div>
+            {custodyQuery.isFetching && <span role="status" className="text-xs text-gray-500">{t("تحديث...", "Updating...")}</span>}
+          </div>
+          {custodyQuery.isError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">{t("تعذر تحميل كشف عهدة الموظف", "Could not load employee shift-custody statement")}</p>}
+          {custodyQuery.isPending && <p role="status" className="rounded-lg bg-white p-4 text-sm text-gray-500">{t("جارٍ تحميل حركات العهدة...", "Loading custody movements...")}</p>}
+          {selectedCustody?.identity_link_state === "unlinked" && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">{t("لا يوجد ربط موثّق بين سجل الموظف وحساب الوردية؛ لذلك لا نعرض حركات غير منسوبة.", "No verified link exists between this employee and a shift account, so unattributed movements are hidden.")}</p>}
+          {selectedCustody && custodySummary.isAvailable && (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              {[
+                [t("رصيد أول المدة", "Opening balance"), custodySummary.openingBalanceHalalas, "border-gray-200 bg-white text-gray-800"],
+                [t("إجمالي الدائن (المسلّم)", "Credit (handed over)"), custodySummary.creditDeliveredHalalas, "border-emerald-100 bg-emerald-50 text-emerald-800"],
+                [t("إجمالي المدين (كاش داخل)", "Debit (cash received)"), custodySummary.debitReceivedHalalas, "border-red-100 bg-red-50 text-red-800"],
+                [t("الرصيد الجاري للعهدة", "Current custody balance"), custodySummary.closingBalanceHalalas, "border-purple-100 bg-purple-50 text-purple-800"],
+              ].map(([label, value, style]) => (
+                <div key={String(label)} className={`min-w-0 rounded-lg border p-3 ${style}`}>
+                  <p className="text-[11px]">{label}</p>
+                  <p className="mt-1 break-words font-mono text-sm font-bold"><bdi>{formatShiftHalalas(Number(value), lang)}</bdi> {t("ر.س", "SAR")}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {custodySummary.pendingDeliveredHalalas > 0 && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">{t("تسليمات معلقة بانتظار التأكيد:", "Handovers awaiting confirmation:")} <bdi className="font-mono font-bold">{formatShiftHalalas(custodySummary.pendingDeliveredHalalas, lang)} {t("ر.س", "SAR")}</bdi></p>}
+          {selectedCustody && custodySummary.isAvailable && selectedCustody.entries.length === 0 && selectedCustody.pending.length === 0 && <p className="rounded-lg bg-white p-4 text-sm text-gray-500">{t("لا توجد حركات عهدة لهذا الموظف ضمن الفترة.", "No shift-custody movements for this employee in the selected scope.")}</p>}
+          {selectedCustody && selectedCustody.entries.length > 0 && (
+            <div className="overflow-hidden rounded-lg border border-purple-100 bg-white">
+              <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-3 py-2 text-xs">
+                <span className="font-bold text-purple-900">{t("سجل حركات العهدة", "Custody movement history")}</span>
+                <span className="text-gray-500">{selectedCustody.pagination.total} {t("حركة", "movements")}</span>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {selectedCustody.entries.map(entry => {
+                  const handedOver = entry.cash_out > 0;
+                  const entryDate = entry.business_date || entry.event_at.slice(0, 10);
+                  return (
+                    <div key={`${entry.source_type}-${entry.source_id}`} className="flex flex-wrap items-center gap-2 px-3 py-3 text-xs">
+                      <span className="min-w-0 flex-1 break-words font-semibold text-gray-900">{lang === "ar" ? entry.label_ar : (entry.label_en || entry.label_ar)}</span>
+                      <span className="text-gray-500">{entryDate}</span>
+                      {entry.counterparty?.name && <span className="text-gray-500">{entry.counterparty.name}</span>}
+                      <span className={`font-mono font-bold ${handedOver ? "text-emerald-700" : "text-red-700"}`}><bdi>{handedOver ? "+" : "−"}{formatShiftHalalas(handedOver ? entry.cash_out : entry.cash_in, lang)} {t("ر.س", "SAR")}</bdi></span>
+                      <span className="w-full break-all text-[10px] text-gray-400">{entry.classification} · {entry.receipt_id || entry.source_id}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {selectedSales?.isCashier && <EmployeeClosedShiftSales employee={selectedEmployee} identity={selectedSales.identity} shifts={selectedSales.cashierShifts} isPending={Boolean(selectedSales.shiftQuery?.isPending)} isError={Boolean(selectedSales.shiftQuery?.isError)} onRetry={selectedSales.shiftQuery ? () => { void selectedSales.shiftQuery?.refetch(); } : undefined} />}
+          {selectedSales?.isManager && <ManagerDeliveredSalesSection employee={selectedEmployee} operations={selectedSales.managerOps} custodyStatement={selectedCustody} isOpsPending={Boolean(selectedSales.salesQuery?.isPending)} isOpsError={Boolean(selectedSales.salesQuery?.isError)} onRetryOps={selectedSales.salesQuery ? () => { void selectedSales.salesQuery?.refetch(); } : undefined} isCustodyPending={custodyQuery.isPending} isCustodyError={custodyQuery.isError} onRetryCustody={() => { void custodyQuery.refetch(); }} />}
+        </section>
+      )}
+
           <div className="min-w-0 overflow-hidden rounded-xl border border-purple-100 bg-white">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
               <div>
@@ -108,3 +178,4 @@ export function HeadEmployeeLedger() {
     </section>
   );
 }
+
