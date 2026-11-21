@@ -29,7 +29,7 @@ import {
 import { Btn } from "../../components/Btn";
 import { Badge } from "../../components/Badge";
 
-export function HeadERP({ ops, markErpPosted }: PageProps) {
+export function HeadERP({ ops, markErpPosted, initialTab = "export" }: PageProps & { initialTab?: "export" | "reports" }) {
   useErpEligibleOperationsPlatform();
   // B-H4: preflight checklist + previous batches log now come from the API.
   const { data: erpPreflight } = useErpPreflightPlatform();
@@ -38,7 +38,7 @@ export function HeadERP({ ops, markErpPosted }: PageProps) {
   const downloadBatchMut = useDownloadERPBatch();  // T10 §B4 — json/csv/xlsx
   const { t, dir, lang } = useLang();
   const [step, setStep] = useState<0 | 1 | 2>(0);
-  const [tab, setTab] = useState<"export" | "reports">("export");
+  const [tab, setTab] = useState<"export" | "reports">(initialTab);
   const [postedBatchId, setPostedBatchId] = useState("");
   const [isPosting, setIsPosting] = useState(false);
 
@@ -93,9 +93,9 @@ export function HeadERP({ ops, markErpPosted }: PageProps) {
 
   return (
     <div className="space-y-5" dir={dir}>
-      <div><h2 className="text-xl font-bold text-gray-800">{t("نظام ERP — التصدير والتقارير", "ERP System — Export & Reports")}</h2>
-        <p className="text-gray-400 text-sm mt-0.5">{t("ترحيل العمليات المعتمدة نهائياً · تقارير ERP المُستوردة (قراءة فقط)", "Post final-approved operations · Imported ERP reports (read-only)")}</p></div>
-      <div className="flex gap-2 border-b border-gray-200">
+      <div className="min-w-0"><h2 className="text-xl font-bold text-gray-800 break-words">{t("نظام ERP — التصدير والتقارير", "ERP System — Export & Reports")}</h2>
+        <p className="text-gray-500 text-sm mt-1 leading-relaxed break-words">{t("ترحيل العمليات المعتمدة نهائياً، ومراجعة التقارير المستوردة من ERP للقراءة فقط.", "Post finally approved operations and review imported ERP reports in read-only mode.")}</p></div>
+      <div className="flex flex-wrap gap-x-2 gap-y-1 border-b border-gray-200">
         {[
           { id: "export" as const, label: `🔗 ${t("التصدير لـ ERP", "Export to ERP")}`, count: toPost.length },
           { id: "reports" as const, label: `📊 ${t("تقارير ERP المُستوردة", "Imported ERP Reports")}`, count: postedOps.length },
@@ -111,7 +111,7 @@ export function HeadERP({ ops, markErpPosted }: PageProps) {
       {tab === "reports" && (
         <div className="space-y-5">
           <div className="rounded-xl overflow-hidden border border-slate-300 shadow-sm">
-            <div className="bg-slate-700 px-5 py-3 flex items-center justify-between">
+            <div className="bg-slate-700 px-4 sm:px-5 py-3 flex flex-wrap items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <span className="text-xl">📊</span>
                 <div>
@@ -124,9 +124,9 @@ export function HeadERP({ ops, markErpPosted }: PageProps) {
                 <Badge className="bg-red-900/40 text-red-300 border border-red-700/50 text-xs">{t("لا تعديل · لا إجراء", "No edits · No actions")}</Badge>
               </div>
             </div>
-            <div className="bg-slate-50 border-t border-slate-200 px-5 py-2.5 flex items-center gap-6 text-[11px] text-slate-500">
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-400 inline-block"></span> {t("هذه السجلات لا تمثل عمليات تشغيلية نشطة", "These records don't represent active operational transactions")}</span>
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-400 inline-block"></span> {t("ASAB يعمل كطبقة تشغيلية قبل ERP · وطبقة تقارير مرجعية بعده", "ASAB works as operational layer before ERP · and reference layer after")}</span>
+            <div className="bg-slate-50 border-t border-slate-200 px-4 sm:px-5 py-2.5 flex flex-col sm:flex-row sm:flex-wrap items-start gap-x-6 gap-y-2 text-[11px] leading-relaxed text-slate-600">
+              <span className="flex items-start gap-1.5 min-w-0"><span className="w-2 h-2 mt-1 rounded-full bg-slate-400 inline-block flex-shrink-0"></span> {t("هذه السجلات لا تمثل عمليات تشغيلية نشطة", "These records don't represent active operational transactions")}</span>
+              <span className="flex items-start gap-1.5 min-w-0"><span className="w-2 h-2 mt-1 rounded-full bg-slate-400 inline-block flex-shrink-0"></span> {t("ASAB يدير العمليات قبل ترحيلها إلى ERP، ثم يعرض بيانات ERP هنا كمرجع.", "ASAB manages operations before ERP posting, then displays ERP data here for reference.")}</span>
             </div>
           </div>
           {postedOps.length === 0 ? (
@@ -137,7 +137,7 @@ export function HeadERP({ ops, markErpPosted }: PageProps) {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
                   <p className="text-3xl font-extrabold font-mono text-slate-800">{postedOps.length}</p>
                   <p className="text-xs text-slate-500 mt-1">{t("عملية مُعالَجة في ERP", "Operations processed in ERP")}</p>
@@ -156,7 +156,8 @@ export function HeadERP({ ops, markErpPosted }: PageProps) {
                   <h3 className="font-bold text-slate-800 text-sm">{t("التقرير المالي الموحد — مُستورد من ERP", "Consolidated Financial Report — Imported from ERP")}</h3>
                   <Badge className="bg-slate-100 text-slate-600 border border-slate-200 text-xs">🔒 {t("قراءة فقط", "Read Only")}</Badge>
                 </div>
-                <table className="w-full">
+                <div className="overflow-x-auto">
+                <table className="w-full min-w-[720px]">
                   <thead className="bg-slate-50">
                     <tr className="text-xs text-slate-500 font-semibold text-right">
                       <th className="px-5 py-3">{t("الموديول", "Module")}</th>
@@ -203,6 +204,7 @@ export function HeadERP({ ops, markErpPosted }: PageProps) {
                     </tr>
                   </tfoot>
                 </table>
+                </div>
               </div>
               <div className="text-xs text-slate-400 text-center py-2">
                 📱 {t("هذه البيانات رُفعت أصلاً من مديري الفروع عبر التطبيق · مرت بمراجعة المحاسبين والاعتماد النهائي · ومُرحَّلة الآن في ERP", "This data was originally uploaded by branch managers via app · went through accountant review and final approval · and is now posted in ERP")}

@@ -13,6 +13,7 @@ import {
 import {
   usePendingOperations,
   useExportHeadOperations,
+  useHeadDashboardPlatform,
 } from "../../../../../api/queries";
 import { useLang } from "../../_shared/LangContext";
 import { fmtAmt } from "../../_shared/formatters";
@@ -25,10 +26,14 @@ import { Badge } from "../../components/Badge";
 import { EmptyState } from "../../components/EmptyState";
 import { KpiCard } from "../../components/KpiCard";
 import { HeadShiftHistory } from "./HeadShiftHistory";
+import { HeadEmployeeLedger } from "./HeadEmployeeLedger";
+import { HeadSalesData, HeadShiftData } from "./HeadOperationalData";
+import { HeadOperationalModuleData } from "./HeadOperationalModuleData";
 
 export function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops, finalApproveOp, rejectOp, bulkApprove }: PageProps & { moduleKey: string }) {
   const { t, lang, dir } = useLang();
   const en = lang === "en";
+  const { data: dashboard } = useHeadDashboardPlatform();
   usePendingOperations({ moduleKey: moduleKey as never });
   const exportHeadOpsMut = useExportHeadOperations();
   const [filters, setFilters] = useState<Filters>({ branch: "", status: "", match: "", search: "" });
@@ -38,6 +43,14 @@ export function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const mk = moduleKey as ModuleKey;
+  const moduleSummary = dashboard?.moduleAggregation?.find(item => item.moduleKey === moduleKey);
+  const recentOperations = moduleSummary?.recentOperations ?? [];
+  const stageCounts = [
+    { key: "pending", label: t("معلقة لمراجعة المحاسب", "Pending accountant review"), value: moduleSummary?.pending ?? 0, cls: "bg-amber-50 text-amber-700" },
+    { key: "approved", label: t("بانتظار اعتمادك", "Awaiting your approval"), value: moduleSummary?.approved ?? 0, cls: "bg-sky-50 text-sky-700" },
+    { key: "final", label: t("معتمدة نهائياً", "Final approved"), value: moduleSummary?.final ?? 0, cls: "bg-emerald-50 text-emerald-700" },
+    { key: "rejected", label: t("مرفوضة", "Rejected"), value: moduleSummary?.rejected ?? 0, cls: "bg-red-50 text-red-700" },
+  ];
   const labels: Record<string, string> = { sales: t("المبيعات", "Sales"), expenses: t("المصروفات", "Expenses"), purchases: t("المشتريات", "Purchases"), inventory: t("المخزون", "Inventory"), shifts: t("الشفتات", "Shifts"), employees: t("كشف الحساب", "Employees"), cash: t("العهد النقدية", "Petty Cash"), waste: t("الهدر والتالف", "Waste"), assets: t("الأصول الثابتة", "Assets") };
   const moduleEmoji: Record<string, string> = { sales: "💰", expenses: "🧾", purchases: "🛒", inventory: "📦", shifts: "🕐", employees: "👥", cash: "💵", waste: "🗑️", assets: "🏢" };
   const label = labels[moduleKey] || moduleKey;
@@ -69,7 +82,7 @@ export function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops
         <span className="text-gray-800 font-semibold">{moduleEmoji[moduleKey] || "📋"} {label}</span>
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{label} — {t("الاعتماد النهائي", "Final Approval")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{t("العمليات الموافق عليها من المحاسبين — تنتظر اعتمادك النهائي", "Operations approved by accountants — awaiting your final approval")}</p>
@@ -84,15 +97,59 @@ export function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <KpiCard label={t("بانتظار الاعتماد", "Awaiting Approval")} value={String(filtered.length)} sub={t("عملية موافق عليها", "approved operations")} icon={<Clock size={18} className="text-amber-600" />} accent="amber" />
         <KpiCard label={t("الإجمالي", "Total")} value={totalAmt != null ? `${(totalAmt / 1000).toFixed(0)}K` : "—"} sub={t("ر.س", "SAR")} icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
         <KpiCard label={t("يوجد فروقات", "Has Differences")} value={String(diffCount)} sub={t("تحتاج مراجعة", "Needs review")} icon={<AlertTriangle size={18} className="text-red-600" />} accent="red" />
         <KpiCard label={t("متطابقة", "Matched")} value={String(exactCount)} sub={t("مطابقة تامة", "Exact match")} icon={<CheckCircle2 size={18} className="text-emerald-600" />} accent="emerald" />
       </div>
 
+      {moduleKey === "sales" && <HeadSalesData />}
+      {moduleKey === "shifts" && <HeadShiftData />}
+      {moduleKey === "employees" && <HeadEmployeeLedger />}
+      {(["expenses", "purchases", "inventory", "cash", "waste", "assets"] as const).includes(moduleKey as "expenses" | "purchases" | "inventory" | "cash" | "waste" | "assets") && (
+        <HeadOperationalModuleData moduleKey={moduleKey as "expenses" | "purchases" | "inventory" | "cash" | "waste" | "assets"} />
+      )}
+
+      {moduleSummary && (
+        <section className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden" aria-label={t("بيانات الموديول حسب المرحلة", "Module data by stage")}>
+          <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60">
+            <h3 className="font-bold text-gray-900 text-sm">{t("كل بيانات الموديول حسب المرحلة", "Module records by workflow stage")}</h3>
+            <p className="text-[11px] text-gray-400 mt-0.5">{t("قائمة الاعتماد أدناه تشمل ما راجعه المحاسب فقط؛ بقية السجلات تظهر هنا حسب مرحلتها.", "The approval queue below contains records reviewed by an accountant; other records appear here under their current stage.")}</p>
+          </div>
+          <div className="px-5 py-3 flex flex-wrap gap-2">
+            {stageCounts.map(stage => (
+              <span key={stage.key} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${stage.cls}`}>
+                {stage.label}: {stage.value}
+              </span>
+            ))}
+          </div>
+          {recentOperations.length > 0 ? (
+            <div className="border-t border-gray-100 divide-y divide-gray-50">
+              {recentOperations.map(operation => (
+                <div key={operation.id} className="px-5 py-2.5 flex flex-wrap items-center gap-3 text-xs">
+                  <span className="font-mono text-gray-500" title={operation.id}>{operation.id.length > 12 ? `${operation.id.slice(0, 8)}…` : operation.id}</span>
+                  <span className="text-gray-700">{operation.branch}</span>
+                  <span className="flex-1" />
+                  <span className="text-gray-500">{({
+                    pending: t("معلق", "Pending"),
+                    approved: t("مراجع", "Reviewed"),
+                    "final-approved": t("معتمد نهائياً", "Final approved"),
+                    rejected: t("مرفوض", "Rejected"),
+                  } as Record<string, string>)[operation.status] ?? operation.status}</span>
+                  <span className="font-mono font-bold text-gray-700">{fmtAmt(operation.amountHalalas / 100)} {t("ر.س", "SAR")}</span>
+                  {operation.operationDate && <span className="text-[10px] text-gray-400">{new Date(operation.operationDate).toLocaleDateString(en ? "en" : "ar")}</span>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="px-5 pb-4 text-xs text-gray-400">{t("لا توجد عمليات مسجلة لهذا الموديول.", "No operations are recorded for this module.")}</p>
+          )}
+        </section>
+      )}
+
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir={dir}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-3">
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المحاسب المراجع", "Reviewing Accountant")}</label>
             <select value={accFilter} onChange={e => setAccFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
@@ -124,7 +181,7 @@ export function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops
             </select>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("من تاريخ", "From Date")}</label>
             <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" dir="ltr" />
@@ -162,19 +219,19 @@ export function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops
           : filtered.map(op => {
             const accountant = getAcc(op);
             return (
-              <div key={op.id} className={`px-5 py-4 flex items-center gap-4 flex-wrap sm:flex-nowrap border-b border-gray-100 last:border-0 hover:bg-gray-50/60 ${op.match === "diff" ? "border-r-4 border-r-red-400" : ""}`}>
+              <div key={op.id} className={`px-5 py-4 flex flex-col xl:flex-row xl:items-center gap-3 xl:gap-4 border-b border-gray-100 last:border-0 hover:bg-gray-50/60 ${op.match === "diff" ? "border-r-4 border-r-red-400" : ""}`}>
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-400 to-cyan-400 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">{accountant[0]}</div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 w-full xl:w-auto">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-sm text-gray-800 break-words">{op.branch}</span>
-                    <span className="text-xs font-mono text-gray-400">{op.id}</span>
+                    <span className="text-xs font-mono text-gray-400 break-all">{op.id}</span>
                     <Badge className={`${MATCH_CFG[op.match].cls} border text-[10px]`}>{en ? (op.match === "exact" ? "Exact" : "Diff") : MATCH_CFG[op.match].label}</Badge>
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5">{t("راجعه:", "Reviewed by:")} <span className="text-purple-600 font-medium">{accountant}</span> · <span>⏰ {op.timeAgo}</span></p>
                 </div>
                 <span className="font-mono font-bold text-gray-800 tabular-nums">{fmtAmt(op.amount)} {t("ر.س", "SAR")}</span>
-                <div className="flex gap-1.5">
-                  <Btn size="sm" variant="success" onClick={() => finalApproveOp(op.id)}><CheckCircle2 size={12} /> {t("اعتماد", "Approve")}</Btn>
+                <div className="flex gap-1.5 flex-wrap w-full xl:w-auto">
+                  <Btn size="sm" variant="success" onClick={() => { void Promise.resolve(finalApproveOp(op.id)).catch(() => {}); }}><CheckCircle2 size={12} /> {t("اعتماد", "Approve")}</Btn>
                   {isPkg6SalesReport(op) ? <span className="text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</span> : <Btn size="sm" variant="danger" onClick={() => { setDetailId(op.id); setModal("reject"); }}><XCircle size={12} /> {t("رفض", "Reject")}</Btn>}
                 </div>
               </div>

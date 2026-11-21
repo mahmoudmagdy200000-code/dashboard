@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronsRight, Lock } from "lucide-react";
+import { CheckCircle2, ChevronsRight, FileText, Lock } from "lucide-react";
 import {
   useFinalApprovedOperations,
   useExportHeadOperations,
@@ -9,6 +9,7 @@ import type { PageProps } from "../../_shared/types";
 import { Card } from "../../components/Card";
 import { Badge } from "../../components/Badge";
 import { EmptyState } from "../../components/EmptyState";
+import { ModuleStatusCounts } from "./ModuleStatusCounts";
 
 export function HeadApproved({ ops }: PageProps) {
   useFinalApprovedOperations();
@@ -19,13 +20,17 @@ export function HeadApproved({ ops }: PageProps) {
   const pendingErp = approved.filter(o => !o.erpPosted).length;
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("المعتمدة نهائياً", "Final Approved")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{approved.length} {t("سجل", "records")} · {erpPostedCount} {t("مُرحَّل لـ ERP", "Posted to ERP")} · {pendingErp} {t("في الانتظار", "pending")}</p>
         </div>
+        <button onClick={() => exportHeadOpsMut.mutate({ status: "final-approved", format: "xlsx" })}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 transition-all">
+          <FileText size={12} /> Excel
+        </button>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
           <CheckCircle2 size={24} className="text-emerald-600 flex-shrink-0" />
           <div><p className="font-extrabold text-emerald-700 text-2xl font-mono">{approved.length}</p><p className="text-emerald-600 text-xs">{t("معتمد نهائياً", "Final Approved")}</p></div>
@@ -38,16 +43,17 @@ export function HeadApproved({ ops }: PageProps) {
           </div>
         </div>
       </div>
+      <ModuleStatusCounts ops={approved} />
       <Card title={`${approved.length} ${t("عملية معتمدة نهائياً", "final approved operations")}`}>
         {approved.length === 0
           ? <EmptyState icon="📋" title={t("لا توجد عمليات معتمدة", "No Approved Operations")} desc={t("بعد اعتماد العمليات تظهر هنا", "Approved operations will appear here")} />
           : approved.map(op => (
-            <div key={op.id} className={`px-5 py-4 flex items-center gap-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 ${op.erpPosted ? "bg-indigo-50/30" : ""}`}>
+            <div key={op.id} className={`px-5 py-4 flex flex-col xl:flex-row xl:items-center gap-3 xl:gap-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 ${op.erpPosted ? "bg-indigo-50/30" : ""}`}>
               <Badge className="bg-purple-50 text-purple-700 border border-purple-100 text-xs font-bold">{op.moduleLabel}</Badge>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 w-full xl:w-auto">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-sm text-gray-800 break-words">{op.branch}</span>
-                  <span className="text-xs font-mono text-gray-400">{op.id}</span>
+                  <span className="text-xs font-mono text-gray-400 break-all">{op.id}</span>
                   {op.isCorrection && <Badge className="bg-amber-50 text-amber-700 border border-amber-200 text-xs">{t("تعديل على", "Correction on")} {op.correctiveRef}</Badge>}
                 </div>
                 <div className="flex items-center gap-2 mt-1.5">
@@ -58,7 +64,7 @@ export function HeadApproved({ ops }: PageProps) {
                   }
                 </div>
               </div>
-              <span className="font-mono font-extrabold text-gray-800 tabular-nums">{fmtAmt(op.amount)} {t("ر.س", "SAR")}</span>
+              <span className="font-mono font-extrabold text-gray-800 tabular-nums self-start xl:self-auto">{fmtAmt(op.amount)} {t("ر.س", "SAR")}</span>
             </div>
           ))
         }

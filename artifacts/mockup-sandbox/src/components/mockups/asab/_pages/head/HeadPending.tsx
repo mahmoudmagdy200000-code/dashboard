@@ -76,6 +76,7 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
   const allVal = t("الكل", "All");
   if (accFilter !== allVal) filtered = filtered.filter(o => getAcc(o) === accFilter);
   if (brandFilter !== allVal) filtered = filtered.filter(o => o.brandName === brandFilter);
+  const finalizable = filtered.filter(o => o.moduleKey !== "expenses");
   const totalAmt = filtered.some(o => o.amount == null) ? null : filtered.reduce((s, o) => s + (o.amount ?? 0), 0);
   const hasFilters = accFilter !== allVal || brandFilter !== allVal || !!filters.branch || !!filters.match || !!filters.search;
 
@@ -100,28 +101,30 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
 
   const OpRow = ({ op }: { op: Op }) => {
     const accountant = getAcc(op);
+    const readOnlyExpense = op.moduleKey === "expenses";
     const isCond = conditionalId === op.id;
     const wasCond = conditionalApproved.has(op.id);
     return (
       <div key={op.id} className={`border-b border-gray-100 last:border-0 ${op.match === "diff" ? "border-r-4 border-r-red-400" : ""}`}>
-        <div className="px-4 sm:px-5 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 hover:bg-gray-50/60">
-          <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+        <div className="px-4 sm:px-5 py-3 sm:py-4 flex flex-col xl:flex-row xl:items-center gap-3 xl:gap-4 hover:bg-gray-50/60">
+          <div className="flex items-center gap-3 sm:gap-4 w-full xl:w-auto">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-400 to-cyan-400 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">{accountant[0]}</div>
             {groupBy !== "module" && <Badge className="bg-purple-50 text-purple-700 border border-purple-100 text-xs flex-shrink-0">{op.moduleLabel}</Badge>}
             {groupBy !== "accountant" && <Badge className="bg-blue-50 text-blue-700 border border-blue-100 text-[10px] flex-shrink-0">{accountant}</Badge>}
           </div>
-          <div className="flex-1 min-w-0 w-full sm:w-auto">
+          <div className="flex-1 min-w-0 w-full xl:w-auto">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-sm text-gray-800 break-words">{op.branch}</span>
-              <span className="text-xs font-mono text-gray-400">{op.id}</span>
+              <span className="text-xs font-mono text-gray-400 break-all">{op.id}</span>
               <Badge className={`${MATCH_CFG[op.match].cls} border text-[10px]`}>{en ? (op.match === "exact" ? "Exact" : "Diff") : MATCH_CFG[op.match].label}</Badge>
               {wasCond && <span className="text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-bold">⚡ {t("اعتماد مشروط", "Conditional Approval")}</span>}
             </div>
             <p className="text-xs text-gray-400 mt-0.5">⏰ {op.timeAgo}</p>
           </div>
-          <span className="font-mono font-bold text-gray-800 tabular-nums">{fmtAmt(op.amount)} {t("ر.س", "SAR")}</span>
-          <div className="flex gap-1.5 flex-wrap sm:flex-nowrap flex-shrink-0 w-full sm:w-auto justify-end">
-            <Btn size="sm" variant="success" onClick={() => finalApproveOp(op.id)}><CheckCircle2 size={12} /> {t("اعتماد", "Approve")}</Btn>
+          <span className="font-mono font-bold text-gray-800 tabular-nums self-start xl:self-auto">{fmtAmt(op.amount)} {t("ر.س", "SAR")}</span>
+          <div className="flex gap-1.5 flex-wrap flex-shrink-0 w-full xl:w-auto justify-start xl:justify-end">
+            {readOnlyExpense ? <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">{t("قرار المصروف لدى مالك العلامة", "Expense decisions belong to the brand owner")}</span> : <>
+            <Btn size="sm" variant="success" onClick={() => { void Promise.resolve(finalApproveOp(op.id)).catch(() => {}); }}><CheckCircle2 size={12} /> {t("اعتماد", "Approve")}</Btn>
             <button onClick={() => { setConditionalId(isCond ? null : op.id); setApprovalComment(""); }}
               className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border font-semibold transition-all ${isCond ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"}`}>
               <AlertTriangle size={11} /> {t("مشروط", "Conditional")}
@@ -145,6 +148,7 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
                 ))}
               </div>
             </div>
+            </>}
           </div>
         </div>
         {op.workflowKind === "sal_day" && <WorkdayReviewDetails id={op.id} />}
@@ -184,7 +188,7 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
 
   return (
     <div className="space-y-5" dir={dir}>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("بانتظار الاعتماد النهائي", "Awaiting Final Approval")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{filtered.length} {t("عملية وافق عليها المحاسبون", "operations approved by accountants")} · {fmtAmt(totalAmt)} {t("ر.س إجمالياً", "SAR total")}</p>
@@ -195,18 +199,18 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 transition-all">
             <FileText size={11} /> Excel
           </button>
-          {filtered.length > 0 && <Btn variant="success" onClick={() => bulkApprove(filtered.map(o => o.id))}>✅ {t("اعتماد الكل", "Approve All")} ({filtered.length})</Btn>}
+          {finalizable.length > 0 && <Btn variant="success" onClick={() => { void Promise.resolve(bulkApprove(finalizable.map(o => o.id))).catch(() => {}); }}>✅ {t("اعتماد الكل", "Approve All")} ({finalizable.length})</Btn>}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
         <KpiCard label={t("بانتظار الاعتماد", "Awaiting Approval")} value={String(filtered.length)} sub={t("جميع الموديولات", "All modules")} icon={<Clock size={18} className="text-amber-600" />} accent="amber" />
         <KpiCard label={t("الإجمالي", "Total")} value={totalAmt != null ? `${(totalAmt / 1000).toFixed(0)}K` : "—"} valueLabel={totalAmt != null ? t("تقريبي", "Approximate") : undefined} sub={t("ر.س", "SAR")} icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
         <KpiCard label={t("يوجد فروقات", "Has Differences")} value={String(filtered.filter(o => o.match === "diff").length)} sub={t("تحتاج مراجعة إضافية", "Needs further review")} icon={<AlertTriangle size={18} className="text-red-600" />} accent="red" />
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir={dir}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-3">
           <div>
             <label htmlFor="head-pending-accountant-filter" className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المحاسب المراجع", "Reviewing Accountant")}</label>
             <select id="head-pending-accountant-filter" value={accFilter} onChange={e => setAccFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
@@ -284,6 +288,7 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
                 const grpAmt = grp.ops.reduce((s, o) => s + (o.amount ?? 0), 0);
                 const isCollapsed = collapsedGroups.has(grp.key);
                 const diffCount = grp.ops.filter(o => o.match === "diff").length;
+                const finalizableGroup = grp.ops.filter(o => o.moduleKey !== "expenses");
                 return (
                   <div key={grp.key} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                     <div className="w-full px-4 sm:px-5 py-3.5 bg-gray-50/60 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2 hover:bg-gray-100/60 transition-colors">
@@ -295,9 +300,9 @@ export function HeadPending({ navigate, setModal, setDetailId, ops, finalApprove
                       </button>
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <span className="font-mono text-sm font-bold text-gray-700">{fmtAmt(grpAmt)} {t("ر.س", "SAR")}</span>
-                        <Btn size="sm" variant="success" onClick={() => bulkApprove(grp.ops.map(o => o.id))}>
-                          <CheckCircle2 size={11} /> {t("اعتماد المجموعة", "Approve Group")}
-                        </Btn>
+                        {finalizableGroup.length > 0 && <Btn size="sm" variant="success" onClick={() => { void Promise.resolve(bulkApprove(finalizableGroup.map(o => o.id))).catch(() => {}); }}>
+                          <CheckCircle2 size={11} /> {t("اعتماد المجموعة", "Approve Group")} ({finalizableGroup.length})
+                        </Btn>}
                       </div>
                     </div>
                     {!isCollapsed && grp.ops.map(op => <OpRow key={op.id} op={op} />)}

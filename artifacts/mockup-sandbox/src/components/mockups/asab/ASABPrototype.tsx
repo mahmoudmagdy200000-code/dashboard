@@ -690,6 +690,11 @@ const MODULE_TO_NAV: Record<ModuleKey, string> = {
   sales: "acc-sales", expenses: "acc-expenses", purchases: "acc-purchases",
   inventory: "acc-inventory", shifts: "acc-shifts", employees: "acc-employees", cash: "acc-cash",
 };
+const HEAD_NAV_TO_MODULE: Record<string, string> = {
+  "head-sales": "sales", "head-expenses": "expenses", "head-purchases": "purchases",
+  "head-inventory": "inventory", "head-waste": "waste", "head-assets": "assets",
+  "head-shifts": "shifts", "head-employees": "employees", "head-cash": "cash",
+};
 
 
 // Two-letter avatar from a real name ("أحمد محمد" → "أم"); falls back to the first two chars.
@@ -1346,6 +1351,7 @@ function Sidebar({ role, ops, page, navigate, logout, collapsed, setCollapsed, m
 }) {
   const { lang, setLang, dir } = useLang();
   const { user } = useAuth();
+  const { data: headReminderRows = [] } = useHeadRemindersPlatform({ enabled: role === "head" });
   const tNav = (ar: string) => lang === "ar" ? ar : (EN_NAV_LABELS[ar] || ar);
   const tSection = (ar: string) => lang === "ar" ? ar : (EN_NAV_SECTIONS[ar] || ar);
   const baseProfile = lang === "ar" ? ROLE_PROFILES[role] : { ...ROLE_PROFILES[role], ...EN_ROLE_LABELS[role] };
@@ -1376,7 +1382,15 @@ function Sidebar({ role, ops, page, navigate, logout, collapsed, setCollapsed, m
     ops.filter(o => o.status === "pending").forEach(o => { counts[MODULE_TO_NAV[o.moduleKey]] = (counts[MODULE_TO_NAV[o.moduleKey]] || 0) + 1; });
     return counts;
   }, [ops]);
-  const headPendingCount = useMemo(() => ops.filter(o => o.status === "approved").length, [ops]);
+  const headActionableByModule = useMemo(() => {
+    const counts: Record<string, number> = {};
+    ops.filter(o => o.status === "approved" && o.moduleKey !== "expenses").forEach(o => {
+      counts[o.moduleKey] = (counts[o.moduleKey] ?? 0) + 1;
+    });
+    return counts;
+  }, [ops]);
+  const headPendingCount = useMemo(() => Object.values(headActionableByModule).reduce((total, count) => total + (count ?? 0), 0), [headActionableByModule]);
+  const openHeadReminderCount = headReminderRows.filter(reminder => !reminder.done).length;
   const totalAccPending = useMemo(() => ops.filter(o => o.status === "pending").length, [ops]);
 
   // Admin sidebar badges = live "needs attention" counts (not static seeds). Gated on the
@@ -1403,7 +1417,12 @@ function Sidebar({ role, ops, page, navigate, logout, collapsed, setCollapsed, m
       if (item.id === "acc-shifts") return undefined;
       return pendingByModule[item.id] || undefined;
     }
-    if (role === "head" && item.id === "head-pending") return headPendingCount || undefined;
+    if (role === "head") {
+      if (item.id === "head-pending") return headPendingCount || undefined;
+      if (item.id === "head-reminders") return openHeadReminderCount || undefined;
+      const moduleKey = HEAD_NAV_TO_MODULE[item.id];
+      if (moduleKey) return headActionableByModule[moduleKey] || undefined;
+    }
     if (isAdmin) return adminBadges[item.id] || undefined;
     return item.badge || undefined;
   };

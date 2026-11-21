@@ -621,6 +621,7 @@ export interface PlatformEmployeesFilter {
   brandId?: string;
   active?: boolean;
   search?: string;
+  pageSize?: number;
 }
 
 export interface PlatformCashFilter {

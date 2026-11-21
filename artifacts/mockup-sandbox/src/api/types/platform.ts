@@ -428,6 +428,29 @@ export interface PlatformHeadDashboard {
     thisWeek: number;
     lastWeek: number;
   }>;
+  branchesCount?: number;
+  moduleAggregation?: Array<{
+    moduleKey: string;
+    pending?: number;
+    approved?: number;
+    final?: number;
+    rejected?: number;
+    erp?: number;
+    total?: number;
+    totalAmount?: number;
+    recentOperations?: Array<{
+      id: string;
+      branch: string;
+      status: "pending" | "approved" | "final-approved" | "rejected";
+      amountHalalas: number;
+      operationDate?: string | null;
+      erpPosted: boolean;
+    }>;
+    label?: string;
+    icon?: string;
+    state?: string;
+    counts?: { pending: number; approved: number; final: number; erp: number };
+  }>;
   pipeline?: Array<{ stageId: string; count: number }>;
   // T10 §A1 — real per-brand month performance vs target.
   brandPerformance?: Array<{
@@ -446,14 +469,6 @@ export interface PlatformHeadDashboard {
   salesDeltaPct?: number;
   awaitingFinalApprovalPreview?: unknown[];
   exceptions?: unknown[];
-  moduleAggregation?: Array<{
-    moduleKey: string;
-    label: string;
-    icon?: string;
-    state: string;
-    counts: { pending: number; approved: number; final: number; erp: number };
-    totalAmount: number;
-  }>;
 }
 
 // ─── ERP batches (T10 §B) ─────────────────────────────────────────────────────
@@ -539,7 +554,7 @@ export interface PlatformHeadReminder {
   priority?: string;
   refType?: string;
   refId?: string;
-  isDone: boolean;
+  done: boolean;
   dueAt?: string;
   createdAt: string;
 }

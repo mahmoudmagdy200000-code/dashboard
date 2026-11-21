@@ -39,7 +39,10 @@ export function HeadApprovalTab({ ops, finalApproveOp, rejectOp, setModal, setDe
   const groups = Array.from(groupMap.entries()).map(([accountant, gops], i) => ({
     key: `g${i}`,
     accountant,
-    module: [...new Set(gops.map(o => o.moduleLabel))].join(" · "),
+    moduleCounts: Array.from(gops.reduce((counts, op) => {
+      counts.set(op.moduleLabel, (counts.get(op.moduleLabel) ?? 0) + 1);
+      return counts;
+    }, new Map<string, number>()), ([label, count]) => ({ label, count })),
     ops: gops,
   })).filter(g => g.ops.length > 0);
   return (
@@ -51,18 +54,22 @@ export function HeadApprovalTab({ ops, finalApproveOp, rejectOp, setModal, setDe
       {awaitingHead.length === 0 && <EmptyState icon="✅" title={t("تم اعتماد جميع العمليات", "All Operations Approved")} desc={t("لا توجد عمليات بانتظار اعتمادك النهائي", "No operations awaiting your final approval")} />}
       {groups.map(g => (
         <div key={g.key} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-gray-50 border-b border-gray-100" onClick={() => setExpanded(expanded === g.key ? null : g.key)}>
+          <div className="flex flex-wrap items-center gap-3 px-4 sm:px-5 py-4 cursor-pointer hover:bg-gray-50 border-b border-gray-100" onClick={() => setExpanded(expanded === g.key ? null : g.key)}>
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-400 to-cyan-400 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">{g.accountant[0]}</div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-[12rem]">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-bold text-gray-800 text-sm">{g.accountant}</span>
-                <Badge className="bg-blue-50 text-blue-700">{g.module}</Badge>
+                {g.moduleCounts.map(module => (
+                  <Badge key={module.label} className="bg-blue-50 text-blue-700 whitespace-normal break-words">
+                    {module.label}<span className="ms-1 inline-flex min-w-5 justify-center rounded-full bg-white/80 px-1 text-[10px] font-bold">{module.count}</span>
+                  </Badge>
+                ))}
                 {g.ops.some(o => o.match === "diff") && <Badge className="bg-red-50 text-red-700">⚠ {t("يوجد فروق", "Differences Found")}</Badge>}
               </div>
               <p className="text-xs text-gray-400 mt-0.5">{g.ops.length} {t("عمليات موافق عليها", "approved operations")}</p>
             </div>
-            <span className="font-mono font-bold text-purple-700">{fmtAmt(g.ops.reduce((s, o) => s + (o.amount ?? 0), 0))} {t("ر.س", "SAR")}</span>
-            <div className="flex items-center gap-2">
+            <span className="font-mono font-bold text-purple-700 shrink-0 whitespace-nowrap">{fmtAmt(g.ops.reduce((s, o) => s + (o.amount ?? 0), 0))} {t("ر.س", "SAR")}</span>
+            <div className="flex items-center gap-2 shrink-0 ms-auto">
               <Btn size="sm" variant="success" onClick={e => { e.stopPropagation(); bulkApprove(g.ops.map(o => o.id)); }}><CheckCircle2 size={13} /> {t("اعتماد الكل", "Approve All")}</Btn>
               {expanded === g.key ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
             </div>
@@ -70,14 +77,14 @@ export function HeadApprovalTab({ ops, finalApproveOp, rejectOp, setModal, setDe
           {expanded === g.key && (
             <div>
               {g.ops.map(op => (
-                <div key={op.id} className="flex items-center gap-3 flex-wrap sm:flex-nowrap px-5 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                <div key={op.id} className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 sm:px-5 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
                   <span className="font-mono text-xs text-purple-600 font-semibold w-24 flex-shrink-0">{op.id}</span>
-                  <span className="text-sm text-gray-700 flex-1 min-w-0 break-words">{op.branch}</span>
-                  <Badge className={`${MATCH_CFG[op.match].cls} border`}>{en ? (op.match === "exact" ? "Exact" : "Diff") : MATCH_CFG[op.match].label}</Badge>
-                  <Badge className={STATUS_CFG[op.status].cls}>{en ? (EN_STATUS_CFG[op.status] || STATUS_CFG[op.status].label) : STATUS_CFG[op.status].label}</Badge>
-                  <span className="font-mono font-semibold text-gray-800">{fmtAmt(op.amount)} {t("ر.س", "SAR")}</span>
-                  <div className="flex gap-1">
-                    <button onClick={() => finalApproveOp(op.id)} className="p-1.5 rounded hover:bg-emerald-50"><CheckCircle2 size={13} className="text-emerald-600" /></button>
+                  <span className="text-sm text-gray-700 flex-1 min-w-[10rem] break-words">{op.branch}</span>
+                  <Badge className={`${MATCH_CFG[op.match].cls} border shrink-0 whitespace-nowrap`}>{en ? (op.match === "exact" ? "Exact" : "Diff") : MATCH_CFG[op.match].label}</Badge>
+                  <Badge className={`${STATUS_CFG[op.status].cls} shrink-0 whitespace-nowrap`}>{en ? (EN_STATUS_CFG[op.status] || STATUS_CFG[op.status].label) : STATUS_CFG[op.status].label}</Badge>
+                  <span className="font-mono font-semibold text-gray-800 shrink-0 whitespace-nowrap">{fmtAmt(op.amount)} {t("ر.س", "SAR")}</span>
+                  <div className="flex gap-1 shrink-0 ms-auto">
+                    <button onClick={() => { void Promise.resolve(finalApproveOp(op.id)).catch(() => {}); }} className="p-1.5 rounded hover:bg-emerald-50"><CheckCircle2 size={13} className="text-emerald-600" /></button>
                     {isPkg6SalesReport(op) ? <span className="text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</span> : <button onClick={() => { setDetailId(op.id); setModal("reject"); }} className="p-1.5 rounded hover:bg-red-50"><XCircle size={13} className="text-red-500" /></button>}
                   </div>
                 </div>

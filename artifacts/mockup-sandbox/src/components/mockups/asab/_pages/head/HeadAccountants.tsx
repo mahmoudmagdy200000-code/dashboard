@@ -27,7 +27,7 @@ export function HeadAccountants({ }: PageProps) {
         <Btn size="sm" onClick={() => exportHeadOpsMut.mutate({ format: "xlsx" })}><Download size={12} /> {t("تصدير عمليات المحاسبين", "Export Accountant Operations")}</Btn>
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3 text-center">
           <p className="text-2xl font-extrabold font-mono text-gray-800">{accountants.reduce((s, a) => s + a.reviewed, 0)}</p>
           <p className="text-[11px] text-gray-400 mt-0.5">{t("إجمالي العمليات المراجعة", "Total Reviewed")}</p>
@@ -46,14 +46,14 @@ export function HeadAccountants({ }: PageProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {accountants.map((acc, i) => (
           <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-cyan-400 flex items-center justify-center text-white font-bold">{acc.name[0]}</div>
-                <div className="flex-1">
-                  <p className="font-bold text-gray-800 text-sm">{acc.name}</p>
+              <div className="flex min-w-0 items-start gap-3 mb-3">
+                <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-purple-400 to-cyan-400 flex items-center justify-center text-white font-bold">{acc.name[0]}</div>
+                <div className="min-w-0 flex-1">
+                  <p className="break-words font-bold text-gray-800 text-sm">{acc.name}</p>
                   <p className="text-xs text-gray-400">{acc.branches} {t("فرع مخصص", "branches assigned")}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
@@ -65,20 +65,20 @@ export function HeadAccountants({ }: PageProps) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-1.5 text-center mb-3">
-                <div className="bg-gray-50 rounded-lg p-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-center mb-3">
+                <div className="min-w-0 bg-gray-50 rounded-lg p-2">
                   <p className="text-[9px] text-gray-400">{t("المراجَعة", "Reviewed")}</p>
                   <p className="font-bold text-gray-700 text-sm">{acc.reviewed}</p>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-2">
+                <div className="min-w-0 bg-gray-50 rounded-lg p-2">
                   <p className="text-[9px] text-gray-400">{t("معتمدة", "Approved")}</p>
                   <p className="font-bold text-emerald-700 text-sm">{acc.approved}</p>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-2">
+                <div className="min-w-0 bg-gray-50 rounded-lg p-2">
                   <p className="text-[9px] text-gray-400">{t("معلقة", "Pending")}</p>
                   <p className={`font-bold text-sm ${acc.pending > 5 ? "text-red-600" : "text-amber-600"}`}>{acc.pending}</p>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-2">
+                <div className="min-w-0 bg-gray-50 rounded-lg p-2">
                   <p className="text-[9px] text-gray-400">{t("معدل", "Rate")}</p>
                   <p className={`font-bold text-sm ${acc.rate >= 90 ? "text-emerald-600" : acc.rate >= 70 ? "text-amber-600" : "text-red-600"}`}>{acc.rate}%</p>
                 </div>

@@ -10,10 +10,12 @@ import type {
   PlatformHeadDashboard,
   PlatformHeadReminder,
 } from "../../types/platform";
+import type { DayCompletenessEntry, Employee, EmployeeStatement, SalesKpis, ShiftConfig } from "../../types/company";
 import {
   queryKeys,
   type PlatformErpFilter,
   type PlatformOpsFilter,
+  type PlatformEmployeesFilter,
 } from "../keys";
 
 // ─── Dashboard ──────────────────────────────────────────────────────────────
@@ -25,6 +27,134 @@ export function useHeadDashboardPlatform() {
       return res.data;
     },
     staleTime: 15_000,
+  });
+}
+
+// Read-only source records for the accountant modules shown to the head.
+// Every URL below is backed by the tenant-scoped accountant read surface, whose
+// route middleware explicitly includes the head role.
+export type HeadOperationalModule = "expenses" | "purchases" | "inventory" | "cash" | "waste" | "assets";
+
+const headModuleReadPaths: Record<HeadOperationalModule, string> = {
+  expenses: "/accountant/operations",
+  purchases: "/purchases",
+  inventory: "/accountant/inventory",
+  cash: "/company/me/cash-custody",
+  waste: "/accountant/waste",
+  assets: "/accountant/assets",
+};
+
+export function useHeadOperationalModule(moduleKey: HeadOperationalModule) {
+  return useQuery({
+    queryKey: ["platform", "head", "operational-module", moduleKey],
+    queryFn: async () => {
+      const res = await api.get<unknown>(headModuleReadPaths[moduleKey], {
+        params: moduleKey === "purchases"
+          ? { page: 1, pageSize: 100 }
+          : moduleKey === "expenses"
+            ? { moduleKey: "expenses", page: 1, pageSize: 100 }
+            : undefined,
+      });
+      return res.data;
+    },
+    staleTime: 15_000,
+  });
+}
+
+export function useHeadCashCustodyLedger(custodyId?: string) {
+  return useQuery({
+    queryKey: ["platform", "head", "cash-custody-ledger", custodyId ?? ""],
+    enabled: Boolean(custodyId),
+    queryFn: async () => {
+      const res = await api.get<unknown>(
+        `/company/me/cash-custody/${encodeURIComponent(custodyId!)}/transactions`,
+      );
+      return res.data;
+    },
+    staleTime: 15_000,
+  });
+}
+
+// Head read-only module data uses the same tenant-scoped accountant reads.
+// These routes explicitly allow the head role; no write actions are exposed here.
+export function useHeadSalesKpis(date?: string) {
+  return useQuery({
+    queryKey: ["platform", "head", "sales-kpis", date ?? "today"],
+    queryFn: async () => {
+      const res = await api.get<SalesKpis>("/accountant/sales/kpis", {
+        params: date ? { date } : undefined,
+      });
+      return res.data;
+    },
+    staleTime: 15_000,
+  });
+}
+
+export function useHeadSalesDayCompleteness(days = 7) {
+  return useQuery({
+    queryKey: ["platform", "head", "sales-day-completeness", days],
+    queryFn: async () => {
+      const res = await api.get<Page<DayCompletenessEntry> | DayCompletenessEntry[]>(
+        "/accountant/sales/day-completeness",
+        { params: { days } },
+      );
+      return Array.isArray(res.data) ? res.data : (res.data.data ?? []);
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useHeadSalesOperations(pageSize = 100) {
+  return useQuery({
+    queryKey: ["platform", "head", "sales-operations", pageSize],
+    queryFn: async () => {
+      const res = await api.get<Page<Operation> | Operation[]>("/accountant/operations", {
+        params: { moduleKey: "sales", page: 1, pageSize },
+      });
+      return Array.isArray(res.data) ? res.data : (res.data.data ?? []);
+    },
+    staleTime: 15_000,
+  });
+}
+
+export function useHeadShiftConfigs(scope: "brand" | "branch" | "all" = "all") {
+  return useQuery({
+    queryKey: ["platform", "head", "shift-configs", scope],
+    queryFn: async () => {
+      const res = await api.get<Page<ShiftConfig> | ShiftConfig[]>(
+        "/accountant/shifts/configs",
+        { params: { scope } },
+      );
+      return Array.isArray(res.data) ? res.data : (res.data.data ?? []);
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useHeadEmployees(filter: PlatformEmployeesFilter = {}) {
+  return useQuery({
+    queryKey: queryKeys.platformEmployees(filter),
+    queryFn: async () => {
+      const { search, ...params } = filter;
+      const res = await api.get<Page<Employee> | Employee[]>("/accountant/employees", {
+        params: { ...params, q: search?.trim() || undefined },
+      });
+      return Array.isArray(res.data) ? res.data : (res.data.data ?? []);
+    },
+  });
+}
+
+export function useHeadEmployeeStatement(id?: string, month?: string) {
+  return useQuery({
+    queryKey: [...queryKeys.platformEmployeeStatement(id ?? ""), month ?? ""],
+    enabled: Boolean(id),
+    queryFn: async () => {
+      const res = await api.get<EmployeeStatement>(
+        `/accountant/employees/${encodeURIComponent(id!)}/statement`,
+        { params: month ? { month } : undefined },
+      );
+      return res.data;
+    },
   });
 }
 
@@ -43,9 +173,10 @@ export function useAccountantsPerformancePlatform() {
 }
 
 // ─── Reminders ──────────────────────────────────────────────────────────────
-export function useHeadRemindersPlatform() {
+export function useHeadRemindersPlatform(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: queryKeys.platformHeadReminders,
+    enabled: options.enabled ?? true,
     queryFn: async () => {
       const res = await api.get<
         Page<PlatformHeadReminder> | PlatformHeadReminder[]
