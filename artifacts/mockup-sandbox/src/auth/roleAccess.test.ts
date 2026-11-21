@@ -7,6 +7,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MutationObserver, QueryClient, QueryClientProvider, QueryObserver, useQueryClient } from "@tanstack/react-query";
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval } from "../components/mockups/asab/headReviewGuards.ts";
 import { getSalesActionPolicy } from "../components/mockups/asab/salesActionGuards.ts";
+import { displayDigits } from "../components/mockups/asab/_shared/displayDigits.ts";
+import { formatDateLong } from "../components/mockups/asab/_shared/formatters.ts";
 import {
   canOpenDashboard, canRunAccountantOperations, canRunShiftConfigs, canRunShiftHistory,
   chooseGrantedRole, companyRoles, grantedRoleKeys, hasRoleGrant, pageForRole,
@@ -531,9 +533,9 @@ test("actual head history components render with History and assigned branches, 
     }).outputText;
     const HeadShiftHistory = new Function(
       "React","useState","useCLang","useLang","useShiftsHistory","historyPageTarget",
-      "getShiftCountEvidence","getErrorMessage","isApiError","useQuery","api",
+      "getShiftCountEvidence","getErrorMessage","isApiError","useQuery","api","displayDigits","formatDateLong",
       compiled + "\nreturn HeadShiftHistory;",
-    )(React,React.useState,()=>({t:(ar:string)=>ar,lang:"ar"}),()=>({t:(ar:string)=>ar}),
+    )(React,React.useState,()=>({t:(ar:string)=>ar,lang:"ar"}),()=>({t:(ar:string)=>ar,lang:"ar"}),
       (filter:unknown)=>{
         queryCalls.push(filter);
         return {isPending:false,isFetching:false,isError:false,
@@ -545,11 +547,13 @@ test("actual head history components render with History and assigned branches, 
         lookupQueries.push(config);
         return {data:[{id:"branch-a",name:"Branch A"}]};
       },
-      {get:async(url:string)=>{branchRequests.push(url);return {data:{data:[]}};}},
+      {get:async(url:string)=>{branchRequests.push(url);return {data:{data:[]}};}},displayDigits,formatDateLong,
     ) as React.ComponentType;
     const html = renderToStaticMarkup(React.createElement(HeadShiftHistory));
     assert.match(html,/FIN-01|Branch A/);
     assert.match(html,/الصفحة/);
+    assert.match(html,/١٥ أكتوبر ٢٠٢٦/);
+    assert.match(html,/١ \/ ١/);
   }
   assert.deepEqual(queryCalls,[
     {dateFrom:"",dateTo:"",branchId:"",page:1,pageSize:20},

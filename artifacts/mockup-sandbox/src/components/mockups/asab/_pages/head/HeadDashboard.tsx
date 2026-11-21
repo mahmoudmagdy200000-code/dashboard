@@ -4,6 +4,7 @@ import {
   useHeadDashboardPlatform,
   useHeadRemindersPlatform,
 } from "../../../../../api/queries";
+import { displayDigits } from "../../_shared/displayDigits";
 import { useLang } from "../../_shared/LangContext";
 import type { PageProps } from "../../_shared/types";
 import { KpiCard } from "../../components/KpiCard";
@@ -18,7 +19,8 @@ import { HeadRejected } from "./HeadRejected";
 export function HeadDashboard({ navigate, setModal, setDetailId, ops, finalApproveOp, rejectOp, bulkApprove, markErpPosted }: PageProps) {
   const { data: apiHead } = useHeadDashboardPlatform();
   useHeadRemindersPlatform();
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const count = (value: string | number) => displayDigits(value, lang);
   const [tab, setTab] = useState<"approval" | "performance" | "erp" | "rejected">("approval");
   const [erpInitialTab, setErpInitialTab] = useState<"export" | "reports">("export");
   const [scrollToResults, setScrollToResults] = useState(false);
@@ -61,14 +63,14 @@ export function HeadDashboard({ navigate, setModal, setDetailId, ops, finalAppro
     <div className="space-y-5">
       <div>
         <h2 className="text-xl font-bold text-gray-800">{t("لوحة رئيس الحسابات 👑", "Head Accountant Dashboard 👑")}</h2>
-        <p className="text-gray-400 text-sm mt-0.5">{t(`الإشراف على ${accountants.active} من ${accountants.total} محاسبين · ${branchesCount} فرع · الاعتماد النهائي وترحيل ERP`, `Supervising ${accountants.active} of ${accountants.total} accountants · ${branchesCount} branches · Final approval & ERP posting`)}</p>
+        <p className="text-gray-400 text-sm mt-0.5">{t(`الإشراف على ${count(accountants.active)} من ${count(accountants.total)} محاسبين · ${count(branchesCount)} فرع · الاعتماد النهائي وترحيل ERP`, `Supervising ${accountants.active} of ${accountants.total} accountants · ${branchesCount} branches · Final approval & ERP posting`)}</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-        <KpiCard label={t("بانتظار اعتمادي", "Awaiting My Approval")} value={String(kpiAwaiting)} sub={t("📱 من المحاسبين · م3", "📱 From accountants · S3")} icon={<Clock size={18} className="text-amber-600" />} accent="amber" onClick={() => openDashboardResults("approval")} />
-        <KpiCard label={t("معتمدة نهائياً", "Final Approved")} value={String(kpiFinalErp)} sub={t("مُغلقة · تنتظر ERP · م4", "Closed · Awaiting ERP · S4")} icon={<Lock size={18} className="text-emerald-600" />} accent="emerald" onClick={() => openDashboardResults("erp", "export")} />
-        <KpiCard label={t("مُرحَّلة لـ ERP", "Posted to ERP")} value={String(kpiErpPosted)} sub={t("مُعالَجة · م5", "Processed · S5")} icon={<ChevronsRight size={18} className="text-indigo-600" />} accent="blue" onClick={() => openDashboardResults("erp", "reports")} />
-        <KpiCard label={t("مرفوضة", "Rejected")} value={String(kpiRejected)} sub={t("خارج المسار", "Off pipeline")} icon={<XCircle size={18} className="text-red-600" />} accent="red" onClick={() => openDashboardResults("rejected")} />
-        <KpiCard label={t("معدل الأداء", "Performance Rate")} value={`${performanceRate}%`} sub={t("هذا الشهر", "This Month")} icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" onClick={() => openDashboardResults("performance")} />
+        <KpiCard label={t("بانتظار اعتمادي", "Awaiting My Approval")} value={count(kpiAwaiting)} sub={t("📱 من المحاسبين · م٣", "📱 From accountants · S3")} icon={<Clock size={18} className="text-amber-600" />} accent="amber" onClick={() => openDashboardResults("approval")} />
+        <KpiCard label={t("معتمدة نهائياً", "Final Approved")} value={count(kpiFinalErp)} sub={t("مُغلقة · تنتظر ERP · م٤", "Closed · Awaiting ERP · S4")} icon={<Lock size={18} className="text-emerald-600" />} accent="emerald" onClick={() => openDashboardResults("erp", "export")} />
+        <KpiCard label={t("مُرحَّلة لـ ERP", "Posted to ERP")} value={count(kpiErpPosted)} sub={t("مُعالَجة · م٥", "Processed · S5")} icon={<ChevronsRight size={18} className="text-indigo-600" />} accent="blue" onClick={() => openDashboardResults("erp", "reports")} />
+        <KpiCard label={t("مرفوضة", "Rejected")} value={count(kpiRejected)} sub={t("خارج المسار", "Off pipeline")} icon={<XCircle size={18} className="text-red-600" />} accent="red" onClick={() => openDashboardResults("rejected")} />
+        <KpiCard label={t("معدل الأداء", "Performance Rate")} value={new Intl.NumberFormat(lang === "ar" ? "ar-SA-u-nu-arab" : "en-US", { style: "percent" }).format(performanceRate / 100)} sub={t("هذا الشهر", "This Month")} icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" onClick={() => openDashboardResults("performance")} />
       </div>
       {/* Weekly performance chart */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
@@ -85,7 +87,7 @@ export function HeadDashboard({ navigate, setModal, setDetailId, ops, finalAppro
                   <div className="flex-1 bg-gray-200 rounded-t" style={{ height: `${(d.lastW / weeklyMax) * 100}%` }} />
                   <div className="flex-1 bg-gradient-to-t from-purple-600 to-purple-400 rounded-t" style={{ height: `${(d.thisW / weeklyMax) * 100}%` }} />
                 </div>
-                <p className="text-[9px] text-gray-400 text-center leading-tight">{d.dayAr ?? d.day}</p>
+                <p className="text-[9px] text-gray-400 text-center leading-tight">{lang === "ar" ? d.dayAr ?? d.day : d.day ?? d.dayAr}</p>
               </div>
             ))}
         </div>
@@ -95,7 +97,7 @@ export function HeadDashboard({ navigate, setModal, setDetailId, ops, finalAppro
           <div className={`mr-auto text-[11px] font-semibold ${weeklyDelta === null ? "text-gray-400" : weeklyDelta >= 0 ? "text-emerald-600" : "text-red-600"}`}>
             {weeklyDelta === null
               ? t("لا توجد بيانات للمقارنة الأسبوعية", "No prior-week data to compare")
-              : `${weeklyDelta > 0 ? "↑ " : weeklyDelta < 0 ? "↓ " : ""}${weeklyDelta}% ${t("مقارنة بالأسبوع الماضي", "vs last week")}`}
+              : `${weeklyDelta > 0 ? "↑ " : weeklyDelta < 0 ? "↓ " : ""}${count(weeklyDelta)}% ${t("مقارنة بالأسبوع الماضي", "vs last week")}`}
           </div>
         </div>
       </div>

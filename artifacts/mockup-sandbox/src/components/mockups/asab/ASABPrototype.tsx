@@ -2009,7 +2009,7 @@ function PageRouter({ state, pageProps, adminUsers, setAdminUsers }: {
     if (page === "head-reports") return <OwnerReportsPage {...p} />;
     if (page === "head-reminders") return <HeadReminders {...p} />;
     const mk = page.replace("head-", "") as ModuleKey;
-    return <HeadModulePage moduleKey={mk} {...p} />;
+    return <HeadModulePage key={mk} moduleKey={mk} {...p} />;
   }
   if (role === "admin") {
     if (page === "admin-overview") return <AdminOverview {...p} />;

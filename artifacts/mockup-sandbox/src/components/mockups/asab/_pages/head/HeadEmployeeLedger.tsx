@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useHeadEmployeeStatement, useHeadEmployees } from "../../../../../api/queries/platform/head";
+import { displayDigits } from "../../_shared/displayDigits";
+import { formatDateLong } from "../../_shared/formatters";
 import { useLang } from "../../_shared/LangContext";
 
 function money(halalas: number | undefined, lang: "ar" | "en") {
@@ -32,7 +34,7 @@ export function HeadEmployeeLedger() {
           <p className="mt-1 text-sm text-gray-500">{t("أرصدة وحركات الموظفين من سجل الحسابات الفعلي", "Employee balances and movements from the live company ledger")}</p>
         </div>
         <span className="rounded-lg border border-purple-100 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-700">
-          {employees.length} {t("موظف", "employees")}
+          {displayDigits(employees.length, lang)} {t("موظف", "employees")}
         </span>
       </header>
 
@@ -87,11 +89,11 @@ export function HeadEmployeeLedger() {
                   <div className="rounded-lg border border-purple-100 bg-purple-50 p-3"><p className="text-[11px] text-purple-700">{t("الرصيد الحالي", "Current balance")}</p><p className="mt-1 font-mono text-sm font-bold text-purple-800">{displayCurrency(statement.balanceHalalas)}</p></div>
                 </div>
                 <div className="divide-y divide-gray-100">
-                  <div className="flex items-center justify-between gap-2 px-4 py-2 text-xs text-gray-500"><span>{t("سجل الحركات", "Movement history")}</span><span>{statement.movementCount} {t("حركة", "movements")}</span></div>
+                  <div className="flex items-center justify-between gap-2 px-4 py-2 text-xs text-gray-500"><span>{t("سجل الحركات", "Movement history")}</span><span>{displayDigits(statement.movementCount, lang)} {t("حركة", "movements")}</span></div>
                   {statement.movements.map(movement => (
                     <div key={movement.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-xs">
                       <span className="min-w-28 flex-1 font-semibold text-gray-900">{movement.description || movement.categoryLabelAr}</span>
-                      <span className="text-gray-500">{movement.movementDate}</span>
+                      <span className="text-gray-500">{formatDateLong(lang, movement.movementDate) || "—"}</span>
                       <span className={`font-mono font-bold ${movement.movementType === "credit" ? "text-emerald-700" : "text-red-600"}`}>
                         {movement.movementType === "credit" ? "+" : "−"}{displayCurrency(movement.amountHalalas)}
                       </span>

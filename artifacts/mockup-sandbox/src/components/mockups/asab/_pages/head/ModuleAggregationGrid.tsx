@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronsRight } from "lucide-react";
+import { displayDigits } from "../../_shared/displayDigits";
 import { useLang } from "../../_shared/LangContext";
 import { fmtAmt } from "../../_shared/formatters";
 import { aggregateOpsAmount } from "../../headReviewGuards";
@@ -192,7 +193,7 @@ export function ModuleAggregationGrid({ ops, moduleAggregation = [], navigate }:
               <div className="p-3.5">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xl">{m.icon}</span>
-                  <span className={`text-[9px] font-bold ${cfg.headerCls}`}>{stepNum > 0 ? `${en ? "S" : "م"}${stepNum}/5` : ""}</span>
+                  <span className={`text-[9px] font-bold ${cfg.headerCls}`}>{stepNum > 0 ? `${en ? "S" : "م"}${displayDigits(`${stepNum}/5`, lang)}` : ""}</span>
                 </div>
                 <p className="font-bold text-sm text-gray-800 mb-0.5">{mLabel}</p>
                 <p className={`text-[10px] font-semibold mb-1 ${cfg.headerCls}`}>{cfgLabel}</p>
@@ -200,13 +201,13 @@ export function ModuleAggregationGrid({ ops, moduleAggregation = [], navigate }:
                 {totalCount > 0 ? (
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-1 flex-wrap">
-                      {counts.pending > 0 && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-semibold">{counts.pending} {t("معلق", "Pending")}</span>}
-                      {counts.approved > 0 && <span className="text-[9px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-semibold">{counts.approved} {t("راجع", "Reviewed")}</span>}
-                      {counts.final > 0 && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-semibold">{counts.final} {t("مُجمَّع", "Consolidated")}</span>}
-                      {counts.rejected > 0 && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-semibold">{counts.rejected} {t("مرفوض", "Rejected")}</span>}
-                      {counts.erp > 0 && <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-semibold">{counts.erp} ERP</span>}
+                      {counts.pending > 0 && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-semibold">{displayDigits(counts.pending, lang)} {t("معلق", "Pending")}</span>}
+                      {counts.approved > 0 && <span className="text-[9px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full font-semibold">{displayDigits(counts.approved, lang)} {t("راجع", "Reviewed")}</span>}
+                      {counts.final > 0 && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-semibold">{displayDigits(counts.final, lang)} {t("مُجمَّع", "Consolidated")}</span>}
+                      {counts.rejected > 0 && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-semibold">{displayDigits(counts.rejected, lang)} {t("مرفوض", "Rejected")}</span>}
+                      {counts.erp > 0 && <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-semibold">{displayDigits(counts.erp, lang)} ERP</span>}
                     </div>
-                    {total != null && total > 0 && <p className="text-[10px] font-mono font-bold text-gray-600">{(total / 1000).toFixed(1)}K {t("ر.س", "SAR")}</p>}
+                    {total != null && total > 0 && <p className="text-[10px] font-mono font-bold text-gray-600">{fmtAmt(total, lang)} {t("ر.س", "SAR")}</p>}
                   </div>
                 ) : (
                   <span className="text-[10px] text-gray-300">{t("لا توجد بيانات", "No data")}</span>
@@ -254,7 +255,7 @@ export function ModuleAggregationGrid({ ops, moduleAggregation = [], navigate }:
                     <span className="text-gray-600 flex-shrink-0">{operation.branch}</span>
                     <span className="flex-1" />
                     <span className="text-[10px] text-gray-500">{statusLabel(operation.status)}</span>
-                    <span className="font-mono font-bold text-gray-700">{fmtAmt(operation.amountHalalas / 100)} {t("ر.س", "SAR")}</span>
+                    <span className="font-mono font-bold text-gray-700">{fmtAmt(operation.amountHalalas / 100, lang)} {t("ر.س", "SAR")}</span>
                     {operation.erpPosted && <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-bold">ERP ✓</span>}
                     {operation.operationDate && <span className="text-[9px] text-gray-400">{new Date(operation.operationDate).toLocaleDateString(en ? "en" : "ar")}</span>}
                   </div>
@@ -338,7 +339,7 @@ export function ModuleAggregationGrid({ ops, moduleAggregation = [], navigate }:
                         </span>
                       </div>
                       <div className="px-4 py-3">
-                        <p className="text-xs text-gray-500">{readyForErp.length} {t("عملية مُعتمدة نهائياً لم تُضَم لدفعة ERP بعد", "final-approved entries not yet added to an ERP batch")}</p>
+                        <p className="text-xs text-gray-500">{displayDigits(readyForErp.length, lang)} {t("عملية مُعتمدة نهائياً لم تُضَم لدفعة ERP بعد", "final-approved entries not yet added to an ERP batch")}</p>
                         <p className="text-[10px] text-gray-400 mt-0.5">{t("ادمجها في الدفعة القادمة من صفحة التصدير لـ ERP", "Add them to the next batch from the ERP Export page")}</p>
                       </div>
                     </div>
@@ -380,7 +381,7 @@ export function ModuleAggregationGrid({ ops, moduleAggregation = [], navigate }:
                       <span className="w-2 h-2 rounded-full bg-gray-400"></span>
                       <span className="text-[11px] font-bold text-gray-600">{t("مُستبعدة — مرفوضة، خارج الحزمة", "Excluded — Rejected, outside the package")}</span>
                       <span className="text-[10px] text-gray-500 mr-auto font-mono">
-                        {selectedOps.filter(o => o.status === "rejected").length} {t("بيانات", "entries")}
+                        {displayDigits(selectedOps.filter(o => o.status === "rejected").length, lang)} {t("بيانات", "entries")}
                       </span>
                     </div>
                     <div className="px-4 py-2">
