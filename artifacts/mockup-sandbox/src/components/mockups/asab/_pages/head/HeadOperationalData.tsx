@@ -1,5 +1,7 @@
 import { useHeadSalesDayCompleteness, useHeadSalesKpis, useHeadSalesOperations, useHeadShiftConfigs } from "../../../../../api/queries/platform/head";
 import { useShiftsLive } from "../../../../../api/queries";
+import { displayDigits } from "../../_shared/displayDigits";
+import { formatDateLong } from "../../_shared/formatters";
 import { useLang } from "../../_shared/LangContext";
 import { DailySalesWorkdays } from "../accountant/DailySalesWorkdays";
 
@@ -32,7 +34,7 @@ export function HeadSalesData() {
         ].map(([label, value]) => (
           <div key={String(label)} className="rounded-xl border border-gray-200 bg-white p-4">
             <p className="text-xs text-gray-500">{label}</p>
-            <p className="mt-2 font-mono text-lg font-bold text-gray-900">{typeof value === "number" && String(label) === t("فروع بها فروقات", "Branches with variance") ? value : amount(value as number | undefined, lang)} <span className="text-xs font-normal text-gray-500">{typeof value === "number" && String(label) === t("فروع بها فروقات", "Branches with variance") ? t("فرع", "branches") : t("ر.س", "SAR")}</span></p>
+            <p className="mt-2 font-mono text-lg font-bold text-gray-900">{typeof value === "number" && String(label) === t("فروع بها فروقات", "Branches with variance") ? displayDigits(value, lang) : amount(value as number | undefined, lang)} <span className="text-xs font-normal text-gray-500">{typeof value === "number" && String(label) === t("فروع بها فروقات", "Branches with variance") ? t("فرع", "branches") : t("ر.س", "SAR")}</span></p>
           </div>
         ))}
       </div>
@@ -43,13 +45,13 @@ export function HeadSalesData() {
           {daysQuery.isFetching && <span role="status" className="text-xs text-gray-500">{t("تحديث...", "Updating...")}</span>}
         </div>
         {daysQuery.isError && <p role="alert" className="p-4 text-xs text-red-700">{t("تعذر تحميل بيانات اكتمال التقارير", "Could not load report completeness")}</p>}
-        {!daysQuery.isError && days.length === 0 && <p className="p-4 text-xs text-gray-500">{t("لا توجد تقارير يومية ضمن النطاق", "No daily reports in scope")}</p>}
+        {!daysQuery.isPending && !daysQuery.isError && days.length === 0 && <p className="p-4 text-xs text-gray-500">{t("لا توجد تقارير يومية ضمن النطاق", "No daily reports in scope")}</p>}
         <div className="divide-y divide-gray-100">
           {days.map(day => (
             <div key={day.date} className="flex flex-wrap items-center gap-3 px-4 py-3 text-xs">
-              <span className="min-w-24 font-semibold text-gray-800">{new Date(`${day.date}T12:00:00`).toLocaleDateString(lang === "ar" ? "ar-SA" : "en-US")}</span>
-              <span className="text-emerald-700">{day.completedCount} {t("مكتمل", "complete")}</span>
-              <span className={day.missingCount ? "font-semibold text-amber-700" : "text-gray-500"}>{day.missingCount} {t("ناقص", "missing")}</span>
+              <span className="min-w-24 font-semibold text-gray-800">{formatDateLong(lang, `${day.date}T12:00:00`)}</span>
+              <span className="text-emerald-700">{displayDigits(day.completedCount, lang)} {t("مكتمل", "complete")}</span>
+              <span className={day.missingCount ? "font-semibold text-amber-700" : "text-gray-500"}>{displayDigits(day.missingCount, lang)} {t("ناقص", "missing")}</span>
               {day.missingBranches.length > 0 && <span className="min-w-0 flex-1 break-words text-gray-500">{day.missingBranches.map(branch => branch.name).join("، ")}</span>}
             </div>
           ))}
@@ -81,21 +83,21 @@ export function HeadShiftData() {
           [t("أغلقت اليوم", "Closed today"), kpis?.closedToday ?? 0],
           [t("مبيعات اليوم", "Today's shift sales"), amount(kpis?.todaySalesHalalas, lang)],
           [t("فروقات للمراجعة", "Gaps for review"), kpis?.cashGapsPendingReview ?? 0],
-        ].map(([label, value]) => <div key={String(label)} className="rounded-xl border border-gray-200 bg-white p-4"><p className="text-xs text-gray-500">{label}</p><p className="mt-2 font-mono text-lg font-bold text-gray-900">{value}{String(label) === t("مبيعات اليوم", "Today's shift sales") ? <span className="ms-1 text-xs font-normal text-gray-500">{t("ر.س", "SAR")}</span> : null}</p></div>)}
+        ].map(([label, value]) => <div key={String(label)} className="rounded-xl border border-gray-200 bg-white p-4"><p className="text-xs text-gray-500">{label}</p><p className="mt-2 font-mono text-lg font-bold text-gray-900">{displayDigits(value, lang)}{String(label) === t("مبيعات اليوم", "Today's shift sales") ? <span className="ms-1 text-xs font-normal text-gray-500">{t("ر.س", "SAR")}</span> : null}</p></div>)}
       </div>
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-          <h4 className="border-b border-gray-100 px-4 py-3 text-sm font-bold text-gray-800">{t("الشفتات المفتوحة", "Open shifts")} · {active.length}</h4>
-          {active.length === 0 && !liveQuery.isError && <p className="p-4 text-xs text-gray-500">{t("لا توجد شفتات مفتوحة الآن", "No shifts are open right now")}</p>}
+          <h4 className="border-b border-gray-100 px-4 py-3 text-sm font-bold text-gray-800">{t("الشفتات المفتوحة", "Open shifts")} · {displayDigits(active.length, lang)}</h4>
+          {active.length === 0 && !liveQuery.isPending && !liveQuery.isError && <p className="p-4 text-xs text-gray-500">{t("لا توجد شفتات مفتوحة الآن", "No shifts are open right now")}</p>}
           <div className="divide-y divide-gray-100">{active.map(shift => <div key={shift.id} className="flex flex-wrap items-center gap-2 px-4 py-3 text-xs"><b className="min-w-0 flex-1 break-words">{shift.branchName}</b><span>{shift.cashierName}</span><span className="rounded-md bg-emerald-50 px-2 py-1 text-emerald-700">{shift.statusLabelAr || shift.status}</span><span className="font-mono">{amount(shift.salesHalalas, lang)} {t("ر.س", "SAR")}</span></div>)}</div>
         </div>
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
           <h4 className="border-b border-gray-100 px-4 py-3 text-sm font-bold text-gray-800">{t("إعدادات الشفتات", "Shift schedules")}</h4>
           {configQuery.isError && <p role="alert" className="p-4 text-xs text-red-700">{t("تعذر تحميل إعدادات الشفتات", "Could not load shift schedules")}</p>}
-          {!configQuery.isError && configs.length === 0 && <p className="p-4 text-xs text-gray-500">{t("لا توجد إعدادات للشفتات ضمن النطاق", "No shift schedules in scope")}</p>}
+          {!configQuery.isPending && !configQuery.isError && configs.length === 0 && <p className="p-4 text-xs text-gray-500">{t("لا توجد إعدادات للشفتات ضمن النطاق", "No shift schedules in scope")}</p>}
           <div className="divide-y divide-gray-100">{configs.map((config, index) => {
             const name = (config as typeof config & { branchName?: string; ownerName?: string }).branchName || (config as typeof config & { ownerName?: string }).ownerName || config.brandName || config.brandId;
-            return <div key={`${config.brandId}-${index}`} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs"><b className="min-w-0 break-words">{name}</b><span>{config.numShifts} {t("شفت", "shifts")} × {config.durationHours} {t("ساعة", "hours")}</span><span className="font-mono">{config.firstShiftStart}</span></div>;
+            return <div key={`${config.brandId}-${index}`} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs"><b className="min-w-0 break-words">{name}</b><span>{displayDigits(config.numShifts, lang)} {t("شفت", "shifts")} × {displayDigits(config.durationHours, lang)} {t("ساعة", "hours")}</span><span className="font-mono">{displayDigits(config.firstShiftStart, lang)}</span></div>;
           })}</div>
         </div>
       </div>

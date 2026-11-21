@@ -1,3 +1,7 @@
+import { HeadOperationalModuleData } from "./_pages/head/HeadOperationalModuleData";
+import { HeadSalesData, HeadShiftData } from "./_pages/head/HeadOperationalData";
+import { HeadEmployeeLedger } from "./_pages/head/HeadEmployeeLedger";
+import { HeadModuleRecords } from "./_pages/head/HeadModuleRecords";
 if (typeof window !== "undefined") {
   import("./_group.css");
 }
@@ -13,6 +17,7 @@ import { getShfReviewGroup, getShfReviewPolicy, runShfReviewAction, shfReviewRow
 import { getHeadReviewPolicy, headLegacyBulkIds, runHeadFinalApproval, HEAD_DAY_EVIDENCE_HINT, HEAD_EXPENSE_EVIDENCE_HINT } from "./headReviewGuards";
 import { getShfAllocationEvidence, prepareShfAllocations, remainingShfAllocationHalalas, runShfAllocationCorrection, type ShfAllocationRow } from "./shiftAllocationCorrection";
 import { formatDayCompletenessBanner, formatDayCompletenessLabel, hasEmployeeDebitWarning } from "./_shared/formatters";
+import { fmtAmt, formatDateLong } from "./_shared/formatters";
 import { displayDigits } from "./_shared/displayDigits";
 import { ShiftReconciliationSummaryView } from "./ShiftReconciliationSummary.tsx";
 import { ShiftSalesOverview, ShiftSalesSection } from "./_pages/accountant/ShiftSalesSection";
@@ -4300,7 +4305,8 @@ type HeadProps = {
 // HEAD ACCOUNTANT — DASHBOARD
 // ═══════════════════════════════════════════════════
 function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove, actionsPending }:HeadProps) {
-  const { t, dir } = useCLang();
+  const { t, dir, lang } = useCLang();
+  const count = (value:number) => displayDigits(value, lang);
   const queryClient = useQueryClient();
   const { data: apiHeadDash } = useHeadDashboard();
   const apiKpis = (apiHeadDash?.kpis ?? {}) as Record<string, number | string>;
@@ -4331,11 +4337,11 @@ function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove, 
 
   const rawMonthlyHalalas = (apiKpis.monthlySalesHalalas as number | undefined) ?? (apiKpis.totalSalesHalalas as number | undefined);
   const totalSalesM = rawMonthlyHalalas != null
-    ? Math.round(rawMonthlyHalalas / 100)
+    ? rawMonthlyHalalas / 100
     : headBrands.reduce((s, b) => s + b.sales, 0);
 
   const salesDelta = apiKpis.salesDeltaPct != null
-    ? `${Number(apiKpis.salesDeltaPct) > 0 ? "+" : ""}${apiKpis.salesDeltaPct}%`
+    ? `${Number(apiKpis.salesDeltaPct) > 0 ? "+" : ""}${displayDigits(apiKpis.salesDeltaPct, lang)}${t("٪","%")}`
     : undefined;
 
   return (
@@ -4347,15 +4353,15 @@ function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove, 
         </div>
         <button onClick={()=>navigate("head-pending")} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 shadow-sm relative">
           <Clock size={14}/> {t("بانتظار اعتمادي","Awaiting My Approval")}
-          {awaitingHead.length>0&&<span className="absolute -top-1.5 -left-1.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{awaitingHead.length}</span>}
+          {awaitingHead.length>0&&<span className="absolute -top-1.5 -left-1.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{count(awaitingHead.length)}</span>}
         </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label={t("بانتظار اعتمادي","Awaiting My Approval")}  value={String(awaitingHead.length)}  sub={t("📱 من المحاسبين · م3","📱 From accountants · S3")}      icon={<Clock size={18} className="text-amber-600"/>}   accent="amber"/>
-        <KpiCard label={t("معتمدة نهائياً","Final Approved")}          value={String(finalApproved.length)} sub={t("مُغلقة · تنتظر ERP · م4","Closed · Awaiting ERP · S4")} icon={<Lock size={18} className="text-emerald-600"/>}  accent="emerald"/>
-        <KpiCard label={t("مرفوضة","Rejected")}                        value={String(rejected.length)}      sub={t("خارج المسار","Off Pipeline")}                           icon={<XCircle size={18} className="text-red-600"/>}    accent="red"/>
-        <KpiCard label={t("إجمالي المبيعات","Total Sales")}            value={`${fmt(Math.round(totalSalesM/1000))}K`} sub={t("ر.س هذا الشهر","SAR this month")}             icon={<TrendingUp size={18} className="text-blue-600"/>} accent="blue" delta={salesDelta}/>
+        <KpiCard label={t("بانتظار اعتمادي","Awaiting My Approval")}  value={count(awaitingHead.length)}  sub={t("📱 من المحاسبين · م3","📱 From accountants · S3")}      icon={<Clock size={18} className="text-amber-600"/>}   accent="amber"/>
+        <KpiCard label={t("معتمدة نهائياً","Final Approved")}          value={count(finalApproved.length)} sub={t("مُغلقة · تنتظر ERP · م4","Closed · Awaiting ERP · S4")} icon={<Lock size={18} className="text-emerald-600"/>}  accent="emerald"/>
+        <KpiCard label={t("مرفوضة","Rejected")}                        value={count(rejected.length)}      sub={t("خارج المسار","Off Pipeline")}                           icon={<XCircle size={18} className="text-red-600"/>}    accent="red"/>
+        <KpiCard label={t("إجمالي المبيعات","Total Sales")}            value={fmtAmt(totalSalesM, lang)} sub={t("ر.س هذا الشهر","SAR this month")}             icon={<TrendingUp size={18} className="text-blue-600"/>} accent="blue" delta={salesDelta}/>
       </div>
 
       <CPipelineOverview ops={ops}/>
@@ -4376,13 +4382,13 @@ function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove, 
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-semibold text-gray-700">{b.name}</span>
-                    <span className="text-xs text-gray-500">{pct}% {t("من الهدف","of target")}</span>
+                    <span className="text-xs text-gray-500">{count(pct)}{t("٪","%")} {t("من الهدف","of target")}</span>
                   </div>
                   <div className="w-full h-2 bg-gray-100 rounded-full"><div className="h-2 rounded-full" style={{width:`${Math.min(100,pct)}%`,background:b.color}}/></div>
                 </div>
                 <div className={`flex-shrink-0 w-32 ${dir==="ltr"?"text-left":"text-right"}`}>
-                  <p className="font-mono font-bold text-gray-800 text-xs">{fmt(sales)}</p>
-                  <p className="text-[10px] text-gray-400">{t("الهدف:","Target:")} {fmt(target)}</p>
+                  <p className="font-mono font-bold text-gray-800 text-xs">{fmtAmt(sales, lang)}</p>
+                  <p className="text-[10px] text-gray-400">{t("الهدف:","Target:")} {fmtAmt(target, lang)}</p>
                 </div>
               </div>
             );
@@ -4392,7 +4398,7 @@ function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove, 
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-3.5 border-b border-gray-100 bg-amber-50/60 flex items-center justify-between">
-          <h3 className="font-bold text-amber-800 text-sm">⏳ {t("بانتظار اعتمادك النهائي","Awaiting Your Final Approval")} ({awaitingHead.length})</h3>
+          <h3 className="font-bold text-amber-800 text-sm">⏳ {t("بانتظار اعتمادك النهائي","Awaiting Your Final Approval")} ({count(awaitingHead.length)})</h3>
           {awaitingHead.length>0 && (
             <div className="flex items-center gap-2">
               <Btn size="sm" variant="success" disabled={!dashboardBulkAllowed || actionsPending} onClick={()=>bulkFinalApprove(dashboardBulkIds)}>✅ {t("اعتماد الكل","Approve All")}</Btn>
@@ -4409,7 +4415,7 @@ function HeadDashboard({ navigate, ops, finalApprove, reject, bulkFinalApprove, 
               <p className="text-sm font-semibold text-gray-800">{op.moduleLabel} — {op.branch}</p>
               <p className="text-xs text-gray-400">{op.brandName} · {op.submittedBy} · {op.timeAgo}</p>
             </div>
-            {op.amount != null && op.amount>0&&<span className="font-mono font-bold text-gray-800 text-sm">{fmt(op.amount)} {t("ر.س","SAR")}</span>}
+            {op.amount != null && op.amount>0&&<span className="font-mono font-bold text-gray-800 text-sm">{fmtAmt(op.amount, lang)} {t("ر.س","SAR")}</span>}
             <COpStagePill op={op}/>
             <Badge className={`text-[10px] border ${MATCH_CFG[op.match].cls}`}>
               <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${MATCH_CFG[op.match].dot}`}/>
@@ -4745,9 +4751,9 @@ function HeadShiftHistory() {
   return <section className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
     <h3 className="font-bold text-gray-800 text-sm">{t("سجل الورديات — قراءة فقط","Shift history — read only")}</h3>
     <div className="flex flex-wrap gap-3 text-xs">
-      <label>{t("من تاريخ الإغلاق","Closed from")}<input type="date" value={dateFrom}
+      <label>{t("من تاريخ الإغلاق","Closed from")}<input lang={lang === "ar" ? "ar-SA" : "en-US"} type="date" value={dateFrom}
         onChange={e=>{setDateFrom(e.target.value);setPage(1);}} className="block border rounded px-2 py-1"/></label>
-      <label>{t("إلى تاريخ الإغلاق","Closed to")}<input type="date" value={dateTo}
+      <label>{t("إلى تاريخ الإغلاق","Closed to")}<input lang={lang === "ar" ? "ar-SA" : "en-US"} type="date" value={dateTo}
         onChange={e=>{setDateTo(e.target.value);setPage(1);}} className="block border rounded px-2 py-1"/></label>
       <label>{t("الفرع","Branch")}<select value={branchId}
         onChange={e=>{setBranchId(e.target.value);setPage(1);}} className="block border rounded px-2 py-1">
@@ -4762,12 +4768,12 @@ function HeadShiftHistory() {
       const evidence = getShiftCountEvidence(shift,lang);
       return <div key={shift.id} className="flex flex-wrap gap-4 border-t py-2 text-xs">
         <span>{shift.branchName}</span><span>{shift.cashierName}</span>
-        <span>{shift.endedAt ? new Date(shift.endedAt).toLocaleDateString(lang === "ar" ? "ar-SA" : "en-US") : "—"}</span>
-        <span>{t("الفرق","Variance")}: <bdi>{evidence.variance.text}</bdi></span>
+        <span>{formatDateLong(lang, shift.endedAt) || "—"}</span>
+        <span>{t("الفرق","Variance")}: <bdi>{displayDigits(evidence.variance.text, lang)}</bdi></span>
       </div>;
     })}
     <div className="flex items-center justify-between text-xs">
-      <span>{t("الصفحة","Page")} {meta?.page ?? page} / {meta?.totalPages ?? "—"}</span>
+      <span>{t("الصفحة","Page")} <bdi>{displayDigits(meta?.page ?? page, lang)} / {displayDigits(meta?.totalPages ?? "—", lang)}</bdi></span>
       <div className="flex gap-2">
         <button disabled={busy || query.isError || historyPageTarget(meta,page,-1)===page}
           onClick={()=>setPage(historyPageTarget(meta,page,-1))}>{t("السابق","Previous")}</button>
@@ -4782,34 +4788,40 @@ function HeadModulePage({ moduleKey, title, ops, finalApprove, reject, bulkFinal
   moduleKey:CModKey; title:string; ops:COp[];
   finalApprove:(id:string)=>void; reject:(id:string)=>void; bulkFinalApprove:(ids:string[])=>void; actionsPending:boolean;
 }) {
-  const { t, dir } = useCLang();
+  const { t, dir, lang } = useCLang();
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<string|null>(null);
   const mOps = ops.filter(o=>o.module===moduleKey);
   const awaitingHead = mOps.filter(o=>o.status==="approved");
   const moduleBulkIds = awaitingHead.map(op=>op.id);
   const moduleBulkAllowed = headLegacyBulkIds(ops, moduleBulkIds, "head", op=>queryClient.getQueryData<ApiOperation>(queryKeys.operation(op.id))).length===moduleBulkIds.length;
+  const readOnlyModule = moduleKey === "employees" || moduleKey === "cash" || moduleKey === "expenses" || moduleKey === "assets";
   const finalApproved = mOps.filter(o=>o.status==="final-approved");
   const rejected = mOps.filter(o=>o.status==="rejected");
   return (
     <div className="space-y-5" dir={dir}>
       <div className="flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-gray-800">{title}</h2><p className="text-gray-400 text-sm">{awaitingHead.length} {t("عملية بانتظار اعتمادك النهائي","operations awaiting your final approval")}</p></div>
-        {awaitingHead.length>0 && (
-          moduleKey === "expenses" ? (
-            <div className="text-left text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
-              {t("اعتماد المصروفات من صلاحية مالك العلامة أو المدير المفوّض (EXP-06)","Expense approval is reserved for Brand Owner or Manager (EXP-06)")}
-            </div>
-          ) : (
-            <div className="text-left"><Btn variant="success" size="sm" disabled={!moduleBulkAllowed || actionsPending} onClick={()=>bulkFinalApprove(moduleBulkIds)}>🔒 {t("اعتماد الكل","Approve All")} ({awaitingHead.length})</Btn>
-              {!moduleBulkAllowed && <p className="text-xs text-amber-700 mt-1">{t("اعتماد SHF وتقرير اليوم فرديًا بعد تحقق الدليل","Review SHF and day reports individually after evidence checks")}</p>}</div>
-          )
+        <div><h2 className="text-xl font-bold text-gray-800">{readOnlyModule ? title.split(" — ")[0] : title}</h2>{!readOnlyModule && <p className="text-gray-400 text-sm">{displayDigits(awaitingHead.length, lang)} {t("عملية بانتظار اعتمادك النهائي","operations awaiting your final approval")}</p>}</div>
+        {moduleKey === "expenses" && awaitingHead.length>0 && (
+          <div className="text-left text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
+            {t("اعتماد المصروفات من صلاحية مالك العلامة أو المدير المفوّض (EXP-06)","Expense approval is reserved for Brand Owner or Manager (EXP-06)")}
+          </div>
+        )}
+        {!readOnlyModule && awaitingHead.length>0 && (
+          <div className="text-left"><Btn variant="success" size="sm" disabled={!moduleBulkAllowed || actionsPending} onClick={()=>bulkFinalApprove(moduleBulkIds)}>🔒 {t("اعتماد الكل","Approve All")} ({displayDigits(awaitingHead.length, lang)})</Btn>
+            {!moduleBulkAllowed && <p className="text-xs text-amber-700 mt-1">{t("اعتماد SHF وتقرير اليوم فرديًا بعد تحقق الدليل","Review SHF and day reports individually after evidence checks")}</p>}</div>
         )}
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        <KpiCard label={t("بانتظار اعتمادي","Awaiting My Approval")} value={String(awaitingHead.length)} sub={t("موافق عليها من المحاسب","Accountant-approved")} icon={<Clock size={18} className="text-amber-600"/>} accent="amber"/>
-        <KpiCard label={t("معتمدة نهائياً","Final Approved")}        value={String(finalApproved.length)} sub={t("اعتماد نهائي","Final approval done")} icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
-        <KpiCard label={t("مرفوضة","Rejected")}                      value={String(rejected.length)} sub={t("تحتاج إعادة رفع","Needs re-upload")} icon={<XCircle size={18} className="text-red-500"/>} accent="red"/>
+      {moduleKey === "sales" && <HeadSalesData />}
+      {moduleKey === "shifts" && <HeadShiftData />}
+      {moduleKey === "employees" && <HeadEmployeeLedger />}
+      {(moduleKey === "expenses" || moduleKey === "cash" || moduleKey === "assets" || moduleKey === "inventory" || moduleKey === "purchases") && <HeadOperationalModuleData key={moduleKey} moduleKey={moduleKey} />}
+      {moduleKey !== "assets" && <HeadModuleRecords key={moduleKey} moduleKey={moduleKey} />}
+      {!readOnlyModule && <>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <KpiCard label={t("بانتظار اعتمادي","Awaiting My Approval")} value={displayDigits(awaitingHead.length, lang)} sub={t("موافق عليها من المحاسب","Accountant-approved")} icon={<Clock size={18} className="text-amber-600"/>} accent="amber"/>
+        <KpiCard label={t("معتمدة نهائياً","Final Approved")}        value={displayDigits(finalApproved.length, lang)} sub={t("اعتماد نهائي","Final approval done")} icon={<CheckCircle2 size={18} className="text-emerald-600"/>} accent="emerald"/>
+        <KpiCard label={t("مرفوضة","Rejected")}                      value={displayDigits(rejected.length, lang)} sub={t("تحتاج إعادة رفع","Needs re-upload")} icon={<XCircle size={18} className="text-red-500"/>} accent="red"/>
       </div>
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60"><h3 className="font-bold text-gray-900 text-sm">{t("بانتظار الاعتماد النهائي","Awaiting Final Approval")}</h3></div>
@@ -4829,6 +4841,7 @@ function HeadModulePage({ moduleKey, title, ops, finalApprove, reject, bulkFinal
           ))}
         </div>
       )}
+      </>}
       {moduleKey==="shifts" && <HeadShiftHistory/>}
     </div>
   );

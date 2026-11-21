@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useHeadCashCustodyLedger, useHeadOperationalModule, type HeadOperationalModule } from "../../../../../api/queries/platform/head";
 import { useLang } from "../../_shared/LangContext";
-import type { PlatformCashCustodyRow } from "../../../../../api/types/platform";
+import type { CashCustodyRow } from "../../../../../api/types/company";
+import { displayDigits } from "../../_shared/displayDigits";
+import { fmtAmt, formatDateLong } from "../../_shared/formatters";
 
 type Row = Record<string, unknown>;
 
@@ -22,7 +24,7 @@ function recordsOf(value: unknown): Row[] {
   if (Array.isArray(value)) return value.map(asObject).filter((row): row is Row => row !== null);
   const object = asObject(value);
   if (!object) return [];
-  for (const key of ["data", "branches", "assets", "entries", "custodies", "operations", "rows", "items", "results"]) {
+  for (const key of ["data", "transactions", "branches", "assets", "entries", "custodies", "operations", "rows", "items", "results"]) {
     if (Array.isArray(object[key])) return recordsOf(object[key]);
   }
   return [];
@@ -35,6 +37,8 @@ function scalar(value: unknown): string | null {
 
 const hiddenKeys = /^(id|_id|uuid|createdat|updatedat|deletedat|companyid|brandid|branchid|operationid)$/i;
 const friendlyKeys: Record<string, [string, string]> = {
+  txnDate: ["التاريخ", "Date"], description: ["البيان", "Description"], typeLabelAr: ["النوع", "Type"],
+  amountHalalas: ["المبلغ (ر.س)", "Amount (SAR)"], runningBalanceHalalas: ["الرصيد (ر.س)", "Balance (SAR)"],
   branchName: ["الفرع", "Branch"], name: ["الاسم", "Name"], title: ["العنوان", "Title"],
   supplierName: ["المورد", "Supplier"], custodian: ["أمين العهدة", "Custodian"],
   status: ["الحالة", "Status"], amount: ["المبلغ", "Amount"], total: ["الإجمالي", "Total"],
@@ -47,11 +51,13 @@ const friendlyKeys: Record<string, [string, string]> = {
 
 function rowDetails(row: Row, lang: "ar" | "en") {
   return Object.entries(row)
-    .filter(([key, value]) => !hiddenKeys.test(key) && !/halalas|metadata|details|items|lines|products|attachments/i.test(key) && scalar(value) !== null)
+    .filter(([key, value]) => !hiddenKeys.test(key) && !/metadata|details|items|lines|products|attachments/i.test(key) && (!key.endsWith("Halalas") || key in friendlyKeys) && !(key === "amount" && typeof row.amountHalalas === "number") && scalar(value) !== null)
     .slice(0, 5)
     .map(([key, value]) => ({
       label: friendlyKeys[key]?.[lang === "ar" ? 0 : 1] ?? key,
-      value: scalar(value) ?? "—",
+      value: typeof value === "number"
+        ? key.endsWith("Halalas") ? fmtAmt(value / 100, lang) : displayDigits(value, lang)
+        : /^(date|operationDate|txnDate)$/.test(key) ? formatDateLong(lang, scalar(value)) || "—" : scalar(value) ?? "—",
     }));
 }
 
@@ -88,7 +94,7 @@ export function HeadOperationalModuleData({ moduleKey }: { moduleKey: HeadOperat
   const { t, lang, dir } = useLang();
   const query = useHeadOperationalModule(moduleKey);
   const [selectedCustody, setSelectedCustody] = useState<string>();
-  const ledgerQuery = useHeadCashCustodyLedger(selectedCustody);
+  const ledgerQuery = useHeadCashCustodyLedger(moduleKey === "cash" ? selectedCustody : undefined);
   const rows = useMemo(() => moduleRecords(query.data, moduleKey), [query.data, moduleKey]);
   const ledger = useMemo(() => recordsOf(ledgerQuery.data), [ledgerQuery.data]);
   const titles = moduleTitles[moduleKey];
@@ -100,7 +106,7 @@ export function HeadOperationalModuleData({ moduleKey }: { moduleKey: HeadOperat
           <h3 className="text-base font-bold text-gray-900">{titles[lang === "ar" ? 0 : 1]}</h3>
           <p className="mt-1 text-xs text-gray-500">{t("عرض قراءة فقط من بيانات المحاسب المرتبطة بالشركة والفروع المصرح بها", "Read-only view of accountant data scoped to this company and its authorized branches")}</p>
         </div>
-        {!query.isError && <span className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-purple-700">{rows.length} {t("سجل محمّل", "records loaded")}</span>}
+        {!query.isPending && !query.isError && <span className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-purple-700">{displayDigits(rows.length, lang)} {t("سجل محمّل", "records loaded")}</span>}
       </header>
 
       {query.isPending && <p role="status" className="rounded-lg bg-white p-4 text-sm text-gray-500">{t("جارٍ تحميل البيانات...", "Loading data...")}</p>}
@@ -112,12 +118,12 @@ export function HeadOperationalModuleData({ moduleKey }: { moduleKey: HeadOperat
           <div className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">
             <h4 className="px-4 py-3 text-sm font-bold text-gray-800">{t("قائمة العهد", "Custodies")}</h4>
             {rows.map((row, index) => {
-              const custody = row as Row & Partial<PlatformCashCustodyRow>;
+              const custody = row as Row & Partial<CashCustodyRow>;
               const id = typeof custody.id === "string" ? custody.id : "";
               return <button key={id || index} type="button" onClick={() => id && setSelectedCustody(id)} aria-pressed={Boolean(id && id === selectedCustody)} className={`flex w-full flex-wrap items-center gap-2 px-4 py-3 text-start hover:bg-purple-50 ${id && id === selectedCustody ? "bg-purple-50" : ""}`}>
                 <span className="min-w-0 flex-1 text-sm font-semibold text-gray-800">{custody.branchName || custody.branchId || t("فرع غير محدد", "Unspecified branch")}</span>
-                <span className="text-xs text-gray-500">{custody.custodian || "—"}</span>
-                <span className="font-mono text-xs font-bold text-purple-700">{custody.balance ?? "—"} {t("ر.س", "SAR")}</span>
+                <span className="text-xs text-gray-500">{custody.custodianName || "—"}</span>
+                <span className="font-mono text-xs font-bold text-purple-700">{custody.remainingHalalas == null ? "—" : fmtAmt(custody.remainingHalalas / 100, lang)} {t("ر.س", "SAR")}</span>
               </button>;
             })}
           </div>
@@ -135,13 +141,13 @@ export function HeadOperationalModuleData({ moduleKey }: { moduleKey: HeadOperat
       {moduleKey !== "cash" && rows.length > 0 && <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
         {rows.slice(0, 12).map((row, index) => <article key={String(row.id ?? row.operationId ?? index)} className="min-w-0 rounded-lg border border-gray-200 bg-white p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <b className="min-w-0 break-words text-sm text-gray-900">{String(row.branchName ?? row.branch ?? row.name ?? row.title ?? row.supplierName ?? row.operationId ?? `#${index + 1}`)}</b>
+            <b className="min-w-0 break-words text-sm text-gray-900">{String(row.branchName ?? row.branch ?? row.name ?? row.title ?? row.supplierName ?? row.operationId ?? `#${displayDigits(index + 1, lang)}`)}</b>
             {scalar(row.status) && <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-600">{scalar(row.status)}</span>}
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">{rowDetails(row, lang).map(item => <span key={item.label} className="max-w-full rounded-md bg-gray-50 px-2 py-1 text-[11px] text-gray-600"><b>{item.label}: </b><bdi className="break-words text-gray-800">{item.value}</bdi></span>)}</div>
         </article>)}
       </div>}
-      {moduleKey !== "cash" && rows.length > 12 && <p className="text-end text-[11px] text-gray-500">{t("يعرض آخر 12 سجلاً من", "Showing 12 of")} {rows.length}</p>}
+      {moduleKey !== "cash" && rows.length > 12 && <p className="text-end text-[11px] text-gray-500">{t("يعرض آخر ١٢ سجلاً من", "Showing 12 of")} {displayDigits(rows.length, lang)}</p>}
     </section>
   );
 }

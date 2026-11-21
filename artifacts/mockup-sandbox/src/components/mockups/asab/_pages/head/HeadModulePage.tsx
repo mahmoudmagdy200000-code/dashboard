@@ -10,12 +10,9 @@ import {
   RotateCcw,
   XCircle,
 } from "lucide-react";
-import {
-  usePendingOperations,
-  useExportHeadOperations,
-  useHeadDashboardPlatform,
-} from "../../../../../api/queries";
+import { useExportHeadOperations } from "../../../../../api/queries";
 import { useLang } from "../../_shared/LangContext";
+import { displayDigits } from "../../_shared/displayDigits";
 import { fmtAmt } from "../../_shared/formatters";
 import { MATCH_CFG } from "../../_shared/displayConfig";
 import { applyFilters } from "../../_shared/filterOps";
@@ -29,28 +26,20 @@ import { HeadShiftHistory } from "./HeadShiftHistory";
 import { HeadEmployeeLedger } from "./HeadEmployeeLedger";
 import { HeadSalesData, HeadShiftData } from "./HeadOperationalData";
 import { HeadOperationalModuleData } from "./HeadOperationalModuleData";
+import { HeadModuleRecords } from "./HeadModuleRecords";
 
 export function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops, finalApproveOp, rejectOp, bulkApprove }: PageProps & { moduleKey: string }) {
   const { t, lang, dir } = useLang();
   const en = lang === "en";
-  const { data: dashboard } = useHeadDashboardPlatform();
-  usePendingOperations({ moduleKey: moduleKey as never });
   const exportHeadOpsMut = useExportHeadOperations();
   const [filters, setFilters] = useState<Filters>({ branch: "", status: "", match: "", search: "" });
-  const allVal = t("الكل", "All");
+  const allVal = "";
+  const count = (value: number) => displayDigits(value, lang);
   const [accFilter, setAccFilter] = useState(allVal);
   const [brandFilter, setBrandFilter] = useState(allVal);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const mk = moduleKey as ModuleKey;
-  const moduleSummary = dashboard?.moduleAggregation?.find(item => item.moduleKey === moduleKey);
-  const recentOperations = moduleSummary?.recentOperations ?? [];
-  const stageCounts = [
-    { key: "pending", label: t("معلقة لمراجعة المحاسب", "Pending accountant review"), value: moduleSummary?.pending ?? 0, cls: "bg-amber-50 text-amber-700" },
-    { key: "approved", label: t("بانتظار اعتمادك", "Awaiting your approval"), value: moduleSummary?.approved ?? 0, cls: "bg-sky-50 text-sky-700" },
-    { key: "final", label: t("معتمدة نهائياً", "Final approved"), value: moduleSummary?.final ?? 0, cls: "bg-emerald-50 text-emerald-700" },
-    { key: "rejected", label: t("مرفوضة", "Rejected"), value: moduleSummary?.rejected ?? 0, cls: "bg-red-50 text-red-700" },
-  ];
   const labels: Record<string, string> = { sales: t("المبيعات", "Sales"), expenses: t("المصروفات", "Expenses"), purchases: t("المشتريات", "Purchases"), inventory: t("المخزون", "Inventory"), shifts: t("الشفتات", "Shifts"), employees: t("كشف الحساب", "Employees"), cash: t("العهد النقدية", "Petty Cash"), waste: t("الهدر والتالف", "Waste"), assets: t("الأصول الثابتة", "Assets") };
   const moduleEmoji: Record<string, string> = { sales: "💰", expenses: "🧾", purchases: "🛒", inventory: "📦", shifts: "🕐", employees: "👥", cash: "💵", waste: "🗑️", assets: "🏢" };
   const label = labels[moduleKey] || moduleKey;
@@ -61,7 +50,8 @@ export function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops
   // B-H1: brand & branch filter options from the enriched ops rows.
   const BRAND_OPTS = [...new Set(ops.map(o => o.brandName).filter(Boolean))] as string[];
   const BRANCH_OPTS = [...new Set(ops.map(o => o.branch).filter(Boolean))] as string[];
-  let filtered = applyFilters(ops, filters, mk).filter(o => o.status === "approved");
+  const hasApprovalQueue = moduleKey !== "expenses" && moduleKey !== "employees" && moduleKey !== "cash" && moduleKey !== "assets";
+  let filtered = hasApprovalQueue ? applyFilters(ops, filters, mk).filter(o => o.status === "approved") : [];
   if (accFilter !== allVal) filtered = filtered.filter(o => getAcc(o) === accFilter);
   if (brandFilter !== allVal) filtered = filtered.filter(o => o.brandName === brandFilter);
   // B-H3: apply the from/to date range (was previously dead UI — applyFilters ignores dates).
@@ -84,25 +74,25 @@ export function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops
 
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-gray-800">{label} — {t("الاعتماد النهائي", "Final Approval")}</h2>
-          <p className="text-gray-400 text-sm mt-0.5">{t("العمليات الموافق عليها من المحاسبين — تنتظر اعتمادك النهائي", "Operations approved by accountants — awaiting your final approval")}</p>
+          <h2 className="text-xl font-bold text-gray-800">{label}</h2>
+          <p className="text-gray-400 text-sm mt-0.5">{t("السجلات الفعلية ومراحل المراجعة", "Live records and review status")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {/* HA-F23: Export matches head module queue status (approved) */}
-          <button onClick={() => exportHeadOpsMut.mutate({ status: "approved", moduleKey, format: "xlsx" })}
+          {hasApprovalQueue && <button onClick={() => exportHeadOpsMut.mutate({ status: "approved", moduleKey, format: "xlsx" })}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 transition-all">
             <FileText size={11} /> Excel
-          </button>
-          {filtered.length > 0 && <Btn variant="success" onClick={() => bulkApprove(filtered.map(o => o.id))}>✅ {t("اعتماد الكل", "Approve All")} ({filtered.length})</Btn>}
+          </button>}
+          {filtered.length > 0 && <Btn variant="success" onClick={() => bulkApprove(filtered.map(o => o.id))}>✅ {t("اعتماد الكل", "Approve All")} ({count(filtered.length)})</Btn>}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        <KpiCard label={t("بانتظار الاعتماد", "Awaiting Approval")} value={String(filtered.length)} sub={t("عملية موافق عليها", "approved operations")} icon={<Clock size={18} className="text-amber-600" />} accent="amber" />
-        <KpiCard label={t("الإجمالي", "Total")} value={totalAmt != null ? `${(totalAmt / 1000).toFixed(0)}K` : "—"} sub={t("ر.س", "SAR")} icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
-        <KpiCard label={t("يوجد فروقات", "Has Differences")} value={String(diffCount)} sub={t("تحتاج مراجعة", "Needs review")} icon={<AlertTriangle size={18} className="text-red-600" />} accent="red" />
-        <KpiCard label={t("متطابقة", "Matched")} value={String(exactCount)} sub={t("مطابقة تامة", "Exact match")} icon={<CheckCircle2 size={18} className="text-emerald-600" />} accent="emerald" />
-      </div>
+      {hasApprovalQueue && <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        <KpiCard label={t("بانتظار الاعتماد", "Awaiting Approval")} value={count(filtered.length)} sub={t("عملية موافق عليها", "approved operations")} icon={<Clock size={18} className="text-amber-600" />} accent="amber" />
+        <KpiCard label={t("الإجمالي", "Total")} value={fmtAmt(totalAmt, lang)} sub={t("ر.س", "SAR")} icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
+        <KpiCard label={t("يوجد فروقات", "Has Differences")} value={count(diffCount)} sub={t("تحتاج مراجعة", "Needs review")} icon={<AlertTriangle size={18} className="text-red-600" />} accent="red" />
+        <KpiCard label={t("متطابقة", "Matched")} value={count(exactCount)} sub={t("مطابقة تامة", "Exact match")} icon={<CheckCircle2 size={18} className="text-emerald-600" />} accent="emerald" />
+      </div>}
 
       {moduleKey === "sales" && <HeadSalesData />}
       {moduleKey === "shifts" && <HeadShiftData />}
@@ -111,145 +101,112 @@ export function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops
         <HeadOperationalModuleData moduleKey={moduleKey as "expenses" | "purchases" | "inventory" | "cash" | "waste" | "assets"} />
       )}
 
-      {moduleSummary && (
-        <section className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden" aria-label={t("بيانات الموديول حسب المرحلة", "Module data by stage")}>
-          <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60">
-            <h3 className="font-bold text-gray-900 text-sm">{t("كل بيانات الموديول حسب المرحلة", "Module records by workflow stage")}</h3>
-            <p className="text-[11px] text-gray-400 mt-0.5">{t("قائمة الاعتماد أدناه تشمل ما راجعه المحاسب فقط؛ بقية السجلات تظهر هنا حسب مرحلتها.", "The approval queue below contains records reviewed by an accountant; other records appear here under their current stage.")}</p>
-          </div>
-          <div className="px-5 py-3 flex flex-wrap gap-2">
-            {stageCounts.map(stage => (
-              <span key={stage.key} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${stage.cls}`}>
-                {stage.label}: {stage.value}
-              </span>
-            ))}
-          </div>
-          {recentOperations.length > 0 ? (
-            <div className="border-t border-gray-100 divide-y divide-gray-50">
-              {recentOperations.map(operation => (
-                <div key={operation.id} className="px-5 py-2.5 flex flex-wrap items-center gap-3 text-xs">
-                  <span className="font-mono text-gray-500" title={operation.id}>{operation.id.length > 12 ? `${operation.id.slice(0, 8)}…` : operation.id}</span>
-                  <span className="text-gray-700">{operation.branch}</span>
-                  <span className="flex-1" />
-                  <span className="text-gray-500">{({
-                    pending: t("معلق", "Pending"),
-                    approved: t("مراجع", "Reviewed"),
-                    "final-approved": t("معتمد نهائياً", "Final approved"),
-                    rejected: t("مرفوض", "Rejected"),
-                  } as Record<string, string>)[operation.status] ?? operation.status}</span>
-                  <span className="font-mono font-bold text-gray-700">{fmtAmt(operation.amountHalalas / 100)} {t("ر.س", "SAR")}</span>
-                  {operation.operationDate && <span className="text-[10px] text-gray-400">{new Date(operation.operationDate).toLocaleDateString(en ? "en" : "ar")}</span>}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="px-5 pb-4 text-xs text-gray-400">{t("لا توجد عمليات مسجلة لهذا الموديول.", "No operations are recorded for this module.")}</p>
-          )}
-        </section>
-      )}
+      {moduleKey !== "assets" && <HeadModuleRecords key={moduleKey} moduleKey={mk} />}
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir={dir}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-3">
-          <div>
-            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المحاسب المراجع", "Reviewing Accountant")}</label>
-            <select value={accFilter} onChange={e => setAccFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
-              <option>{allVal}</option>
-              {HEAD_ACCS.map(a => <option key={a}>{a}</option>)}
-            </select>
+      {hasApprovalQueue && <>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir={dir}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-3">
+            <div>
+              <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المحاسب المراجع", "Reviewing Accountant")}</label>
+              <select value={accFilter} onChange={e => setAccFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
+                <option value="">{t("الكل", "All")}</option>
+                {HEAD_ACCS.map(a => <option key={a}>{a}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("العلامة التجارية", "Brand")}</label>
+              <select value={brandFilter} onChange={e => setBrandFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
+                <option value="">{t("الكل", "All")}</option>
+                {BRAND_OPTS.map(b => <option key={b}>{b}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع", "Branch")}</label>
+              <select value={filters.branch} onChange={e => setFilters({ ...filters, branch: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
+                <option value="">{allVal}</option>
+                {BRANCH_OPTS.map(b => <option key={b}>{b}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المطابقة", "Match")}</label>
+              <select value={filters.match} onChange={e => setFilters({ ...filters, match: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
+                <option value="">{t("كل المطابقات", "All Matches")}</option>
+                <option value="exact">{t("متطابق تاماً", "Exact Match")}</option>
+                <option value="review">{t("يحتاج مراجعة", "Needs Review")}</option>
+                <option value="diff">{t("يوجد فرق", "Has Difference")}</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("العلامة التجارية", "Brand")}</label>
-            <select value={brandFilter} onChange={e => setBrandFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
-              <option>{allVal}</option>
-              {BRAND_OPTS.map(b => <option key={b}>{b}</option>)}
-            </select>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+            <div>
+              <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("من تاريخ", "From Date")}</label>
+              <input lang={lang === "ar" ? "ar-SA" : "en-US"} type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" dir="ltr" />
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("إلى تاريخ", "To Date")}</label>
+              <input lang={lang === "ar" ? "ar-SA" : "en-US"} type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" dir="ltr" />
+            </div>
+            <div className="flex items-end gap-2">
+              {(dateFrom || dateTo) && (
+                <button onClick={() => { setDateFrom(""); setDateTo(""); }}
+                  className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-500 border border-gray-200 rounded-lg px-3 py-2"><RotateCcw size={10} /> {t("مسح التاريخ", "Clear Dates")}</button>
+              )}
+            </div>
           </div>
-          <div>
-            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع", "Branch")}</label>
-            <select value={filters.branch} onChange={e => setFilters({ ...filters, branch: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
-              <option value="">{allVal}</option>
-              {BRANCH_OPTS.map(b => <option key={b}>{b}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المطابقة", "Match")}</label>
-            <select value={filters.match} onChange={e => setFilters({ ...filters, match: e.target.value })} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
-              <option value="">{t("كل المطابقات", "All Matches")}</option>
-              <option value="exact">{t("متطابق تاماً", "Exact Match")}</option>
-              <option value="review">{t("يحتاج مراجعة", "Needs Review")}</option>
-              <option value="diff">{t("يوجد فرق", "Has Difference")}</option>
-            </select>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-          <div>
-            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("من تاريخ", "From Date")}</label>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" dir="ltr" />
-          </div>
-          <div>
-            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("إلى تاريخ", "To Date")}</label>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" dir="ltr" />
-          </div>
-          <div className="flex items-end gap-2">
-            {(dateFrom || dateTo) && (
-              <button onClick={() => { setDateFrom(""); setDateTo(""); }}
-                className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-500 border border-gray-200 rounded-lg px-3 py-2"><RotateCcw size={10} /> {t("مسح التاريخ", "Clear Dates")}</button>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 flex items-center gap-1.5 border border-gray-200 rounded-lg px-3 py-2">
+              <Search size={13} className="text-gray-400 flex-shrink-0" />
+              <input value={filters.search} onChange={e => setFilters({ ...filters, search: e.target.value })} placeholder={t("بحث بالفرع أو المطعم أو رقم العملية...", "Search by branch, restaurant or operation ID...")} className="flex-1 text-sm outline-none" />
+            </div>
+            {hasFilters && (
+              <button onClick={() => { setAccFilter(allVal); setBrandFilter(allVal); setFilters({ branch: "", status: "", match: "", search: "" }); setDateFrom(""); setDateTo(""); }}
+                className="text-xs text-purple-600 hover:underline flex items-center gap-1"><RotateCcw size={11} /> {t("مسح الكل", "Clear All")}</button>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex-1 flex items-center gap-1.5 border border-gray-200 rounded-lg px-3 py-2">
-            <Search size={13} className="text-gray-400 flex-shrink-0" />
-            <input value={filters.search} onChange={e => setFilters({ ...filters, search: e.target.value })} placeholder={t("بحث بالفرع أو المطعم أو رقم العملية...", "Search by branch, restaurant or operation ID...")} className="flex-1 text-sm outline-none" />
+
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-3.5 bg-gray-50/60 border-b border-gray-100 flex items-center justify-between">
+            <h3 className="font-bold text-gray-900 text-sm">{t("بانتظار الاعتماد النهائي", "Awaiting Final Approval")}</h3>
+            <span className="text-xs text-gray-400">{count(filtered.length)} {t("عملية", "operations")} · {fmtAmt(totalAmt, lang)} {t("ر.س", "SAR")}</span>
           </div>
-          {hasFilters && (
-            <button onClick={() => { setAccFilter(allVal); setBrandFilter(allVal); setFilters({ branch: "", status: "", match: "", search: "" }); setDateFrom(""); setDateTo(""); }}
-              className="text-xs text-purple-600 hover:underline flex items-center gap-1"><RotateCcw size={11} /> {t("مسح الكل", "Clear All")}</button>
+          {filtered.length === 0
+            ? <EmptyState icon="✅" title={t("لا توجد عمليات", "No Operations")} desc={t("لا توجد عمليات بانتظار الاعتماد في هذا الموديول", "No operations awaiting approval in this module")} />
+            : filtered.map(op => {
+              const accountant = getAcc(op);
+              return (
+                <div key={op.id} className={`px-5 py-4 flex flex-col xl:flex-row xl:items-center gap-3 xl:gap-4 border-b border-gray-100 last:border-0 hover:bg-gray-50/60 ${op.match === "diff" ? "border-r-4 border-r-red-400" : ""}`}>
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-400 to-cyan-400 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">{accountant[0]}</div>
+                  <div className="flex-1 min-w-0 w-full xl:w-auto">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-sm text-gray-800 break-words">{op.branch}</span>
+                      <span className="text-xs font-mono text-gray-400 break-all">{op.id}</span>
+                      <Badge className={`${MATCH_CFG[op.match].cls} border text-[10px]`}>{en ? (op.match === "exact" ? "Exact" : "Diff") : MATCH_CFG[op.match].label}</Badge>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5">{t("راجعه:", "Reviewed by:")} <span className="text-purple-600 font-medium">{accountant}</span> · <span>⏰ {op.timeAgo}</span></p>
+                  </div>
+                  <span className="font-mono font-bold text-gray-800 tabular-nums">{fmtAmt(op.amount, lang)} {t("ر.س", "SAR")}</span>
+                  <div className="flex gap-1.5 flex-wrap w-full xl:w-auto">
+                    <Btn size="sm" variant="success" onClick={() => { void Promise.resolve(finalApproveOp(op.id)).catch(() => {}); }}><CheckCircle2 size={12} /> {t("اعتماد", "Approve")}</Btn>
+                    {isPkg6SalesReport(op) ? <span className="text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</span> : <Btn size="sm" variant="danger" onClick={() => { setDetailId(op.id); setModal("reject"); }}><XCircle size={12} /> {t("رفض", "Reject")}</Btn>}
+                  </div>
+                </div>
+              );
+            })
+          }
+          {filtered.length > 0 && (
+            <div className="px-5 py-3 bg-gradient-to-r from-purple-50/80 to-cyan-50/60 border-t border-purple-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-semibold text-gray-600">{t("الإجمالي الكلي", "Grand Total")}</span>
+                <Badge className="bg-purple-100 text-purple-700">{count(filtered.length)} {t("عملية", "ops")}</Badge>
+                {diffCount > 0 && <Badge className="bg-red-50 text-red-700">{count(diffCount)} {t("فروقات", "diffs")}</Badge>}
+                {exactCount > 0 && <Badge className="bg-emerald-50 text-emerald-700">{count(exactCount)} {t("مطابقة", "matched")}</Badge>}
+              </div>
+              <span className="font-mono font-black text-xl text-purple-700">{fmtAmt(totalAmt, lang)} {t("ر.س", "SAR")}</span>
+            </div>
           )}
         </div>
-      </div>
-
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 bg-gray-50/60 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="font-bold text-gray-900 text-sm">{t("عمليات", "Operations")} {label}</h3>
-          <span className="text-xs text-gray-400">{filtered.length} {t("عملية", "operations")} · {fmtAmt(totalAmt)} {t("ر.س", "SAR")}</span>
-        </div>
-        {filtered.length === 0
-          ? <EmptyState icon="✅" title={t("لا توجد عمليات", "No Operations")} desc={t("لا توجد عمليات بانتظار الاعتماد في هذا الموديول", "No operations awaiting approval in this module")} />
-          : filtered.map(op => {
-            const accountant = getAcc(op);
-            return (
-              <div key={op.id} className={`px-5 py-4 flex flex-col xl:flex-row xl:items-center gap-3 xl:gap-4 border-b border-gray-100 last:border-0 hover:bg-gray-50/60 ${op.match === "diff" ? "border-r-4 border-r-red-400" : ""}`}>
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-400 to-cyan-400 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">{accountant[0]}</div>
-                <div className="flex-1 min-w-0 w-full xl:w-auto">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm text-gray-800 break-words">{op.branch}</span>
-                    <span className="text-xs font-mono text-gray-400 break-all">{op.id}</span>
-                    <Badge className={`${MATCH_CFG[op.match].cls} border text-[10px]`}>{en ? (op.match === "exact" ? "Exact" : "Diff") : MATCH_CFG[op.match].label}</Badge>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-0.5">{t("راجعه:", "Reviewed by:")} <span className="text-purple-600 font-medium">{accountant}</span> · <span>⏰ {op.timeAgo}</span></p>
-                </div>
-                <span className="font-mono font-bold text-gray-800 tabular-nums">{fmtAmt(op.amount)} {t("ر.س", "SAR")}</span>
-                <div className="flex gap-1.5 flex-wrap w-full xl:w-auto">
-                  <Btn size="sm" variant="success" onClick={() => { void Promise.resolve(finalApproveOp(op.id)).catch(() => {}); }}><CheckCircle2 size={12} /> {t("اعتماد", "Approve")}</Btn>
-                  {isPkg6SalesReport(op) ? <span className="text-xs text-amber-700">{t(SALES_RETURN_HINT.ar, SALES_RETURN_HINT.en)}</span> : <Btn size="sm" variant="danger" onClick={() => { setDetailId(op.id); setModal("reject"); }}><XCircle size={12} /> {t("رفض", "Reject")}</Btn>}
-                </div>
-              </div>
-            );
-          })
-        }
-        {filtered.length > 0 && (
-          <div className="px-5 py-3 bg-gradient-to-r from-purple-50/80 to-cyan-50/60 border-t border-purple-100 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-gray-600">{t("الإجمالي الكلي", "Grand Total")}</span>
-              <Badge className="bg-purple-100 text-purple-700">{filtered.length} {t("عملية", "ops")}</Badge>
-              {diffCount > 0 && <Badge className="bg-red-50 text-red-700">{diffCount} {t("فروقات", "diffs")}</Badge>}
-              {exactCount > 0 && <Badge className="bg-emerald-50 text-emerald-700">{exactCount} {t("مطابقة", "matched")}</Badge>}
-            </div>
-            <span className="font-mono font-black text-xl text-purple-700">{fmtAmt(totalAmt)} {t("ر.س", "SAR")}</span>
-          </div>
-        )}
-      </div>
+      </>}
       {moduleKey === "shifts" && <HeadShiftHistory />}
     </div>
   );

@@ -5,11 +5,13 @@ import { isApiError } from "../../../../../api/errors";
 import { useShiftsHistory } from "../../../../../api/queries";
 import { historyPageTarget } from "../../../../../api/queries/shifts";
 import type { Shift } from "../../../../../api/types/company";
+import { displayDigits } from "../../_shared/displayDigits";
+import { formatDateLong } from "../../_shared/formatters";
 import { useLang } from "../../_shared/LangContext";
 import { getShiftCountEvidence } from "../../shiftCountEvidence";
 
 export function HeadShiftHistory() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [branchId, setBranchId] = useState("");
@@ -30,9 +32,9 @@ export function HeadShiftHistory() {
   return <section className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
     <h3 className="font-bold text-gray-800 text-sm">{t("سجل الورديات — قراءة فقط", "Shift history — read only")}</h3>
     <div className="flex flex-wrap gap-3 text-xs">
-      <label>{t("من تاريخ الإغلاق", "Closed from")}<input type="date" value={dateFrom}
+      <label>{t("من تاريخ الإغلاق", "Closed from")}<input lang={lang === "ar" ? "ar-SA" : "en-US"} type="date" value={dateFrom}
         onChange={e => { setDateFrom(e.target.value); setPage(1); }} className="block border rounded px-2 py-1" /></label>
-      <label>{t("إلى تاريخ الإغلاق", "Closed to")}<input type="date" value={dateTo}
+      <label>{t("إلى تاريخ الإغلاق", "Closed to")}<input lang={lang === "ar" ? "ar-SA" : "en-US"} type="date" value={dateTo}
         onChange={e => { setDateTo(e.target.value); setPage(1); }} className="block border rounded px-2 py-1" /></label>
       <label>{t("الفرع", "Branch")}<select value={branchId}
         onChange={e => { setBranchId(e.target.value); setPage(1); }} className="block border rounded px-2 py-1">
@@ -47,12 +49,12 @@ export function HeadShiftHistory() {
       const evidence = getShiftCountEvidence(shift);
       return <div key={shift.id} className="flex flex-wrap gap-4 border-t py-2 text-xs">
         <span>{shift.branchName}</span><span>{shift.cashierName}</span>
-        <span>{shift.endedAt ? new Date(shift.endedAt).toLocaleDateString("ar-SA") : "—"}</span>
-        <span>{t("الفرق", "Variance")}: <bdi>{evidence.variance.text}</bdi></span>
+        <span>{formatDateLong(lang, shift.endedAt) || "—"}</span>
+        <span>{t("الفرق", "Variance")}: <bdi>{displayDigits(evidence.variance.text, lang)}</bdi></span>
       </div>;
     })}
     <div className="flex items-center justify-between text-xs">
-      <span>{t("الصفحة", "Page")} {meta?.page ?? page} / {meta?.totalPages ?? "—"}</span>
+      <span>{t("الصفحة", "Page")} <bdi>{displayDigits(meta?.page ?? page, lang)} / {displayDigits(meta?.totalPages ?? "—", lang)}</bdi></span>
       <div className="flex gap-2">
         <button disabled={busy || query.isError || historyPageTarget(meta, page, -1) === page}
           onClick={() => setPage(historyPageTarget(meta, page, -1))}>{t("السابق", "Previous")}</button>
