@@ -5859,6 +5859,25 @@ function ExpenseStatementPanel({ op, onApprove, onReject, onConvert, convertedIn
         <p className="text-xs text-gray-400 text-center py-4">{t("لا توجد فواتير في هذا البيان","No invoices in this statement")}</p>
       )}
 
+      {exp && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-3">
+            <p className="text-[11px] font-semibold text-emerald-800">{t("المبلغ المثبت خصمه من عُهدة الفرع","Posted branch-custody deduction")}</p>
+            <p className="mt-1 font-mono text-lg font-black text-emerald-800">{fmtH(exp.custodyChargeHalalas ?? 0)}</p>
+            <p className="mt-0.5 text-[10px] text-emerald-700">
+              {(exp.custodyChargeHalalas ?? 0) > 0
+                ? t("حسب حركة العُهدة المسجلة","From the posted custody movement")
+                : t("لا توجد حركة خصم قائمة على العُهدة","No outstanding custody deduction")}
+            </p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+            <p className="text-[11px] font-semibold text-gray-700">{t("إجمالي الفواتير","Invoice total")}</p>
+            <p className="mt-1 font-mono text-lg font-black text-gray-800">{fmtH(exp.totals.inclTaxHalalas)}</p>
+            <p className="mt-0.5 text-[10px] text-gray-500">{exp.paymentMethod ?? "—"}</p>
+          </div>
+        </div>
+      )}
+
       {invoices.length>0 && (
         <div className="overflow-x-auto -mx-1 sm:mx-0">
           <table className="min-w-[650px] w-full text-xs border border-gray-200 rounded-xl overflow-hidden">

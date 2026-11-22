@@ -304,6 +304,8 @@ export interface ExpenseInvoiceRow {
 /** The `expenses` block on an expenses operation detail (T05 §1). */
 export interface ExpensesBlock {
   invoices: ExpenseInvoiceRow[];
+  paymentMethod?: string | null;
+  custodyChargeHalalas?: number;
   totals: {
     invoiceCount: number;
     preTaxHalalas: number;
