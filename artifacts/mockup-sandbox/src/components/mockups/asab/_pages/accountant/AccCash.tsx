@@ -33,6 +33,7 @@ import { Badge } from "../../components/Badge";
 import { KpiCard } from "../../components/KpiCard";
 import { EmptyState } from "../../components/EmptyState";
 import { fmtAmt } from "../../_shared/formatters";
+import { useLang } from "../../_shared/LangContext";
 import { BRANCHES } from "../../_shared/filterOps";
 import type { PageProps } from "../../_shared/types";
 import { useAuth } from "../../../../../auth/AuthContext";
@@ -47,6 +48,7 @@ import { getUnconfirmedIntent, setUnconfirmedIntent, removeUnconfirmedIntent } f
 
 export function FundingExecution() {
   const { isRole, user } = useAuth();
+  const { t, dir } = useLang();
   const queryClient = useQueryClient();
   const accountant = isRole("accountant");
   const { data: requests = [], isError, refetch } = useAccountantFundingRequests(accountant);
@@ -59,20 +61,24 @@ export function FundingExecution() {
 
   if (!accountant) return null;
   return (
-    <section className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3" dir="rtl">
-      <h3 className="font-bold text-gray-900 text-sm">طلبات تغذية عهدة الفرع</h3>
-      <p className="text-xs text-gray-600">إرسال المحاسب يوثق التحويل فقط. يزداد الرصيد بعد تأكيد مدير الفرع الاستلام.</p>
-      {isError && <p role="alert" className="text-xs text-red-700">تعذر تحميل الطلبات المخولة. أعد المحاولة لاحقًا.</p>}
-      {!isError && requests.length === 0 && <p className="text-xs text-gray-500">لا توجد طلبات معتمدة ضمن صلاحياتك.</p>}
+    <section className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3" dir={dir}>
+      <h3 className="font-bold text-gray-900 text-sm">{t("طلبات تغذية عهدة الفرع", "Branch Custody Funding Requests")}</h3>
+      <p className="text-xs text-gray-600">{t("إرسال المحاسب يوثق التحويل فقط. يزداد الرصيد بعد تأكيد مدير الفرع الاستلام.", "Accountant submission records transfer proof only. Balance increases after Branch Manager confirms receipt.")}</p>
+      {isError && <p role="alert" className="text-xs text-red-700">{t("تعذر تحميل الطلبات المخولة. أعد المحاولة لاحقًا.", "Could not load authorized requests. Please try again later.")}</p>}
+      {!isError && requests.length === 0 && <p className="text-xs text-gray-500">{t("لا توجد طلبات معتمدة ضمن صلاحياتك.", "No approved requests within your scope.")}</p>}
       {requests.map((request) => (
         <div key={request.id} className="border border-gray-200 rounded-lg p-3 space-y-2">
-          <div className="flex justify-between gap-3 text-sm">
-            <span>{request.branchName ?? "الفرع"} — {request.amount} ر.س</span>
+          <div className="flex justify-between gap-3 text-sm flex-wrap">
+            <span>{request.branchName ?? t("الفرع", "Branch")} — {request.amount} {t("ر.س", "SAR")}</span>
             <span className="text-xs font-semibold">
-              {request.receivedAt ? "استلم المدير واكتمل الترحيل" : request.executedAt ? "أُرسل، بانتظار تأكيد المدير" : "معتمد، بانتظار إرسال المحاسب"}
+              {request.receivedAt
+                ? t("استلم المدير واكتمل الترحيل", "Manager received & posting completed")
+                : request.executedAt
+                  ? t("أُرسل، بانتظار تأكيد المدير", "Sent, awaiting manager confirmation")
+                  : t("معتمد، بانتظار إرسال المحاسب", "Approved, awaiting accountant execution")}
             </span>
           </div>
-          {request.transferReference && <p className="text-xs text-gray-600">مرجع التحويل: {request.transferReference}</p>}
+          {request.transferReference && <p className="text-xs text-gray-600">{t("مرجع التحويل:", "Transfer Reference:")} {request.transferReference}</p>}
           {request.canExecute && (
             <button
               type="button"
@@ -537,6 +543,7 @@ export function AsabCashTxnModal({
 
 // One expandable custody row + ledger + approve/reject + settle (T09 §B2/B4/B5).
 export function AsabCustodyCard({ custody }: { custody: any }) {
+  const { t, dir, lang } = useLang();
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState("");
   const [showTxn, setShowTxn] = useState(false);
@@ -567,53 +574,53 @@ export function AsabCustodyCard({ custody }: { custody: any }) {
           </div>
           <div className="flex items-center gap-3 mt-1.5">
             <div className="flex-1 bg-gray-200 rounded-full h-1.5 max-w-32"><div className={`h-1.5 rounded-full ${pct > 85 ? "bg-red-400" : "bg-orange-400"}`} style={{ width: `${Math.min(pct, 100)}%` }}></div></div>
-            <span className="text-xs text-gray-400">{pct}% مُصرَف</span>
-            <span className={`text-xs font-bold font-mono ${isLow ? "text-red-600" : "text-emerald-600"}`}>{fmtAmt(custody.remainingHalalas / 100)} ر.س متبقٍ</span>
+            <span className="text-xs text-gray-400">{pct}% {t("مُصرَف", "used")}</span>
+            <span className={`text-xs font-bold font-mono ${isLow ? "text-red-600" : "text-emerald-600"}`}>{fmtAmt(custody.remainingHalalas / 100)} {t("ر.س متبقٍ", "SAR remaining")}</span>
           </div>
         </div>
-        <button onClick={() => setShowTxn(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold hover:bg-purple-100 flex-shrink-0"><Plus size={10} /> صرف</button>
-        <Btn size="sm" onClick={() => setOpen(!open)}>{open ? <ChevronUp size={12} /> : <ChevronDown size={12} />} المعاملات</Btn>
+        <button onClick={() => setShowTxn(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold hover:bg-purple-100 flex-shrink-0"><Plus size={10} /> {t("صرف", "Disburse")}</button>
+        <Btn size="sm" onClick={() => setOpen(!open)}>{open ? <ChevronUp size={12} /> : <ChevronDown size={12} />} {t("المعاملات", "Transactions")}</Btn>
       </div>
       {open && (
         <div className="px-5 pb-4 bg-gray-50/30">
           <div className="flex items-center justify-between mb-2 pt-2 gap-2 flex-wrap">
-            <p className="text-[11px] font-bold text-gray-500">سجل معاملات العهدة — {custody.custodianName}</p>
-            <div className="flex items-center gap-2">
+            <p className="text-[11px] font-bold text-gray-500">{t("سجل معاملات العهدة —", "Custody Ledger —")} {custody.custodianName}</p>
+            <div className="flex items-center gap-2 flex-wrap">
               <input type="month" value={month} onChange={e => setMonth(e.target.value)} className="text-[11px] border border-gray-200 rounded-lg px-2 py-1" />
               <button onClick={() => exportLedgerMut.mutate({ custodyId: custody.id, month: month || undefined })} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold hover:bg-emerald-100"><FileText size={10} /> Excel</button>
-              {custody.daysSinceSettlement >= 30 && <button onClick={() => reqMut.mutate({ custodyId: custody.id })} disabled={reqMut.isPending} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-semibold hover:bg-amber-100"><Send size={10} /> طلب تسوية</button>}
-              <button onClick={() => settleMut.mutate({ custodyId: custody.id })} disabled={settleMut.isPending} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-semibold hover:bg-blue-100"><Check size={10} /> تسوية العهدة</button>
+              {custody.daysSinceSettlement >= 30 && <button onClick={() => reqMut.mutate({ custodyId: custody.id })} disabled={reqMut.isPending} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-semibold hover:bg-amber-100"><Send size={10} /> {t("طلب تسوية", "Request Settlement")}</button>}
+              <button onClick={() => settleMut.mutate({ custodyId: custody.id })} disabled={settleMut.isPending} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-semibold hover:bg-blue-100"><Check size={10} /> {t("تسوية العهدة", "Settle Custody")}</button>
             </div>
           </div>
           <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto">
-            <table className="w-full text-xs" dir="rtl">
+            <table className="w-full min-w-[560px] text-xs" dir={dir}>
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-right font-semibold text-gray-600">التاريخ</th>
-                  <th className="px-3 py-2 text-right font-semibold text-gray-600">البيان</th>
-                  <th className="px-3 py-2 text-center font-semibold text-gray-600">النوع</th>
-                  <th className="px-3 py-2 text-center font-semibold text-gray-600">المبلغ</th>
-                  <th className="px-3 py-2 text-center font-semibold text-gray-600">الرصيد</th>
-                  <th className="px-3 py-2 text-center font-semibold text-gray-600">الحالة</th>
+                  <th className={`px-3 py-2 font-semibold text-gray-600 ${dir === "ltr" ? "text-left" : "text-right"}`}>{t("التاريخ", "Date")}</th>
+                  <th className={`px-3 py-2 font-semibold text-gray-600 ${dir === "ltr" ? "text-left" : "text-right"}`}>{t("البيان", "Description")}</th>
+                  <th className="px-3 py-2 text-center font-semibold text-gray-600">{t("النوع", "Type")}</th>
+                  <th className="px-3 py-2 text-center font-semibold text-gray-600">{t("المبلغ", "Amount")}</th>
+                  <th className="px-3 py-2 text-center font-semibold text-gray-600">{t("الرصيد", "Balance")}</th>
+                  <th className="px-3 py-2 text-center font-semibold text-gray-600">{t("الحالة", "Status")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {(ledger?.transactions ?? []).length === 0 && <tr><td colSpan={6} className="text-center text-gray-400 py-6">لا توجد معاملات</td></tr>}
+                {(ledger?.transactions ?? []).length === 0 && <tr><td colSpan={6} className="text-center text-gray-400 py-6">{t("لا توجد معاملات", "No transactions")}</td></tr>}
                 {(ledger?.transactions ?? []).map((tx) => (
                   <tr key={tx.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{new Date(tx.txnDate).toLocaleDateString("ar-SA")}</td>
+                    <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{new Date(tx.txnDate).toLocaleDateString(lang === "en" ? "en-US" : "ar-SA")}</td>
                     <td className="px-3 py-2 font-medium text-gray-800">{tx.description}</td>
-                    <td className="px-3 py-2 text-center"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${tx.txnType === "credit" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>{tx.typeLabelAr}</span></td>
+                    <td className="px-3 py-2 text-center"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${tx.txnType === "credit" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>{lang === "en" ? (tx.txnType === "credit" ? "Credit (In)" : "Debit (Out)") : tx.typeLabelAr}</span></td>
                     <td className={`px-3 py-2 text-center font-mono font-bold ${tx.txnType === "credit" ? "text-emerald-600" : "text-red-600"}`}>{tx.txnType === "credit" ? "+" : "-"}{fmtAmt(tx.amountHalalas / 100)}</td>
                     <td className="px-3 py-2 text-center font-mono text-gray-600">{fmtAmt(tx.runningBalanceHalalas / 100)}</td>
                     <td className="px-3 py-2 text-center">
                       {tx.status === "pending" ? (
                         <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => approveMut.mutate({ custodyId: custody.id, txnId: tx.id })} disabled={approveMut.isPending} className="p-1 rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100" title="اعتماد"><Check size={12} /></button>
-                          <button onClick={() => doReject(tx.id)} disabled={rejectMut.isPending} className="p-1 rounded bg-red-50 text-red-600 hover:bg-red-100" title="رفض"><X size={12} /></button>
+                          <button onClick={() => approveMut.mutate({ custodyId: custody.id, txnId: tx.id })} disabled={approveMut.isPending} className="p-1 rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100" title={t("اعتماد", "Approve")}><Check size={12} /></button>
+                          <button onClick={() => doReject(tx.id)} disabled={rejectMut.isPending} className="p-1 rounded bg-red-50 text-red-600 hover:bg-red-100" title={t("رفض", "Reject")}><X size={12} /></button>
                         </div>
                       ) : (
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${tx.status === "approved" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>{tx.status === "approved" ? "معتمد" : "مرفوض"}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${tx.status === "approved" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>{tx.status === "approved" ? t("معتمد", "Approved") : t("مرفوض", "Rejected")}</span>
                       )}
                     </td>
                   </tr>
@@ -621,7 +628,7 @@ export function AsabCustodyCard({ custody }: { custody: any }) {
               </tbody>
               <tfoot className="bg-gray-50 border-t-2 border-gray-200">
                 <tr>
-                  <td colSpan={4} className="px-3 py-2 font-bold text-gray-700">الرصيد الحالي</td>
+                  <td colSpan={4} className="px-3 py-2 font-bold text-gray-700">{t("الرصيد الحالي", "Current Balance")}</td>
                   <td className={`px-3 py-2 text-center font-black font-mono ${isLow ? "text-red-600" : "text-emerald-700"}`}>{fmtAmt((ledger?.custody.currentBalanceHalalas ?? custody.remainingHalalas) / 100)}</td>
                   <td></td>
                 </tr>
@@ -635,6 +642,7 @@ export function AsabCustodyCard({ custody }: { custody: any }) {
 }
 
 export function AccCash({ }: PageProps) {
+  const { t, dir } = useLang();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [brandFilter, setBrandFilter] = useState("");
@@ -660,70 +668,72 @@ export function AccCash({ }: PageProps) {
   });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" dir={dir}>
       <FundingExecution />
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-800">إدارة العهد النقدية</h2>
-        <button onClick={() => exportCashMut.mutate({ brandId: brandFilter || undefined, branchId: branchFilter || undefined })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><FileText size={12} /> ملخص العهد Excel</button>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h2 className="text-xl font-bold text-gray-800">{t("إدارة العهد النقدية", "Cash Custody Management")}</h2>
+        <button onClick={() => exportCashMut.mutate({ brandId: brandFilter || undefined, branchId: branchFilter || undefined })} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><FileText size={12} /> {t("ملخص العهد Excel", "Custody Summary Excel")}</button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KpiCard label="عدد العهود النشطة" value={String(kpis?.activeCustodies ?? custodies.length)} sub="فروع لديها عهدة" icon={<ArrowLeftRight size={18} className="text-orange-600" />} accent="orange" />
-        <KpiCard label="طلبات صرف معلقة" value={String(kpis?.pendingRequests ?? 0)} sub="بانتظار المراجعة والموافقة" icon={<Clock size={18} className="text-amber-600" />} accent="amber" />
-        <KpiCard label="عهود قريبة من النفاد" value={String(kpis?.nearDepletion ?? 0)} sub="أقل من 500 ر.س متبقٍ" icon={<AlertTriangle size={18} className="text-red-600" />} accent="red" />
-        <KpiCard label="تسويات متأخرة" value={String(overdueSettlement.length)} sub="+30 يوم بدون تسوية" icon={<Clock size={18} className="text-red-600" />} accent="red" />
+        <KpiCard label={t("عدد العهود النشطة", "Active Custodies")} value={String(kpis?.activeCustodies ?? custodies.length)} sub={t("فروع لديها عهدة", "Branches with custody")} icon={<ArrowLeftRight size={18} className="text-orange-600" />} accent="orange" />
+        <KpiCard label={t("طلبات صرف معلقة", "Pending Requests")} value={String(kpis?.pendingRequests ?? 0)} sub={t("بانتظار المراجعة والموافقة", "Awaiting review & approval")} icon={<Clock size={18} className="text-amber-600" />} accent="amber" />
+        <KpiCard label={t("عهود قريبة من النفاد", "Near Depletion")} value={String(kpis?.nearDepletion ?? 0)} sub={t("أقل من 500 ر.س متبقٍ", "Below 500 SAR remaining")} icon={<AlertTriangle size={18} className="text-red-600" />} accent="red" />
+        <KpiCard label={t("تسويات متأخرة", "Overdue Settlements")} value={String(overdueSettlement.length)} sub={t("+30 يوم بدون تسوية", "+30 days unsettled")} icon={<Clock size={18} className="text-red-600" />} accent="red" />
       </div>
       {overdueSettlement.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 flex items-start gap-3" dir="rtl">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 flex items-start gap-3" dir={dir}>
           <AlertTriangle size={15} className="text-red-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="text-sm font-bold text-red-800">تنبيه: {overdueSettlement.length} عهدة لم تُسوَّ منذ أكثر من 30 يوماً</p>
-            <p className="text-xs text-red-700 mt-0.5">{overdueSettlement.map(c => `${c.branchName} (${c.daysSinceSettlement} يوم)`).join(" · ")}</p>
+            <p className="text-sm font-bold text-red-800">{t("تنبيه:", "Alert:")} {overdueSettlement.length} {t("عهدة لم تُسوَّ منذ أكثر من 30 يوماً", "custodies unsettled for over 30 days")}</p>
+            <p className="text-xs text-red-700 mt-0.5">{overdueSettlement.map(c => `${c.branchName} (${c.daysSinceSettlement} ${t("يوم", "d")})`).join(" · ")}</p>
           </div>
         </div>
       )}
 
       {/* Filter bar */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir="rtl">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir={dir}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
           <div>
-            <label className="text-[11px] font-semibold text-gray-500 block mb-1">بحث — الفرع أو أمين الصندوق</label>
+            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("بحث — الفرع أو أمين الصندوق", "Search — Branch or Custodian")}</label>
             <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2">
               <Search size={13} className="text-gray-400" />
-              <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="اسم الفرع أو أمين الصندوق..." className="flex-1 text-sm outline-none" />
+              <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder={t("اسم الفرع أو أمين الصندوق...", "Branch or custodian name...")} className="flex-1 text-sm outline-none bg-transparent" />
             </div>
           </div>
           <div>
-            <label className="text-[11px] font-semibold text-gray-500 block mb-1">العلامة التجارية</label>
+            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("العلامة التجارية", "Brand")}</label>
             <select value={brandFilter} onChange={e => { setBrandFilter(e.target.value); setBranchFilter(""); }} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
-              <option value="">كل العلامات</option>
+              <option value="">{t("كل العلامات", "All Brands")}</option>
               {cashBrandRows.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold text-gray-500 block mb-1">الفرع</label>
+            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع", "Branch")}</label>
             <select value={branchFilter} onChange={e => setBranchFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
-              <option value="">كل الفروع</option>
+              <option value="">{t("كل الفروع", "All Branches")}</option>
               {branchOpts.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-[11px] font-semibold text-gray-500 block mb-1">حالة العهدة</label>
+            <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("حالة العهدة", "Custody Status")}</label>
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
-              {["الكل", "قريبة من النفاد", "حرجة"].map(s => <option key={s}>{s}</option>)}
+              <option value="">{t("الكل", "All")}</option>
+              <option value="قريبة من النفاد">{t("قريبة من النفاد", "Near Depletion")}</option>
+              <option value="حرجة">{t("حرجة", "Critical")}</option>
             </select>
           </div>
         </div>
         {(searchTerm || statusFilter || brandFilter || branchFilter) && (
-          <button onClick={() => { setSearchTerm(""); setStatusFilter(""); setBrandFilter(""); setBranchFilter(""); }} className="text-xs text-purple-600 hover:underline flex items-center gap-1"><RotateCcw size={11} /> مسح الفلاتر</button>
+          <button onClick={() => { setSearchTerm(""); setStatusFilter(""); setBrandFilter(""); setBranchFilter(""); }} className="text-xs text-purple-600 hover:underline flex items-center gap-1"><RotateCcw size={11} /> {t("مسح الفلاتر", "Clear Filters")}</button>
         )}
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-3.5 bg-gray-50/60 border-b border-gray-100">
-          <p className="font-bold text-gray-900 text-sm">كشف العهد النقدية — اضغط على فرع لعرض سجل المعاملات</p>
+          <p className="font-bold text-gray-900 text-sm">{t("كشف العهد النقدية — اضغط على فرع لعرض سجل المعاملات", "Cash Custody Ledger — Click a branch to view transactions")}</p>
         </div>
-        {filtered.length === 0 && <p className="text-center text-gray-400 text-sm py-8">لا توجد عهد</p>}
+        {filtered.length === 0 && <p className="text-center text-gray-400 text-sm py-8">{t("لا توجد عهد", "No custodies found")}</p>}
         {filtered.map(c => <AsabCustodyCard key={c.id} custody={c} />)}
       </div>
     </div>

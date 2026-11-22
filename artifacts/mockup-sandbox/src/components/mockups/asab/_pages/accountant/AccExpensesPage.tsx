@@ -461,7 +461,7 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
       {/* Expenses invoice-match KPIs (T05 §2) — GET /company/me/expenses/kpis */}
       {expKpis && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <KpiCard label={t("إجمالي المصروفات", "Total Expenses")} value={fmtAmt(Math.round(expKpis.totalHalalas / 100))} sub={`${t("ضريبة", "VAT")} ${fmtAmt(Math.round(expKpis.vat15Halalas / 100))}`} icon={<FileText size={18} className="text-purple-600" />} accent="purple" />
+          <KpiCard label={t("إجمالي المصروفات", "Total Expenses")} value={fmtAmt(expKpis.totalHalalas / 100)} sub={`${t("ضريبة", "VAT")} ${fmtAmt(expKpis.vat15Halalas / 100)}`} icon={<FileText size={18} className="text-purple-600" />} accent="purple" />
           <KpiCard label={t("فواتير مطابقة", "Matched")} value={String(expKpis.pendingInvoices.matched)} sub={t("قيد المراجعة", "under review")} icon={<CheckCircle2 size={18} className="text-emerald-600" />} accent="emerald" />
           <KpiCard label={t("غير مطابقة", "Mismatch")} value={String(expKpis.pendingInvoices.mismatch)} sub={t("تحتاج تدقيق", "needs audit")} icon={<AlertTriangle size={18} className="text-amber-600" />} accent="amber" />
           <KpiCard label={t("مفقودة", "Missing")} value={String(expKpis.pendingInvoices.missing)} sub={t("بلا مستند", "no document")} icon={<XCircle size={18} className="text-red-600" />} accent="red" />
@@ -517,7 +517,7 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
         </div>
       </div>
 
-      {filtered.some(op => (INVOICES[op.id] || INVOICES["default"]).some(inv => inv.amount >= 1000 && !convertedInvNums.has(inv.invNum))) && (
+      {filtered.some(op => (INVOICES[op.id] || []).some(inv => inv.amount >= 1000 && !convertedInvNums.has(inv.invNum))) && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-start gap-3" dir={dir}>
           <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
             <AlertTriangle size={14} className="text-amber-600" />
@@ -525,7 +525,7 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
           <div className="flex-1">
             <p className="text-sm font-bold text-amber-800">{t("فواتير مقترح تحويلها إلى أصول ثابتة", "Invoices recommended for conversion to fixed assets")}</p>
             <p className="text-xs text-amber-700 mt-0.5">
-              {filtered.flatMap(op => (INVOICES[op.id] || INVOICES["default"]).filter(inv => inv.amount >= 1000 && !convertedInvNums.has(inv.invNum))).length} {t("فاتورة بقيمة أعلى من 1,000 ر.س — يُنصح بمراجعتها للنظر في تصنيفها كأصل ثابت بدلاً من مصروف.", "invoices above 1,000 SAR — recommend reviewing them to classify as fixed assets instead of expenses.")}
+              {filtered.flatMap(op => (INVOICES[op.id] || []).filter(inv => inv.amount >= 1000 && !convertedInvNums.has(inv.invNum))).length} {t("فاتورة بقيمة أعلى من 1,000 ر.س — يُنصح بمراجعتها للنظر في تصنيفها كأصل ثابت بدلاً من مصروف.", "invoices above 1,000 SAR — recommend reviewing them to classify as fixed assets instead of expenses.")}
             </p>
           </div>
           <button onClick={() => alert(t("جارٍ الانتقال إلى صفحة الأصول الثابتة...", "Navigating to Fixed Assets page..."))} className="text-xs text-amber-700 border border-amber-300 bg-white px-2.5 py-1.5 rounded-lg hover:bg-amber-100 font-semibold flex-shrink-0">
