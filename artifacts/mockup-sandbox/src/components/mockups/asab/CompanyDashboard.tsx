@@ -5861,13 +5861,29 @@ function ExpenseStatementPanel({ op, onApprove, onReject, onConvert, convertedIn
 
       {exp && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-3">
-            <p className="text-[11px] font-semibold text-emerald-800">{t("المبلغ المثبت خصمه من عُهدة الفرع","Posted branch-custody deduction")}</p>
-            <p className="mt-1 font-mono text-lg font-black text-emerald-800">{fmtH(exp.custodyChargeHalalas ?? 0)}</p>
-            <p className="mt-0.5 text-[10px] text-emerald-700">
-              {(exp.custodyChargeHalalas ?? 0) > 0
-                ? t("حسب حركة العُهدة المسجلة","From the posted custody movement")
-                : t("لا توجد حركة خصم قائمة على العُهدة","No outstanding custody deduction")}
+          <div className={`rounded-xl border px-4 py-3 ${
+            typeof exp.custodyChargeHalalas === "number"
+              ? "border-emerald-200 bg-emerald-50/70"
+              : "border-amber-200 bg-amber-50/60"
+          }`}>
+            <p className={`text-[11px] font-semibold ${
+              typeof exp.custodyChargeHalalas === "number" ? "text-emerald-800" : "text-amber-900"
+            }`}>{t("المبلغ المثبت خصمه من عُهدة الفرع","Posted branch-custody deduction")}</p>
+            <p className={`mt-1 font-mono text-lg font-black ${
+              typeof exp.custodyChargeHalalas === "number" ? "text-emerald-800" : "text-amber-800"
+            }`}>
+              {typeof exp.custodyChargeHalalas === "number"
+                ? fmtH(exp.custodyChargeHalalas)
+                : t("غير متاح","Unavailable")}
+            </p>
+            <p className={`mt-0.5 text-[10px] ${
+              typeof exp.custodyChargeHalalas === "number" ? "text-emerald-700" : "text-amber-800"
+            }`}>
+              {typeof exp.custodyChargeHalalas !== "number"
+                ? t("لم يرد حقل خصم العُهدة من الخادم","Custody deduction field unavailable from server")
+                : exp.custodyChargeHalalas > 0
+                  ? t("حسب حركة العُهدة المسجلة","From the posted custody movement")
+                  : t("لا توجد حركة خصم قائمة على العُهدة","No outstanding custody deduction")}
             </p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
