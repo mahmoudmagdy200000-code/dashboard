@@ -175,9 +175,10 @@ export function ModuleAggregationGrid({ ops, moduleAggregation = [], navigate }:
             rejected: summary?.rejected ?? mOps.filter(o => o.status === "rejected").length,
             erp: summary?.erp ?? summary?.counts?.erp ?? mOps.filter(o => o.erpPosted).length,
           };
+          const nonRejectedOps = mOps.filter(o => o.status !== "rejected");
           const total = summary?.totalAmount != null
             ? summary.totalAmount / 100
-            : (mOps.some(o => o.amount == null) ? null : mOps.reduce((s, o) => s + (o.amount ?? 0), 0));
+            : (nonRejectedOps.some(o => o.amount == null) ? null : nonRejectedOps.reduce((s, o) => s + (o.amount ?? 0), 0));
           const totalCount = summary?.total ?? mOps.length;
           const stepNum = cfg.step;
           const maxStep = 5;

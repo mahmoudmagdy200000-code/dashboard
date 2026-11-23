@@ -195,6 +195,7 @@ export function FundingExecution() {
                       const activeCompanyId = (user as any)?.companyId;
                       removeUnconfirmedIntent("funding", request.id, user?.id, activeCompanyId);
                       toast.success("تم توثيق الإرسال؛ بانتظار تأكيد المدير");
+                      void refetch();
                       setSelectedId(null);
                       setProof(null);
                       setReference("");
@@ -609,7 +610,10 @@ export function AsabCustodyCard({ custody }: { custody: any }) {
                 {(ledger?.transactions ?? []).map((tx) => (
                   <tr key={tx.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{new Date(tx.txnDate).toLocaleDateString(lang === "en" ? "en-US" : "ar-SA")}</td>
-                    <td className="px-3 py-2 font-medium text-gray-800">{lang === "ar" ? ({ "Bank Transfer": "تحويل بنكي", "Expenses Deduction": tx.txnType === "credit" ? "عكس خصم مصروف" : "خصم مصروفات", "Cash Handover": "تسليم نقدي", "Cash Transfer": "تحويل نقدي" }[tx.description] || tx.description) : tx.description}</td>
+                    <td className="px-3 py-2 font-medium text-gray-800">
+                      <span>{lang === "ar" ? ({ "Bank Transfer": "تحويل بنكي", "Expenses Deduction": tx.txnType === "credit" ? "عكس خصم مصروف" : "خصم مصروفات", "Cash Handover": "تسليم نقدي", "Cash Transfer": "تحويل نقدي" }[tx.description] || tx.description) : tx.description}</span>
+                      {(tx as any).reference && <span className="ms-1.5 font-mono text-[10px] text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">{(tx as any).reference}</span>}
+                    </td>
                     <td className="px-3 py-2 text-center"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${tx.txnType === "credit" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>{lang === "en" ? (tx.txnType === "credit" ? "Credit (In)" : "Debit (Out)") : tx.typeLabelAr}</span></td>
                     <td className={`px-3 py-2 text-center font-mono font-bold ${tx.txnType === "credit" ? "text-emerald-600" : "text-red-600"}`}>{tx.txnType === "credit" ? "+" : "-"}{fmtAmt(tx.amountHalalas / 100, lang)}</td>
                     <td className="px-3 py-2 text-center font-mono text-gray-600">{fmtAmt(tx.runningBalanceHalalas / 100, lang)}</td>
