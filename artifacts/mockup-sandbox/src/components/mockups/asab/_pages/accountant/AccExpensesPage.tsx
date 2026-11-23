@@ -587,8 +587,17 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
                 )}
                 {isExpanded && invoices.length > 0 && (
                   <div className="px-5 pb-4 bg-gray-50/40">
-                    <div className="mt-2 mb-2 flex items-center gap-2">
+                    <div className="mt-2 mb-2 flex items-center gap-2 flex-wrap">
                       <p className="text-xs font-bold text-gray-600">{t("تفاصيل الفواتير المضمنة في هذا البيان:", "Invoice details included in this entry:")}</p>
+                      {(expandedDetail?.expenses?.paymentMethod || expandedDetail?.expenses?.custodyChargeHalalas != null) && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                          {t("طريقة الدفع:", "Payment:")}{" "}
+                          {expandedDetail.expenses.paymentMethod === "custody"
+                            ? t("رصيد العهدة", "Custody")
+                            : (expandedDetail.expenses.paymentMethod || t("رصيد العهدة", "Custody"))}
+                          {expandedDetail.expenses.custodyChargeHalalas != null && ` (${fmtAmt(expandedDetail.expenses.custodyChargeHalalas / 100, lang)} ${t("ر.س", "SAR")})`}
+                        </span>
+                      )}
                       {!isLocked && <button onClick={() => setEditingRow(editingRow ? null : op.id)} className="text-[10px] text-purple-600 hover:underline flex items-center gap-1"><Edit3 size={10} /> {editingRow === op.id ? t("إيقاف التعديل", "Stop Editing") : t("تفعيل التعديل", "Enable Editing")}</button>}
                     </div>
                     {editingRow === op.id && (
@@ -631,19 +640,19 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
                       </div>
                     )}
                     <div className="overflow-x-auto rounded-xl border border-gray-100">
-                      <table className="w-full min-w-[700px] text-xs" dir={dir}>
+                      <table className="w-full text-[11px]" dir={dir}>
                       <thead className="bg-gray-100">
                         <tr>
-                          <th className={`px-3 py-2 ${dir === "ltr" ? "text-left" : "text-right"}`}>{t("رقم الفاتورة", "Invoice No.")}</th>
-                          <th className={`px-3 py-2 ${dir === "ltr" ? "text-left" : "text-right"}`}>{t("المورد", "Supplier")}</th>
-                          <th className={`px-3 py-2 ${dir === "ltr" ? "text-left" : "text-right"}`}>{t("البيان", "Description")}</th>
-                          <th className="px-3 py-2 text-center">{t("التاريخ", "Date")}</th>
-                          <th className="px-3 py-2 text-center">{t("قبل الضريبة", "Before Tax")}</th>
-                          <th className="px-3 py-2 text-center bg-amber-50/60 text-amber-700">{t("الضريبة 15%", "VAT 15%")}</th>
-                          <th className="px-3 py-2 text-center bg-emerald-50/60 text-emerald-700">{t("بعد الضريبة", "After Tax")}</th>
-                          <th className="px-3 py-2 text-center">{t("المرفقات", "Attachments")}</th>
-                          <th className="px-3 py-2 text-center">{t("توثيق", "Verify")}</th>
-                          <th className="px-3 py-2 text-center bg-purple-50/60 text-purple-700">{t("أصل ثابت", "Fixed Asset")}</th>
+                          <th className={`px-2 py-2 ${dir === "ltr" ? "text-left" : "text-right"}`}>{t("رقم الفاتورة", "Invoice No.")}</th>
+                          <th className={`px-2 py-2 ${dir === "ltr" ? "text-left" : "text-right"}`}>{t("المورد", "Supplier")}</th>
+                          <th className={`px-2 py-2 ${dir === "ltr" ? "text-left" : "text-right"}`}>{t("البيان", "Description")}</th>
+                          <th className="px-2 py-2 text-center whitespace-nowrap">{t("التاريخ", "Date")}</th>
+                          <th className="px-2 py-2 text-center whitespace-nowrap">{t("قبل الضريبة", "Before Tax")}</th>
+                          <th className="px-2 py-2 text-center whitespace-nowrap bg-amber-50/60 text-amber-700">{t("الضريبة 15%", "VAT 15%")}</th>
+                          <th className="px-2 py-2 text-center whitespace-nowrap bg-emerald-50/60 text-emerald-700">{t("بعد الضريبة", "After Tax")}</th>
+                          <th className="px-2 py-2 text-center whitespace-nowrap">{t("المرفقات", "Attachments")}</th>
+                          <th className="px-2 py-2 text-center whitespace-nowrap">{t("توثيق", "Verify")}</th>
+                          <th className="px-2 py-2 text-center whitespace-nowrap bg-purple-50/60 text-purple-700">{t("أصل ثابت", "Fixed Asset")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 bg-white">
@@ -656,14 +665,14 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
                           const alreadyConverted = inv.converted || convertedInvNums.has(inv.invNum);
                           return (
                             <tr key={invIndex} className={`hover:bg-gray-50 ${isInvVerified ? "bg-emerald-50/40" : ""} ${alreadyConverted ? "bg-purple-50/20" : ""}`}>
-                              <td className="px-3 py-2 font-mono text-purple-700 font-semibold">{inv.invNum}</td>
-                              <td className="px-3 py-2 font-medium text-gray-800">{inv.vendor}</td>
-                              <td className="px-3 py-2 text-gray-600">{inv.desc}</td>
-                              <td className="px-3 py-2 text-center text-gray-500">{inv.date}</td>
-                              <td className="px-3 py-2 text-center font-mono text-gray-600">{amtBeforeVat != null ? `${fmtAmt(amtBeforeVat, lang)} ${t("ر.س", "SAR")}` : "—"}</td>
-                              <td className="px-3 py-2 text-center font-mono text-amber-600 bg-amber-50/20">{vatAmt != null ? `${fmtAmt(vatAmt, lang)} ${t("ر.س", "SAR")}` : "—"}</td>
-                              <td className="px-3 py-2 text-center font-mono font-bold text-emerald-700 bg-emerald-50/20">{fmtAmt(inv.amount, lang)} {t("ر.س", "SAR")}</td>
-                              <td className="px-3 py-2 text-center">
+                              <td className="px-2 py-2 font-mono text-purple-700 font-semibold">{inv.invNum}</td>
+                              <td className="px-2 py-2 font-medium text-gray-800">{inv.vendor}</td>
+                              <td className="px-2 py-2 text-gray-600">{inv.desc}</td>
+                              <td className="px-2 py-2 text-center text-gray-500 whitespace-nowrap">{inv.date}</td>
+                              <td className="px-2 py-2 text-center font-mono text-gray-600 whitespace-nowrap">{amtBeforeVat != null ? `${fmtAmt(amtBeforeVat, lang)} ${t("ر.س", "SAR")}` : "—"}</td>
+                              <td className="px-2 py-2 text-center font-mono text-amber-600 bg-amber-50/20 whitespace-nowrap">{vatAmt != null ? `${fmtAmt(vatAmt, lang)} ${t("ر.س", "SAR")}` : "—"}</td>
+                              <td className="px-2 py-2 text-center font-mono font-bold text-emerald-700 bg-emerald-50/20 whitespace-nowrap">{fmtAmt(inv.amount, lang)} {t("ر.س", "SAR")}</td>
+                              <td className="px-2 py-2 text-center">
                                 <button onClick={() => setAttachModal({ opId: op.id, invNum: inv.invNum, idx: 0, files: (inv.attachments.length ? inv.attachments : opFiles) })}
                                   className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all">
                                   <Paperclip size={10} /><span className="font-semibold">{(inv.attachments.length || opFiles.length || inv.attachCount)}</span>

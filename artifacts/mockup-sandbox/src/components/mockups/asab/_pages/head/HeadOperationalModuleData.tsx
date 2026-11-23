@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
+import { FileText } from "lucide-react";
 import { useHeadCashCustodyLedger, useHeadOperationalModule, type HeadOperationalModule } from "../../../../../api/queries/platform/head";
+import { useExportCash, useExportOperations } from "../../../../../api/queries";
 import { useLang } from "../../_shared/LangContext";
 import type { CashCustodyRow } from "../../../../../api/types/company";
 import { displayDigits } from "../../_shared/displayDigits";
@@ -67,9 +69,12 @@ const enumLabels: Record<string, [string, string]> = {
 };
 
 function rowDetails(row: Row, lang: "ar" | "en") {
-  return Object.entries(row)
-    .filter(([key, value]) => !hiddenKeys.test(key) && !/metadata|details|items|lines|products|attachments/i.test(key) && (!key.endsWith("Halalas") || key in friendlyKeys) && !(key === "amount" && typeof row.amountHalalas === "number") && scalar(value) !== null)
-    .slice(0, 5)
+  const entries = Object.entries(row)
+    .filter(([key, value]) => !hiddenKeys.test(key) && !/metadata|details|items|lines|products|attachments/i.test(key) && (!key.endsWith("Halalas") || key in friendlyKeys) && !(key === "amount" && typeof row.amountHalalas === "number") && scalar(value) !== null);
+  const sliced = entries.slice(0, 5);
+  const refEntry = entries.find(([key]) => key === "reference");
+  if (refEntry && !sliced.some(([key]) => key === "reference")) sliced.push(refEntry);
+  return sliced
     .map(([key, value]) => {
       const raw = scalar(value);
       const localizedEnum = raw && /^(status|txnType|moduleKey)$/.test(key)
@@ -121,6 +126,8 @@ export function HeadOperationalModuleData({ moduleKey }: { moduleKey: HeadOperat
   const ledgerQuery = useHeadCashCustodyLedger(moduleKey === "cash" ? selectedCustody : undefined);
   const rows = useMemo(() => moduleRecords(query.data, moduleKey), [query.data, moduleKey]);
   const ledger = useMemo(() => recordsOf(ledgerQuery.data), [ledgerQuery.data]);
+  const exportCashMut = useExportCash();
+  const exportOpsMut = useExportOperations();
   const titles = moduleTitles[moduleKey];
 
   return (
@@ -130,7 +137,19 @@ export function HeadOperationalModuleData({ moduleKey }: { moduleKey: HeadOperat
           <h3 className="text-base font-bold text-gray-900">{titles[lang === "ar" ? 0 : 1]}</h3>
           <p className="mt-1 text-xs text-gray-500">{t("عرض قراءة فقط من بيانات المحاسب المرتبطة بالشركة والفروع المصرح بها", "Read-only view of accountant data scoped to this company and its authorized branches")}</p>
         </div>
-        {!query.isPending && !query.isError && <span className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-purple-700">{displayDigits(rows.length, lang)} {t("سجل محمّل", "records loaded")}</span>}
+        <div className="flex items-center gap-2">
+          {(moduleKey === "cash" || moduleKey === "expenses") && (
+            <button
+              type="button"
+              onClick={() => moduleKey === "cash" ? exportCashMut.mutate({}) : exportOpsMut.mutate({ moduleKey: "expenses", format: "xlsx" })}
+              disabled={exportCashMut.isPending || exportOpsMut.isPending}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+            >
+              <FileText size={12} /> Excel
+            </button>
+          )}
+          {!query.isPending && !query.isError && <span className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-purple-700">{displayDigits(rows.length, lang)} {t("سجل محمّل", "records loaded")}</span>}
+        </div>
       </header>
 
       {query.isPending && <p role="status" className="rounded-lg bg-white p-4 text-sm text-gray-500">{t("جارٍ تحميل البيانات...", "Loading data...")}</p>}

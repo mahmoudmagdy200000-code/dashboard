@@ -101,11 +101,11 @@ export function LiveChatWidget({ t = (ar) => ar }: Props) {
         aria-label={t("الدردشة الفورية", "Live chat")}
         style={{
           position: "fixed",
-          left: dir === "rtl" ? 24 : undefined,
-          right: dir === "rtl" ? undefined : 24,
-          bottom: 24,
-          width: 56,
-          height: 56,
+          left: dir === "rtl" ? 14 : undefined,
+          right: dir === "rtl" ? undefined : 14,
+          bottom: 14,
+          width: 44,
+          height: 44,
           borderRadius: "50%",
           border: "none",
           background: "linear-gradient(135deg, #7C3AED, #00D9FF)",
