@@ -569,13 +569,13 @@ export function AsabCustodyCard({ custody }: { custody: any }) {
             <span className="font-semibold text-gray-800 text-sm">{custody.branchName}</span>
             <span className="text-gray-300">·</span>
             <span className="text-xs text-gray-500">{custody.custodianName}</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${statusCls}`}>{custody.statusLabelAr}</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${statusCls}`}>{lang === "en" ? (custody.status === "critical" ? "Critical" : custody.status === "low" ? "Low" : "Normal") : custody.statusLabelAr}</span>
             {custody.daysSinceSettlement >= 30 && <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-bold">⏰ {custody.daysSinceSettlement} يوم بدون تسوية</span>}
           </div>
           <div className="flex items-center gap-3 mt-1.5">
             <div className="flex-1 bg-gray-200 rounded-full h-1.5 max-w-32"><div className={`h-1.5 rounded-full ${pct > 85 ? "bg-red-400" : "bg-orange-400"}`} style={{ width: `${Math.min(pct, 100)}%` }}></div></div>
             <span className="text-xs text-gray-400">{pct}% {t("مُصرَف", "used")}</span>
-            <span className={`text-xs font-bold font-mono ${isLow ? "text-red-600" : "text-emerald-600"}`}>{fmtAmt(custody.remainingHalalas / 100)} {t("ر.س متبقٍ", "SAR remaining")}</span>
+            <span className={`text-xs font-bold font-mono ${isLow ? "text-red-600" : "text-emerald-600"}`}>{fmtAmt(custody.remainingHalalas / 100, lang)} {t("ر.س متبقٍ", "SAR remaining")}</span>
           </div>
         </div>
         <button onClick={() => setShowTxn(true)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold hover:bg-purple-100 flex-shrink-0"><Plus size={10} /> {t("صرف", "Disburse")}</button>
@@ -586,7 +586,7 @@ export function AsabCustodyCard({ custody }: { custody: any }) {
           <div className="flex items-center justify-between mb-2 pt-2 gap-2 flex-wrap">
             <p className="text-[11px] font-bold text-gray-500">{t("سجل معاملات العهدة —", "Custody Ledger —")} {custody.custodianName}</p>
             <div className="flex items-center gap-2 flex-wrap">
-              <input type="month" value={month} onChange={e => setMonth(e.target.value)} className="text-[11px] border border-gray-200 rounded-lg px-2 py-1" />
+              <input type="month" aria-label={t("تصفية حسب الشهر", "Filter by month")} title={t("تصفية حسب الشهر", "Filter by month")} value={month} onChange={e => setMonth(e.target.value)} className="text-[11px] border border-gray-200 rounded-lg px-2 py-1" />
               <button onClick={() => exportLedgerMut.mutate({ custodyId: custody.id, month: month || undefined })} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold hover:bg-emerald-100"><FileText size={10} /> Excel</button>
               {custody.daysSinceSettlement >= 30 && <button onClick={() => reqMut.mutate({ custodyId: custody.id })} disabled={reqMut.isPending} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-semibold hover:bg-amber-100"><Send size={10} /> {t("طلب تسوية", "Request Settlement")}</button>}
               <button onClick={() => settleMut.mutate({ custodyId: custody.id })} disabled={settleMut.isPending} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-semibold hover:bg-blue-100"><Check size={10} /> {t("تسوية العهدة", "Settle Custody")}</button>
@@ -609,10 +609,10 @@ export function AsabCustodyCard({ custody }: { custody: any }) {
                 {(ledger?.transactions ?? []).map((tx) => (
                   <tr key={tx.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{new Date(tx.txnDate).toLocaleDateString(lang === "en" ? "en-US" : "ar-SA")}</td>
-                    <td className="px-3 py-2 font-medium text-gray-800">{tx.description}</td>
+                    <td className="px-3 py-2 font-medium text-gray-800">{lang === "ar" ? ({ "Bank Transfer": "تحويل بنكي", "Expenses Deduction": tx.txnType === "credit" ? "عكس خصم مصروف" : "خصم مصروفات", "Cash Handover": "تسليم نقدي", "Cash Transfer": "تحويل نقدي" }[tx.description] || tx.description) : tx.description}</td>
                     <td className="px-3 py-2 text-center"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${tx.txnType === "credit" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>{lang === "en" ? (tx.txnType === "credit" ? "Credit (In)" : "Debit (Out)") : tx.typeLabelAr}</span></td>
-                    <td className={`px-3 py-2 text-center font-mono font-bold ${tx.txnType === "credit" ? "text-emerald-600" : "text-red-600"}`}>{tx.txnType === "credit" ? "+" : "-"}{fmtAmt(tx.amountHalalas / 100)}</td>
-                    <td className="px-3 py-2 text-center font-mono text-gray-600">{fmtAmt(tx.runningBalanceHalalas / 100)}</td>
+                    <td className={`px-3 py-2 text-center font-mono font-bold ${tx.txnType === "credit" ? "text-emerald-600" : "text-red-600"}`}>{tx.txnType === "credit" ? "+" : "-"}{fmtAmt(tx.amountHalalas / 100, lang)}</td>
+                    <td className="px-3 py-2 text-center font-mono text-gray-600">{fmtAmt(tx.runningBalanceHalalas / 100, lang)}</td>
                     <td className="px-3 py-2 text-center">
                       {tx.status === "pending" ? (
                         <div className="flex items-center justify-center gap-1">
@@ -629,7 +629,7 @@ export function AsabCustodyCard({ custody }: { custody: any }) {
               <tfoot className="bg-gray-50 border-t-2 border-gray-200">
                 <tr>
                   <td colSpan={4} className="px-3 py-2 font-bold text-gray-700">{t("الرصيد الحالي", "Current Balance")}</td>
-                  <td className={`px-3 py-2 text-center font-black font-mono ${isLow ? "text-red-600" : "text-emerald-700"}`}>{fmtAmt((ledger?.custody.currentBalanceHalalas ?? custody.remainingHalalas) / 100)}</td>
+                  <td className={`px-3 py-2 text-center font-black font-mono ${isLow ? "text-red-600" : "text-emerald-700"}`}>{fmtAmt((ledger?.custody.currentBalanceHalalas ?? custody.remainingHalalas) / 100, lang)}</td>
                   <td></td>
                 </tr>
               </tfoot>

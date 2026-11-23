@@ -38,6 +38,12 @@ function scalar(value: unknown): string | null {
 const hiddenKeys = /^(id|_id|uuid|createdat|updatedat|deletedat|companyid|brandid|branchid|operationid)$/i;
 const friendlyKeys: Record<string, [string, string]> = {
   txnDate: ["التاريخ", "Date"], description: ["البيان", "Description"], typeLabelAr: ["النوع", "Type"],
+  txnType: ["نوع الحركة", "Txn Type"], publicId: ["رقم العملية", "Operation ID"],
+  brandName: ["العلامة", "Brand"], moduleKey: ["الوحدة", "Module"],
+  custodianName: ["أمين العهدة", "Custodian"], statusLabelAr: ["الحالة", "Status"],
+  remainingHalalas: ["المتبقي (ر.س)", "Remaining (SAR)"],
+  approvedHalalas: ["المعتمد (ر.س)", "Approved (SAR)"],
+  spentHalalas: ["المصروف (ر.س)", "Spent (SAR)"],
   amountHalalas: ["المبلغ (ر.س)", "Amount (SAR)"], runningBalanceHalalas: ["الرصيد (ر.س)", "Balance (SAR)"],
   branchName: ["الفرع", "Branch"], name: ["الاسم", "Name"], title: ["العنوان", "Title"],
   supplierName: ["المورد", "Supplier"], custodian: ["أمين العهدة", "Custodian"],
@@ -49,16 +55,33 @@ const friendlyKeys: Record<string, [string, string]> = {
   totalHalalas: ["الإجمالي (ر.س)", "Total (SAR)"], reference: ["المرجع", "Reference"],
 };
 
+const enumLabels: Record<string, [string, string]> = {
+  "final-approved": ["معتمدة نهائياً", "Final approved"],
+  approved: ["معتمد", "Approved"],
+  rejected: ["مرفوض", "Rejected"],
+  pending: ["معلق", "Pending"],
+  debit: ["صادر", "Debit"],
+  credit: ["وارد", "Credit"],
+  expenses: ["المصروفات", "Expenses"],
+  cash: ["العهدة النقدية", "Cash Custody"],
+};
+
 function rowDetails(row: Row, lang: "ar" | "en") {
   return Object.entries(row)
     .filter(([key, value]) => !hiddenKeys.test(key) && !/metadata|details|items|lines|products|attachments/i.test(key) && (!key.endsWith("Halalas") || key in friendlyKeys) && !(key === "amount" && typeof row.amountHalalas === "number") && scalar(value) !== null)
     .slice(0, 5)
-    .map(([key, value]) => ({
-      label: friendlyKeys[key]?.[lang === "ar" ? 0 : 1] ?? key,
-      value: typeof value === "number"
+    .map(([key, value]) => {
+      const raw = scalar(value);
+      const formatted = typeof value === "number"
         ? key.endsWith("Halalas") ? fmtAmt(value / 100, lang) : displayDigits(value, lang)
-        : /^(date|operationDate|txnDate)$/.test(key) ? formatDateLong(lang, scalar(value)) || "—" : scalar(value) ?? "—",
-    }));
+        : /^(date|operationDate|txnDate)$/.test(key) ? formatDateLong(lang, raw) || "—"
+        : raw && enumLabels[raw] ? enumLabels[raw][lang === "ar" ? 0 : 1]
+        : raw ?? "—";
+      return {
+        label: friendlyKeys[key]?.[lang === "ar" ? 0 : 1] ?? key,
+        value: formatted,
+      };
+    });
 }
 
 function errorLabel(moduleKey: HeadOperationalModule, lang: "ar" | "en") {

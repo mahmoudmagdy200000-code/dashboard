@@ -395,10 +395,7 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
   const FALLBACK_EXP_DAY_OPTIONS = [
     { label: t("الكل", "All"), val: "all" },
     { label: t("اليوم", "Today"), val: "today" },
-    { label: t("أمس (14 أكت)", "Yesterday (Oct 14)"), val: "d14" },
-    { label: t("13 أكت", "Oct 13"), val: "d13" },
-    { label: t("12 أكت", "Oct 12"), val: "d12" },
-    { label: t("11 أكت", "Oct 11"), val: "d11" },
+    { label: t("أمس", "Yesterday"), val: "yesterday" },
     { label: t("الأسبوع الماضي", "Last Week"), val: "lastWeek" },
     { label: t("الشهر الماضي", "Last Month"), val: "lastMonth" },
   ];
@@ -461,7 +458,7 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
       {/* Expenses invoice-match KPIs (T05 §2) — GET /company/me/expenses/kpis */}
       {expKpis && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <KpiCard label={t("إجمالي المصروفات", "Total Expenses")} value={fmtAmt(expKpis.totalHalalas / 100)} sub={`${t("ضريبة", "VAT")} ${fmtAmt(expKpis.vat15Halalas / 100)}`} icon={<FileText size={18} className="text-purple-600" />} accent="purple" />
+          <KpiCard label={t("إجمالي المصروفات", "Total Expenses")} value={fmtAmt(expKpis.totalHalalas / 100, lang)} sub={`${t("ضريبة", "VAT")} ${fmtAmt(expKpis.vat15Halalas / 100, lang)}`} icon={<FileText size={18} className="text-purple-600" />} accent="purple" />
           <KpiCard label={t("فواتير مطابقة", "Matched")} value={String(expKpis.pendingInvoices.matched)} sub={t("قيد المراجعة", "under review")} icon={<CheckCircle2 size={18} className="text-emerald-600" />} accent="emerald" />
           <KpiCard label={t("غير مطابقة", "Mismatch")} value={String(expKpis.pendingInvoices.mismatch)} sub={t("تحتاج تدقيق", "needs audit")} icon={<AlertTriangle size={18} className="text-amber-600" />} accent="amber" />
           <KpiCard label={t("مفقودة", "Missing")} value={String(expKpis.pendingInvoices.missing)} sub={t("بلا مستند", "no document")} icon={<XCircle size={18} className="text-red-600" />} accent="red" />
@@ -552,6 +549,9 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
             const isExpanded = expandedId === op.id;
             const isLocked = op.status === "final-approved";
             const statusLabel = en ? (EN_STATUS_CFG[op.status] || STATUS_CFG[op.status].label) : STATUS_CFG[op.status].label;
+            const hasKnownInvoiceCount = (isExpanded && Boolean(realExpandedInvoices?.length)) || Boolean(INVOICES[op.id]);
+            const timeAgoEnMap: Record<string, string> = { "للتو": "just now", "قبل ساعة": "1 hour ago", "أمس": "yesterday", "قبل يومين": "2 days ago", "قبل أسبوع": "1 week ago" };
+            const timeAgoLabel = en ? (timeAgoEnMap[op.timeAgo] || op.timeAgo) : op.timeAgo;
             return (
               <div key={op.id} className="border-b border-gray-100 last:border-0">
                 <div className={`px-5 py-4 flex items-center gap-4 hover:bg-gray-50/70 ${isExpanded ? "bg-purple-50/20" : ""}`}>
@@ -560,10 +560,10 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
                       <span className="font-semibold text-gray-800 text-sm">{op.branch}</span>
                       <span className="text-gray-300">·</span>
                       <span className="font-mono text-xs text-purple-600">{op.id}</span>
-                      <Badge className="bg-indigo-50 text-indigo-600 border border-indigo-100 text-[10px]">{invoices.length} {t("فاتورة", "invoices")}</Badge>
+                      {hasKnownInvoiceCount && <Badge className="bg-indigo-50 text-indigo-600 border border-indigo-100 text-[10px]">{invoices.length} {t("فاتورة", invoices.length === 1 ? "invoice" : "invoices")}</Badge>}
                       <Badge className={STATUS_CFG[op.status].cls}>{statusLabel}</Badge>
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5">{t("أُرسل", "Sent")} {op.timeAgo}{op.submittedBy ? ` · ${t("قدّمها", "by")} ${op.submittedBy}` : ""}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{t("أُرسل", "Sent")} {timeAgoLabel}{op.submittedBy ? ` · ${t("قدّمها", "by")} ${op.submittedBy}` : ""}</p>
                   </div>
                   <div className="flex gap-2">
                     <Btn size="sm" onClick={() => setExpandedId(isExpanded ? null : op.id)}>
@@ -655,9 +655,9 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
                               <td className="px-3 py-2 font-medium text-gray-800">{inv.vendor}</td>
                               <td className="px-3 py-2 text-gray-600">{inv.desc}</td>
                               <td className="px-3 py-2 text-center text-gray-500">{inv.date}</td>
-                              <td className="px-3 py-2 text-center font-mono text-gray-600">{amtBeforeVat != null ? `${fmtAmt(amtBeforeVat)} ${t("ر.س", "SAR")}` : "—"}</td>
-                              <td className="px-3 py-2 text-center font-mono text-amber-600 bg-amber-50/20">{vatAmt != null ? `${fmtAmt(vatAmt)} ${t("ر.س", "SAR")}` : "—"}</td>
-                              <td className="px-3 py-2 text-center font-mono font-bold text-emerald-700 bg-emerald-50/20">{fmtAmt(inv.amount)} {t("ر.س", "SAR")}</td>
+                              <td className="px-3 py-2 text-center font-mono text-gray-600">{amtBeforeVat != null ? `${fmtAmt(amtBeforeVat, lang)} ${t("ر.س", "SAR")}` : "—"}</td>
+                              <td className="px-3 py-2 text-center font-mono text-amber-600 bg-amber-50/20">{vatAmt != null ? `${fmtAmt(vatAmt, lang)} ${t("ر.س", "SAR")}` : "—"}</td>
+                              <td className="px-3 py-2 text-center font-mono font-bold text-emerald-700 bg-emerald-50/20">{fmtAmt(inv.amount, lang)} {t("ر.س", "SAR")}</td>
                               <td className="px-3 py-2 text-center">
                                 <button onClick={() => setAttachModal({ opId: op.id, invNum: inv.invNum, idx: 0, files: (inv._attachments && inv._attachments.length ? inv._attachments : opFiles) })}
                                   className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all">
@@ -700,12 +700,12 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
                           const totalVat = hasVat ? invoices.reduce((s, i) => s + ((i as any)._vat ?? 0), 0) : null;
                           return (
                             <>
-                              <td className="px-3 py-2.5 text-center font-mono text-gray-600">{totalPreTax != null ? `${fmtAmt(totalPreTax)} ${t("ر.س", "SAR")}` : "—"}</td>
-                              <td className="px-3 py-2.5 text-center font-mono text-amber-600 bg-amber-50/20">{totalVat != null ? `${fmtAmt(totalVat)} ${t("ر.س", "SAR")}` : "—"}</td>
+                              <td className="px-3 py-2.5 text-center font-mono text-gray-600">{totalPreTax != null ? `${fmtAmt(totalPreTax, lang)} ${t("ر.س", "SAR")}` : "—"}</td>
+                              <td className="px-3 py-2.5 text-center font-mono text-amber-600 bg-amber-50/20">{totalVat != null ? `${fmtAmt(totalVat, lang)} ${t("ر.س", "SAR")}` : "—"}</td>
                             </>
                           );
                         })()}
-                          <td className="px-3 py-2.5 text-center font-black font-mono text-emerald-700 bg-emerald-50/20">{fmtAmt(invoices.reduce((s, i) => s + i.amount, 0))} {t("ر.س", "SAR")}</td>
+                          <td className="px-3 py-2.5 text-center font-black font-mono text-emerald-700 bg-emerald-50/20">{fmtAmt(invoices.reduce((s, i) => s + i.amount, 0), lang)} {t("ر.س", "SAR")}</td>
                           <td></td>
                           <td className="px-3 py-2.5 text-center text-[10px] text-gray-500">
                             {invoices.filter(inv => ((inv as any)._verified ?? verifiedInvoices[`${op.id}-${inv.invNum}`])).length}/{invoices.length} {t("موثّق", "verified")}
