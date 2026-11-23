@@ -15,12 +15,12 @@ test("DB-4: AccExpensesPage does not use 1.15 division to fabricate missing VAT 
   );
   assert.match(
     accExpSource,
-    /amtBeforeVat != null \? `\$\{fmtAmt\(amtBeforeVat\)\} \$\{t\("ر\.س", "SAR"\)\}` : "—"/,
+    /amtBeforeVat != null \? `\$\{fmtAmt\(amtBeforeVat, lang\)\} \$\{t\("ر\.س", "SAR"\)\}` : "—"/,
     "AccExpensesPage must show dash for missing pre-tax amount"
   );
   assert.match(
     accExpSource,
-    /vatAmt != null \? `\$\{fmtAmt\(vatAmt\)\} \$\{t\("ر\.س", "SAR"\)\}` : "—"/,
+    /vatAmt != null \? `\$\{fmtAmt\(vatAmt, lang\)\} \$\{t\("ر\.س", "SAR"\)\}` : "—"/,
     "AccExpensesPage must show dash for missing VAT amount"
   );
 });

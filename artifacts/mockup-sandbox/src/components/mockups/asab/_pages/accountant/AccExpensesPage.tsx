@@ -1,4 +1,5 @@
-import { useState, useContext, useMemo } from "react";
+import { useState, useContext } from "react";
+import { isWithinInterval, parseISO, startOfDay, startOfMonth, startOfWeek, subDays, subMonths, subWeeks } from "date-fns";
 import {
   CheckCircle2,
   XCircle,
@@ -29,7 +30,6 @@ import {
   ArrowRightToLine,
 } from "lucide-react";
 import {
-  useAccountantOperationsPlatform,
   useExpensesKpis,
   useExportOperations,
   useVerifyExpenseInvoice,
@@ -167,11 +167,11 @@ function ConvertToAssetModal({
                 <div className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0"><Wallet size={16} className="text-amber-600" /></div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-amber-800">{t("مصدر المصروف", "Expense Source")}</p>
-                  <p className="text-xs text-amber-700 mt-0.5 truncate">{invNum} · {vendor} · <span className="font-mono font-bold">{fmtAmt(amount)} {t("ر.س", "SAR")}</span> · {branch}</p>
+                  <p className="text-xs text-amber-700 mt-0.5 truncate">{invNum} · {vendor} · <span className="font-mono font-bold">{fmtAmt(amount, lang)} {t("ر.س", "SAR")}</span> · {branch}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-[10px] text-amber-600">{t("يُحول المبلغ تلقائياً", "Amount auto-transferred")}</p>
-                  <p className="text-xs font-bold text-amber-800 font-mono">{fmtAmt(amount)} {t("ر.س", "SAR")}</p>
+                  <p className="text-xs font-bold text-amber-800 font-mono">{fmtAmt(amount, lang)} {t("ر.س", "SAR")}</p>
                 </div>
               </div>
 
@@ -212,7 +212,7 @@ function ConvertToAssetModal({
                   <button onClick={() => setQty(q => Math.max(1, q - 1))} className="w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 text-lg font-bold">−</button>
                   <span className="w-14 text-center font-bold text-lg text-gray-800">{qty}</span>
                   <button onClick={() => setQty(q => q + 1)} className="w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 text-lg font-bold">+</button>
-                  <span className="text-xs text-gray-500 mr-2">{t("وحدة — سعر الوحدة:", "unit — unit price:")} <span className="font-mono font-bold">{fmtAmt(Math.round(amount / qty))} {t("ر.س", "SAR")}</span></span>
+                  <span className="text-xs text-gray-500 mr-2">{t("وحدة — سعر الوحدة:", "unit — unit price:")} <span className="font-mono font-bold">{fmtAmt(amount / qty, lang)} {t("ر.س", "SAR")}</span></span>
                 </div>
               </div>
 
@@ -268,7 +268,7 @@ function ConvertToAssetModal({
                     <div><span className="text-gray-500">{t("الفئة:", "Category:")}</span> <span className="font-semibold text-gray-800">{CAT_ICONS[cat]} {CAT_LABELS[cat]}</span></div>
                     <div><span className="text-gray-500">{t("الكمية:", "Qty:")}</span> <span className="font-semibold text-gray-800">{qty} {t("وحدة ×", "unit ×")} {targetBranches.length} {t("فرع", "branch")}</span></div>
                     <div><span className="text-gray-500">{t("العمر الإنتاجي:", "Useful Life:")}</span> <span className="font-semibold text-gray-800">{usefulLife} {t("شهر", "months")}</span></div>
-                    <div><span className="text-gray-500">{t("القيمة للوحدة:", "Unit value:")}</span> <span className="font-mono font-bold text-purple-700">{fmtAmt(Math.round(amount / qty))} {t("ر.س", "SAR")}</span></div>
+                    <div><span className="text-gray-500">{t("القيمة للوحدة:", "Unit value:")}</span> <span className="font-mono font-bold text-purple-700">{fmtAmt(amount / qty, lang)} {t("ر.س", "SAR")}</span></div>
                     <div><span className="text-gray-500">{t("المسؤول:", "Custodian:")}</span> <span className="font-semibold text-gray-800">{custodian}</span></div>
                   </div>
                   <p className="text-[10px] text-purple-600">{t('سيظهر هذا الأصل كـ "مسودة" في موديول الأصول الثابتة لمراجعتك النهائية', 'This asset will appear as a "draft" in the Fixed Assets module for your final review')}</p>
@@ -328,10 +328,36 @@ function ConvertToAssetModal({
 // One real invoice attachment (GET /operations/{id}.expenses.invoices[].attachments).
 type AttFile = { id: string; filename: string; publicUrl: string; label?: string | null };
 
+function expenseDateRange(period: string, now: Date) {
+  const today = startOfDay(now);
+  const yesterday = subDays(today, 1);
+  const weekStart = startOfWeek(today, { weekStartsOn: 0 });
+  const monthStart = startOfMonth(today);
+  switch (period) {
+    case "today": return { start: today, end: today };
+    case "yesterday": return { start: yesterday, end: yesterday };
+    case "lastWeek": return { start: subWeeks(weekStart, 1), end: subDays(weekStart, 1) };
+    case "lastMonth": return { start: subMonths(monthStart, 1), end: subDays(monthStart, 1) };
+    default: return null;
+  }
+}
+
+function englishExpenseTime(date?: string) {
+  const timestamp = date ? parseISO(date).getTime() : NaN;
+  if (!Number.isFinite(timestamp)) return "—";
+  const hours = Math.floor((Date.now() - timestamp) / 3_600_000);
+  const relativeTime = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  if (hours <= 0) return "just now";
+  if (hours < 24) return relativeTime.format(-hours, "hour");
+  const days = Math.floor(hours / 24);
+  if (days < 7) return relativeTime.format(-days, "day");
+  if (days < 28) return relativeTime.format(-Math.floor(days / 7), "week");
+  return relativeTime.format(-Math.max(1, Math.floor(days / 30)), "month");
+}
+
 export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveOp, rejectOp, bulkApprove }: PageProps) {
   const { t, dir, lang } = useLang();
   const en = lang === "en";
-  const { data: expensesApi } = useAccountantOperationsPlatform({ moduleKey: "expenses" });
   const { data: expKpis } = useExpensesKpis();
   const exportOpsMut = useExportOperations();
   const verifyMut = useVerifyExpenseInvoice();
@@ -347,63 +373,37 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
   const [convertModal, setConvertModal] = useState<{ opId: string; invoiceIndex: number; invNum: string; vendor: string; desc: string; amount: number; branch: string; date: string } | null>(null);
   const convertedInvNums = getConvertedInvNums();
 
-  // Real per-invoice detail for the currently-expanded op (T05 §1) —
-  // GET /operations/{id}.expenses.invoices. The list endpoint carries no invoice
-  // rows, so the table below fed on the simulated INVOICES map. Fetch the open op
-  // and use its enriched invoices (real supplier/vendor, exact halalas, verify
-  // + conversion state) instead; fall back to the simulation when absent.
-  const { data: expandedDetail } = useOperation(expandedId);
-  // Operation-level attachments (GET /operations/{id}/attachments) — used as a
-  // fallback when a specific invoice row carries no attachments[] of its own.
+  const { data: expandedDetail, isPending: loadingInvoices, isError: invoiceLoadFailed, refetch: refetchInvoices } = useOperation(expandedId);
   const { data: opAttachments = [] } = useOperationAttachments(expandedId);
-  const opFiles: AttFile[] = (opAttachments as any[])
-    .map(a => ({ id: String(a?.id ?? ""), filename: String(a?.filename ?? ""), publicUrl: String(a?.publicUrl ?? ""), label: a?.label ?? null }))
-    .filter(a => a.publicUrl);
-  const realExpandedInvoices = (expandedDetail as any)?.expenses?.invoices as
-    | Array<{ index: number; invNum: string; vendor: string; desc: string; date: string; preTaxHalalas: number; vat15Halalas: number; inclTaxHalalas: number; verified: boolean; convertedToAsset: boolean; attachmentCount: number; attachments?: Array<{ id: string; filename: string; publicUrl: string; label?: string | null }> }>
-    | undefined;
-  type ExpInvRow = { invNum: string; vendor: string; desc: string; amount: number; date: string; attachCount: number; _index?: number; _verified?: boolean; _preTax?: number; _vat?: number; _converted?: boolean; _attachments?: AttFile[] };
-  const invoicesFor = (opId: string): ExpInvRow[] => {
-    if (opId === expandedId && realExpandedInvoices && realExpandedInvoices.length > 0) {
-      return realExpandedInvoices.map(r => {
-        // Real invoice files (2026-08-14): each { id, filename, publicUrl, label }.
-        const files: AttFile[] = Array.isArray(r.attachments)
-          ? r.attachments.map(a => ({ id: String(a?.id ?? ""), filename: String(a?.filename ?? ""), publicUrl: String(a?.publicUrl ?? ""), label: a?.label ?? null })).filter(a => a.publicUrl)
-          : [];
-        return {
-          invNum: r.invNum,
-          // Quick-cash expenses carry no invoice_details; the bridge synthesises a
-          // single row where the vendor = expense supplier → quick-cash supplier
-          // (2026-08-14). supplierName is the payload-root fallback for older rows.
-          vendor: r.vendor || (r as any).supplierName || "—",
-          desc: r.desc || "",
-          amount: (r.inclTaxHalalas ?? 0) / 100,
-          date: r.date || "",
-          attachCount: r.attachmentCount ?? files.length,
-          _index: r.index,
-          _verified: r.verified,
-          _preTax: (r.preTaxHalalas ?? 0) / 100,
-          _vat: (r.vat15Halalas ?? 0) / 100,
-          _converted: r.convertedToAsset,
-          _attachments: files,
-        };
-      });
-    }
-    return INVOICES[opId] || INVOICES["default"];
-  };
+  const opFiles: AttFile[] = opAttachments.filter(attachment => attachment.publicUrl);
+  const realExpandedInvoices = expandedDetail?.expenses?.invoices;
+  const expandedSupplier = ops.find(op => op.id === expandedId)?.supplierName;
+  const expandedInvoices = (realExpandedInvoices ?? []).map(invoice => {
+    const files = (invoice.attachments ?? []).filter(attachment => attachment.publicUrl);
+    return {
+      invNum: invoice.invNum,
+      vendor: invoice.vendor || expandedSupplier || "—",
+      desc: invoice.desc || "",
+      amount: (invoice.inclTaxHalalas ?? 0) / 100,
+      date: invoice.date || "",
+      attachCount: invoice.attachmentCount ?? files.length,
+      invoiceIndex: invoice.index,
+      verified: invoice.verified,
+      preTax: invoice.preTaxHalalas == null ? null : invoice.preTaxHalalas / 100,
+      vat: invoice.vat15Halalas == null ? null : invoice.vat15Halalas / 100,
+      converted: invoice.convertedToAsset,
+      attachments: files,
+    };
+  });
 
-  const FALLBACK_EXP_DAY_OPTIONS = [
+  const dayOptions = [
     { label: t("الكل", "All"), val: "all" },
     { label: t("اليوم", "Today"), val: "today" },
-    { label: t("أمس (14 أكت)", "Yesterday (Oct 14)"), val: "d14" },
-    { label: t("13 أكت", "Oct 13"), val: "d13" },
-    { label: t("12 أكت", "Oct 12"), val: "d12" },
-    { label: t("11 أكت", "Oct 11"), val: "d11" },
+    { label: t("أمس", "Yesterday"), val: "yesterday" },
     { label: t("الأسبوع الماضي", "Last Week"), val: "lastWeek" },
     { label: t("الشهر الماضي", "Last Month"), val: "lastMonth" },
   ];
-  const apiExpDayOptions = (expensesApi as any)?.dayOptions;
-  const EXP_DAY_OPTIONS = (apiExpDayOptions?.length > 0 ? apiExpDayOptions : FALLBACK_EXP_DAY_OPTIONS) as any[];
+  const dateRange = expenseDateRange(selectedDay, new Date());
 
   // 2026-08-14: brand/branch filters come from the tenant-scoped lookups
   // (GET /company/me/lookups/brands · …/branches?brandId=). Both are already
@@ -421,21 +421,16 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
     : [...new Set(ops.filter(o => o.moduleKey === "expenses").map(o => o.branch))]
   ).filter(n => n && n !== "—");
   const mOps = ops.filter(o => o.moduleKey === "expenses");
-  const filtered = applyFilters(ops, filters, "expenses").filter(o => !brand || o.brandId === brand);
+  const filtered = applyFilters(ops, filters, "expenses")
+    .filter(op => !brand || op.brandId === brand)
+    .filter(op => !dateRange || (op.operationDate != null && isWithinInterval(startOfDay(parseISO(op.operationDate)), dateRange)));
   const pending = mOps.filter(o => o.status === "pending");
 
   const toggleInvoiceVerify = (key: string) => setVerifiedInvoices(p => ({ ...p, [key]: !p[key] }));
 
-  // Simulated batch invoices for each operation
-  const FALLBACK_INVOICES: Record<string, { invNum: string; vendor: string; desc: string; amount: number; date: string; attachCount: number }[]> = {
-    default: [
-      { invNum: "INV-001", vendor: "شركة الخليج للمواد", desc: "مواد تنظيف وصيانة", amount: 850, date: "12 أكت", attachCount: 2 },
-      { invNum: "INV-002", vendor: "مستلزمات المطبخ", desc: "أدوات خدمة وتغليف", amount: 420, date: "12 أكت", attachCount: 1 },
-      { invNum: "INV-003", vendor: "خدمات الصيانة السريعة", desc: "إصلاح معدات المطبخ", amount: 1200, date: "13 أكت", attachCount: 3 },
-    ],
-  };
-  const apiInvoices = (expensesApi as any)?.invoices;
-  const INVOICES: Record<string, Array<{ invNum: string; vendor: string; desc: string; amount: number; date: string; attachCount: number }>> = (apiInvoices && Object.keys(apiInvoices).length > 0 ? apiInvoices : FALLBACK_INVOICES) as Record<string, Array<{ invNum: string; vendor: string; desc: string; amount: number; date: string; attachCount: number }>>;
+  const assetCandidates = expandedInvoices.filter(invoice =>
+    invoice.amount >= 1000 && !invoice.converted && !convertedInvNums.has(invoice.invNum),
+  );
 
   return (
     <div className="space-y-5" dir={dir}>
@@ -461,7 +456,7 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
       {/* Expenses invoice-match KPIs (T05 §2) — GET /company/me/expenses/kpis */}
       {expKpis && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <KpiCard label={t("إجمالي المصروفات", "Total Expenses")} value={fmtAmt(expKpis.totalHalalas / 100)} sub={`${t("ضريبة", "VAT")} ${fmtAmt(expKpis.vat15Halalas / 100)}`} icon={<FileText size={18} className="text-purple-600" />} accent="purple" />
+          <KpiCard label={t("إجمالي المصروفات", "Total Expenses")} value={fmtAmt(expKpis.totalHalalas / 100, lang)} sub={`${t("ضريبة", "VAT")} ${fmtAmt(expKpis.vat15Halalas / 100, lang)}`} icon={<FileText size={18} className="text-purple-600" />} accent="purple" />
           <KpiCard label={t("فواتير مطابقة", "Matched")} value={String(expKpis.pendingInvoices.matched)} sub={t("قيد المراجعة", "under review")} icon={<CheckCircle2 size={18} className="text-emerald-600" />} accent="emerald" />
           <KpiCard label={t("غير مطابقة", "Mismatch")} value={String(expKpis.pendingInvoices.mismatch)} sub={t("تحتاج تدقيق", "needs audit")} icon={<AlertTriangle size={18} className="text-amber-600" />} accent="amber" />
           <KpiCard label={t("مفقودة", "Missing")} value={String(expKpis.pendingInvoices.missing)} sub={t("بلا مستند", "no document")} icon={<XCircle size={18} className="text-red-600" />} accent="red" />
@@ -496,7 +491,7 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("التاريخ / الفترة", "Date / Period")}</label>
             <select value={selectedDay} onChange={e => setSelectedDay(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
-              {EXP_DAY_OPTIONS.map(d => <option key={d.val} value={d.val}>{d.label}</option>)}
+              {dayOptions.map(d => <option key={d.val} value={d.val}>{d.label}</option>)}
             </select>
           </div>
         </div>
@@ -517,7 +512,7 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
         </div>
       </div>
 
-      {filtered.some(op => (INVOICES[op.id] || []).some(inv => inv.amount >= 1000 && !convertedInvNums.has(inv.invNum))) && (
+      {assetCandidates.length > 0 && filtered.some(op => op.id === expandedId) && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-start gap-3" dir={dir}>
           <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
             <AlertTriangle size={14} className="text-amber-600" />
@@ -525,7 +520,7 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
           <div className="flex-1">
             <p className="text-sm font-bold text-amber-800">{t("فواتير مقترح تحويلها إلى أصول ثابتة", "Invoices recommended for conversion to fixed assets")}</p>
             <p className="text-xs text-amber-700 mt-0.5">
-              {filtered.flatMap(op => (INVOICES[op.id] || []).filter(inv => inv.amount >= 1000 && !convertedInvNums.has(inv.invNum))).length} {t("فاتورة بقيمة أعلى من 1,000 ر.س — يُنصح بمراجعتها للنظر في تصنيفها كأصل ثابت بدلاً من مصروف.", "invoices above 1,000 SAR — recommend reviewing them to classify as fixed assets instead of expenses.")}
+              {assetCandidates.length} {t("فاتورة بقيمة أعلى من 1,000 ر.س — يُنصح بمراجعتها للنظر في تصنيفها كأصل ثابت بدلاً من مصروف.", "invoices above 1,000 SAR — recommend reviewing them to classify as fixed assets instead of expenses.")}
             </p>
           </div>
           <button onClick={() => alert(t("جارٍ الانتقال إلى صفحة الأصول الثابتة...", "Navigating to Fixed Assets page..."))} className="text-xs text-amber-700 border border-amber-300 bg-white px-2.5 py-1.5 rounded-lg hover:bg-amber-100 font-semibold flex-shrink-0">
@@ -548,10 +543,11 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
         {filtered.length === 0
           ? <EmptyState icon="✅" title={t("لا توجد بيانات", "No Data")} desc={t("لا توجد بيانات تطابق الفلاتر المحددة", "No data matches the selected filters")} />
           : filtered.map(op => {
-            const invoices = invoicesFor(op.id);
             const isExpanded = expandedId === op.id;
+            const invoices = isExpanded ? expandedInvoices : [];
             const isLocked = op.status === "final-approved";
             const statusLabel = en ? (EN_STATUS_CFG[op.status] || STATUS_CFG[op.status].label) : STATUS_CFG[op.status].label;
+            const timeAgoLabel = en ? englishExpenseTime(op.operationDate) : op.timeAgo;
             return (
               <div key={op.id} className="border-b border-gray-100 last:border-0">
                 <div className={`px-5 py-4 flex items-center gap-4 hover:bg-gray-50/70 ${isExpanded ? "bg-purple-50/20" : ""}`}>
@@ -560,10 +556,10 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
                       <span className="font-semibold text-gray-800 text-sm">{op.branch}</span>
                       <span className="text-gray-300">·</span>
                       <span className="font-mono text-xs text-purple-600">{op.id}</span>
-                      <Badge className="bg-indigo-50 text-indigo-600 border border-indigo-100 text-[10px]">{invoices.length} {t("فاتورة", "invoices")}</Badge>
+                      {isExpanded && invoices.length > 0 && <Badge className="bg-indigo-50 text-indigo-600 border border-indigo-100 text-[10px]">{invoices.length} {t("فاتورة", invoices.length === 1 ? "invoice" : "invoices")}</Badge>}
                       <Badge className={STATUS_CFG[op.status].cls}>{statusLabel}</Badge>
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5">{t("أُرسل", "Sent")} {op.timeAgo}{op.submittedBy ? ` · ${t("قدّمها", "by")} ${op.submittedBy}` : ""}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{t("أُرسل", "Sent")} {timeAgoLabel}{op.submittedBy ? ` · ${t("قدّمها", "by")} ${op.submittedBy}` : ""}</p>
                   </div>
                   <div className="flex gap-2">
                     <Btn size="sm" onClick={() => setExpandedId(isExpanded ? null : op.id)}>
@@ -577,7 +573,19 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
                   </div>
                 </div>
 
-                {isExpanded && (
+                {isExpanded && invoices.length === 0 && (
+                  <div className="px-5 pb-4 bg-gray-50/40 text-sm text-gray-600" role="status">
+                    {loadingInvoices ? t("جارٍ تحميل الفواتير…", "Loading invoices…") : invoiceLoadFailed ? (
+                      <>
+                        {t("تعذر تحميل الفواتير.", "Could not load invoices.")}{" "}
+                        <button type="button" className="text-purple-700 underline" onClick={() => void refetchInvoices()}>
+                          {t("إعادة المحاولة", "Try again")}
+                        </button>
+                      </>
+                    ) : t("لا توجد فواتير لهذا البيان.", "No invoices for this entry.")}
+                  </div>
+                )}
+                {isExpanded && invoices.length > 0 && (
                   <div className="px-5 pb-4 bg-gray-50/40">
                     <div className="mt-2 mb-2 flex items-center gap-2">
                       <p className="text-xs font-bold text-gray-600">{t("تفاصيل الفواتير المضمنة في هذا البيان:", "Invoice details included in this entry:")}</p>
@@ -639,29 +647,26 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 bg-white">
-                        {invoices.map((inv, k) => {
-                          const vKey = `${op.id}-${inv.invNum}`;
-                          // Prefer the real op-detail fields when the row came from the
-                          // live invoices; fall back to the simulated math otherwise.
-                          const rInv = inv as typeof inv & { _index?: number; _verified?: boolean; _preTax?: number; _vat?: number; _converted?: boolean };
-                          const invIndex = rInv._index ?? k;
-                          const isInvVerified = rInv._verified ?? (verifiedInvoices[vKey] || false);
-                          const amtBeforeVat = rInv._preTax ?? null;
-                          const vatAmt = rInv._vat ?? null;
-                          const alreadyConverted = (rInv._converted ?? false) || convertedInvNums.has(inv.invNum);
+                        {invoices.map(inv => {
+                          const vKey = `${op.id}-${inv.invoiceIndex}`;
+                          const invIndex = inv.invoiceIndex;
+                          const isInvVerified = inv.verified ?? (verifiedInvoices[vKey] || false);
+                          const amtBeforeVat = inv.preTax;
+                          const vatAmt = inv.vat;
+                          const alreadyConverted = inv.converted || convertedInvNums.has(inv.invNum);
                           return (
-                            <tr key={k} className={`hover:bg-gray-50 ${isInvVerified ? "bg-emerald-50/40" : ""} ${alreadyConverted ? "bg-purple-50/20" : ""}`}>
+                            <tr key={invIndex} className={`hover:bg-gray-50 ${isInvVerified ? "bg-emerald-50/40" : ""} ${alreadyConverted ? "bg-purple-50/20" : ""}`}>
                               <td className="px-3 py-2 font-mono text-purple-700 font-semibold">{inv.invNum}</td>
                               <td className="px-3 py-2 font-medium text-gray-800">{inv.vendor}</td>
                               <td className="px-3 py-2 text-gray-600">{inv.desc}</td>
                               <td className="px-3 py-2 text-center text-gray-500">{inv.date}</td>
-                              <td className="px-3 py-2 text-center font-mono text-gray-600">{amtBeforeVat != null ? `${fmtAmt(amtBeforeVat)} ${t("ر.س", "SAR")}` : "—"}</td>
-                              <td className="px-3 py-2 text-center font-mono text-amber-600 bg-amber-50/20">{vatAmt != null ? `${fmtAmt(vatAmt)} ${t("ر.س", "SAR")}` : "—"}</td>
-                              <td className="px-3 py-2 text-center font-mono font-bold text-emerald-700 bg-emerald-50/20">{fmtAmt(inv.amount)} {t("ر.س", "SAR")}</td>
+                              <td className="px-3 py-2 text-center font-mono text-gray-600">{amtBeforeVat != null ? `${fmtAmt(amtBeforeVat, lang)} ${t("ر.س", "SAR")}` : "—"}</td>
+                              <td className="px-3 py-2 text-center font-mono text-amber-600 bg-amber-50/20">{vatAmt != null ? `${fmtAmt(vatAmt, lang)} ${t("ر.س", "SAR")}` : "—"}</td>
+                              <td className="px-3 py-2 text-center font-mono font-bold text-emerald-700 bg-emerald-50/20">{fmtAmt(inv.amount, lang)} {t("ر.س", "SAR")}</td>
                               <td className="px-3 py-2 text-center">
-                                <button onClick={() => setAttachModal({ opId: op.id, invNum: inv.invNum, idx: 0, files: (inv._attachments && inv._attachments.length ? inv._attachments : opFiles) })}
+                                <button onClick={() => setAttachModal({ opId: op.id, invNum: inv.invNum, idx: 0, files: (inv.attachments.length ? inv.attachments : opFiles) })}
                                   className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all">
-                                  <Paperclip size={10} /><span className="font-semibold">{(inv._attachments && inv._attachments.length ? inv._attachments.length : (opFiles.length || inv.attachCount))}</span>
+                                  <Paperclip size={10} /><span className="font-semibold">{(inv.attachments.length || opFiles.length || inv.attachCount)}</span>
                                 </button>
                               </td>
                               <td className="px-3 py-2 text-center">
@@ -694,21 +699,21 @@ export function AccExpensesPage({ navigate, setModal, setDetailId, ops, approveO
                         <tr>
                           <td colSpan={4} className={`px-3 py-2.5 font-bold text-gray-900 ${dir === "ltr" ? "text-left" : "text-right"}`}>{t("الإجمالي", "Total")}</td>
                         {(() => {
-                          const hasPreTax = invoices.length > 0 && invoices.every(i => (i as any)._preTax != null);
-                          const totalPreTax = hasPreTax ? invoices.reduce((s, i) => s + ((i as any)._preTax ?? 0), 0) : null;
-                          const hasVat = invoices.length > 0 && invoices.every(i => (i as any)._vat != null);
-                          const totalVat = hasVat ? invoices.reduce((s, i) => s + ((i as any)._vat ?? 0), 0) : null;
+                          const hasPreTax = invoices.length > 0 && invoices.every(i => i.preTax != null);
+                          const totalPreTax = hasPreTax ? invoices.reduce((s, i) => s + (i.preTax ?? 0), 0) : null;
+                          const hasVat = invoices.length > 0 && invoices.every(i => i.vat != null);
+                          const totalVat = hasVat ? invoices.reduce((s, i) => s + (i.vat ?? 0), 0) : null;
                           return (
                             <>
-                              <td className="px-3 py-2.5 text-center font-mono text-gray-600">{totalPreTax != null ? `${fmtAmt(totalPreTax)} ${t("ر.س", "SAR")}` : "—"}</td>
-                              <td className="px-3 py-2.5 text-center font-mono text-amber-600 bg-amber-50/20">{totalVat != null ? `${fmtAmt(totalVat)} ${t("ر.س", "SAR")}` : "—"}</td>
+                              <td className="px-3 py-2.5 text-center font-mono text-gray-600">{totalPreTax != null ? `${fmtAmt(totalPreTax, lang)} ${t("ر.س", "SAR")}` : "—"}</td>
+                              <td className="px-3 py-2.5 text-center font-mono text-amber-600 bg-amber-50/20">{totalVat != null ? `${fmtAmt(totalVat, lang)} ${t("ر.س", "SAR")}` : "—"}</td>
                             </>
                           );
                         })()}
-                          <td className="px-3 py-2.5 text-center font-black font-mono text-emerald-700 bg-emerald-50/20">{fmtAmt(invoices.reduce((s, i) => s + i.amount, 0))} {t("ر.س", "SAR")}</td>
+                          <td className="px-3 py-2.5 text-center font-black font-mono text-emerald-700 bg-emerald-50/20">{fmtAmt(invoices.reduce((s, i) => s + i.amount, 0), lang)} {t("ر.س", "SAR")}</td>
                           <td></td>
                           <td className="px-3 py-2.5 text-center text-[10px] text-gray-500">
-                            {invoices.filter(inv => ((inv as any)._verified ?? verifiedInvoices[`${op.id}-${inv.invNum}`])).length}/{invoices.length} {t("موثّق", "verified")}
+                            {invoices.filter(inv => (inv.verified ?? verifiedInvoices[`${op.id}-${inv.invoiceIndex}`])).length}/{invoices.length} {t("موثّق", "verified")}
                           </td>
                         </tr>
                       </tfoot>

@@ -8,7 +8,9 @@ import { GlobalWindow } from "happy-dom";
 import { LangContext, type Lang } from "../../_shared/LangContext";
 import { queryKeys } from "../../../../../api/queries/keys";
 import { AccDashboard } from "./AccDashboard";
+import { AccExpensesPage } from "./AccExpensesPage";
 import { AccShifts } from "./AccShifts";
+import { api } from "../../../../../api/client";
 import { opDetailPage, fmtAmt, formatTodayLong } from "../../_shared/formatters";
 import type { Op, PageProps } from "../../_shared/types";
 
@@ -70,6 +72,68 @@ test("View click routes shift operations to accountant shifts and keeps other mo
   await act(async () => root.unmount());
   container.remove();
   qc.clear();
+});
+
+test("expanded expenses show only the invoices from the operation response", async () => {
+  const operationId = "expense-42";
+  const qc = client();
+  qc.setQueryData(queryKeys.expensesKpis({}), {
+    totalHalalas: 0, vat15Halalas: 0, pendingInvoices: { matched: 0, mismatch: 0, missing: 0 },
+  });
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  const originalAdapter = api.defaults.adapter;
+  let resolveInvoices!: (data: unknown) => void;
+  const operationResponse = new Promise(resolve => { resolveInvoices = resolve; });
+  api.defaults.adapter = async config => ({
+    data: config.url === `/operations/${operationId}` ? await operationResponse : [],
+    status: 200,
+    statusText: "OK",
+    headers: {},
+    config,
+  });
+  const expense = {
+    ...op("expenses", operationId),
+    operationDate: new Date(Date.now() - 2.25 * 3_600_000).toISOString(),
+  };
+  try {
+    await act(async () => root.render(
+      <QueryClientProvider client={qc}><LangContext.Provider value={language("en")}>
+        <AccExpensesPage {...props([expense])} />
+      </LangContext.Provider></QueryClientProvider>,
+    ));
+    assert.match(container.textContent ?? "", /2 hours ago/);
+    const button = Array.from(container.querySelectorAll("button")).find(item => item.textContent?.trim() === "Invoices");
+    assert.ok(button);
+    await act(async () => button.click());
+    assert.match(container.textContent ?? "", /Loading invoices/);
+    assert.equal(container.querySelector("table"), null);
+
+    await act(async () => {
+      resolveInvoices({ expenses: { invoices: [] } });
+      await new Promise(resolve => setTimeout(resolve, 10));
+    });
+    assert.match(container.textContent ?? "", /No invoices for this entry/);
+    assert.equal(container.querySelector("table"), null);
+
+    await act(async () => {
+      qc.setQueryData(queryKeys.operation(operationId), { expenses: { invoices: [{
+        index: 0, invNum: "REAL-INVOICE-001", vendor: "Vendor", desc: "Receipt",
+        preTaxHalalas: 10000, vat15Halalas: 1500, inclTaxHalalas: 11500,
+        verified: false, convertedToAsset: false, attachments: [],
+      }] } });
+      await new Promise(resolve => setTimeout(resolve, 10));
+    });
+    assert.match(container.querySelector("table")?.textContent ?? "", /REAL-INVOICE-001/);
+    assert.match(container.textContent ?? "", /1 invoice/);
+    assert.match(container.querySelector("table")?.textContent ?? "", /115\.00/);
+  } finally {
+    await act(async () => root.unmount());
+    api.defaults.adapter = originalAdapter;
+    qc.clear();
+    container.remove();
+  }
 });
 
 test("selected shift opens history, highlights matching row, and keeps history data unchanged", () => {
