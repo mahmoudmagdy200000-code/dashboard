@@ -185,7 +185,7 @@ export function HeadOperationalModuleData({ moduleKey }: { moduleKey: HeadOperat
         {rows.slice(0, 12).map((row, index) => <article key={String(row.id ?? row.operationId ?? index)} className="min-w-0 rounded-lg border border-gray-200 bg-white p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <b className="min-w-0 break-words text-sm text-gray-900">{String(row.branchName ?? row.branch ?? row.name ?? row.title ?? row.supplierName ?? row.operationId ?? `#${displayDigits(index + 1, lang)}`)}</b>
-            {scalar(row.status) && <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-600">{scalar(row.status)}</span>}
+            {scalar(row.status) && <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-600">{enumLabels[scalar(row.status)!]?.[lang === "ar" ? 0 : 1] ?? scalar(row.status)}</span>}
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">{rowDetails(row, lang).map(item => <span key={item.label} className="max-w-full rounded-md bg-gray-50 px-2 py-1 text-[11px] text-gray-600"><b>{item.label}: </b><bdi className="break-words text-gray-800">{item.value}</bdi></span>)}</div>
         </article>)}
