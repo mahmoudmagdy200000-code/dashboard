@@ -321,6 +321,27 @@ export function useFlagPlatformInventoryBranch() {
   });
 }
 
+export function useSendPlatformInventoryConfirmation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      branchId,
+      ...body
+    }: { branchId: string; reason: string; message?: string; operationId?: string }) => {
+      const res = await api.post<unknown>(
+        `/accountant/inventory/branches/${branchId}/send-confirmation`,
+        body,
+      );
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["platform", "accountant", "inventory"] });
+      toast.success("تم إرسال طلب التأكيد للفرع");
+    },
+    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+  });
+}
+
 // 2026-08-11 — the PUT response now reports whether the list actually reached the
 // branch's app worksheet: { savedCount, appListCount, newMobileItems, appListError,
 // pushedAt }. Previously the save could "succeed" (200) while nothing reached the
@@ -474,6 +495,74 @@ export function useBulkApprovePlatformWaste() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["platform", "accountant", "waste"] });
       toast.success("تم اعتماد الهالك بالجملة");
+    },
+    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+  });
+}
+
+export function usePlatformWasteKpiReferences(params?: {
+  branchId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}) {
+  return useQuery({
+    queryKey: ["platform", "accountant", "waste", "kpi-references", params ?? {}] as const,
+    queryFn: async () => {
+      const res = await api.get<{
+        dateFrom: string;
+        dateTo: string;
+        availableCount: number;
+        unavailableCount: number;
+        branches: Array<{
+          branchId: string;
+          branchName?: string;
+          available: boolean;
+          unavailableReason?: string;
+          wasteRatePct?: number | null;
+          wasteRatePercent?: number | null;
+          finalWasteCostHalalas?: number;
+          normalConsumptionCostHalalas?: number;
+          completeDays?: number;
+          expectedDays?: number;
+        }>;
+      }>("/accountant/waste/kpi-references", { params });
+      return res.data;
+    },
+  });
+}
+
+export function usePreviewConsumptionImport() {
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await api.post<{
+        id: string;
+        status: string;
+        file_name: string;
+        validation_errors?: Array<{ sheet?: string; row?: number; field?: string; reason: string }>;
+        preview_summary?: Record<string, unknown>;
+      }>("/accountant/consumption-imports/preview", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return res.data;
+    },
+    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+  });
+}
+
+export function useConfirmConsumptionImport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (batchId: string) => {
+      const res = await api.post<unknown>(
+        `/accountant/consumption-imports/${batchId}/confirm`,
+      );
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["platform", "accountant", "waste"] });
+      toast.success("تم تأكيد استيراد الاستهلاك وتحديث المرجع");
     },
     onError: (e) => toast.error(getErrorMessage(e, "ar")),
   });

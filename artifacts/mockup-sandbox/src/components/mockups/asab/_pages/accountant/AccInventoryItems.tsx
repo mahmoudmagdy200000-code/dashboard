@@ -33,42 +33,15 @@ export function AccInventoryItems({ navigate }: PageProps) {
   usePlatformInventory();
   const { data: brandsApi } = useAccountantInventoryBrands();
 
-  // Static demo fallbacks — used ONLY when the accountant-scoped APIs return [].
-  const DEMO_BRAND_BRANCHES: Record<string, string[]> = {
-    "برغر خليفة": ["فرع الرياض - العليا", "فرع الرياض - النزهة", "فرع جدة - الحمراء", "فرع الدمام - الكورنيش"],
-    "بيتزا باكو": ["فرع الرياض - الصحافة", "فرع جدة - العزيزية", "فرع مكة - العزيزية"],
-    "وسطاوي": ["فرع الرياض - المغرزات", "فرع مكة - المعابدة", "فرع جدة - الرحاب"],
-  };
-  const MONTHLY_DIFF: Record<string, Record<string, { prev: number; curr: number; pct: number }>> = {
-    "فرع الرياض - العليا": { "دجاج طازج": { prev: 120, curr: 89, pct: 26 }, "بطاطس": { prev: 80, curr: 51, pct: 36 }, "زيت قلي": { prev: 40, curr: 27, pct: 33 }, "مايونيز": { prev: 15, curr: 19, pct: 27 } },
-    "فرع الرياض - النزهة": { "خبز برجر": { prev: 500, curr: 340, pct: 32 }, "جبنة شيدر": { prev: 30, curr: 21, pct: 30 } },
-    "فرع جدة - الحمراء": { "كاتشب": { prev: 20, curr: 13, pct: 35 }, "صوص برجر خاص": { prev: 18, curr: 11, pct: 39 } },
-    "فرع الدمام - الكورنيش": { "لحم برجر": { prev: 25, curr: 16, pct: 36 } },
-    "فرع الرياض - الصحافة": { "عجينة البيتزا": { prev: 60, curr: 39, pct: 35 }, "جبنة موزاريلا": { prev: 25, curr: 16, pct: 36 } },
-    "فرع جدة - العزيزية": { "دجاج مشوي": { prev: 18, curr: 11, pct: 39 } },
-    "فرع مكة - العزيزية": { "صوص الطماطم": { prev: 12, curr: 7, pct: 42 }, "مشروم": { prev: 10, curr: 6, pct: 40 } },
-    "فرع الرياض - المغرزات": { "أرز بسمتي": { prev: 80, curr: 52, pct: 35 }, "دجاج طازج": { prev: 40, curr: 26, pct: 35 } },
-    "فرع مكة - المعابدة": { "لحم ضأن": { prev: 22, curr: 13, pct: 41 } },
-    "فرع جدة - الرحاب": { "خبز تنور": { prev: 300, curr: 190, pct: 37 }, "بهارات مشوي": { prev: 8, curr: 5, pct: 38 } },
-  };
   const FLAG_PCT = 25;
 
   // ── Brands (API-first): [{id,name,branchCount,itemCount}] ────────────────
-  // Demo fallback applies ONLY before the API has responded (undefined). Once it
-  // responds with [] (empty scope), we honor it and let the empty-state render.
   const brandsResponded = Array.isArray(brandsApi);
   const apiBrands = (brandsResponded ? brandsApi : []) as any[];
   const isApiBrands = apiBrands.length > 0;
-  // Once the accountant-scoped API has RESPONDED with an empty scope, honor it:
-  // no assigned brand → honest empty state, never the demo brands. Showing the
-  // demo brands here was the misleading «بيانات قديمة» the accountant saw — real
-  // names but a catalog gated off (isApiBrands=false), so nothing was selectable.
-  // Demo brands remain only for the brief pre-response window.
   const brandRows = isApiBrands
     ? apiBrands.map(b => ({ id: String(b?.id ?? b?.name ?? ""), name: String(b?.name ?? b?.id ?? ""), branchCount: Number(b?.branchCount ?? 0) }))
-    : brandsResponded
-      ? []
-      : Object.keys(DEMO_BRAND_BRANCHES).map(n => ({ id: n, name: n, branchCount: DEMO_BRAND_BRANCHES[n].length }));
+    : [];
   const brands = brandRows.map(b => b.name);
   const brandIdByName: Record<string, string> = Object.fromEntries(brandRows.map(b => [b.name, b.id]));
   const brandCountByName: Record<string, number> = Object.fromEntries(brandRows.map(b => [b.name, b.branchCount]));
@@ -82,7 +55,7 @@ export function AccInventoryItems({ navigate }: PageProps) {
   const apiBranches = (Array.isArray(branchesApi) ? branchesApi : []) as any[];
   const branchRows = apiBranches.length > 0
     ? apiBranches.map(b => ({ id: String(b?.id ?? ""), name: String(b?.name ?? b?.id ?? ""), real: true, count: Number(b?.listItemCount ?? 0) }))
-    : (DEMO_BRAND_BRANCHES[selBrand] ?? []).map(n => ({ id: n, name: n, real: false, count: 0 }));
+    : [];
   const branchNames = branchRows.map(b => b.name);
   const branchIdByName: Record<string, string> = Object.fromEntries(branchRows.map(b => [b.name, b.id]));
   const branchRealByName: Record<string, boolean> = Object.fromEntries(branchRows.map(b => [b.name, b.real]));
@@ -132,7 +105,7 @@ export function AccInventoryItems({ navigate }: PageProps) {
   const cats = ["الكل", ...new Set(catalog.map(i => i.cat))];
   const shown = catFilter === "الكل" ? catalog : catalog.filter(i => i.cat === catFilter);
   const dailyList = dailyLists[selBranch] || [];
-  const branchDiffs = MONTHLY_DIFF[selBranch] || {};
+  const branchDiffs: Record<string, { prev: number; curr: number; pct: number }> = {};
   const isFlagged = (name: string) => !!(branchDiffs[name] && branchDiffs[name].pct >= FLAG_PCT);
   const flaggedNotInDaily = catalog.filter(i => isFlagged(i.name) && !dailyList.includes(i.name));
 
@@ -225,7 +198,7 @@ export function AccInventoryItems({ navigate }: PageProps) {
             <div className="flex flex-wrap gap-2">
               {branchNames.map(br => {
                 const brDaily = dailyLists[br] || [];
-                const brDiffs = MONTHLY_DIFF[br] || {};
+                const brDiffs: Record<string, { prev: number; curr: number; pct: number }> = {};
                 const brFlaggedCount = catalog.filter(i => brDiffs[i.name] && brDiffs[i.name].pct >= FLAG_PCT && !brDaily.includes(i.name)).length;
                 return (
                   <button key={br} onClick={() => { setSelBranch(br); setCatFilter("الكل"); setSavedBranch(null); }}
