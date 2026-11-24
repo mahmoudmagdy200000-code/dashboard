@@ -370,22 +370,22 @@ export function AccInventory({
         className="bg-white rounded-xl border border-gray-100 shadow-sm p-4"
         dir={dir}
       >
-        <div className="grid grid-cols-3 gap-3">
-          <div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="min-w-0">
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">
               بحث بالمطعم أو البراند
             </label>
-            <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 min-w-0">
               <Search size={13} className="text-gray-400 flex-shrink-0" />
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="اسم المطعم أو العلامة التجارية..."
-                className="flex-1 text-sm outline-none"
+                className="flex-1 min-w-0 w-full text-sm outline-none bg-transparent"
               />
             </div>
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">
               العلامة التجارية
             </label>
