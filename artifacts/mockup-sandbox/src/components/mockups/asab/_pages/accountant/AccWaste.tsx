@@ -16,6 +16,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   BarChart3,
+  Upload,
 } from "lucide-react";
 import {
   usePlatformWaste,
@@ -25,6 +26,9 @@ import {
   useBulkApproveWaste,
   usePatchWasteProduct,
   usePutWasteAllocations,
+  usePlatformWasteKpiReferences,
+  usePreviewConsumptionImport,
+  useConfirmConsumptionImport,
 } from "../../../../../api/queries";
 import { useLang } from "../../_shared/LangContext";
 import { fmtAmt } from "../../_shared/formatters";
@@ -43,6 +47,32 @@ export function AccWaste({}: PageProps) {
   const approveWasteMut = useApproveWaste();
   const rejectWasteMut = useRejectWaste();
   const bulkWasteMut = useBulkApproveWaste();
+  const [refMonth, setRefMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [dailyAlertDate, setDailyAlertDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [showRuleRefs, setShowRuleRefs] = useState(false);
+  const monthDateFrom = `${refMonth}-01`;
+  const monthDateTo = (() => {
+    const [y, m] = refMonth.split("-").map(Number);
+    if (!y || !m) return `${refMonth}-30`;
+    return `${refMonth}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
+  })();
+  const { data: wasteKpiRefs } = usePlatformWasteKpiReferences({
+    dateFrom: monthDateFrom,
+    dateTo: monthDateTo,
+  });
+  const { data: dailyWasteKpiRefs } = usePlatformWasteKpiReferences({
+    dateFrom: dailyAlertDate,
+    dateTo: dailyAlertDate,
+  });
+  const previewImportMut = usePreviewConsumptionImport();
+  const confirmImportMut = useConfirmConsumptionImport();
+  const [importPreview, setImportPreview] = useState<{
+    id: string;
+    status: string;
+    file_name: string;
+    validation_errors?: Array<{ sheet?: string; row?: number; field?: string; reason: string }>;
+    preview_summary?: Record<string, unknown>;
+  } | null>(null);
   const patchProductMut = usePatchWasteProduct();
   const putAllocsMut = usePutWasteAllocations();
   type WasteClass = "هدر" | "تالف";
@@ -63,7 +93,8 @@ export function AccWaste({}: PageProps) {
     publicId?: string;
     branch: string;
     date: string;
-    status: "pending" | "approved" | "rejected";
+    status: "pending" | "approved" | "final-approved" | "rejected";
+    ownerApproval?: { approved?: boolean; rejected?: boolean; revision?: number } | null;
     products: WasteProduct[];
   }
 
@@ -256,11 +287,16 @@ export function AccWaste({}: PageProps) {
   const totalWasteAmt = entries
     .flatMap((e) => e.products)
     .reduce((s, p) => s + p.qty * p.unitPrice, 0);
-  const empChargedAmt = entries
-    .flatMap((e) => e.products)
-    .filter((p) => p.resp === "موظف")
-    .flatMap((p) => p.empAllocs)
-    .reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
+  const finalApprovedOps = entries.filter((e) => e.status === "final-approved");
+  const apiChargedHalalas = (apiWaste as any)?.summary?.chargedToEmployeesHalalas;
+  const empChargedAmt =
+    typeof apiChargedHalalas === "number"
+      ? apiChargedHalalas / 100
+      : finalApprovedOps
+          .flatMap((e) => e.products)
+          .filter((p) => p.resp === "موظف")
+          .flatMap((p) => p.empAllocs)
+          .reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
 
   const approveAllDisplayed = () => {
     const ids = displayedPending.map((e) => e.id);
@@ -375,9 +411,9 @@ export function AccWaste({}: PageProps) {
           accent="amber"
         />
         <KpiCard
-          label="معتمد"
+          label="تحت مراجعة"
           value={String(approved.length)}
-          sub="هذا الشهر"
+          sub="وضع الاعتماد: الكل تمر للرئيس — بانتظار رئيس الحسابات"
           icon={<CheckCircle2 size={18} className="text-emerald-600" />}
           accent="emerald"
         />
@@ -389,13 +425,205 @@ export function AccWaste({}: PageProps) {
           accent="red"
         />
         <KpiCard
-          label="محمَّل على الموظفين"
+          label="مديونية موظفين معتمدة"
           value={`${fmtAmt(empChargedAmt)} ر.س`}
-          sub="مُعيَّن فعلياً"
+          sub="بعد اعتماد رئيس الحسابات"
           icon={<Users size={18} className="text-orange-600" />}
           accent="orange"
         />
       </div>
+
+      {/* Consumption & Cost KPI References + Excel/CSV Import */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-gray-900 text-sm flex items-center gap-1.5">
+              <BarChart3 size={15} className="text-purple-600" />
+              {t("مراجع الاستهلاك والتكلفة", "Consumption & Cost References")}
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {t(
+                "تُحتسب نسبة الهدر من الاستهلاك العادي المؤكَّد والتكلفة الشهرية المعتمدة",
+                "Waste rate KPI requires confirmed daily consumption and approved monthly weighted cost",
+              )}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-gray-500">{t("الشهر المرجعي:", "Month:")}</span>
+              <input
+                type="month"
+                value={refMonth}
+                onChange={(e) => e.target.value && setRefMonth(e.target.value)}
+                className="rounded-lg border border-gray-200 px-2 py-1 text-xs"
+              />
+            </div>
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-gray-500">{t("تاريخ التنبيه اليومي:", "Daily Alert:")}</span>
+              <input
+                type="date"
+                value={dailyAlertDate}
+                onChange={(e) => e.target.value && setDailyAlertDate(e.target.value)}
+                className="rounded-lg border border-gray-200 px-2 py-1 text-xs"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowRuleRefs((p) => !p)}
+              className="px-2.5 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-gray-700 text-xs font-semibold hover:bg-gray-100"
+            >
+              {t("عرض مراجع القاعدة", "View Rule References")}
+            </button>
+            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold cursor-pointer hover:bg-purple-100 transition-all">
+              <Upload size={13} />
+              {previewImportMut.isPending
+                ? t("جارٍ قراءة الملف...", "Reading file...")
+                : t("استيراد مراجع التكلفة Excel / CSV", "Import Cost Refs Excel / CSV")}
+              <input
+                type="file"
+                accept=".xlsx,.csv"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  previewImportMut.mutate(file, {
+                    onSuccess: (res) => setImportPreview(res),
+                  });
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </div>
+        </div>
+
+        {showRuleRefs && (
+          <div className="rounded-xl border border-purple-100 bg-purple-50/40 p-3 text-xs text-purple-900 space-y-1">
+            <p className="font-bold">{t("قواعد v3.5 المعتمدة لمؤشر الهدر والتكلفة:", "Approved v3.5 Rules:")}</p>
+            <p>• لا تُحتسب النسبة مع وجود يوم ناقص أو يوم جزئي (PARTIAL) أو تكلفة مؤقتة (PROVISIONAL).</p>
+            <p>• الاستهلاك العادي = الكمية المستهلكة − الهدر المدرج · تكلفة الهدر النهائي = مجموع حركات waste_out حسب posted_at.</p>
+          </div>
+        )}
+
+        {wasteKpiRefs?.branches && wasteKpiRefs.branches.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+            {wasteKpiRefs.branches.map((br) => {
+              const dailyBr = dailyWasteKpiRefs?.branches?.find((d) => d.branchId === br.branchId);
+              return (
+                <div
+                  key={br.branchId}
+                  className="rounded-xl border border-gray-100 bg-gray-50/70 p-3 space-y-1.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-gray-800 truncate">
+                      {br.branchName || br.branchId}
+                    </span>
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        br.available
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-gray-200 text-gray-600"
+                      }`}
+                    >
+                      {br.available
+                        ? `${t("النسبة الشهرية:", "Monthly:")} ${Number(br.wasteRatePct ?? br.wasteRatePercent ?? 0).toFixed(2)}%`
+                        : t("غير متاحة", "Unavailable")}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-gray-500">
+                    <span>
+                      {br.completeDays ?? 0}/{br.expectedDays ?? 30} {t("يوم بمرجع مكتمل للشهر", "complete days")}
+                    </span>
+                    <span className="font-mono">
+                      {t("التنبيه اليومي:", "Daily:")}{" "}
+                      {dailyBr?.available
+                        ? `${Number(dailyBr.wasteRatePct ?? dailyBr.wasteRatePercent ?? 0).toFixed(2)}%`
+                        : t("غير متاحة", "Unavailable")}
+                    </span>
+                  </div>
+                  {br.available ? (
+                    <div className="flex items-center justify-between text-[11px] text-gray-500 font-mono">
+                      <span>
+                        {t("الاستهلاك:", "Cons:")}{" "}
+                        {fmtAmt((br.normalConsumptionCostHalalas ?? 0) / 100)} ر.س
+                      </span>
+                      <span>
+                        {t("الهدر:", "Waste:")}{" "}
+                        {fmtAmt((br.finalWasteCostHalalas ?? 0) / 100)} ر.س
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-amber-700">
+                      {br.unavailableReason || t("بيانات غير مكتملة", "Incomplete reference data")}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 px-3 py-2 text-[11px] text-indigo-900 flex flex-wrap items-center justify-between gap-2">
+          <span className="font-bold">{t("معادلة الهدر الشهرية:", "Monthly Waste Formula:")}</span>
+          <span className="font-mono">
+            {t(
+              "نسبة الهدر % = تكلفة الهدر النهائي (final-approved) ÷ (تكلفة الاستهلاك العادي المؤكَّد + تكلفة الهدر النهائي) × 100",
+              "Waste % = Final Waste Cost / (Normal Consumption Cost + Final Waste Cost) × 100",
+            )}
+          </span>
+        </div>
+      </div>
+
+      {importPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir={dir}>
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-900">
+                {t("معاينة استيراد الاستهلاك", "Consumption Import Preview")} — {importPreview.file_name}
+              </h3>
+              <button onClick={() => setImportPreview(null)} className="text-gray-400 hover:text-gray-600">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="rounded-xl bg-gray-50 p-3 text-xs space-y-1">
+              <p>
+                <b>{t("الحالة:", "Status:")}</b>{" "}
+                <span className={importPreview.status === "PREVIEW" ? "text-emerald-700 font-bold" : "text-red-700 font-bold"}>
+                  {importPreview.status}
+                </span>
+              </p>
+              {importPreview.validation_errors && importPreview.validation_errors.length > 0 && (
+                <ul className="mt-2 max-h-40 overflow-y-auto space-y-1 text-red-700">
+                  {importPreview.validation_errors.map((err, idx) => (
+                    <li key={idx}>
+                      {err.sheet ? `[${err.sheet} #${err.row ?? ""}] ` : ""}
+                      {err.reason}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Btn variant="ghost" size="sm" onClick={() => setImportPreview(null)}>
+                {t("إغلاق", "Close")}
+              </Btn>
+              {importPreview.status === "PREVIEW" && (
+                <Btn
+                  variant="primary"
+                  size="sm"
+                  disabled={confirmImportMut.isPending}
+                  onClick={() => {
+                    confirmImportMut.mutate(importPreview.id, {
+                      onSuccess: () => setImportPreview(null),
+                    });
+                  }}
+                >
+                  <Check size={12} /> {t("تأكيد الاستيراد", "Confirm Import")}
+                </Btn>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
@@ -416,18 +644,21 @@ export function AccWaste({}: PageProps) {
             .filter((p) => p.resp === "موظف")
             .flatMap((p) => p.empAllocs)
             .reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
+          const hasEmpResp = entry.products.some((p) => p.resp === "موظف");
           const statusCls =
             entry.status === "pending"
               ? "bg-amber-50 text-amber-700 border border-amber-200"
-              : entry.status === "approved"
+              : entry.status === "approved" || entry.status === "final-approved"
                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                 : "bg-red-50 text-red-700 border border-red-200";
           const statusLbl =
             entry.status === "pending"
               ? "معلق"
               : entry.status === "approved"
-                ? "معتمد"
-                : "مرفوض";
+                ? "بانتظار رئيس الحسابات"
+                : entry.status === "final-approved"
+                  ? "معتمد نهائياً"
+                  : "مرفوض";
           return (
             <div
               key={entry.id}
@@ -448,6 +679,28 @@ export function AccWaste({}: PageProps) {
                     <Badge className={`${statusCls} text-[10px]`}>
                       {statusLbl}
                     </Badge>
+                    {hasEmpResp && (
+                      <Badge className="bg-orange-50 text-orange-700 border border-orange-200 text-[10px]">
+                        اقتراح مسؤولية موظف
+                      </Badge>
+                    )}
+                    {hasEmpResp && (
+                      <Badge
+                        className={`text-[10px] ${
+                          entry.ownerApproval?.approved
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : entry.ownerApproval?.rejected
+                              ? "bg-red-50 text-red-700 border border-red-200"
+                              : "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}
+                      >
+                        {entry.ownerApproval?.approved
+                          ? "موافقة المالك: معتمدة"
+                          : entry.ownerApproval?.rejected
+                            ? "موافقة المالك: مرفوضة"
+                            : "بانتظار موافقة المالك"}
+                      </Badge>
+                    )}
                     <Badge className="bg-gray-50 text-gray-600 border border-gray-200 text-[10px]">
                       {entry.products.length} منتج
                     </Badge>
@@ -774,70 +1027,6 @@ export function AccWaste({}: PageProps) {
             </div>
           );
         })}
-      </div>
-
-      {/* Branch Waste Comparison */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
-          <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-            <BarChart3 size={15} className="text-rose-500" /> مقارنة نسبة الهدر
-            بين الفروع
-          </h3>
-          <span className="text-[11px] text-gray-400">
-            نسبة الهدر = إجمالي الهدر ÷ المبيعات المقدّرة
-          </span>
-        </div>
-        <div className="p-5 space-y-3">
-          {WASTE_BRANCHES.map((br, i) => {
-            const brTotal = entries
-              .filter((e) => e.branch === br)
-              .reduce(
-                (s, e) =>
-                  s +
-                  e.products.reduce((p, pr) => p + pr.qty * pr.unitPrice, 0),
-                0,
-              );
-            const brSales =
-              [1200000, 980000, 750000, 850000, 600000][i] || 700000;
-            const pct = Math.round((brTotal / brSales) * 100 * 10) / 10;
-            const barColor =
-              pct > 3
-                ? "bg-red-500"
-                : pct > 1.5
-                  ? "bg-amber-400"
-                  : "bg-emerald-500";
-            return (
-              <div key={br} className="flex items-center gap-3">
-                <span className="text-xs text-gray-600 w-44 text-right flex-shrink-0 truncate">
-                  {br}
-                </span>
-                <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
-                  <div
-                    className={`${barColor} h-3 rounded-full transition-all`}
-                    style={{ width: `${Math.min(pct * 15, 100)}%` }}
-                  ></div>
-                </div>
-                <span
-                  className={`text-xs font-bold font-mono w-14 flex-shrink-0 ${pct > 3 ? "text-red-600" : pct > 1.5 ? "text-amber-600" : "text-emerald-600"}`}
-                >
-                  {pct}%
-                </span>
-                <span className="text-[10px] text-gray-400 w-28 flex-shrink-0 font-mono">
-                  {fmtAmt(brTotal)} ر.س هدر
-                </span>
-                {pct > 3 && (
-                  <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold flex-shrink-0">
-                    ⚠ مرتفع
-                  </span>
-                )}
-              </div>
-            );
-          })}
-          <div className="pt-2 border-t border-gray-100 text-[11px] text-gray-400">
-            المعيار المقبول: أقل من 1.5% ✅ · تحذير: 1.5–3% 🟡 · مرتفع: أكثر من
-            3% 🔴
-          </div>
-        </div>
       </div>
     </div>
   );

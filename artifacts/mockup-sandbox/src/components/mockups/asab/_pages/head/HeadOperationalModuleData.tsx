@@ -55,6 +55,15 @@ const friendlyKeys: Record<string, [string, string]> = {
   invoiceNumber: ["رقم الفاتورة", "Invoice"], invoiceCount: ["عدد الفواتير", "Invoices"],
   counterpartCount: ["عمليات مرتبطة", "Linked operations"], totalSar: ["الإجمالي (ر.س)", "Total (SAR)"],
   totalHalalas: ["الإجمالي (ر.س)", "Total (SAR)"], reference: ["المرجع", "Reference"],
+  anomalyCount: ["عدد الفروقات", "Anomalies"],
+  isFlagged: ["معلّم للمراجعة", "Flagged"],
+  branchConfirmed: ["تأكيد الفرع", "Branch confirmed"],
+  lastCountDate: ["آخر جرد", "Last count"],
+  totalItems: ["عدد الأصناف", "Total items"],
+  itemCount: ["عدد الأصناف", "Items"],
+  countType: ["نوع الجرد", "Count type"],
+  revision: ["المراجعة", "Revision"],
+  ownerApproval: ["موافقة المالك", "Owner approval"],
 };
 
 const enumLabels: Record<string, [string, string]> = {
@@ -66,6 +75,9 @@ const enumLabels: Record<string, [string, string]> = {
   credit: ["وارد", "Credit"],
   expenses: ["المصروفات", "Expenses"],
   cash: ["العهدة النقدية", "Cash Custody"],
+  daily: ["يومي", "Daily"],
+  monthly: ["شهري", "Monthly"],
+  not_required: ["غير مطلوب", "Not required"],
 };
 
 function rowDetails(row: Row, lang: "ar" | "en") {
@@ -77,11 +89,13 @@ function rowDetails(row: Row, lang: "ar" | "en") {
   return sliced
     .map(([key, value]) => {
       const raw = scalar(value);
-      const localizedEnum = raw && /^(status|txnType|moduleKey)$/.test(key)
+      const localizedEnum = raw && /^(status|txnType|moduleKey|countType|ownerApproval)$/.test(key)
         ? enumLabels[raw]?.[lang === "ar" ? 0 : 1] : undefined;
-      const formatted = typeof value === "number"
+      const formatted = typeof value === "boolean"
+        ? (value ? (lang === "ar" ? "نعم" : "Yes") : (lang === "ar" ? "لا" : "No"))
+        : typeof value === "number"
         ? key.endsWith("Halalas") ? fmtAmt(value / 100, lang) : displayDigits(value, lang)
-        : /^(date|operationDate|txnDate)$/.test(key) ? formatDateLong(lang, raw) || "—"
+        : /^(date|operationDate|txnDate|lastCountDate)$/.test(key) ? formatDateLong(lang, raw) || "—"
         : localizedEnum ?? raw ?? "—";
       return {
         label: friendlyKeys[key]?.[lang === "ar" ? 0 : 1] ?? key,
@@ -185,7 +199,7 @@ export function HeadOperationalModuleData({ moduleKey }: { moduleKey: HeadOperat
         {rows.slice(0, 12).map((row, index) => <article key={String(row.id ?? row.operationId ?? index)} className="min-w-0 rounded-lg border border-gray-200 bg-white p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <b className="min-w-0 break-words text-sm text-gray-900">{String(row.branchName ?? row.branch ?? row.name ?? row.title ?? row.supplierName ?? row.operationId ?? `#${displayDigits(index + 1, lang)}`)}</b>
-            {scalar(row.status) && <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-600">{enumLabels[scalar(row.status)!]?.[lang === "ar" ? 0 : 1] ?? scalar(row.status)}</span>}
+            {scalar(row.status) && <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-600">{enumLabels[String(row.status)]?.[lang === "ar" ? 0 : 1] ?? scalar(row.status)}</span>}
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">{rowDetails(row, lang).map(item => <span key={item.label} className="max-w-full rounded-md bg-gray-50 px-2 py-1 text-[11px] text-gray-600"><b>{item.label}: </b><bdi className="break-words text-gray-800">{item.value}</bdi></span>)}</div>
         </article>)}

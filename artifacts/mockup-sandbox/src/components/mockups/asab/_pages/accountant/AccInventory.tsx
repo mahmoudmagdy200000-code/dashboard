@@ -21,6 +21,9 @@ import {
   usePlatformInventory,
   useExportInventory,
   useSaveDailyVarianceAllocation,
+  useFlagPlatformInventoryBranch,
+  useFlagInventoryItems,
+  useSendPlatformInventoryConfirmation,
 } from "../../../../../api/queries";
 import { Card } from "../../components/Card";
 import { Btn } from "../../components/Btn";
@@ -172,9 +175,17 @@ export function AccInventory({
 }: PageProps) {
   const { t, lang, dir } = useLang();
   const en = lang === "en";
-  const { data: inventoryApi } = usePlatformInventory();
+  const [invType, setInvType] = useState<"monthly" | "daily">("monthly");
+  const { data: inventoryApi } = usePlatformInventory({ countType: invType } as any);
   const exportInvMut = useExportInventory();
   const saveDailyVarMut = useSaveDailyVarianceAllocation();
+  const flagBranchMut = useFlagPlatformInventoryBranch();
+  const flagItemsMut = useFlagInventoryItems();
+  const sendConfirmMut = useSendPlatformInventoryConfirmation();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [brandFilter, setBrandFilter] = useState("الكل");
+  const [confirmModalBranch, setConfirmModalBranch] = useState<{ branch: string; branchId: string; operationId?: string } | null>(null);
+  const [confirmReason, setConfirmReason] = useState("");
   // GET /accountant/inventory → { branches:[{branchName, branchId, items[], …}], summary }.
   // Derive the branch list + a name→items map + name→id map from the real array (the
   // module-level BRANCHES is empty, which is why the review used to show zero branches).
@@ -201,7 +212,6 @@ export function AccInventory({
   ) as typeof INV_BRANCH_DATA;
   const [expandedBranch, setExpandedBranch] = useState<string | null>(null);
   const [dailyBranch, setDailyBranch] = useState<string | null>(null);
-  const [invType, setInvType] = useState<"monthly" | "daily">("monthly");
   const [flaggedBranches, setFlaggedBranches] = useState<Set<string>>(
     new Set(),
   );
@@ -210,12 +220,17 @@ export function AccInventory({
   );
   const [sentToConfirm, setSentToConfirm] = useState<Set<string>>(new Set());
 
-  const toggleFlagged = (b: string) =>
+  const toggleFlagged = (b: string) => {
+    const bid = branchIdByName[b];
+    if (bid) {
+      flagBranchMut.mutate({ branchId: bid, flagged: !flaggedBranches.has(b) });
+    }
     setFlaggedBranches((p) => {
       const s = new Set(p);
       s.has(b) ? s.delete(b) : s.add(b);
       return s;
     });
+  };
   const toggleConfirm = (b: string) =>
     setBranchConfirmed((p) => {
       const s = new Set(p);
@@ -242,25 +257,21 @@ export function AccInventory({
           : [...cur, idx],
       };
     });
-  const sendFlaggedItems = (branch: string) =>
+  const sendFlaggedItems = (branch: string) => {
+    const bid = branchIdByName[branch];
+    const indices = flaggedItems[branch] || [];
+    if (bid && indices.length > 0) {
+      flagItemsMut.mutate({ branchId: bid, itemIndices: indices });
+    }
     setSentItemsBranch((p) => new Set([...p, branch]));
+  };
 
   /* ── Daily inventory — multi-employee variance assignment (per branch) ── */
   type DVEmp = { empId: string; empName: string; amount: string };
-  const FALLBACK_INV_EMP: Record<string, string> = {
-    "1001": "أحمد الشمري",
-    "1002": "محمد العبدلي",
-    "1003": "خالد النجار",
-    "1004": "سعد الغامدي",
-    "1005": "عبدالرحمن السيف",
-    "1006": "فيصل الحربي",
-  };
   const apiInvEmp = (inventoryApi as any)?.employees;
   const INV_EMP: Record<string, string> = (
-    apiInvEmp && Object.keys(apiInvEmp).length > 0
-      ? apiInvEmp
-      : FALLBACK_INV_EMP
-  ) as any;
+    apiInvEmp && typeof apiInvEmp === "object" ? apiInvEmp : {}
+  ) as Record<string, string>;
   const [dailyVarEmps, setDailyVarEmps] = useState<Record<string, DVEmp[]>>({});
   const getDailyEmps = (b: string): DVEmp[] =>
     dailyVarEmps[b] || [{ empId: "", empName: "", amount: "" }];
@@ -295,13 +306,32 @@ export function AccInventory({
   const anomalyCount = (
     Object.values(EFFECTIVE_INV_BRANCH_DATA).flat() as any[]
   ).filter((it: any) => {
-    if (it.prev === 0) return false;
-    const pct = ((it.curr - it.prev) / it.prev) * 100;
+    const prev = Number(it.prevQty ?? it.prev ?? it.expectedQty ?? 0);
+    const curr = Number(it.currQty ?? it.curr ?? it.actualQty ?? 0);
+    if (it.comparisonAvailable === false || prev === 0) return false;
+    const pct = ((curr - prev) / prev) * 100;
     return Math.abs(pct) > 100;
   }).length;
 
-  // Which branches submitted inventory ops
+  // Which branches submitted inventory ops & filtered branches
   const branchesWithOps = [...new Set(invOps.map((o) => o.branch))];
+  const availableBrands = [
+    "الكل",
+    ...new Set(
+      invBranchesArr
+        .map((b) => String(b?.brandName ?? ""))
+        .concat(invOps.map((o) => String(o.brandName ?? "")))
+        .filter(Boolean),
+    ),
+  ];
+  const visibleBranchNames = branchNames.filter((branch) => {
+    const row = invBranchesArr.find((b) => String(b?.branchName ?? "") === branch);
+    const bName = String(row?.brandName ?? invOps.find((o) => o.branch === branch)?.brandName ?? "");
+    if (brandFilter !== "الكل" && bName !== brandFilter) return false;
+    const q = searchQuery.trim().toLowerCase();
+    if (q && !branch.toLowerCase().includes(q) && !bName.toLowerCase().includes(q)) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-5" dir={dir}>
@@ -348,6 +378,8 @@ export function AccInventory({
             <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2">
               <Search size={13} className="text-gray-400 flex-shrink-0" />
               <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="اسم المطعم أو العلامة التجارية..."
                 className="flex-1 text-sm outline-none"
               />
@@ -357,9 +389,15 @@ export function AccInventory({
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">
               العلامة التجارية
             </label>
-            <select className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
-              {["الكل"].map((b) => (
-                <option key={b}>{b}</option>
+            <select
+              value={brandFilter}
+              onChange={(e) => setBrandFilter(e.target.value)}
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2"
+            >
+              {availableBrands.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
               ))}
             </select>
           </div>
@@ -411,8 +449,8 @@ export function AccInventory({
         />
         <KpiCard
           label="فروع مكتملة"
-          value={String(branchesWithOps.length)}
-          sub={`من أصل ${BRANCHES.length} فروع`}
+          value={String((inventoryApi as any)?.summary?.completedBranches ?? branchesWithOps.length)}
+          sub={`من أصل ${(inventoryApi as any)?.summary?.totalBranches ?? branchNames.length} فروع`}
           icon={<CheckCircle2 size={18} className="text-emerald-600" />}
           accent="emerald"
         />
@@ -434,17 +472,20 @@ export function AccInventory({
             </p>
           </div>
         </div>
-        {branchNames.slice(0, 8).map((branch, bi) => {
+        {visibleBranchNames.map((branch, bi) => {
+          const branchRow = invBranchesArr.find((b) => String(b?.branchName ?? "") === branch);
           const branchOp = invOps.find((o) => o.branch === branch);
           const items = (EFFECTIVE_INV_BRANCH_DATA as any)[branch] || [];
           const isExpanded = expandedBranch === branch;
           const isDailyOpen = dailyBranch === branch;
-          const isFlagged = flaggedBranches.has(branch);
-          const isConfirmed = branchConfirmed.has(branch);
-          const isSent = sentToConfirm.has(branch);
+          const isFlagged = Boolean(branchRow?.isFlagged) || flaggedBranches.has(branch);
+          const isConfirmed = Boolean(branchRow?.branchConfirmed) || branchConfirmed.has(branch);
+          const isSent = Boolean(branchRow?.sentToConfirm) || sentToConfirm.has(branch);
           const branchAnomalies = items.filter((it: any) => {
-            if (it.prev === 0) return false;
-            return Math.abs(((it.curr - it.prev) / it.prev) * 100) > 100;
+            const prev = Number(it.prevQty ?? it.prev ?? it.expectedQty ?? 0);
+            const curr = Number(it.currQty ?? it.curr ?? it.actualQty ?? 0);
+            if (it.comparisonAvailable === false || prev === 0) return false;
+            return Math.abs(((curr - prev) / prev) * 100) > 100;
           });
           return (
             <div key={bi} className="border-b border-gray-100 last:border-0">
@@ -562,11 +603,19 @@ export function AccInventory({
                             </span>
                           )}
                           <button
-                            onClick={() => toggleConfirm(branch)}
+                            onClick={() => {
+                              const bid = branchIdByName[branch] || branchOp?.branchId || "";
+                              if (!bid) {
+                                toggleConfirm(branch);
+                                return;
+                              }
+                              setConfirmReason("");
+                              setConfirmModalBranch({ branch, branchId: bid, operationId: branchOp?.id });
+                            }}
                             className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1 ${isConfirmed ? "bg-emerald-100 text-emerald-700 border-emerald-300" : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-emerald-50"}`}
                           >
                             <CheckCircle2 size={11} />{" "}
-                            {isConfirmed ? "أكّده الفرع" : "تسجيل تأكيد"}
+                            {isConfirmed ? "أكّده الفرع" : "طلب تأكيد الفرع"}
                           </button>
                         </>
                       );
@@ -619,10 +668,13 @@ export function AccInventory({
                     </thead>
                     <tbody className="divide-y divide-gray-100 bg-white">
                       {items.map((it: any, j: number) => {
-                        const diff = it.curr - it.prev;
+                        const comparisonOk = it.comparisonAvailable !== false && it.prevQty !== null && (it.prevQty ?? it.prev) !== undefined;
+                        const prev = Number(it.prevQty ?? it.prev ?? it.expectedQty ?? 0);
+                        const curr = Number(it.currQty ?? it.curr ?? it.actualQty ?? 0);
+                        const diff = curr - prev;
                         const pct =
-                          it.prev > 0 ? Math.round((diff / it.prev) * 100) : 0;
-                        const isAnomaly = Math.abs(pct) > 100;
+                          comparisonOk && prev > 0 ? Math.round((diff / prev) * 100) : 0;
+                        const isAnomaly = comparisonOk && Math.abs(pct) > 100;
                         const isFlaggedItem = (
                           flaggedItems[branch] || []
                         ).includes(j);
@@ -632,23 +684,29 @@ export function AccInventory({
                             className={`${isAnomaly ? "bg-red-50/40" : ""} ${isFlaggedItem ? "bg-amber-50/30" : ""}`}
                           >
                             <td className="px-3 py-2 font-semibold text-gray-800">
-                              {it.item}
+                              {it.itemName ?? it.item ?? it.name ?? "—"}
                             </td>
                             <td className="px-3 py-2 text-center text-gray-500">
-                              {it.cat}
+                              {it.category ?? it.cat ?? "—"}
                             </td>
                             <td className="px-3 py-2 text-center font-mono text-gray-500">
-                              {it.prev} {it.unit}
+                              {comparisonOk ? `${prev} ${it.unit ?? ""}` : t("غير متاحة", "Unavailable")}
                             </td>
                             <td className="px-3 py-2 text-center font-mono font-bold text-gray-800">
-                              {it.curr} {it.unit}
+                              {curr} {it.unit ?? ""}
                             </td>
                             <td
-                              className={`px-3 py-2 text-center font-mono font-bold ${diff > 0 ? "text-emerald-600" : diff < 0 ? "text-red-600" : "text-gray-400"}`}
+                              className={`px-3 py-2 text-center font-mono font-bold ${!comparisonOk ? "text-gray-400" : diff > 0 ? "text-emerald-600" : diff < 0 ? "text-red-600" : "text-gray-400"}`}
                             >
-                              {diff > 0 ? "+" : ""}
-                              {diff} ({pct > 0 ? "+" : ""}
-                              {pct}%)
+                              {!comparisonOk ? (
+                                t("غير متاحة", "Unavailable")
+                              ) : (
+                                <>
+                                  {diff > 0 ? "+" : ""}
+                                  {diff} ({pct > 0 ? "+" : ""}
+                                  {pct}%)
+                                </>
+                              )}
                             </td>
                             <td className="px-3 py-2 text-center">
                               {isAnomaly ? (
@@ -701,14 +759,20 @@ export function AccInventory({
               {isDailyOpen &&
                 invType === "daily" &&
                 (() => {
-                  const DEFICIT = 360;
-                  const ACTUAL = 6340;
+                  const computedDeficit = items.reduce((sum: number, it: any) => {
+                    const exp = Number(it.expectedQty ?? it.prevQty ?? 0);
+                    const act = Number(it.actualQty ?? it.currQty ?? 0);
+                    const shortage = Math.max(0, exp - act);
+                    const unitSar = Number(it.unitPriceHalalas ?? 0) / 100;
+                    return sum + shortage * unitSar;
+                  }, 0);
+                  const DEFICIT = Math.round((computedDeficit > 0 ? computedDeficit : Number(branchOp?.amount ?? 0)) * 100) / 100;
                   const empList = getDailyEmps(branch);
                   const assignedTotal = empList.reduce(
                     (s, e) => s + (parseFloat(e.amount) || 0),
                     0,
                   );
-                  const remaining = DEFICIT - assignedTotal;
+                  const remaining = Math.round((DEFICIT - assignedTotal) * 100) / 100;
                   return (
                     <div className="px-5 pb-4 bg-indigo-50/30">
                       <p className="text-[11px] font-bold text-indigo-700 mb-2 pt-2">
@@ -737,7 +801,10 @@ export function AccInventory({
                         <div className="mt-4 pt-3 border-t border-indigo-100">
                           <div className="flex items-center justify-between mb-2">
                             <p className="text-xs font-bold text-gray-700">
-                              تحميل العجز على الموظفين
+                              تحميل العجز على الموظفين{" "}
+                              <span className="text-[10px] font-normal text-indigo-600">
+                                (تُقيد المديونية بعد الاعتماد النهائي لرئيس الحسابات)
+                              </span>
                             </p>
                             <span
                               className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${remaining === 0 ? "bg-emerald-100 text-emerald-700" : remaining < 0 ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}
@@ -750,18 +817,22 @@ export function AccInventory({
                             </span>
                           </div>
 
-                          {/* Pre-reported from branch manager (read-only) */}
-                          <div className="mb-2 p-2 bg-blue-50 border border-blue-100 rounded-lg">
-                            <p className="text-[10px] text-blue-600 font-semibold mb-1">
-                              📋 ورد من مدير الفرع
-                            </p>
-                            <div className="flex items-center justify-between text-xs text-blue-800 bg-white/70 px-2 py-1 rounded-lg">
-                              <span>خالد النجار (1003)</span>
-                              <span className="font-mono font-bold">
-                                −220 ر.س
-                              </span>
+                          {/* Pre-reported from branch manager (read-only, real data only) */}
+                          {Array.isArray((branchRow as any)?.preReported) && (branchRow as any).preReported.length > 0 && (
+                            <div className="mb-2 p-2 bg-blue-50 border border-blue-100 rounded-lg space-y-1">
+                              <p className="text-[10px] text-blue-600 font-semibold">
+                                📋 ورد من مدير الفرع
+                              </p>
+                              {(branchRow as any).preReported.map((pr: any, idx: number) => (
+                                <div key={idx} className="flex items-center justify-between text-xs text-blue-800 bg-white/70 px-2 py-1 rounded-lg">
+                                  <span>{pr.employeeName ?? "—"}</span>
+                                  <span className="font-mono font-bold">
+                                    −{fmtAmt(Number(pr.amountHalalas ?? 0) / 100)} ر.س
+                                  </span>
+                                </div>
+                              ))}
                             </div>
-                          </div>
+                          )}
 
                           {/* Editable employee rows */}
                           <div className="space-y-2">
@@ -860,13 +931,25 @@ export function AccInventory({
                                   ? String(branchOp.operationDate).slice(0, 10)
                                   : new Date().toISOString().slice(0, 10);
                                 if (!targetBranchId) return;
+                                const shortageItem =
+                                  items.find(
+                                    (it: any) =>
+                                      Number(it.expectedQty ?? it.prevQty ?? 0) >
+                                      Number(it.actualQty ?? it.currQty ?? 0),
+                                  ) || items[0];
+                                const targetItemId = String(
+                                  shortageItem?.itemId ??
+                                    shortageItem?.catalogItemId ??
+                                    shortageItem?.id ??
+                                    "daily-deficit",
+                                );
                                 saveDailyVarMut.mutate({
                                   branchId: targetBranchId,
                                   payload: {
                                     date: targetDate,
                                     items: [
                                       {
-                                        itemId: "daily-deficit",
+                                        itemId: targetItemId,
                                         allocations: empList
                                           .filter((e) => e.empId && e.amount)
                                           .map((e) => ({
@@ -906,6 +989,64 @@ export function AccInventory({
           );
         })}
       </div>
+
+      {confirmModalBranch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir={dir}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-900">
+                {t("إرسال طلب تأكيد لمدير الفرع", "Request Branch Confirmation")} — {confirmModalBranch.branch}
+              </h3>
+              <button
+                onClick={() => setConfirmModalBranch(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                {t("سبب طلب التأكيد", "Confirmation Reason")}
+              </label>
+              <textarea
+                rows={3}
+                value={confirmReason}
+                onChange={(e) => setConfirmReason(e.target.value)}
+                placeholder={t("اذكر الأصناف أو الملاحظات المطلوب تأكيدها من الفرع...", "Specify items or variance notes...")}
+                className="w-full rounded-xl border border-gray-200 p-2.5 text-xs focus:border-purple-500 focus:outline-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Btn variant="ghost" size="sm" onClick={() => setConfirmModalBranch(null)}>
+                {t("إلغاء", "Cancel")}
+              </Btn>
+              <Btn
+                variant="primary"
+                size="sm"
+                disabled={!confirmReason.trim() || sendConfirmMut.isPending}
+                onClick={() => {
+                  sendConfirmMut.mutate(
+                    {
+                      branchId: confirmModalBranch.branchId,
+                      reason: confirmReason.trim(),
+                      message: confirmReason.trim(),
+                      operationId: confirmModalBranch.operationId,
+                    },
+                    {
+                      onSuccess: () => {
+                        sendConfirm(confirmModalBranch.branch);
+                        setConfirmModalBranch(null);
+                      },
+                    },
+                  );
+                }}
+              >
+                <Send size={12} /> {t("إرسال الطلب", "Send Request")}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
