@@ -71,7 +71,35 @@ export function AccWaste({}: PageProps) {
     status: string;
     file_name: string;
     validation_errors?: Array<{ sheet?: string; row?: number; field?: string; reason: string }>;
-    preview_summary?: Record<string, unknown>;
+    preview_summary?: {
+      daysCount?: number;
+      completeDays?: number;
+      partialDays?: number;
+      linesCount?: number;
+      days?: Array<{
+        branchCode?: string;
+        branchName?: string;
+        businessDate?: string;
+        revision?: number;
+        dayStatus?: string;
+        linesCount?: number;
+      }>;
+    };
+    parsed_payload?: {
+      coverages?: Array<{
+        branchCode?: string;
+        branchName?: string;
+        businessDate?: string;
+        dayStatus?: string;
+        lines?: Array<{
+          itemCode?: string;
+          itemName?: string;
+          unitCode?: string;
+          consumedQty?: number;
+          includedWasteQty?: number;
+        }>;
+      }>;
+    };
   } | null>(null);
   const patchProductMut = usePatchWasteProduct();
   const putAllocsMut = usePutWasteAllocations();
@@ -584,13 +612,90 @@ export function AccWaste({}: PageProps) {
                 <X size={16} />
               </button>
             </div>
-            <div className="rounded-xl bg-gray-50 p-3 text-xs space-y-1">
-              <p>
-                <b>{t("الحالة:", "Status:")}</b>{" "}
-                <span className={importPreview.status === "PREVIEW" ? "text-emerald-700 font-bold" : "text-red-700 font-bold"}>
-                  {importPreview.status}
-                </span>
-              </p>
+            <div className="rounded-xl bg-gray-50 p-3 text-xs space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p>
+                  <b>{t("الحالة:", "Status:")}</b>{" "}
+                  <span className={importPreview.status === "PREVIEW" ? "text-emerald-700 font-bold" : "text-red-700 font-bold"}>
+                    {importPreview.status}
+                  </span>
+                </p>
+                {importPreview.preview_summary && (
+                  <p className="text-gray-600">
+                    {t("الأيام:", "Days:")} <b>{importPreview.preview_summary.daysCount ?? 0}</b> ·{" "}
+                    {t("البنود:", "Lines:")} <b>{importPreview.preview_summary.linesCount ?? 0}</b>
+                  </p>
+                )}
+              </div>
+              {(() => {
+                const coverages = importPreview.parsed_payload?.coverages ?? [];
+                const flatLines = coverages.flatMap((cov) =>
+                  (cov.lines ?? []).map((ln) => ({
+                    branch: cov.branchName || cov.branchCode || "—",
+                    date: cov.businessDate || "—",
+                    dayStatus: cov.dayStatus || "—",
+                    item: ln.itemName || ln.itemCode || "—",
+                    unit: ln.unitCode || "—",
+                    qty: ln.consumedQty ?? 0,
+                  })),
+                );
+                if (flatLines.length > 0) {
+                  return (
+                    <div className="max-h-52 overflow-auto rounded-lg border border-gray-200 bg-white">
+                      <table className="w-full text-[11px]">
+                        <thead className="bg-gray-100 text-gray-600">
+                          <tr>
+                            <th className="px-2 py-1.5 text-start">{t("الفرع", "Branch")}</th>
+                            <th className="px-2 py-1.5 text-start">{t("التاريخ", "Date")}</th>
+                            <th className="px-2 py-1.5 text-start">{t("الصنف", "Item")}</th>
+                            <th className="px-2 py-1.5 text-start">{t("الوحدة", "Unit")}</th>
+                            <th className="px-2 py-1.5 text-end">{t("المستهلك", "Consumed")}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {flatLines.map((row, i) => (
+                            <tr key={i}>
+                              <td className="px-2 py-1 text-gray-800">{row.branch}</td>
+                              <td className="px-2 py-1 font-mono text-gray-600">{row.date}</td>
+                              <td className="px-2 py-1 text-gray-800">{row.item}</td>
+                              <td className="px-2 py-1 text-gray-500">{row.unit}</td>
+                              <td className="px-2 py-1 text-end font-mono font-bold text-gray-900">{row.qty}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                }
+                const days = importPreview.preview_summary?.days ?? [];
+                if (days.length > 0) {
+                  return (
+                    <div className="max-h-40 overflow-auto rounded-lg border border-gray-200 bg-white">
+                      <table className="w-full text-[11px]">
+                        <thead className="bg-gray-100 text-gray-600">
+                          <tr>
+                            <th className="px-2 py-1.5 text-start">{t("الفرع", "Branch")}</th>
+                            <th className="px-2 py-1.5 text-start">{t("التاريخ", "Date")}</th>
+                            <th className="px-2 py-1.5 text-start">{t("الحالة", "Day")}</th>
+                            <th className="px-2 py-1.5 text-end">{t("البنود", "Lines")}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {days.map((d, i) => (
+                            <tr key={i}>
+                              <td className="px-2 py-1">{d.branchName || d.branchCode}</td>
+                              <td className="px-2 py-1 font-mono">{d.businessDate}</td>
+                              <td className="px-2 py-1">{d.dayStatus}</td>
+                              <td className="px-2 py-1 text-end font-mono">{d.linesCount ?? 0}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
               {importPreview.validation_errors && importPreview.validation_errors.length > 0 && (
                 <ul className="mt-2 max-h-40 overflow-y-auto space-y-1 text-red-700">
                   {importPreview.validation_errors.map((err, idx) => (
