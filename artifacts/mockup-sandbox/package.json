@@ -7,7 +7,8 @@
     "dev": "node --max-old-space-size=2048 ./node_modules/vite/bin/vite.js dev",
     "build": "node --max-old-space-size=8192 ./node_modules/vite/bin/vite.js build",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:procurement": "node --import ../../scripts/register-tsx-loader.mjs --test src/components/mockups/asab/procurementPages.test.ts src/components/mockups/asab/phase1eProcurement.test.ts src/components/mockups/asab/phase1gSupplier.test.ts src/components/mockups/asab/purchaseOrderVat.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
