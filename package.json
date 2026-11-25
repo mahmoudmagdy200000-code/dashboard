@@ -5,7 +5,8 @@
   "scripts": {
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "test:procurement": "node --import ./scripts/register-tsx-loader.mjs --test artifacts/mockup-sandbox/src/components/mockups/asab/procurementPages.test.ts artifacts/mockup-sandbox/src/components/mockups/asab/phase1eProcurement.test.ts artifacts/mockup-sandbox/src/components/mockups/asab/phase1gSupplier.test.ts artifacts/mockup-sandbox/src/components/mockups/asab/purchaseOrderVat.test.ts"
   },
   "private": true,
   "devDependencies": {
