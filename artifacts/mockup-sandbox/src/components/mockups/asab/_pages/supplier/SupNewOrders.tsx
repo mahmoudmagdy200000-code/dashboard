@@ -30,8 +30,12 @@ export function SupNewOrders({ }: PageProps) {
   // T13 §4 — reason is required (≤500). Collect it before submitting.
   const [rejectFor, setRejectFor] = useState<{ id: string; from: string } | null>(null);
   const [reason, setReason] = useState("");
+  const [deliveryDates, setDeliveryDates] = useState<Record<string, string>>({});
   const busy = acceptMut.isPending || rejectMut.isPending;
-  const accept = (id: string) => { void runSupplierMutation(mutationLock, () => acceptMut.mutateAsync({ id })).catch(() => {}); };
+  const accept = (id: string) => {
+    const deliveryDate = deliveryDates[id] || undefined;
+    void runSupplierMutation(mutationLock, () => acceptMut.mutateAsync({ id, ...(deliveryDate ? { deliveryDate } : {}) })).catch(() => {});
+  };
   const submitReject = () => {
     if (!rejectFor || !reason.trim()) return;
     void runSupplierMutation(mutationLock, async () => {
@@ -49,8 +53,15 @@ export function SupNewOrders({ }: PageProps) {
       {orders.length === 0 && <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-10 text-center text-sm text-gray-400">{t("لا توجد طلبات جديدة", "No new orders")}</div>}
       <div className="space-y-4">
         {orders.map(order => (
-          <Card key={order.id} title={`${order.from ?? "—"}${order.publicId ? ` · ${order.publicId}` : ""}`} actions={
-            <div className="flex gap-2">
+          <Card key={order.id} title={`${order.from ?? "—"}${order.publicId ? ` · ${order.publicId}` : ""}${order.groupNumber ? ` · ${order.groupNumber}` : ""}`} actions={
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="date"
+                aria-label={t("موعد التسليم", "Delivery date")}
+                value={deliveryDates[order.id] ?? (order.deliveryDate ? String(order.deliveryDate).slice(0, 10) : "")}
+                onChange={e => setDeliveryDates(d => ({ ...d, [order.id]: e.target.value }))}
+                className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white"
+              />
               <Btn size="sm" variant="success" disabled={busy} onClick={() => accept(order.id)}><CheckCircle2 size={12} /> {t("قبول الطلب", "Accept Order")}</Btn>
               <Btn size="sm" variant="danger" disabled={busy} onClick={() => { returnFocus.current = document.activeElement as HTMLElement; setRejectFor({ id: order.id, from: order.from ?? "—" }); setReason(""); }}><XCircle size={12} /> {t("رفض", "Reject")}</Btn>
             </div>

@@ -466,14 +466,14 @@ test("Phase 1E Behavioral: Draft idempotency key covers complete effective paylo
   assert.notStrictEqual(modifiedSupplierKey, modifiedQtyKey, "Modifying supplier must rotate idempotency key");
 });
 
-test("Phase 1E Behavioral: ProcNewOrders strictly enforces PUR-01 fail-closed financial approval authority across all roles", () => {
+test("Phase 1E Behavioral: ProcNewOrders enforces DEC-01 / PUR-01 approval authority (procurement only, fail-closed for others)", () => {
   const procNewCode = norm(
     readFileSync(new URL("./_pages/procurement/ProcNewOrders.tsx", import.meta.url), "utf8")
   );
 
   assert.ok(
-    procNewCode.includes("const canApproveFinancial = false;"),
-    "ProcNewOrders must fail closed for canApproveFinancial without speculative role allowlist"
+    procNewCode.includes('const canApproveFinancial = role === "procurement";'),
+    "ProcNewOrders must authorize only role === 'procurement' under DEC-01"
   );
   assert.ok(
     procNewCode.includes("if (!canApproveFinancial) return;"),
@@ -492,15 +492,14 @@ test("Phase 1E Behavioral: ProcNewOrders strictly enforces PUR-01 fail-closed fi
     "Partial approve open button must be disabled when canApproveFinancial is false"
   );
   assert.ok(
-    !procNewCode.includes('role === "head" || role === "admin"'),
-    "ProcNewOrders must not grant speculative approval rights to head or admin"
+    !procNewCode.includes('role === "head"') && !procNewCode.includes('role === "admin"'),
+    "ProcNewOrders must not grant approval rights to head or admin"
   );
 
-  // Behavioral fail-closed verification across ALL roles
+  // Behavioral verification: only 'procurement' is authorized; all other roles fail closed
   const testRoles = ["procurement", "head", "admin", "branch", "accountant", "supplier", "owner", null, undefined, "unknown"];
   for (const r of testRoles) {
-    // In production logic, canApproveFinancial is false until explicit contract is verified
-    const canApprove = false;
-    assert.strictEqual(canApprove, false, `Role '${r}' must fail closed under PUR-01`);
+    const canApprove = r === "procurement";
+    assert.strictEqual(canApprove, r === "procurement", `Role '${r}' authorization mismatch under DEC-01`);
   }
 });

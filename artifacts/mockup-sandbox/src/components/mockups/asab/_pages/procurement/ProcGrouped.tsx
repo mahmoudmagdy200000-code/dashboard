@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Truck, Eye, ChevronUp, ChevronDown, AlertTriangle } from "lucide-react";
+import { Home, Truck, Eye, ChevronUp, ChevronDown, AlertTriangle, MessageCircle } from "lucide-react";
 import {
   useGroupedPurchaseOrders,
   useProcurementSuppliersPlatform,
@@ -12,14 +12,44 @@ import { Badge } from "../../components/Badge";
 import { Btn } from "../../components/Btn";
 
 export function ProcGrouped({ navigate }: PageProps) {
-  const { t } = useLang();
+  const { t, dir } = useLang();
   const [viewMode, setViewMode] = useState<"supplier" | "city" | "item">("item");
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [assignSupplier, setAssignSupplier] = useState<Record<string, string>>({});
+  const [deliveryDates, setDeliveryDates] = useState<Record<string, string>>({});
+  const [dateErrorKey, setDateErrorKey] = useState<string | null>(null);
+  const [dispatchedBatch, setDispatchedBatch] = useState<{
+    groupNumber?: string;
+    supplierName?: string;
+    eta?: string | null;
+    whatsapp?: { deliverable?: boolean; url?: string | null };
+  } | null>(null);
   // Live consolidation preview from the bridge (grouped by supplier, city, or item).
   const { data: grouped } = useGroupedPurchaseOrders(viewMode);
   const { data: suppliersRaw } = useProcurementSuppliersPlatform();
   const sendMut = useSendGroupedPurchaseOrders();
+
+  const handleSend = (rowKey: string, payload: { supplierId: string; orderIds?: string[] }, supplierName?: string) => {
+    const expectedDeliveryDate = deliveryDates[rowKey];
+    if (!expectedDeliveryDate) {
+      setDateErrorKey(rowKey);
+      return;
+    }
+    setDateErrorKey(null);
+    sendMut.mutate(
+      { ...payload, expectedDeliveryDate },
+      {
+        onSuccess: (res: any) => {
+          setDispatchedBatch({
+            groupNumber: res?.groupNumber,
+            supplierName,
+            eta: res?.eta ?? expectedDeliveryDate,
+            whatsapp: res?.whatsapp,
+          });
+        },
+      },
+    );
+  };
 
   const supplierGroups = (((grouped as any)?.suppliers ?? []) as any[]);
   const unassigned = (((grouped as any)?.unassignedOrders ?? []) as any[]);
@@ -44,6 +74,34 @@ export function ProcGrouped({ navigate }: PageProps) {
           ))}
         </div>
       </div>
+
+      {dispatchedBatch && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3" dir={dir}>
+          <div className="text-xs text-emerald-900">
+            <p className="font-bold">
+              {t("تم تأكيد إرسال الدفعة:", "Batch dispatch confirmed:")} <span className="font-mono">{dispatchedBatch.groupNumber ?? "—"}</span>
+              {dispatchedBatch.supplierName ? ` · ${dispatchedBatch.supplierName}` : ""}
+            </p>
+            <p className="text-emerald-700 mt-0.5">
+              {t("الحالة: أُرسل — بانتظار الرد", "Status: Sent — Awaiting Response")}
+              {dispatchedBatch.eta ? ` · ${t("موعد التسليم المتوقع:", "Expected Delivery:")} ${dispatchedBatch.eta}` : ""}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {dispatchedBatch.whatsapp?.deliverable && dispatchedBatch.whatsapp?.url && (
+              <a
+                href={dispatchedBatch.whatsapp.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700"
+              >
+                <MessageCircle size={12} /> {t("فتح رابط واتساب للمورد", "Open WhatsApp Link")}
+              </a>
+            )}
+            <Btn size="sm" onClick={() => setDispatchedBatch(null)}>{t("إغلاق", "Dismiss")}</Btn>
+          </div>
+        </div>
+      )}
 
       {viewMode === "item" ? (
         <div className="space-y-3">
@@ -90,9 +148,16 @@ export function ProcGrouped({ navigate }: PageProps) {
                       ) : (
                         <span className="text-[11px] text-gray-400">{t("لا يوجد مورد بسعر معلن — «—»", "No priced supplier")}</span>
                       )}
-                      <div className="mr-auto">
-                        <Btn size="sm" variant="primary" disabled={!sup || sendMut.isPending}
-                          onClick={() => sendMut.mutate({ supplierId: sup?.id, orderIds: it.orderIds })}>
+                      <div className="mr-auto flex items-center gap-2 flex-wrap">
+                        <input
+                          type="date"
+                          aria-label={t("موعد التسليم المتوقع", "Expected delivery date")}
+                          value={deliveryDates[`item:${key}`] ?? ""}
+                          onChange={e => { setDeliveryDates(d => ({ ...d, [`item:${key}`]: e.target.value })); setDateErrorKey(null); }}
+                          className={`text-xs border rounded-lg px-2 py-1 bg-white ${dateErrorKey === `item:${key}` ? "border-red-400" : "border-gray-200"}`}
+                        />
+                        <Btn size="sm" variant="primary" disabled={!sup || sendMut.isPending || !deliveryDates[`item:${key}`]}
+                          onClick={() => sup && handleSend(`item:${key}`, { supplierId: sup.id, orderIds: it.orderIds }, sup.name)}>
                           <Truck size={11} /> {t("تجميع وإرسال للمورد", "Consolidate & send")}
                         </Btn>
                       </div>
@@ -122,9 +187,16 @@ export function ProcGrouped({ navigate }: PageProps) {
                     <p className="text-xs text-gray-400 mt-1">{g.branchesCount ?? 0} {t("فرع", "branches")} · {g.itemsCount ?? g.items?.length ?? 0} {t("أصناف", "items")} · {(g.cities ?? []).join("، ") || "—"}</p>
                   </div>
                   <span className="font-mono font-bold text-gray-800">{fmtAmt(g.totalAmount ?? 0)} {t("ر.س", "SAR")}</span>
-                  <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
+                  <div className="flex gap-1.5 items-center flex-wrap" onClick={e => e.stopPropagation()}>
+                    <input
+                      type="date"
+                      aria-label={t("موعد التسليم المتوقع", "Expected delivery date")}
+                      value={deliveryDates[`sup:${key}`] ?? ""}
+                      onChange={e => { setDeliveryDates(d => ({ ...d, [`sup:${key}`]: e.target.value })); setDateErrorKey(null); }}
+                      className={`text-xs border rounded-lg px-2 py-1 bg-white ${dateErrorKey === `sup:${key}` ? "border-red-400" : "border-gray-200"}`}
+                    />
                     <Btn size="sm" onClick={() => setExpandedGroup(expandedGroup === key ? null : key)}><Eye size={12} /> {t("تفاصيل", "Details")}</Btn>
-                    <Btn size="sm" variant="primary" onClick={() => sendMut.mutate({ supplierId: g.supplierId })} disabled={sendMut.isPending || !g.supplierId}><Truck size={12} /> {t("إرسال للمورد", "Send to Supplier")}</Btn>
+                    <Btn size="sm" variant="primary" onClick={() => handleSend(`sup:${key}`, { supplierId: g.supplierId }, g.supplierName)} disabled={sendMut.isPending || !g.supplierId || !deliveryDates[`sup:${key}`]}><Truck size={12} /> {t("إرسال للمورد", "Send to Supplier")}</Btn>
                   </div>
                   {expandedGroup === key ? <ChevronUp size={13} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={13} className="text-gray-400 flex-shrink-0" />}
                 </div>
@@ -151,7 +223,7 @@ export function ProcGrouped({ navigate }: PageProps) {
                               <td className="py-2 text-center font-mono font-bold text-gray-800">{it.totalQuantity}</td>
                               <td className="py-2 text-center font-mono text-amber-700">{noCap ? "—" : it.capacity}</td>
                               <td className="py-2 text-center">
-                                {noCap ? <span className="text-gray-300 text-[10px]">{t("غير معلن", "n/a")}</span> : (
+                                {noCap ? <span className="text-gray-400 text-[10px]">{t("غير معرّفة", "Undefined")}</span> : (
                                   <div className="w-20 mx-auto">
                                     <div className="w-full bg-gray-100 rounded-full h-1.5 mb-0.5">
                                       <div className={`h-1.5 rounded-full ${over ? "bg-red-500" : (pct ?? 0) > 80 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${Math.min(pct ?? 0, 100)}%` }} />
@@ -202,8 +274,15 @@ export function ProcGrouped({ navigate }: PageProps) {
                     <option value="">{t("اختر المورد", "Select supplier")}</option>
                     {supplierOpts.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
-                  <Btn size="sm" variant="primary" disabled={!assignSupplier[o.id] || sendMut.isPending}
-                    onClick={() => sendMut.mutate({ supplierId: assignSupplier[o.id], orderIds: [o.id] })}><Truck size={11} /> {t("إرسال", "Send")}</Btn>
+                  <input
+                    type="date"
+                    aria-label={t("موعد التسليم المتوقع", "Expected delivery date")}
+                    value={deliveryDates[`unassigned:${o.id}`] ?? ""}
+                    onChange={e => { setDeliveryDates(d => ({ ...d, [`unassigned:${o.id}`]: e.target.value })); setDateErrorKey(null); }}
+                    className={`text-xs border rounded-lg px-2 py-1 bg-white ${dateErrorKey === `unassigned:${o.id}` ? "border-red-400" : "border-gray-200"}`}
+                  />
+                  <Btn size="sm" variant="primary" disabled={!assignSupplier[o.id] || !deliveryDates[`unassigned:${o.id}`] || sendMut.isPending}
+                    onClick={() => handleSend(`unassigned:${o.id}`, { supplierId: assignSupplier[o.id], orderIds: [o.id] })}><Truck size={11} /> {t("إرسال", "Send")}</Btn>
                 </div>
               ))}
             </div>

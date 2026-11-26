@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Eye, XCircle } from "lucide-react";
-import { useSentPurchaseOrders, usePurchaseOrderGroup } from "../../../../../api/queries";
+import { Eye, XCircle, PhoneCall } from "lucide-react";
+import { useSentPurchaseOrders, usePurchaseOrderGroup, useRecordManualSupplierResponse } from "../../../../../api/queries";
 import { useLang } from "../../_shared/LangContext";
 import { fmtAmt } from "../../_shared/formatters";
 import type { PageProps } from "../../_shared/types";
@@ -9,19 +9,44 @@ import { Badge } from "../../components/Badge";
 import { Btn } from "../../components/Btn";
 
 export function ProcSent({ }: PageProps) {
-  const { t } = useLang();
+  const { t, dir } = useLang();
   // Sent groups come from the bridge; status is derived live from member orders.
   const { data: apiSent } = useSentPurchaseOrders();
   const groups = ((apiSent as any[]) ?? []) as any[];
   const [trackId, setTrackId] = useState<string | null>(null);
   const { data: trackDetail } = usePurchaseOrderGroup(trackId ?? undefined);
+  const manualMut = useRecordManualSupplierResponse();
+  const [manualForId, setManualForId] = useState<string | null>(null);
+  const [decision, setDecision] = useState<"accepted" | "rejected">("accepted");
+  const [source, setSource] = useState<"whatsapp" | "phone">("whatsapp");
+  const [respondedAt, setRespondedAt] = useState(() => new Date().toISOString().slice(0, 16));
+  const [note, setNote] = useState("");
   const statusCfg: Record<string, { cls: string; label: string }> = {
-    // T11.10 — a freshly-sent batch reads `sent` until the supplier acts.
-    sent: { cls: "bg-purple-50 text-purple-700", label: t("أُرسل للمورد", "Sent") },
+    sent: { cls: "bg-purple-50 text-purple-700", label: t("أُرسل — بانتظار الرد", "Sent — Awaiting Response") },
+    sent_awaiting_response: { cls: "bg-purple-50 text-purple-700", label: t("أُرسل — بانتظار الرد", "Sent — Awaiting Response") },
     confirmed: { cls: "bg-emerald-50 text-emerald-700", label: t("مؤكد", "Confirmed") },
+    rejected: { cls: "bg-red-50 text-red-700", label: t("مرفوض", "Rejected") },
     preparing: { cls: "bg-amber-50 text-amber-700", label: t("قيد التحضير", "Preparing") },
     on_the_way: { cls: "bg-blue-50 text-blue-700", label: t("في الطريق", "On the Way") },
     delivered: { cls: "bg-emerald-50 text-emerald-700", label: t("تم التسليم", "Delivered") },
+  };
+  const submitManualResponse = (orderId: string) => {
+    manualMut.mutate(
+      {
+        id: orderId,
+        decision,
+        source,
+        respondedAt,
+        reason: decision === "rejected" ? (note.trim() || t("رفض من المورد", "Rejected by supplier")) : undefined,
+        note: note.trim() || undefined,
+      },
+      {
+        onSuccess: () => {
+          setManualForId(null);
+          setNote("");
+        },
+      },
+    );
   };
   const stCfg = (s: string) => statusCfg[s] ?? { cls: "bg-gray-50 text-gray-600", label: s ?? "—" };
   const det = trackDetail as any;
@@ -64,11 +89,55 @@ export function ProcSent({ }: PageProps) {
                   <p className="text-xs font-bold text-gray-600 mb-1.5">{t("الطلبات", "Orders")} ({(det.orders ?? []).length})</p>
                   <div className="border border-gray-100 rounded-xl overflow-hidden divide-y divide-gray-50">
                     {(det.orders ?? []).map((r: any) => (
-                      <div key={r.id} className="px-3 py-2 flex items-center gap-2 text-xs">
-                        <span className="font-mono text-purple-600">{r.orderNumber}</span>
-                        <span className="text-gray-600">{r.branchName ?? r.branchId ?? "—"}{r.city ? ` · ${r.city}` : ""}</span>
-                        <Badge className={stCfg(r.status).cls + " mr-auto"}>{r.statusLabel ?? stCfg(r.status).label}</Badge>
-                        <span className="font-mono font-semibold text-gray-700">{fmtAmt(r.totalAmount ?? 0)}</span>
+                      <div key={r.id} className="px-3 py-2 space-y-2 text-xs">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-purple-600">{r.orderNumber}</span>
+                          <span className="text-gray-600">{r.branchName ?? r.branchId ?? "—"}{r.city ? ` · ${r.city}` : ""}</span>
+                          <Badge className={stCfg(r.status).cls + " mr-auto"}>{r.statusLabel ?? stCfg(r.status).label}</Badge>
+                          <span className="font-mono font-semibold text-gray-700">{fmtAmt(r.totalAmount ?? 0)}</span>
+                          {!det.isSubscribedSupplier && (r.status === "sent_awaiting_response" || r.status === "pending") && (
+                            <Btn size="sm" onClick={() => setManualForId(manualForId === r.id ? null : r.id)}>
+                              <PhoneCall size={11} /> {t("تسجيل رد المورد", "Record Response")}
+                            </Btn>
+                          )}
+                        </div>
+                        {r.manualResponse && (
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-[11px] text-gray-700">
+                            <span className="font-semibold">{t("رد المورد المسجل:", "Recorded Supplier Response:")}</span>{" "}
+                            {r.manualResponse.decision === "accepted" ? t("قبول", "Accepted") : t("رفض", "Rejected")} ·{" "}
+                            {r.manualResponse.source === "whatsapp" ? t("واتساب", "WhatsApp") : t("هاتف", "Phone")} ·{" "}
+                            {String(r.manualResponse.respondedAt ?? "").slice(0, 16).replace("T", " ")}
+                            {r.manualResponse.recordedByName ? ` · ${r.manualResponse.recordedByName}` : ""}
+                            {r.manualResponse.note ? ` — ${r.manualResponse.note}` : ""}
+                          </div>
+                        )}
+                        {manualForId === r.id && (
+                          <div className="bg-amber-50/70 border border-amber-200 rounded-lg p-2.5 space-y-2" dir={dir}>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                              <select value={decision} onChange={e => setDecision(e.target.value as "accepted" | "rejected")} className="border border-amber-200 rounded-lg px-2 py-1 bg-white">
+                                <option value="accepted">{t("قبول المورد", "Supplier Accepted")}</option>
+                                <option value="rejected">{t("رفض المورد", "Supplier Rejected")}</option>
+                              </select>
+                              <select value={source} onChange={e => setSource(e.target.value as "whatsapp" | "phone")} className="border border-amber-200 rounded-lg px-2 py-1 bg-white">
+                                <option value="whatsapp">{t("واتساب", "WhatsApp")}</option>
+                                <option value="phone">{t("هاتف", "Phone")}</option>
+                              </select>
+                              <input type="datetime-local" value={respondedAt} onChange={e => setRespondedAt(e.target.value)} className="border border-amber-200 rounded-lg px-2 py-1 bg-white" />
+                            </div>
+                            <input
+                              value={note}
+                              onChange={e => setNote(e.target.value)}
+                              placeholder={decision === "rejected" ? t("سبب الرفض (إلزامي)...", "Rejection reason (required)...") : t("ملاحظة الرد (اختياري)...", "Response note (optional)...")}
+                              className="w-full border border-amber-200 rounded-lg px-2.5 py-1.5 bg-white"
+                            />
+                            <div className="flex gap-2">
+                              <Btn size="sm" variant="primary" disabled={manualMut.isPending || !respondedAt || (decision === "rejected" && !note.trim())} onClick={() => submitManualResponse(r.id)}>
+                                {t("حفظ الرد", "Save Response")}
+                              </Btn>
+                              <Btn size="sm" onClick={() => setManualForId(null)}>{t("إلغاء", "Cancel")}</Btn>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
