@@ -93,6 +93,38 @@ export function useRejectSupplierOrder() {
   });
 }
 
+export function usePrepareSupplierOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.post<SupplierOrder>(`/asab/supplier/orders/${id}/prepare`);
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["platform", "supplier", "orders"] });
+      qc.invalidateQueries({ queryKey: ["platform", "supplier", "overview"] });
+      toast.success("تم تحديث الحالة إلى قيد التحضير");
+    },
+    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+  });
+}
+
+export function useDispatchSupplierOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.post<SupplierOrder>(`/asab/supplier/orders/${id}/dispatch`);
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["platform", "supplier", "orders"] });
+      qc.invalidateQueries({ queryKey: ["platform", "supplier", "overview"] });
+      toast.success("تم تحديث الحالة إلى في الطريق");
+    },
+    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+  });
+}
+
 export function useMarkSupplierOrderDelivered() {
   const qc = useQueryClient();
   return useMutation({

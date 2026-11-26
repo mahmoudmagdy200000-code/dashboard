@@ -5,6 +5,8 @@ import {
   useSupplierOrders,
   runSupplierMutation,
   useExportSupplierOrders,
+  usePrepareSupplierOrder,
+  useDispatchSupplierOrder,
   useMarkSupplierOrderDelivered,
 } from "../../../../../api/queries";
 import { useLang } from "../../_shared/LangContext";
@@ -28,7 +30,10 @@ export function SupAccepted({ }: PageProps) {
   const { t } = useLang();
   const mutationLock = useRef(false);
   const exportSupOrdersMut = useExportSupplierOrders();
+  const prepareMut = usePrepareSupplierOrder();
+  const dispatchMut = useDispatchSupplierOrder();
   const deliverMut = useMarkSupplierOrderDelivered();
+  const busy = prepareMut.isPending || dispatchMut.isPending || deliverMut.isPending;
   const orders = (apiAccepted?.data ?? []) as any[];
   const totalRunning = orders.every(o => Number.isSafeInteger(o.total)) ? orders.reduce((s, o) => s + o.total, 0) : null; // halalas
   const statusChip = (k?: string) => k === "delivered" ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700";
@@ -61,7 +66,19 @@ export function SupAccepted({ }: PageProps) {
               <Badge className={`${statusChip(o.statusKey)} flex-shrink-0`}>{o.statusLabel ?? o.statusKey ?? o.status}</Badge>
               <span className="font-mono font-bold text-gray-800 flex-shrink-0">{fmtAmt(Number.isSafeInteger(o.total) ? o.total / 100 : null)} {t("ر.س", "SAR")}</span>
               {canDeclareSupplierDelivery(status, o.statusKey) && (
-                <Btn size="sm" variant="success" disabled={deliverMut.isPending} onClick={() => { void runSupplierMutation(mutationLock, () => deliverMut.mutateAsync({ id: o.id })).catch(() => {}); }}><Truck size={12} /> {t("إقرار المورد بالتسليم", "Declare delivery")}</Btn>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {o.status === "confirmed" && (
+                    <Btn size="sm" variant="primary" disabled={busy} onClick={() => { void runSupplierMutation(mutationLock, () => prepareMut.mutateAsync(o.id)).catch(() => {}); }}>
+                      {t("بدء التجهيز", "Start Preparing")}
+                    </Btn>
+                  )}
+                  {(o.status === "confirmed" || o.status === "preparing") && (
+                    <Btn size="sm" variant="primary" disabled={busy} onClick={() => { void runSupplierMutation(mutationLock, () => dispatchMut.mutateAsync(o.id)).catch(() => {}); }}>
+                      {t("في الطريق", "On the Way")}
+                    </Btn>
+                  )}
+                  <Btn size="sm" variant="success" disabled={busy} onClick={() => { void runSupplierMutation(mutationLock, () => deliverMut.mutateAsync({ id: o.id })).catch(() => {}); }}><Truck size={12} /> {t("إقرار المورد بالتسليم", "Declare delivery")}</Btn>
+                </div>
               )}
             </div>
           ))}

@@ -4,7 +4,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api, type Page } from "../../client";
+import { api, withIdempotencyKey, type Page } from "../../client";
 import { getErrorMessage } from "../../errors";
 import type {
   PlatformProcurementItem,
@@ -430,16 +430,22 @@ export function useSendGroupedPurchaseOrders() {
       supplierId,
       orderIds,
       expectedDeliveryDate,
+      commandId,
     }: {
       supplierId: string;
       orderIds?: string[];
-      expectedDeliveryDate?: string;
+      expectedDeliveryDate: string;
+      commandId?: string;
     }) => {
-      const res = await api.post<PurchaseOrderSendResult>(`${poBase()}/grouped/send`, {
-        supplierId,
-        orderIds,
-        expectedDeliveryDate,
-      });
+      const res = await api.post<PurchaseOrderSendResult>(
+        `${poBase()}/grouped/send`,
+        {
+          supplierId,
+          orderIds,
+          expectedDeliveryDate,
+        },
+        commandId ? withIdempotencyKey(commandId) : undefined,
+      );
       return res.data;
     },
     onSuccess: (data) => {
@@ -447,16 +453,50 @@ export function useSendGroupedPurchaseOrders() {
       qc.invalidateQueries({
         queryKey: queryKeys.platformPurchaseOrdersSent,
       });
-      // FR-PUR-1: launch WhatsApp pre-filled if the supplier is reachable.
       const wa = data?.whatsapp;
-      if (wa?.deliverable && wa.url) {
-        window.open(wa.url, "_blank", "noopener,noreferrer");
-        toast.success("تم التجهيز — افتح واتساب لإرسال الطلب للمورد");
-      } else if (wa && !wa.deliverable) {
-        toast.warning("تم الإرسال، لكن لا يوجد رقم واتساب للمورد — أضف رقم الجوال للمورد");
+      if (wa && !wa.deliverable) {
+        toast.warning("تم تأكيد الإرسال، لكن لا يوجد رقم واتساب للمورد — أضف رقم الجوال للمورد");
       } else {
-        toast.success("تم الإرسال للمورد");
+        toast.success("تم تأكيد الإرسال للمورد — الحالة: أُرسل بانتظار الرد");
       }
+    },
+    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+  });
+}
+
+/** DEC-06: Record manual supplier response (WhatsApp / phone) for non-subscribed supplier. */
+export function useRecordManualSupplierResponse() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      decision,
+      source,
+      respondedAt,
+      reason,
+      note,
+    }: {
+      id: string;
+      decision: "accepted" | "rejected";
+      source: "whatsapp" | "phone";
+      respondedAt: string;
+      reason?: string;
+      note?: string;
+    }) => {
+      const res = await api.post(`${poBase()}/${id}/manual-supplier-response`, {
+        decision,
+        source,
+        respondedAt,
+        reason,
+        note,
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      invalidatePO(qc);
+      qc.invalidateQueries({ queryKey: queryKeys.platformPurchaseOrdersSent });
+      qc.invalidateQueries({ queryKey: ["platform", "procurement", "purchase-orders", "group"] });
+      toast.success("تم تسجيل رد المورد");
     },
     onError: (e) => toast.error(getErrorMessage(e, "ar")),
   });

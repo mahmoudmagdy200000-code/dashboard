@@ -8,8 +8,9 @@ import { Card } from "../../components/Card";
 import { Btn } from "../../components/Btn";
 import { Badge } from "../../components/Badge";
 
-export function ProcOverview({ navigate }: PageProps) {
+export function ProcOverview({ role, navigate }: PageProps) {
   const { t } = useLang();
+  const canApprove = role === "procurement";
   const { data: apiOverview } = useProcurementOverviewPlatform();
   // Real branch orders (bridge). meta.total = live "from branches" count.
   const { data: incomingPage } = usePurchaseOrders({ status: "incoming", pageSize: 5 });
@@ -44,7 +45,7 @@ export function ProcOverview({ navigate }: PageProps) {
               <span className="font-mono font-bold text-gray-800">{fmtAmt(r.totalAmount ?? 0)} {t("ر.س", "SAR")}</span>
               <div className="flex gap-1.5">
                 <Btn size="sm" onClick={() => navigate("proc-new")}><Eye size={12} /> {t("تفاصيل", "Details")}</Btn>
-                <Btn size="sm" variant="primary" disabled={approveMut.isPending} onClick={() => approveMut.mutate(r.id)}><CheckCircle2 size={12} /> {t("اعتماد", "Approve")}</Btn>
+                <Btn size="sm" variant="primary" disabled={!canApprove || approveMut.isPending} onClick={() => { if (canApprove) approveMut.mutate(r.id); }}><CheckCircle2 size={12} /> {t("اعتماد", "Approve")}</Btn>
               </div>
             </div>
           );

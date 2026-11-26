@@ -28,9 +28,9 @@ import { Badge } from "../../components/Badge";
 
 export function ProcNewOrders({ role }: PageProps) {
   const { t, dir } = useLang();
-  // PUR-01: Financial purchase-order approval and partial approval are gated pending verification of the approved Figma/Backend authorization contract.
-  // Fail closed across all roles until explicit authorization contract is verified (no speculative role allowlist).
-  const canApproveFinancial = false;
+  // DEC-01 (PUR-01): Procurement Manager (asab.role:procurement) is authorized to approve,
+  // partial-approve, or reject purchase orders. All other roles fail closed.
+  const canApproveFinancial = role === "procurement";
 
   // Incoming branch orders come from the purchase-orders BRIDGE (SAR floats).
   const { data: apiOrdersPage } = usePurchaseOrders({ status: "incoming" });
@@ -101,8 +101,8 @@ export function ProcNewOrders({ role }: PageProps) {
           <h2 className="text-xl font-bold text-gray-800">{t("الطلبات الجديدة", "New Orders")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{t("مراجعة استهلاك الفروع وإعداد أوامر التوريد — الاعتماد المالي وفق PUR-01", "Review branch consumption and prepare supply orders — financial approval per PUR-01")}</p>
         </div>
-        <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-          <span>📋 {t("الاعتماد المالي من صلاحية الإدارة المالية / المحاسب الرئيسي وفق PUR-01", "Financial approval requires authorized approval role per PUR-01")}</span>
+        <div className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 border ${canApproveFinancial ? "text-emerald-800 bg-emerald-50 border-emerald-200" : "text-amber-800 bg-amber-50 border-amber-200"}`}>
+          <span>{canApproveFinancial ? "✅" : "📋"} {canApproveFinancial ? t("صلاحية اعتماد طلبات الشراء مفعّلة لمدير المشتريات (DEC-01)", "Purchase order approval enabled for Procurement Manager (DEC-01)") : t("الاعتماد مقيد — يتطلب دور مدير المشتريات (DEC-01 · PUR-01)", "Approval gated — requires Procurement Manager role (DEC-01 · PUR-01)")}</span>
         </div>
       </div>
 
