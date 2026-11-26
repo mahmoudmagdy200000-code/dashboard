@@ -9,7 +9,7 @@ import { Badge } from "../../components/Badge";
 import { Btn } from "../../components/Btn";
 
 export function ProcSent({ }: PageProps) {
-  const { t, dir } = useLang();
+  const { t, lang, dir } = useLang();
   // Sent groups come from the bridge; status is derived live from member orders.
   const { data: apiSent } = useSentPurchaseOrders();
   const groups = ((apiSent as any[]) ?? []) as any[];
@@ -62,9 +62,9 @@ export function ProcSent({ }: PageProps) {
                 <p className="font-semibold text-sm text-gray-800">{o.supplierName ?? "—"}</p>
                 <p className="text-xs text-gray-400 mt-1"><span className="font-mono text-purple-600">{o.groupNumber}</span> · {o.ordersCount ?? 0} {t("طلب", "orders")} · {t("أُرسل", "Sent")} {String(o.sentAt ?? "").slice(0, 10)}{o.eta ? ` · ${t("التسليم المتوقع", "ETA")} ${String(o.eta).slice(0, 10)}` : ""}</p>
               </div>
-              {o.savings != null && o.savings > 0 && <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px]">💰 {fmtAmt(o.savings)} {t("ر.س", "SAR")}{o.savingsPct != null ? ` (${o.savingsPct}%)` : ""}</Badge>}
+              {o.savings != null && o.savings > 0 && <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px]">💰 {fmtAmt(o.savings, lang)} {t("ر.س", "SAR")}{o.savingsPct != null ? ` (${o.savingsPct}%)` : ""}</Badge>}
               <Badge className={c.cls}>{c.label}</Badge>
-              <span className="font-mono font-bold text-gray-800">{fmtAmt(o.totalAmount ?? 0)} {t("ر.س", "SAR")}</span>
+              <span className="font-mono font-bold text-gray-800">{fmtAmt(o.totalAmount ?? 0, lang)} {t("ر.س", "SAR")}</span>
               <Btn size="sm" onClick={() => setTrackId(o.groupId)}><Eye size={12} /> {t("تتبع", "Track")}</Btn>
             </div>
           );
@@ -83,7 +83,7 @@ export function ProcSent({ }: PageProps) {
                 <div className="flex items-center gap-3 text-sm">
                   <span className="font-semibold text-gray-700">{det.supplierName ?? "—"}</span>
                   <Badge className={stCfg(det.status).cls}>{stCfg(det.status).label}</Badge>
-                  <span className="font-mono font-bold text-gray-800 mr-auto">{fmtAmt(det.totalAmount ?? 0)} {t("ر.س", "SAR")}</span>
+                  <span className="font-mono font-bold text-gray-800 mr-auto">{fmtAmt(det.totalAmount ?? 0, lang)} {t("ر.س", "SAR")}</span>
                 </div>
                 <div>
                   <p className="text-xs font-bold text-gray-600 mb-1.5">{t("الطلبات", "Orders")} ({(det.orders ?? []).length})</p>
@@ -94,7 +94,7 @@ export function ProcSent({ }: PageProps) {
                           <span className="font-mono text-purple-600">{r.orderNumber}</span>
                           <span className="text-gray-600">{r.branchName ?? r.branchId ?? "—"}{r.city ? ` · ${r.city}` : ""}</span>
                           <Badge className={stCfg(r.status).cls + " mr-auto"}>{r.statusLabel ?? stCfg(r.status).label}</Badge>
-                          <span className="font-mono font-semibold text-gray-700">{fmtAmt(r.totalAmount ?? 0)}</span>
+                          <span className="font-mono font-semibold text-gray-700">{fmtAmt(r.totalAmount ?? 0, lang)}</span>
                           {!det.isSubscribedSupplier && (r.status === "sent_awaiting_response" || r.status === "pending") && (
                             <Btn size="sm" onClick={() => setManualForId(manualForId === r.id ? null : r.id)}>
                               <PhoneCall size={11} /> {t("تسجيل رد المورد", "Record Response")}
@@ -158,7 +158,7 @@ export function ProcSent({ }: PageProps) {
                             <td className="px-3 py-1.5 font-medium text-gray-800">{it.name}</td>
                             <td className="px-3 py-1.5 text-center text-gray-500">{it.unit ?? "—"}</td>
                             <td className="px-3 py-1.5 text-center font-mono">{it.totalQuantity}</td>
-                            <td className="px-3 py-1.5 text-center font-mono text-blue-700">{fmtAmt(it.unitPrice ?? 0)}</td>
+                            <td className="px-3 py-1.5 text-center font-mono text-blue-700">{fmtAmt(it.unitPrice ?? 0, lang)}</td>
                           </tr>
                         ))}
                       </tbody>

@@ -34,6 +34,7 @@ import {
   useAccountantPurchases,
   useBulkDocumentPurchases,
   useApproveOperation,
+  useRejectOperation,
   useBulkApprove,
   useExportOperations,
   useExportAccountantPurchases,
@@ -44,6 +45,9 @@ import {
   useFinalApprovePurchaseReturn,
   useReturnForReviewPurchaseReturn,
 } from "../../../../../api/queries";
+import { useAccountantInventoryBrands } from "../../../../../api/queries/platform/accountant";
+import { useInventoryBranches } from "../../../../../api/queries/inventory";
+import { useVerifyAttachment } from "../../../../../api/queries/uploads";
 import { queryKeys } from "../../../../../api/queries/keys";
 import type { OperationAttachment } from "../../../../../api/types/company";
 import { Card } from "../../components/Card";
@@ -72,7 +76,7 @@ export const PURCHASE_DETAIL = { default: PUR_RECORDS[0] ? { supplier: PUR_RECOR
 
 // ── Shared purchase reconciliation table (used in both AccPurchases and ProcNewOrders)
 export function PurItemsTable({ items, verifiedMap, onToggleVerify }: { items: PurItem[]; verifiedMap?: Record<string, boolean>; onToggleVerify?: (key: string) => void }) {
-  const { t, dir } = useLang();
+  const { t, lang, dir } = useLang();
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[750px] border border-gray-100 rounded-xl overflow-hidden text-xs" dir={dir}>
@@ -116,7 +120,7 @@ export function PurItemsTable({ items, verifiedMap, onToggleVerify }: { items: P
                 <span className={`font-semibold ${Math.abs(qtyVsRec) > 5 ? "text-orange-600" : "text-gray-700"}`}>{row.recommended}</span>
                 {Math.abs(qtyVsRec) > 5 && <div className="text-[9px] text-orange-500">{qtyVsRec > 0 ? t("زيادة", "Over") : t("نقص", "Under")} {Math.abs(qtyVsRec)}</div>}
               </td>
-              <td className="px-3 py-2 text-center font-mono font-semibold text-blue-700">{fmtAmt(total)} {t("ر.س", "SAR")}</td>
+              <td className="px-3 py-2 text-center font-mono font-semibold text-blue-700">{fmtAmt(total, lang)} {t("ر.س", "SAR")}</td>
               <td className="px-3 py-2 text-center">
                 {diff === 0 ? <Badge className="bg-emerald-50 text-emerald-700">{t("مطابق", "Matched")}</Badge>
                   : <Badge className="bg-red-50 text-red-700">{t("فرق", "Diff")} {diff}</Badge>}
@@ -137,7 +141,7 @@ export function PurItemsTable({ items, verifiedMap, onToggleVerify }: { items: P
         <tr>
           <td colSpan={onToggleVerify ? 8 : 8} className="px-3 py-2 font-bold text-gray-800 text-right">{t("إجمالي الفاتورة", "Invoice Total")}</td>
           <td className="px-3 py-2 text-center font-black font-mono text-blue-800">
-            {fmtAmt(items.reduce((s, r) => s + r.received * r.price, 0))} {t("ر.س", "SAR")}
+            {fmtAmt(items.reduce((s, r) => s + r.received * r.price, 0), lang)} {t("ر.س", "SAR")}
           </td>
           <td></td>
           {onToggleVerify && <td></td>}
@@ -156,7 +160,7 @@ export function PurItemsTable({ items, verifiedMap, onToggleVerify }: { items: P
 export function PurchaseLinesPanel({ rec, t, onAttach, demoRender }: {
   rec: any; t: (ar: string, en: string) => string; onAttach: () => void; demoRender: () => ReactNode;
 }) {
-  const { dir } = useLang();
+  const { lang, dir } = useLang();
   const patchMut = usePatchPurchaseLine();
   // Lines from the grouped /company/me/purchases endpoint carry lastArrivalPrice
   // + documented; only fetch the op detail when the card didn't provide them.
@@ -177,8 +181,8 @@ export function PurchaseLinesPanel({ rec, t, onAttach, demoRender }: {
   const supplierName = pur?.supplierName ?? rec.supplier;
   // Prefer riyal fields; fall back to halalas÷100.
   const money = (l: any, sarKey: string, halKey: string) => {
-    const s = l?.[sarKey]; if (typeof s === "number") return `${fmtAmt(s)} ${t("ر.س", "SAR")}`;
-    const h = l?.[halKey]; return typeof h === "number" ? `${fmtAmt(h / 100)} ${t("ر.س", "SAR")}` : "—";
+    const s = l?.[sarKey]; if (typeof s === "number") return `${fmtAmt(s, lang)} ${t("ر.س", "SAR")}`;
+    const h = l?.[halKey]; return typeof h === "number" ? `${fmtAmt(h / 100, lang)} ${t("ر.س", "SAR")}` : "—";
   };
   const startEdit = () => { const f: Record<string, any> = {}; lines.forEach((l: any) => { f[l.rowId] = { ordQty: String(l.ordQty ?? ""), rcvQty: l.rcvQty == null ? "" : String(l.rcvQty), price: String(l.unitPriceSar ?? (l.unitPriceHalalas != null ? l.unitPriceHalalas / 100 : "")) }; }); setForm(f); setEditing(true); };
   const saveRow = (l: any) => {
@@ -207,7 +211,7 @@ export function PurchaseLinesPanel({ rec, t, onAttach, demoRender }: {
           <p className="text-xs font-bold text-gray-700 break-words">{t("المورد:", "Supplier:")} <span className="text-blue-700">{supplierName ?? "—"}</span></p>
           <p className="text-xs text-gray-500 mt-0.5 break-words">
             {rec.invNum ? <>{t("رقم الفاتورة:", "Invoice #:")} <span className="font-mono font-semibold text-purple-600">{rec.invNum}</span> · </> : null}
-            {t("الفرع:", "Branch:")} {rec.branch} · {t("إجمالي الفاتورة:", "Invoice Total:")} <span className="font-bold text-gray-700">{fmtAmt(rec.amount)} {t("ر.س", "SAR")}</span>
+            {t("الفرع:", "Branch:")} {rec.branch} · {t("إجمالي الفاتورة:", "Invoice Total:")} <span className="font-bold text-gray-700">{fmtAmt(rec.amount, lang)} {t("ر.س", "SAR")}</span>
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -244,7 +248,7 @@ export function PurchaseLinesPanel({ rec, t, onAttach, demoRender }: {
                   <td className="px-3 py-2.5 text-center font-mono">
                     <div className="text-gray-600">{money(l, "lastArrivalPriceSar", "lastArrivalPriceHalalas")}</div>
                     {(l.priceDeltaSar != null || l.priceDeltaHalalas != null) && l.priceDirection && l.priceDirection !== "same" && l.priceDirection !== "unknown" && (
-                      <div className={`text-[10px] font-bold ${arrowCls(l.priceDirection)}`}>{arrowIcon(l.priceDirection)} {fmtAmt(l.priceDeltaSar ?? (l.priceDeltaHalalas / 100))}</div>
+                      <div className={`text-[10px] font-bold ${arrowCls(l.priceDirection)}`}>{arrowIcon(l.priceDirection)} {fmtAmt(l.priceDeltaSar ?? (l.priceDeltaHalalas / 100), lang)}</div>
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-center font-mono">
@@ -268,7 +272,7 @@ export function PurchaseLinesPanel({ rec, t, onAttach, demoRender }: {
         </table>
       </div>
       <p className="text-[10px] text-gray-500 text-left">
-        {t("إجمالي الفاتورة:", "Invoice Total:")} <span className="font-bold">{fmtAmt(rec.amount)} {t("ر.س", "SAR")}</span> · {t("موثّق", "Documented")} {documentedCount}/{lines.length}
+        {t("إجمالي الفاتورة:", "Invoice Total:")} <span className="font-bold">{fmtAmt(rec.amount, lang)} {t("ر.س", "SAR")}</span> · {t("موثّق", "Documented")} {documentedCount}/{lines.length}
       </p>
       {rec.actionsNode}
     </div>
@@ -287,11 +291,14 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
   const exportOpsMut = useExportOperations();
   const exportPurMut = useExportAccountantPurchases();
   const approveMut = useApproveOperation();
+  const rejectMut = useRejectOperation();
   const bulkApproveMut = useBulkApprove();
   const bulkDocMut = useBulkDocumentPurchases();
   // T06 live surfaces (company-surface handlers, shared with the accountant platform).
   const { data: purchasesList } = usePurchasesList({ pageSize: 100 });
   const { data: suppliersLive = [] } = useSuppliers();
+  const { data: brandsLive = [] } = useAccountantInventoryBrands();
+  const { data: branchesLive = [] } = useInventoryBranches();
   const { data: returnsLive = [] } = usePurchaseReturns();
   const createSupplierMut = useCreateSupplier();
   const reviewReturnMut = useReviewPurchaseReturn();
@@ -303,11 +310,13 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
   const purSummary = purchasesList?.meta?.summary?.purchases;
   const ALL = "الكل";
   const [viewMode, setViewMode] = useState<"supplier" | "branch" | "suppliers" | "returns">("supplier");
+  const [filterBrand, setFilterBrand] = useState(ALL);
   const [filterSupplier, setFilterSupplier] = useState(ALL);
   const [filterBranch, setFilterBranch] = useState(ALL);
   const [filterStatus, setFilterStatus] = useState(ALL);
   const [filterMatch, setFilterMatch] = useState(ALL);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [verifiedRows, setVerifiedRows] = useState<Record<string, boolean>>({});
   const [inFlightId, setInFlightId] = useState<string | null>(null);
@@ -320,17 +329,30 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
   const [rejectError, setRejectError] = useState<string | null>(null);
   const [rejectBusy, setRejectBusy] = useState(false);
 
+  const serverFilterParams = {
+    groupBy: (viewMode === "branch" ? "branch" : "supplier") as "supplier" | "branch",
+    ...(filterBrand !== ALL ? { brandId: filterBrand } : {}),
+    ...(filterSupplier !== ALL ? { supplierId: filterSupplier } : {}),
+    ...(filterBranch !== ALL ? { branchId: filterBranch } : {}),
+    ...(filterStatus !== ALL ? { status: filterStatus } : {}),
+    ...(filterMatch !== ALL ? { match: filterMatch } : {}),
+    ...(search.trim() ? { q: search.trim() } : {}),
+  };
+
   // Grouped purchase cards (GET /company/me/purchases) — supplier/branch cards
   // that already nest invoices WITH lines (lastArrivalPrice, documented, match).
   // We flatten the invoices into the flat record shape the cards/panel expect;
   // the id is the OPERATION id so line PATCH/توثيق target the right op.
-  const { data: purCards } = useAccountantPurchases({ groupBy: viewMode === "branch" ? "branch" : "supplier" });
-  const purKpis = (purCards as any)?.meta?.kpis;
+  const { data: purCards } = useAccountantPurchases({ ...serverFilterParams, page, pageSize: 20 });
+  const purMeta = (purCards as any)?.meta;
+  const purKpis = purMeta?.kpis;
   const purGroupCards: any[] = Array.isArray((purCards as any)?.data) ? (purCards as any).data : [];
   const realPurRecords: any[] = purGroupCards.flatMap((c: any) =>
     (Array.isArray(c?.invoices) ? c.invoices : []).map((inv: any) => ({
       id: inv?.id ?? inv?.publicId ?? "",
+      branchId: inv?.branchId ?? c?.branchId ?? null,
       branch: inv?.branchName ?? "—",
+      supplierId: inv?.supplierId ?? c?.supplierId ?? null,
       supplier: inv?.supplierName ?? "—",
       invNum: inv?.invoiceNumber ?? inv?.publicId ?? "—",
       date: inv?.date ?? "—",
@@ -348,10 +370,19 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
 
   const SUPPLIER_LIST = [...new Set(EFFECTIVE_PUR_RECORDS.map((r: any) => r.supplier))];
   const BRANCH_LIST = [...new Set(EFFECTIVE_PUR_RECORDS.map((r: any) => r.branch))];
+  const supplierOptions = suppliersLive.length > 0
+    ? suppliersLive.map((s: any) => ({ id: String(s.id), name: String(s.name) }))
+    : purGroupCards.filter((c: any) => c?.supplierId && c?.supplierName).map((c: any) => ({ id: String(c.supplierId), name: String(c.supplierName) }));
+  const branchOptions = Array.isArray(branchesLive) && branchesLive.length > 0
+    ? branchesLive.map((b: any) => ({ id: String(b.id), name: String(b.name) }))
+    : purGroupCards.filter((c: any) => c?.branchId && c?.branchName).map((c: any) => ({ id: String(c.branchId), name: String(c.branchName) }));
+  const brandOptions = Array.isArray(brandsLive)
+    ? brandsLive.map((b: any) => ({ id: String(b.id), name: String(b.name) }))
+    : [];
 
   const filtered = EFFECTIVE_PUR_RECORDS.filter((r: any) => {
-    if (filterSupplier !== ALL && r.supplier !== filterSupplier) return false;
-    if (filterBranch !== ALL && r.branch !== filterBranch) return false;
+    if (filterSupplier !== ALL && String(r.supplierId ?? "") !== filterSupplier && r.supplier !== filterSupplier) return false;
+    if (filterBranch !== ALL && String(r.branchId ?? "") !== filterBranch && r.branch !== filterBranch) return false;
     if (filterStatus !== ALL && r.status !== filterStatus) return false;
     if (filterMatch !== ALL && r.match !== filterMatch) return false;
     if (search && !r.branch.includes(search) && !r.supplier.includes(search) && !r.invNum.includes(search) && !r.items.some((it: any) => it.name.includes(search))) return false;
@@ -365,7 +396,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
   const approvablePending = pending.filter((r: any) => approvableIds.includes(r.id));
   const totalVal = effectiveFiltered.reduce((s, r) => s + r.amount, 0);
   const diffCount = effectiveFiltered.filter(r => r.match === "diff").length;
-  const hasFilters = filterSupplier !== ALL || filterBranch !== ALL || filterStatus !== ALL || filterMatch !== ALL || search;
+  const hasFilters = filterBrand !== ALL || filterSupplier !== ALL || filterBranch !== ALL || filterStatus !== ALL || filterMatch !== ALL || search;
 
   const approveRecord = async (rec: any) => {
     if (!rec?.id || inFlightId) return;
@@ -444,10 +475,12 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
     setRejectBusy(true);
     setRejectError(null);
     try {
-      await Promise.resolve(rejectOp(rejectModal.recId, rejectReason.trim()));
+      await rejectMut.mutateAsync({ id: rejectModal.recId, reason: "other", notes: rejectReason.trim() });
       await Promise.all([
+        qc.invalidateQueries({ queryKey: ["accountant", "purchases"] }),
         qc.invalidateQueries({ queryKey: ["platform", "accountant", "purchases"] }),
         qc.invalidateQueries({ queryKey: queryKeys.operations() }),
+        qc.invalidateQueries({ queryKey: queryKeys.accDashboard }),
       ]);
       setRejectModal(null);
       setRejectReason("");
@@ -500,7 +533,9 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
     const total = recs.reduce((s, r) => s + r.amount, 0);
     const pCount = recs.filter(r => r.status === "pending").length;
     const dCount = recs.filter(r => r.match === "diff").length;
-    return { sup, recs, branches, total, pCount, dCount };
+    const serverCard = purGroupCards.find((c: any) => c?.supplierName === sup || c?.title === sup);
+    const dailyAverageHalalas: number | null = typeof serverCard?.dailyAverageHalalas === "number" ? serverCard.dailyAverageHalalas : null;
+    return { sup, recs, branches, total, pCount, dCount, dailyAverageHalalas };
   }).filter(Boolean);
 
   // Branch groups for branch-mode
@@ -520,38 +555,38 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
     return (
       <div className="px-5 pb-5 bg-gray-50/40 space-y-3">
         {/* Invoice meta bar */}
-        <div className="flex items-center gap-4 mt-3 mb-1 p-3 bg-white rounded-xl border border-blue-100">
-          <div className="flex-1">
-            <p className="text-xs font-bold text-gray-700">{t("المورد:", "Supplier:")} <span className="text-blue-700">{rec.supplier}</span></p>
-            <p className="text-xs text-gray-500 mt-0.5">{t("رقم الفاتورة:", "Invoice #:")} <span className="font-mono font-semibold text-purple-600">{rec.invNum}</span> · {rec.date}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mt-3 mb-1 p-3 bg-white rounded-xl border border-blue-100">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-gray-700 break-words">{t("المورد:", "Supplier:")} <span className="text-blue-700">{rec.supplier}</span></p>
+            <p className="text-xs text-gray-500 mt-0.5 break-words">{t("رقم الفاتورة:", "Invoice #:")} <span className="font-mono font-semibold text-purple-600">{rec.invNum}</span> · {rec.date}</p>
           </div>
-          <div className="text-left">
+          <div className="text-start sm:text-end">
             <p className="text-xs text-gray-400">{t("الفرع", "Branch")}</p>
             <p className="text-xs font-semibold text-gray-700">{rec.branch}</p>
           </div>
-          <div className="text-left">
+          <div className="text-start sm:text-end">
             <p className="text-xs text-gray-400">{t("إجمالي الفاتورة", "Invoice Total")}</p>
-            <p className="font-mono font-bold text-blue-700">{fmtAmt(rec.amount)} {t("ر.س", "SAR")}</p>
+            <p className="font-mono font-bold text-blue-700">{fmtAmt(rec.amount, lang)} {t("ر.س", "SAR")}</p>
           </div>
           {/* Attachment + edit controls */}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 shrink-0">
             <button onClick={() => setPurAttachModal({ recId: rec.id, invNum: rec.invNum, idx: 0, attachments: Array.isArray((rec as any).attachments) ? (rec as any).attachments : [] })}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-semibold transition-all">
               <Paperclip size={11} /> {t("المرفقات", "Attachments")} ({(rec as any).attachmentsCount ?? (Array.isArray((rec as any).attachments) ? (rec as any).attachments.length : 0)})
             </button>
             <button onClick={() => setEditingRecId(isEditing ? null : rec.id)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 text-xs font-semibold transition-all">
-              <Edit3 size={11} /> {isEditing ? t("إيقاف التعديل", "Stop Editing") : t("تعديل البنود", "Edit Items")}
+              <Edit3 size={11} /> {isEditing ? t("إنهاء التعديل", "Done") : t("تعديل البنود", "Edit Lines")}
             </button>
           </div>
         </div>
 
         {/* Simplified editable items table — item / unit / price / qty / total */}
         <div className="overflow-x-auto">
-          <table className="w-full border border-gray-100 rounded-xl overflow-hidden text-xs" dir="rtl">
+          <table className="w-full min-w-[680px] border border-gray-100 rounded-xl overflow-hidden text-xs" dir={dir}>
             <thead className="bg-gray-100">
               <tr>
-                <th className="px-3 py-2 text-right font-semibold text-gray-600">{t("اسم الصنف", "Item Name")}</th>
+                <th className="px-3 py-2 text-start font-semibold text-gray-600">{t("اسم الصنف", "Item Name")}</th>
                 <th className="px-3 py-2 text-center font-semibold text-gray-600">{t("الوحدة", "Unit")}</th>
                 <th className="px-3 py-2 text-center font-semibold text-gray-600">{t("سعر الوحدة", "Unit Price")}</th>
                 <th className="px-3 py-2 text-center font-semibold text-sky-700 bg-sky-50/60">{t("آخر سعر وصول", "Last Price")}</th>
@@ -592,7 +627,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                         : <span className="font-bold text-gray-800">{row.received}</span>
                       }
                     </td>
-                    <td className="px-3 py-2.5 text-center font-mono font-semibold text-blue-700">{fmtAmt(total)} {t("ر.س", "SAR")}</td>
+                    <td className="px-3 py-2.5 text-center font-mono font-semibold text-blue-700">{fmtAmt(total, lang)} {t("ر.س", "SAR")}</td>
                     <td className="px-3 py-2.5 text-center">
                       <button onClick={() => toggleVerify(rec.id, vKey)}
                         className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center mx-auto transition-all ${verified ? "bg-emerald-500 border-emerald-500 text-white" : "border-gray-300 hover:border-emerald-400"}`}>
@@ -606,7 +641,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
             <tfoot className="bg-gray-50 border-t-2 border-gray-200">
               <tr>
                 <td colSpan={5} className="px-3 py-2.5 font-bold text-gray-900 text-right">{t("إجمالي الفاتورة", "Invoice Total")}</td>
-                <td className="px-3 py-2.5 text-center font-black font-mono text-blue-800">{fmtAmt(rec.items.reduce((s, r) => s + r.received * r.price, 0))} {t("ر.س", "SAR")}</td>
+                <td className="px-3 py-2.5 text-center font-black font-mono text-blue-800">{fmtAmt(rec.items.reduce((s, r) => s + r.received * r.price, 0), lang)} {t("ر.س", "SAR")}</td>
                 <td className="px-3 py-2.5 text-center text-[10px] text-gray-500">
                   {Object.keys(verifiedRows).filter(k => k.startsWith(rec.id + "-")).length}/{rec.items.length} {t("موثّق", "verified")}
                 </td>
@@ -682,19 +717,21 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
       </div>
 
       {/* View mode tabs */}
-      <div className="flex items-center justify-between overflow-x-auto max-w-full pb-1">
-        <div className="flex bg-gray-100 rounded-xl p-1 gap-1 flex-nowrap min-w-max">
-          {([["supplier", `🏭 ${t("عرض حسب المورد", "By Supplier")}`], ["branch", `🏪 ${t("عرض حسب الفرع", "By Branch")}`], ["suppliers", `📇 ${t("الموردون المعتمدون", "Suppliers")}`], ["returns", `↩️ ${t("المرتجعات", "Returns")}`]] as const).map(([mode, label]) => (
-            <button key={mode} onClick={() => { setViewMode(mode); setExpandedId(null); }}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === mode ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
-              {label}
-            </button>
-          ))}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-1">
+        <div className="w-full lg:w-auto">
+          <div className="flex flex-wrap bg-gray-100 rounded-xl p-1 gap-1">
+            {([["supplier", `🏭 ${t("عرض حسب المورد", "By Supplier")}`], ["branch", `🏪 ${t("عرض حسب الفرع", "By Branch")}`], ["suppliers", `📇 ${t("الموردون المعتمدون", "Suppliers")}`], ["returns", `↩️ ${t("المرتجعات", "Returns")}`]] as const).map(([mode, label]) => (
+              <button key={mode} onClick={() => { setViewMode(mode); setExpandedId(null); setPage(1); }}
+                className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-all ${viewMode === mode ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <div className="w-3 h-3 rounded bg-amber-200" />{t("استهلاك يومي", "Daily Avg")}
-          <div className="w-3 h-3 rounded bg-sky-200 mr-2" />{t("سعر تاريخي", "Hist. Price")}
-          <div className="w-3 h-3 rounded bg-emerald-400 mr-2" />{t("توثيق المحاسب", "Accountant Verify")}
+        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+          <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-200 inline-block" />{t("استهلاك يومي", "Daily Avg")}</span>
+          <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-sky-200 inline-block" />{t("سعر تاريخي", "Hist. Price")}</span>
+          <span className="inline-flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-400 inline-block" />{t("توثيق المحاسب", "Accountant Verify")}</span>
         </div>
       </div>
 
@@ -703,29 +740,30 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("العلامة التجارية / البراند", "Brand")}</label>
-            <select className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
-              {[t("الكل", "All")].map(b => <option key={b}>{b}</option>)}
+            <select value={filterBrand} onChange={e => { setFilterBrand(e.target.value); setPage(1); }} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
+              <option value={ALL}>{t("الكل", "All")}</option>
+              {brandOptions.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المورد", "Supplier")}</label>
-            <select value={filterSupplier} onChange={e => setFilterSupplier(e.target.value)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
+            <select value={filterSupplier} onChange={e => { setFilterSupplier(e.target.value); setPage(1); }} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
               <option value={ALL}>{t("الكل", "All")}</option>
-              {SUPPLIER_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+              {supplierOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع", "Branch")}</label>
-            <select value={filterBranch} onChange={e => setFilterBranch(e.target.value)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
+            <select value={filterBranch} onChange={e => { setFilterBranch(e.target.value); setPage(1); }} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
               <option value={ALL}>{t("الكل", "All")}</option>
-              {BRANCH_LIST.map(b => <option key={b} value={b}>{b}</option>)}
+              {branchOptions.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الحالة", "Status")}</label>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
+            <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
               <option value={ALL}>{t("الكل", "All")}</option>
               {["pending", "approved", "rejected"].map(s => (
                 <option key={s} value={s}>{s === "pending" ? t("معلق", "Pending") : s === "approved" ? t("معتمد", "Approved") : t("مرفوض", "Rejected")}</option>
@@ -734,7 +772,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
           </div>
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المطابقة", "Match")}</label>
-            <select value={filterMatch} onChange={e => setFilterMatch(e.target.value)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
+            <select value={filterMatch} onChange={e => { setFilterMatch(e.target.value); setPage(1); }} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
               <option value={ALL}>{t("الكل", "All")}</option>
               <option value="exact">{t("مطابق تاماً", "Exact match")}</option>
               <option value="diff">{t("به فروق", "Has variance")}</option>
@@ -744,17 +782,18 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("بحث (فرع / مورد / منتج / مطعم)", "Search (branch / supplier / item)")}</label>
             <div className="flex items-center gap-1.5 border border-gray-200 rounded-lg px-2 py-2">
               <Search size={11} className="text-gray-400 flex-shrink-0" />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("ابحث بالاسم أو المورد...", "Search by name or supplier...")} className="flex-1 text-xs outline-none min-w-0" />
+              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder={t("ابحث بالاسم أو المورد...", "Search by name or supplier...")} className="flex-1 text-xs outline-none min-w-0" />
             </div>
           </div>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           {hasFilters && (
-            <button onClick={() => { setFilterSupplier(ALL); setFilterBranch(ALL); setFilterStatus(ALL); setFilterMatch(ALL); setSearch(""); }}
+            <button onClick={() => { setFilterBrand(ALL); setFilterSupplier(ALL); setFilterBranch(ALL); setFilterStatus(ALL); setFilterMatch(ALL); setSearch(""); setPage(1); }}
               className="text-xs text-purple-600 hover:underline flex items-center gap-1"><RotateCcw size={10} /> {t("مسح الفلاتر", "Clear Filters")}</button>
           )}
-          <button onClick={() => exportPurMut.mutate({ groupBy: viewMode === "branch" ? "branch" : "supplier", format: "xlsx" })}
-            className="mr-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 transition-all">
+          <button onClick={() => exportPurMut.mutate({ ...serverFilterParams, format: "xlsx" })}
+            disabled={exportPurMut.isPending}
+            className="ms-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100 transition-all disabled:opacity-50">
             <FileText size={11} /> {t("تصدير Excel", "Export Excel")}
           </button>
         </div>
@@ -773,7 +812,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
             {suppliersLive.length === 0
               ? <EmptyState icon="📇" title={t("لا يوجد موردون", "No Suppliers")} desc={t("لم تُرجع الخدمة أي موردين", "No suppliers returned")} />
               : (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {suppliersLive.map(s => {
                     const stars = Math.round((s.rating ?? 0) / 10);  // 0–50 scale → ★
                     return (
@@ -784,7 +823,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                             <p className="font-semibold text-gray-800 text-sm truncate">{s.name} {s.category && <span className="text-[10px] text-gray-400 font-normal">· {s.category}</span>}</p>
                             <p className="text-[10px] text-gray-400 mt-0.5">{s.itemsCount} {t("صنف", "items")} · {s.monthlyOrderCount} {t("طلبية/شهر", "orders/mo")}{s.contactPhone ? ` · ${s.contactPhone}` : ""}</p>
                           </div>
-                          <div className="text-left flex-shrink-0">
+                          <div className="text-end flex-shrink-0">
                             <div className="flex items-center gap-0.5">{[1, 2, 3, 4, 5].map(i => <span key={i} className={`text-sm ${i <= stars ? "text-amber-400" : "text-gray-200"}`}>★</span>)}</div>
                             {!s.isActive && <span className="text-[9px] text-red-500 font-semibold">{t("غير نشط", "inactive")}</span>}
                           </div>
@@ -804,9 +843,10 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
               {returnsLive.length === 0
                 ? <div className="py-8"><EmptyState icon="↩️" title={t("لا توجد مرتجعات", "No Returns")} desc={t("لم تُرجع الخدمة أي مرتجعات", "No returns returned")} /></div>
                 : (
-                  <div>
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[720px]">
                     <div className="grid grid-cols-7 px-4 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-500">
-                      <span>{t("رقم المرتجع", "Return #")}</span><span>{t("الأمر", "Order")}</span><span>{t("الفرع", "Branch")}</span><span className="text-center">{t("التاريخ", "Date")}</span><span className="text-center">{t("الحالة", "Status")}</span><span className="text-center">{t("المراجعة المالية", "Financial Review")}</span><span className="text-left">{t("المبلغ / الإجراءات", "Amount / Actions")}</span>
+                      <span>{t("رقم المرتجع", "Return #")}</span><span>{t("الأمر", "Order")}</span><span>{t("الفرع", "Branch")}</span><span className="text-center">{t("التاريخ", "Date")}</span><span className="text-center">{t("الحالة", "Status")}</span><span className="text-center">{t("المراجعة المالية", "Financial Review")}</span><span className="text-end">{t("المبلغ / الإجراءات", "Amount / Actions")}</span>
                     </div>
                     {returnsLive.map(r => {
                       const finStatus = r.financialStatus ?? "pending_review";
@@ -828,8 +868,8 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                               <Badge className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px]">⏳ {t("بانتظار المراجعة", "Pending Review")}</Badge>
                             )}
                           </span>
-                          <div className="text-left flex flex-col items-end gap-1">
-                            <span className="font-mono font-bold text-gray-800">{fmtAmt(Math.round(r.totalReturnAmountHalalas / 100))} {t("ر.س", "SAR")}</span>
+                          <div className="text-end flex flex-col items-end gap-1">
+                            <span className="font-mono font-bold text-gray-800">{fmtAmt(r.totalReturnAmountHalalas / 100, lang)} {t("ر.س", "SAR")}</span>
                             <div className="flex gap-1 flex-wrap justify-end">
                               {!isReviewed && !isApproved && (
                                 <button
@@ -866,6 +906,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                         </div>
                       );
                     })}
+                    </div>
                   </div>
                 )}
             </div>
@@ -881,20 +922,22 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                     return (
                       <div key={g.sup} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                         {/* Supplier header */}
-                        <div className="px-5 py-4 bg-gradient-to-l from-blue-50/30 to-white border-b border-gray-100 flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 font-black text-lg flex-shrink-0">
-                            {g.sup.slice(0, 1)}
+                        <div className="px-4 sm:px-5 py-4 bg-gradient-to-l from-blue-50/30 to-white border-b border-gray-100 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 font-black text-lg flex-shrink-0">
+                              {g.sup.slice(0, 1)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-gray-800 truncate">{g.sup}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">{g.recs.length} {t("فاتورة", "inv.")} · {g.branches.length} {g.branches.length === 1 ? t("فرع", "branch") : t("فروع", "branches")}</p>
+                            </div>
                           </div>
-                          <div className="flex-1">
-                            <p className="font-bold text-gray-800">{g.sup}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">{g.recs.length} {t("فاتورة", "inv.")} · {g.branches.length} {g.branches.length === 1 ? t("فرع", "branch") : t("فروع", "branches")}</p>
-                          </div>
-                          <div className="flex gap-3 items-center">
+                          <div className="flex flex-wrap gap-2 sm:gap-3 items-center justify-between sm:justify-end">
                             {g.dCount > 0 && <Badge className="bg-red-50 text-red-700 border border-red-200 text-[10px]">⚠ {g.dCount} {t("فرق", "diff")}</Badge>}
                             {g.pCount > 0 && <Badge className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px]">⏳ {g.pCount} {t("معلق", "pending")}</Badge>}
-                            <div className="text-left">
-                              <p className="font-mono font-bold text-blue-700 text-base">{fmtAmt(g.total)} {t("ر.س", "SAR")}</p>
-                              <p className="text-[10px] text-gray-400 mt-0.5">{t("يومياً:", "Daily:")} {fmtAmt(Math.round(g.total / 30))} {t("ر.س", "SAR")}</p>
+                            <div className="text-end">
+                              <p className="font-mono font-bold text-blue-700 text-base">{fmtAmt(g.total, lang)} {t("ر.س", "SAR")}</p>
+                              <p className="text-[10px] text-gray-400 mt-0.5">{t("يومياً:", "Daily:")} {fmtAmt(g.dailyAverageHalalas != null ? g.dailyAverageHalalas / 100 : g.total / 30, lang)} {t("ر.س", "SAR")}</p>
                             </div>
                           </div>
                         </div>
@@ -907,7 +950,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                               <div key={br} className="flex items-center gap-1.5 text-xs">
                                 <div className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
                                 <span className="text-gray-600 font-medium">{br}</span>
-                                <span className="font-mono text-blue-600">{fmtAmt(brTotal)} ر.س</span>
+                                <span className="font-mono text-blue-600">{fmtAmt(brTotal, lang)} {t("ر.س", "SAR")}</span>
                               </div>
                             );
                           })}
@@ -916,7 +959,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                         {g.recs.map(rec => {
                           const recStatus = effectiveFiltered.find(r => r.id === rec.id)?.status ?? rec.status;
                           return (
-                            <div key={rec.id} className={`border-b border-gray-100 last:border-0 ${rec.match === "diff" ? "border-r-4 border-r-red-400" : ""}`}>
+                            <div key={rec.id} className={`border-b border-gray-100 last:border-0 ${rec.match === "diff" ? "border-s-4 border-s-red-400" : ""}`}>
                               <div className={`px-5 py-3.5 flex items-center gap-3 hover:bg-gray-50/60 cursor-pointer ${expandedId === rec.id ? "bg-blue-50/20" : ""}`}
                                 onClick={() => setExpandedId(expandedId === rec.id ? null : rec.id)}>
                                 <div className="flex-1 min-w-0">
@@ -928,7 +971,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                                   </div>
                                   <p className="text-[11px] text-gray-400 mt-0.5">{rec.items.length} {t("أصناف", "items")} · {rec.date}</p>
                                 </div>
-                                <span className="font-mono font-bold text-gray-800">{fmtAmt(rec.amount)} {t("ر.س", "SAR")}</span>
+                                <span className="font-mono font-bold text-gray-800">{fmtAmt(rec.amount, lang)} {t("ر.س", "SAR")}</span>
                                 {expandedId === rec.id ? <ChevronUp size={13} className="text-gray-400" /> : <ChevronDown size={13} className="text-gray-400" />}
                               </div>
                               {expandedId === rec.id && <PurchaseLinesPanel rec={{ ...rec, actionsNode: renderRecordActions(rec, recStatus) }} t={t} onAttach={() => setPurAttachModal({ recId: rec.id, invNum: rec.invNum, idx: 0, attachments: Array.isArray((rec as any).attachments) ? (rec as any).attachments : [] })} demoRender={() => renderItemsPanel(rec)} />}
@@ -948,16 +991,18 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                     return (
                       <div key={g.br} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                         {/* Branch header */}
-                        <div className="px-5 py-4 bg-gradient-to-l from-emerald-50/30 to-white border-b border-gray-100 flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 font-black text-base flex-shrink-0">🏪</div>
-                          <div className="flex-1">
-                            <p className="font-bold text-gray-800">{g.br}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">{g.recs.length} {t("فاتورة", "inv.")} · {g.suppliers.length} {t("مورد", "supplier(s)")}</p>
+                        <div className="px-4 sm:px-5 py-4 bg-gradient-to-l from-emerald-50/30 to-white border-b border-gray-100 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 font-black text-base flex-shrink-0">🏪</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-gray-800 truncate">{g.br}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">{g.recs.length} {t("فاتورة", "inv.")} · {g.suppliers.length} {t("مورد", "supplier(s)")}</p>
+                            </div>
                           </div>
-                          <div className="flex gap-3 items-center">
+                          <div className="flex flex-wrap gap-2 sm:gap-3 items-center justify-between sm:justify-end">
                             {g.pCount > 0 && <Badge className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px]">⏳ {g.pCount} {t("معلق", "pending")}</Badge>}
-                            <div className="text-left">
-                              <p className="font-mono font-bold text-emerald-700 text-base">{fmtAmt(g.total)} {t("ر.س", "SAR")}</p>
+                            <div className="text-end">
+                              <p className="font-mono font-bold text-emerald-700 text-base">{fmtAmt(g.total, lang)} {t("ر.س", "SAR")}</p>
                               <p className="text-[10px] text-gray-400 mt-0.5">{t("إجمالي مشتريات الفرع", "Branch total purchases")}</p>
                             </div>
                           </div>
@@ -971,7 +1016,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                               <div key={sup} className="flex items-center gap-1.5 text-xs bg-white border border-gray-200 rounded-lg px-2 py-1">
                                 <Truck size={9} className="text-gray-400" />
                                 <span className="text-gray-600">{sup}</span>
-                                <span className="font-mono font-semibold text-gray-700">{fmtAmt(supTotal)} ر.س</span>
+                                <span className="font-mono font-semibold text-gray-700">{fmtAmt(supTotal, lang)} {t("ر.س", "SAR")}</span>
                               </div>
                             );
                           })}
@@ -980,7 +1025,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                         {g.recs.map(rec => {
                           const recStatus = effectiveFiltered.find(r => r.id === rec.id)?.status ?? rec.status;
                           return (
-                            <div key={rec.id} className={`border-b border-gray-100 last:border-0 ${rec.match === "diff" ? "border-r-4 border-r-red-400" : ""}`}>
+                            <div key={rec.id} className={`border-b border-gray-100 last:border-0 ${rec.match === "diff" ? "border-s-4 border-s-red-400" : ""}`}>
                               <div className={`px-5 py-3.5 flex items-center gap-3 hover:bg-gray-50/60 cursor-pointer ${expandedId === rec.id ? "bg-emerald-50/20" : ""}`}
                                 onClick={() => setExpandedId(expandedId === rec.id ? null : rec.id)}>
                                 <div className="flex-1 min-w-0">
@@ -992,7 +1037,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                                   </div>
                                   <p className="text-[11px] text-gray-400 mt-0.5">{rec.items.length} {t("أصناف", "items")} · {rec.date} · {rec.items.map(i => i.name).join("، ")}</p>
                                 </div>
-                                <span className="font-mono font-bold text-gray-800">{fmtAmt(rec.amount)} {t("ر.س", "SAR")}</span>
+                                <span className="font-mono font-bold text-gray-800">{fmtAmt(rec.amount, lang)} {t("ر.س", "SAR")}</span>
                                 {expandedId === rec.id ? <ChevronUp size={13} className="text-gray-400" /> : <ChevronDown size={13} className="text-gray-400" />}
                               </div>
                               {expandedId === rec.id && <PurchaseLinesPanel rec={{ ...rec, actionsNode: renderRecordActions(rec, recStatus) }} t={t} onAttach={() => setPurAttachModal({ recId: rec.id, invNum: rec.invNum, idx: 0, attachments: Array.isArray((rec as any).attachments) ? (rec as any).attachments : [] })} demoRender={() => renderItemsPanel(rec)} />}
@@ -1005,6 +1050,22 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                 </div>
               )
       }
+
+      {(viewMode === "supplier" || viewMode === "branch") && (purMeta?.totalPages ?? 1) > 1 && (
+        <div className="flex items-center justify-between bg-white rounded-xl border border-gray-100 px-4 py-3 text-xs">
+          <span className="text-gray-500">
+            {t("صفحة", "Page")} {purMeta?.page ?? page} {t("من", "of")} {purMeta?.totalPages ?? 1} ({purMeta?.total ?? 0})
+          </span>
+          <div className="flex items-center gap-2">
+            <Btn size="sm" disabled={(purMeta?.page ?? page) <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
+              {t("السابق", "Previous")}
+            </Btn>
+            <Btn size="sm" disabled={(purMeta?.page ?? page) >= (purMeta?.totalPages ?? 1)} onClick={() => setPage(p => p + 1)}>
+              {t("التالي", "Next")}
+            </Btn>
+          </div>
+        </div>
+      )}
 
       {/* Real Attachment viewer modal for purchases (CORRECTION-05) */}
       {purAttachModal && (
@@ -1048,7 +1109,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
 
       {/* T3.3 / PUR-04: Add Supplier Modal for Accountant */}
       {showAddSupplier && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowAddSupplier(false)} dir="rtl">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowAddSupplier(false)} dir={dir}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-gray-800">{t("إضافة مورد جديد", "Add New Supplier")}</h3>
@@ -1063,7 +1124,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                 <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفئة", "Category")}</label>
                 <input value={supplierForm.category} onChange={e => setSupplierForm(v => ({ ...v, category: e.target.value }))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-purple-300" />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المسؤول", "Contact Person")}</label>
                   <input value={supplierForm.contactName} onChange={e => setSupplierForm(v => ({ ...v, contactName: e.target.value }))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-purple-300" />
@@ -1111,6 +1172,7 @@ function PurchaseAttachmentModal({
 }) {
   const { t, dir } = useLang();
   const { data: opDetail } = useOperation(modal.recId);
+  const verifyMut = useVerifyAttachment();
   const liveAttachments: OperationAttachment[] = Array.isArray((opDetail as any)?.purchases?.attachments) && (opDetail as any).purchases.attachments.length > 0
     ? ((opDetail as any).purchases.attachments as OperationAttachment[])
     : Array.isArray((opDetail as any)?.attachments) && (opDetail as any).attachments.length > 0
@@ -1188,7 +1250,10 @@ function PurchaseAttachmentModal({
               <Download size={12} /> {t("تحميل", "Download")}
             </a>
           )}
-          <Btn size="sm" variant="success" disabled={!current} onClick={() => {
+          <Btn size="sm" variant="success" disabled={!current || verifyMut.isPending} onClick={async () => {
+            if (current?.id) {
+              await verifyMut.mutateAsync(current.id);
+            }
             onVerify(safeIdx);
             onClose();
           }}><CheckSquare size={12} /> {t("تم التحقق من المرفق", "Attachment Verified")}</Btn>

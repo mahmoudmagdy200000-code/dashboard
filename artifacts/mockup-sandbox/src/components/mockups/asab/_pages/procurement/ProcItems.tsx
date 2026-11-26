@@ -19,7 +19,7 @@ import { Badge } from "../../components/Badge";
 
 export function ProcItems({ }: PageProps) {
   const { data: apiItems } = useProcurementItemsPlatform();
-  const { t, dir } = useLang();
+  const { t, lang, dir } = useLang();
   const { data: catLookup } = useLookup("supplier-categories");
   const exportItemsMut = useExportProcurementItems();
   const importItemsMut = useImportProcurementItems();
@@ -104,7 +104,7 @@ export function ProcItems({ }: PageProps) {
                   <td className="px-4 py-3 text-center">{item.category ? <Badge className="bg-purple-50 text-purple-700 text-[10px]">{item.category}</Badge> : <span className="text-gray-300">—</span>}</td>
                   <td className="px-4 py-3 text-center text-gray-600">{item.unit ?? "—"}</td>
                   <td className="px-4 py-3 text-center">{item.supplierCount != null ? <Badge className="bg-blue-50 text-blue-700 text-[10px]">{item.supplierCount}</Badge> : <span className="text-gray-300">—</span>}</td>
-                  <td className="px-4 py-3 text-center font-mono font-bold text-gray-800">{p != null ? `${fmtAmt(p)} ${t("ر.س", "SAR")}` : "—"}</td>
+                  <td className="px-4 py-3 text-center font-mono font-bold text-gray-800">{p != null ? `${fmtAmt(p, lang)} ${t("ر.س", "SAR")}` : "—"}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1.5">
                       <button onClick={() => setHistoryId(item.id)} title={t("تاريخ الأسعار", "Price history")} className="text-blue-600 hover:text-blue-800"><TrendingUp size={14} /></button>
@@ -156,7 +156,7 @@ export function ProcItems({ }: PageProps) {
                 <thead className="text-gray-500"><tr><th className="text-right py-1.5">{t("المورد", "Supplier")}</th><th className="text-center py-1.5">{t("السعر", "Price")}</th><th className="text-center py-1.5">{t("التاريخ", "Date")}</th></tr></thead>
                 <tbody className="divide-y divide-gray-50">
                   {((priceHistory as any[]) ?? []).map((r: any, ri: number) => (
-                    <tr key={ri}><td className="py-1.5 font-medium text-gray-700">{r.supplierName ?? r.supplierId ?? "—"}</td><td className="py-1.5 text-center font-mono">{r.priceHalalas != null ? `${fmtAmt(r.priceHalalas / 100)} ${t("ر.س", "SAR")}` : "—"}</td><td className="py-1.5 text-center text-gray-400">{String(r.recordedAt ?? "").slice(0, 10)}</td></tr>
+                    <tr key={ri}><td className="py-1.5 font-medium text-gray-700">{r.supplierName ?? r.supplierId ?? "—"}</td><td className="py-1.5 text-center font-mono">{r.priceHalalas != null ? `${fmtAmt(r.priceHalalas / 100, lang)} ${t("ر.س", "SAR")}` : "—"}</td><td className="py-1.5 text-center text-gray-400">{String(r.recordedAt ?? "").slice(0, 10)}</td></tr>
                   ))}
                 </tbody>
               </table>

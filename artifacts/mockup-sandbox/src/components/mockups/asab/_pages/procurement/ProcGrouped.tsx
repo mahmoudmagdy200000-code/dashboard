@@ -12,7 +12,7 @@ import { Badge } from "../../components/Badge";
 import { Btn } from "../../components/Btn";
 
 export function ProcGrouped({ navigate }: PageProps) {
-  const { t, dir } = useLang();
+  const { t, lang, dir } = useLang();
   const [viewMode, setViewMode] = useState<"supplier" | "city" | "item">("item");
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [assignSupplier, setAssignSupplier] = useState<Record<string, string>>({});
@@ -56,19 +56,19 @@ export function ProcGrouped({ navigate }: PageProps) {
   const cityGroups = (((grouped as any)?.cities ?? []) as any[]);
   const itemCards = (((grouped as any)?.items ?? []) as any[]);   // T11.7 by=item
   const supplierOpts = ((suppliersRaw?.data ?? []) as any[]);
-  const fmtOrDash = (n: number | null | undefined) => n == null ? "—" : fmtAmt(n);
+  const fmtOrDash = (n: number | null | undefined) => n == null ? "—" : fmtAmt(n, lang);
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="space-y-5" dir={dir}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("الطلبات المجمعة", "Consolidated Orders")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{t("راجع الكميات المجمعة ونبّه إن تجاوزت طاقة المورد", "Review consolidated quantities and flag if supplier capacity is exceeded")}</p>
         </div>
-        <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
+        <div className="flex bg-gray-100 rounded-lg p-1 gap-1 self-start sm:self-auto shrink-0">
           {(["item", "supplier", "city"] as const).map(m => (
             <button key={m} onClick={() => { setViewMode(m); setExpandedGroup(null); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${viewMode === m ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${viewMode === m ? "bg-white text-gray-800 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
               {m === "item" ? t("بالصنف", "By Item") : m === "supplier" ? t("بالمورد", "By Supplier") : t("بالمدينة", "By City")}
             </button>
           ))}
@@ -148,7 +148,7 @@ export function ProcGrouped({ navigate }: PageProps) {
                       ) : (
                         <span className="text-[11px] text-gray-400">{t("لا يوجد مورد بسعر معلن — «—»", "No priced supplier")}</span>
                       )}
-                      <div className="mr-auto flex items-center gap-2 flex-wrap">
+                      <div className="ms-auto flex items-center gap-2 flex-wrap">
                         <input
                           type="date"
                           aria-label={t("موعد التسليم المتوقع", "Expected delivery date")}
@@ -176,9 +176,9 @@ export function ProcGrouped({ navigate }: PageProps) {
             const hasOverCapacity = g.capacityExceeded === true;
             return (
               <div key={key} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-4 flex items-center gap-4 cursor-pointer hover:bg-gray-50"
+                <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 cursor-pointer hover:bg-gray-50"
                   onClick={() => setExpandedGroup(expandedGroup === key ? null : key)}>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-sm text-gray-800">{g.supplierName ?? t("مورد", "Supplier")}</p>
                       {g.urgentCount > 0 && <Badge className="bg-amber-50 text-amber-700 text-[10px]">{g.urgentCount} {t("عاجل", "urgent")}</Badge>}
@@ -186,7 +186,7 @@ export function ProcGrouped({ navigate }: PageProps) {
                     </div>
                     <p className="text-xs text-gray-400 mt-1">{g.branchesCount ?? 0} {t("فرع", "branches")} · {g.itemsCount ?? g.items?.length ?? 0} {t("أصناف", "items")} · {(g.cities ?? []).join("، ") || "—"}</p>
                   </div>
-                  <span className="font-mono font-bold text-gray-800">{fmtAmt(g.totalAmount ?? 0)} {t("ر.س", "SAR")}</span>
+                  <span className="font-mono font-bold text-gray-800">{fmtAmt(g.totalAmount ?? 0, lang)} {t("ر.س", "SAR")}</span>
                   <div className="flex gap-1.5 items-center flex-wrap" onClick={e => e.stopPropagation()}>
                     <input
                       type="date"
@@ -201,10 +201,10 @@ export function ProcGrouped({ navigate }: PageProps) {
                   {expandedGroup === key ? <ChevronUp size={13} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={13} className="text-gray-400 flex-shrink-0" />}
                 </div>
                 {expandedGroup === key && (
-                  <div className="border-t border-gray-100 p-4 bg-gray-50/50">
-                    <table className="w-full text-xs" dir="rtl">
+                  <div className="border-t border-gray-100 p-4 bg-gray-50/50 overflow-x-auto">
+                    <table className="w-full min-w-[540px] text-xs" dir={dir}>
                       <thead><tr className="text-gray-500">
-                        <th className="text-right py-1">{t("الصنف", "Item")}</th>
+                        <th className="text-start py-1">{t("الصنف", "Item")}</th>
                         <th className="text-center py-1">{t("الوحدة", "Unit")}</th>
                         <th className="text-center py-1">{t("الكمية الكلية", "Total Qty")}</th>
                         <th className="text-center py-1 text-amber-700">{t("الطاقة القصوى", "Max Capacity")}</th>
@@ -234,7 +234,7 @@ export function ProcGrouped({ navigate }: PageProps) {
                                   </div>
                                 )}
                               </td>
-                              <td className="py-2 text-center font-mono text-blue-700">{fmtAmt(it.unitPrice ?? 0)} {t("ر.س", "SAR")}</td>
+                              <td className="py-2 text-center font-mono text-blue-700">{fmtAmt(it.unitPrice ?? 0, lang)} {t("ر.س", "SAR")}</td>
                             </tr>
                           );
                         })}
@@ -263,12 +263,12 @@ export function ProcGrouped({ navigate }: PageProps) {
                 <Badge className="bg-amber-100 text-amber-700 text-[10px]">{unassigned.length}</Badge>
               </div>
               {unassigned.map((o: any) => (
-                <div key={o.id} className="px-5 py-3 flex items-center gap-3 border-b border-gray-50 last:border-0">
-                  <div className="flex-1">
+                <div key={o.id} className="px-5 py-3 flex flex-col sm:flex-row sm:items-center gap-3 border-b border-gray-50 last:border-0">
+                  <div className="flex-1 min-w-0">
                     <span className="font-mono text-xs text-purple-600">{o.orderNumber}</span>
-                    <span className="text-xs text-gray-500 mr-2">{o.branchName ?? "—"}</span>
+                    <span className="text-xs text-gray-500 ms-2">{o.branchName ?? "—"}</span>
                   </div>
-                  <span className="font-mono font-bold text-gray-700 text-sm">{fmtAmt(o.totalAmount ?? 0)} {t("ر.س", "SAR")}</span>
+                  <span className="font-mono font-bold text-gray-700 text-sm">{fmtAmt(o.totalAmount ?? 0, lang)} {t("ر.س", "SAR")}</span>
                   <select value={assignSupplier[o.id] ?? ""} onChange={e => setAssignSupplier(m => ({ ...m, [o.id]: e.target.value }))}
                     className="text-xs border border-gray-200 rounded-lg px-2 py-1.5">
                     <option value="">{t("اختر المورد", "Select supplier")}</option>
@@ -289,20 +289,20 @@ export function ProcGrouped({ navigate }: PageProps) {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
-          {cityGroups.length === 0 && <div className="col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-10 text-center text-sm text-gray-400">{t("لا توجد طلبات جاهزة للتجميع", "No orders ready to consolidate")}</div>}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {cityGroups.length === 0 && <div className="col-span-full bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-10 text-center text-sm text-gray-400">{t("لا توجد طلبات جاهزة للتجميع", "No orders ready to consolidate")}</div>}
           {cityGroups.map((cg, i) => (
             <div key={i} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">🏙</div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <p className="font-bold text-gray-800">{cg.city}</p>
+                    <p className="font-bold text-gray-800">{cg.city === "غير محدد" ? t("غير محدد", "Unspecified") : cg.city}</p>
                     {cg.urgentCount > 0 && <Badge className="bg-red-50 text-red-700 text-[10px]">{cg.urgentCount} {t("عاجل", "Urgent")}</Badge>}
                   </div>
                   <p className="text-xs text-gray-400">{cg.ordersCount} {t("طلب", "orders")} · {(cg.suppliers ?? []).length} {t("موردون", "suppliers")}</p>
                 </div>
-                <span className="font-mono font-bold text-purple-700">{fmtAmt(cg.totalAmount ?? 0)} {t("ر.س", "SAR")}</span>
+                <span className="font-mono font-bold text-purple-700">{fmtAmt(cg.totalAmount ?? 0, lang)} {t("ر.س", "SAR")}</span>
               </div>
               <div className="space-y-1 text-xs text-gray-600">
                 {(cg.suppliers ?? []).map((s: any, j: number) => (

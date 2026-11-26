@@ -6,6 +6,7 @@ import {
 import { toast } from "sonner";
 import { api, downloadBlob, withIdempotencyKey } from "../client";
 import { getErrorMessage, ApiError } from "../errors";
+import { getSiteLang } from "../../auth/siteLang";
 import { queryKeys, type ProcurementOrdersFilter } from "./keys";
 import type { PurchaseOrderSendResult } from "../types/platform";
 // The catalog surface follows the signed-in account: a platform procurement
@@ -493,9 +494,10 @@ export function useCreateSupplier() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.procurementSuppliers });
       qc.invalidateQueries({ queryKey: queryKeys.platformProcurementSuppliers });
-      toast.success("تم إضافة المورد");
+      qc.invalidateQueries({ queryKey: ["suppliers"] });
+      toast.success(getSiteLang() === "en" ? "Supplier added" : "تم إضافة المورد");
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e) => toast.error(getErrorMessage(e, getSiteLang())),
   });
 }
 
