@@ -509,6 +509,11 @@ export interface PurchaseReturn {
   totalReturnAmountHalalas: number;
   refundAmountHalalas: number;
   itemCount: number;
+  financialStatus?: "pending_review" | "reviewed_by_accountant" | "approved_by_head" | string;
+  reviewedByAccountantAt?: string | null;
+  approvedByHeadAt?: string | null;
+  financialNotes?: string | null;
+  handedOverAt?: string | null;
 }
 
 /** Enums (T06 §7) — fetch once at boot; never hardcode Arabic labels. */

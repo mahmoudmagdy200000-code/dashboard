@@ -210,7 +210,7 @@ export function useSuppliers(filter: SuppliersFilter = {}) {
   });
 }
 
-// ─── Returns («المرتجعات», T06 §6) — read-only ───────────────────────────────
+// ─── Returns («المرتجعات», T06 §6) ──────────────────────────────────────────
 export function usePurchaseReturns(filter: PurchaseReturnsFilter = {}) {
   return useQuery({
     queryKey: queryKeys.purchaseReturns(filter),
@@ -220,6 +220,60 @@ export function usePurchaseReturns(filter: PurchaseReturnsFilter = {}) {
       >("/company/me/purchases/returns", { params: cleanFilter(filter) });
       const d = res.data;
       return Array.isArray(d) ? d : (d.data ?? []);
+    },
+  });
+}
+
+/** T3.5: Accountant reviews purchase return value */
+export function useReviewPurchaseReturn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, notes }: { id: string; notes?: string }) => {
+      const res = await api.post(`/company/me/purchases/returns/${id}/review`, { notes });
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["purchases", "returns"] });
+      toast.success("تمت المراجعة المالية للمرتجع بنجاح");
+    },
+    onError: (err) => {
+      toast.error(getErrorMessage(err, "ar") || "فشلت المراجعة المالية للمرتجع");
+    },
+  });
+}
+
+/** T3.5: Head accountant final approves purchase return */
+export function useFinalApprovePurchaseReturn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, notes }: { id: string; notes?: string }) => {
+      const res = await api.post(`/company/me/purchases/returns/${id}/final-approve`, { notes });
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["purchases", "returns"] });
+      toast.success("تم الاعتماد المالي النهائي للمرتجع بنجاح");
+    },
+    onError: (err) => {
+      toast.error(getErrorMessage(err, "ar") || "فشل الاعتماد المالي للمرتجع");
+    },
+  });
+}
+
+/** T3.5: Head accountant returns for review */
+export function useReturnForReviewPurchaseReturn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, notes }: { id: string; notes?: string }) => {
+      const res = await api.post(`/company/me/purchases/returns/${id}/return-for-review`, { notes });
+      return res.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["purchases", "returns"] });
+      toast.info("تمت إعادة المرتجع للمراجعة");
+    },
+    onError: (err) => {
+      toast.error(getErrorMessage(err, "ar") || "فشلت إعادة المرتجع للمراجعة");
     },
   });
 }

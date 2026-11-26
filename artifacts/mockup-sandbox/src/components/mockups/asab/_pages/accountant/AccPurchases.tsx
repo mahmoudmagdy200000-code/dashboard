@@ -24,6 +24,8 @@ import {
   CheckSquare,
   ShoppingCart,
   Truck,
+  Plus,
+  XCircle,
 } from "lucide-react";
 import {
   useOperation,
@@ -37,6 +39,10 @@ import {
   useExportAccountantPurchases,
   useSuppliers,
   usePurchaseReturns,
+  useCreateSupplier,
+  useReviewPurchaseReturn,
+  useFinalApprovePurchaseReturn,
+  useReturnForReviewPurchaseReturn,
 } from "../../../../../api/queries";
 import { queryKeys } from "../../../../../api/queries/keys";
 import type { OperationAttachment } from "../../../../../api/types/company";
@@ -287,6 +293,13 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
   const { data: purchasesList } = usePurchasesList({ pageSize: 100 });
   const { data: suppliersLive = [] } = useSuppliers();
   const { data: returnsLive = [] } = usePurchaseReturns();
+  const createSupplierMut = useCreateSupplier();
+  const reviewReturnMut = useReviewPurchaseReturn();
+  const finalApproveReturnMut = useFinalApprovePurchaseReturn();
+  const returnForReviewMut = useReturnForReviewPurchaseReturn();
+
+  const [showAddSupplier, setShowAddSupplier] = useState(false);
+  const [supplierForm, setSupplierForm] = useState({ name: "", category: "", contactName: "", phone: "", email: "" });
   const purSummary = purchasesList?.meta?.summary?.purchases;
   const ALL = "الكل";
   const [viewMode, setViewMode] = useState<"supplier" | "branch" | "suppliers" | "returns">("supplier");
@@ -751,7 +764,12 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
         ? (
           /* ── SUPPLIERS DIRECTORY (T06 §5) — real GET /company/me/suppliers ── */
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-            <h3 className="font-bold text-gray-800 text-sm mb-4">{t("الموردون المعتمدون", "Approved Suppliers")} ({suppliersLive.length})</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-800 text-sm">{t("الموردون المعتمدون", "Approved Suppliers")} ({suppliersLive.length})</h3>
+              <Btn variant="primary" size="sm" onClick={() => setShowAddSupplier(true)}>
+                <Plus size={13} /> {t("إضافة مورد", "Add Supplier")}
+              </Btn>
+            </div>
             {suppliersLive.length === 0
               ? <EmptyState icon="📇" title={t("لا يوجد موردون", "No Suppliers")} desc={t("لم تُرجع الخدمة أي موردين", "No suppliers returned")} />
               : (
@@ -782,24 +800,72 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
           ? (
             /* ── RETURNS (T06 §6) — real read-only GET /company/me/purchases/returns ── */
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60"><h3 className="font-bold text-gray-900 text-sm">{t("المرتجعات", "Returns")} <span className="text-[10px] text-gray-400 font-normal">({t("عرض فقط", "read-only")})</span></h3></div>
+              <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60"><h3 className="font-bold text-gray-900 text-sm">{t("المرتجعات", "Returns")}</h3></div>
               {returnsLive.length === 0
                 ? <div className="py-8"><EmptyState icon="↩️" title={t("لا توجد مرتجعات", "No Returns")} desc={t("لم تُرجع الخدمة أي مرتجعات", "No returns returned")} /></div>
                 : (
                   <div>
-                    <div className="grid grid-cols-6 px-4 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-500">
-                      <span>{t("رقم المرتجع", "Return #")}</span><span>{t("الأمر", "Order")}</span><span>{t("الفرع", "Branch")}</span><span className="text-center">{t("التاريخ", "Date")}</span><span className="text-center">{t("الحالة", "Status")}</span><span className="text-left">{t("المبلغ", "Amount")}</span>
+                    <div className="grid grid-cols-7 px-4 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-500">
+                      <span>{t("رقم المرتجع", "Return #")}</span><span>{t("الأمر", "Order")}</span><span>{t("الفرع", "Branch")}</span><span className="text-center">{t("التاريخ", "Date")}</span><span className="text-center">{t("الحالة", "Status")}</span><span className="text-center">{t("المراجعة المالية", "Financial Review")}</span><span className="text-left">{t("المبلغ / الإجراءات", "Amount / Actions")}</span>
                     </div>
-                    {returnsLive.map(r => (
-                      <div key={r.id} className="grid grid-cols-6 px-4 py-3 border-b border-gray-50 last:border-0 text-xs items-center">
-                        <span className="font-mono font-semibold text-gray-700">{r.returnNumber}</span>
-                        <span className="text-gray-500">{r.orderNumber ?? "—"}</span>
-                        <span className="text-gray-600 truncate">{r.branchName ?? "—"}</span>
-                        <span className="text-center text-gray-500">{r.returnDate}</span>
-                        <span className="text-center"><Badge className="bg-gray-100 text-gray-600 border border-gray-200 text-[10px]">{r.statusLabelAr}</Badge></span>
-                        <span className="text-left font-mono font-bold text-gray-800">{fmtAmt(Math.round(r.totalReturnAmountHalalas / 100))} {t("ر.س", "SAR")}</span>
-                      </div>
-                    ))}
+                    {returnsLive.map(r => {
+                      const finStatus = r.financialStatus ?? "pending_review";
+                      const isReviewed = finStatus === "reviewed_by_accountant";
+                      const isApproved = finStatus === "approved_by_head";
+                      return (
+                        <div key={r.id} className="grid grid-cols-7 px-4 py-3 border-b border-gray-50 last:border-0 text-xs items-center">
+                          <span className="font-mono font-semibold text-gray-700">{r.returnNumber}</span>
+                          <span className="text-gray-500">{r.orderNumber ?? "—"}</span>
+                          <span className="text-gray-600 truncate">{r.branchName ?? "—"}</span>
+                          <span className="text-center text-gray-500">{r.returnDate}</span>
+                          <span className="text-center"><Badge className="bg-gray-100 text-gray-600 border border-gray-200 text-[10px]">{r.statusLabelAr}</Badge></span>
+                          <span className="text-center">
+                            {isApproved ? (
+                              <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px]">✓ {t("معتمد ماليًا", "Approved")}</Badge>
+                            ) : isReviewed ? (
+                              <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px]">✓ {t("تمت المراجعة", "Reviewed")}</Badge>
+                            ) : (
+                              <Badge className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px]">⏳ {t("بانتظار المراجعة", "Pending Review")}</Badge>
+                            )}
+                          </span>
+                          <div className="text-left flex flex-col items-end gap-1">
+                            <span className="font-mono font-bold text-gray-800">{fmtAmt(Math.round(r.totalReturnAmountHalalas / 100))} {t("ر.س", "SAR")}</span>
+                            <div className="flex gap-1 flex-wrap justify-end">
+                              {!isReviewed && !isApproved && (
+                                <button
+                                  type="button"
+                                  onClick={() => reviewReturnMut.mutate({ id: r.id })}
+                                  disabled={reviewReturnMut.isPending}
+                                  className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100"
+                                >
+                                  {t("مراجعة", "Review")}
+                                </button>
+                              )}
+                              {isReviewed && !isApproved && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => finalApproveReturnMut.mutate({ id: r.id })}
+                                    disabled={finalApproveReturnMut.isPending}
+                                    className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                                  >
+                                    {t("اعتماد نهائي", "Approve")}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => returnForReviewMut.mutate({ id: r.id })}
+                                    disabled={returnForReviewMut.isPending}
+                                    className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
+                                  >
+                                    {t("إرجاع", "Return")}
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
             </div>
@@ -975,6 +1041,55 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                   <ThumbsDown size={12} /> {t("تأكيد الرفض", "Confirm Rejection")}
                 </Btn>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* T3.3 / PUR-04: Add Supplier Modal for Accountant */}
+      {showAddSupplier && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowAddSupplier(false)} dir="rtl">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-800">{t("إضافة مورد جديد", "Add New Supplier")}</h3>
+              <button type="button" onClick={() => setShowAddSupplier(false)} className="text-gray-400 hover:text-gray-600"><XCircle size={18} /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("اسم المورد", "Supplier Name")} *</label>
+                <input value={supplierForm.name} onChange={e => setSupplierForm(v => ({ ...v, name: e.target.value }))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-purple-300" />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفئة", "Category")}</label>
+                <input value={supplierForm.category} onChange={e => setSupplierForm(v => ({ ...v, category: e.target.value }))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-purple-300" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("المسؤول", "Contact Person")}</label>
+                  <input value={supplierForm.contactName} onChange={e => setSupplierForm(v => ({ ...v, contactName: e.target.value }))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-purple-300" />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الهاتف", "Phone")}</label>
+                  <input value={supplierForm.phone} onChange={e => setSupplierForm(v => ({ ...v, phone: e.target.value }))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-purple-300" />
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("البريد الإلكتروني", "Email")}</label>
+                <input value={supplierForm.email} onChange={e => setSupplierForm(v => ({ ...v, email: e.target.value }))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-purple-300" />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end mt-5">
+              <Btn onClick={() => setShowAddSupplier(false)}>{t("إلغاء", "Cancel")}</Btn>
+              <Btn variant="primary" disabled={!supplierForm.name.trim() || createSupplierMut.isPending} onClick={() => {
+                createSupplierMut.mutate(supplierForm, {
+                  onSuccess: () => {
+                    setShowAddSupplier(false);
+                    setSupplierForm({ name: "", category: "", contactName: "", phone: "", email: "" });
+                  }
+                });
+              }}>
+                {createSupplierMut.isPending ? t("جارٍ الحفظ...", "Saving...") : t("إضافة المورد", "Add Supplier")}
+              </Btn>
             </div>
           </div>
         </div>
