@@ -3260,3 +3260,31 @@ Analysis of 4 real-world Android phone screenshots from `shboard-staging.vercel.
 ### 15.7 Work Evidence Integrity Closure (2026-11-02)
 
 This section supersedes the aggregate acceptance/provenance claims in sections 15.4–15.6. The production UI source is unchanged from 8ec147c9. Actual final evidence is 28 targeted full-depth cases plus 656 identity/error smoke cases, 684 unique combinations. The remaining historical layout measurements are retained as partial evidence, not freshly certified full-depth results. Original sales/expense fixture failures and six internal-label reruns are preserved in raw logs. Shared real guards, strict measured-only reconciliation, six negative scenarios and a positive control pass. See evidence/mobile-tablet-full-depth-20261102/FINAL_EVIDENCE_CLOSURE_HANDOFF.md for scope, commands, logs and limitations. Staging, live Backend and physical devices were not tested. No Push/PR/Merge/Deploy/Migrations.
+
+
+---
+
+## 16. ASSAB PURCHASING & SUPPLIER MODULE REMEDIATION & DELIVERY (STAGES 0–6, 2026-11-26)
+
+> **Status:** `READY FOR INDEPENDENT REVIEW` (Stage 6 `T6.1`–`T6.2` prepared; Backend `main` @ `81a34fc40cb9e7068f6714cdaa4a2d92f987c952`, Dashboard `main` @ `f10bc46e3755c781408f883e3bc1b122ef1c933f`, and Production remain untouched pending Codex review and Mahmoud approval).
+
+### 16.1 Merged Stage Baselines Across All Three Repositories (Stages 0–5)
+- **Stage 0 Accepted & Merged (2026-11-25, `AUDIT_STAGE_0_CODEX_R4.md` PASS):** Backend `Assab#42` → `943067abecdefaa0c05e1f7a78bfb2490182ab54`; Dashboard `dashboard#42` → `330442700f312b3370ba338559bdde9fb4791b21`; Flutter `AssabAPP#36` → `1dbf63e75167db48c7df6b1c4f3944a81976adef`.
+- **Stage 1 Accepted & Merged (2026-11-26):** Backend `Assab#43` → `6cad87ce39d5d11fb36218a888e2882976d9faff`; Dashboard `dashboard#43` → `df78c20db4608c703969a3c51bcfec63e56d892c`; Flutter `AssabAPP#37` → `3e54678d1015812e10d9d90babb5cb77efd232c3`.
+- **Stage 2 Accepted & Merged (2026-11-26):** Backend `Assab#44` → `405f0af79d21e7a48336f67cfb9590c7fbc54565`; Dashboard `dashboard#44` → `7a05b9da4e40192ec1ed1a65c3c5896c3f0e654b`; Flutter `AssabAPP#38` → `f5b96e7fdd962781fd471885baaa43be2ba30f9b`.
+- **Stage 3 Accepted & Merged (2026-11-26):** Backend `Assab#45` → `a3d86ca7cfe9300d70dfdfbb40ff81157e74df3b`; Dashboard `dashboard#45` → `6b65b0696ebc2d1af4e4ae1909d18fd2c35e9642`; Flutter `AssabAPP#39` → `c3b879b1ce5118a251a0e837fc83227fc27fea67`.
+- **Stage 4 Accepted & Merged (2026-11-26):** Backend `Assab#46` → `35e01618099fdb8b367444acfe0a57637b600935`; Dashboard `dashboard#46` → `154912cbfe8011e8e488bcd0e4173d4ea4b580b1` (Staging Vercel `3dXMEjepLJk9ssAEjf62BrkezAkv`); Flutter `AssabAPP#40` → `afe6bc337fd9d96a7228017db6d2daf2dfde1dc2`.
+- **Stage 5 Accepted & Merged (2026-11-26):** Backend `Assab#47` → `b23fc594ae812a3f46783582907161b8ad63af1a` (CI runs `45884994634`, `45884994560`, `45884994763` all `success`); Dashboard unchanged (0 modified files, remains at `154912cbfe8011e8e488bcd0e4173d4ea4b580b1`); Flutter `AssabAPP#41` → `6c75f0a7e8db1cb22fa8afbfeae2316c1c1d6f8d`.
+
+### 16.2 Purchase Findings & Acceptance Summary (`PUR-F01`–`PUR-F24`, `PUR-E2E-01`–`20`, `REG-DEC-01`–`14`)
+- **24 Engineering Findings (`PUR-F01`–`PUR-F24`):** All **24/24** findings remediated and verified across Stages 0–5 (`FIXED_AND_VERIFIED` / `Accepted & Merged` across `Assab`, `dashboard`, and `AssabAPP`).
+- **4 Conflicts & 5 Additional Requirements & 4 Mahmoud Decisions (`DEC-04`–`07`):** `CONFLICT-01`–`04` and `REQ-ADD-01`–`05` resolved (`CONFLICT-04` unified across `T2.3`, `T3.2`, `T3.5`); `DEC-04`–`07` implemented with `DEC-OPEN-01` preserved fail-closed (`403 APPROVAL_ROLE_PENDING` on `direct_supplier` variances).
+- **14 Regression Gates (`REG-DEC-01`–`14`):** All **14/14 PASS** (Stage 5 Backend Purchase suites **171/171**, `1463` assertions; Oracle MySQL `8.4.11` **14/14**, `563` assertions + D4 **7/7**, `156` assertions).
+- **20 `PUR-E2E` Scenarios (`03-ACCEPTANCE.csv`):** **19 `PASS` · 0 `FAIL` · 1 `BLOCKED`** (`PUR-E2E-12` procurement branch `PASS`, `direct_supplier` variance approval `BLOCKED` on `DEC-OPEN-01`).
+- **Stage 5 Live Defects Closed (`S5-DEF-001`–`S5-DEF-012`):** All 12 live defects remediated and verified on physical `SM-A528B` + linked Backend (`18095`) + Dashboard (`3095`) + targeted unit/feature suites (`Backend 2/2`, `Dashboard 44/44 & 5/5`, `Flutter 22/22`).
+
+### 16.3 Stage 6 `T6.1`–`T6.2` Reconciliation, Production DB Gate & Remaining Reservations
+- **Backend `main`-Only Commits Reconciliation (`wt_purchase_stage6_reconcile_backend` / `feat/purchase-stage6-reconcile-backend`):** Reconciled `0648e0c9`, `1f68f4cf` (PR #29) and `777a903b`, `81a34fc4` (PR #32) atop `b23fc594ae812a3f46783582907161b8ad63af1a` without losing Wave 1–3 or Stage 0–5 fixes: `ExpenseKpiService.php` already matched, `ExpenseController::custodyBalance()` already superseded safely via `ExpenseActorContext`, and `HeadMetricsService::brandPerformance()`, `PipelineService::aggregation()`, and `QuickCashExpenseService` (`is_draft` `FILTER_VALIDATE_BOOLEAN`) reconciled cleanly.
+- **Unresolved Business Decisions:** `DEC-OPEN-01` (High — `direct_supplier` variance approver role, blocks `PUR-E2E-12` direct branch), `DEC-OPEN-02` (Medium — closed `STATUS_APPROVED` period posting target for `DEC-07`), `DEC-OPEN-03` (Low — half-halala rounding rule `Half-up` vs `Half-even`).
+- **Production DB Migration Verification Gate:** `BLOCKED / NOT VERIFIED` from local workspace (no Production DB host/credentials/SSH access available locally; zero migrations executed, zero production data touched).
+- **Ops & Canonical KB Gates:** `FEATURE_ASAB_SUPPLIER_PORTAL=true`, `FRONTEND_URL`, and `CORS_ALLOWED_ORIGINS` remain required on production backend env (`ops-prod-env-checklist.md`); canonical KB V1.0 updates and final mirror sync (`ui-ux/ASSAB_DASHBOARD_MASTER_FINDINGS.md`) await independent Codex review and Mahmoud approval.
