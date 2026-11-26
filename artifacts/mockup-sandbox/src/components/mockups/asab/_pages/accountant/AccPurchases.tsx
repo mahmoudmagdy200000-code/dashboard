@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
   AlertTriangle,
@@ -30,11 +31,15 @@ import {
   usePatchPurchaseLine,
   useAccountantPurchases,
   useBulkDocumentPurchases,
+  useApproveOperation,
+  useBulkApprove,
   useExportOperations,
   useExportAccountantPurchases,
   useSuppliers,
   usePurchaseReturns,
 } from "../../../../../api/queries";
+import { queryKeys } from "../../../../../api/queries/keys";
+import type { OperationAttachment } from "../../../../../api/types/company";
 import { Card } from "../../components/Card";
 import { Btn } from "../../components/Btn";
 import { Badge } from "../../components/Badge";
@@ -44,6 +49,10 @@ import { useLang } from "../../_shared/LangContext";
 import { fmtAmt, isImageFile, resolveAssetUrl, opDetailPage } from "../../_shared/formatters";
 import { MATCH_CFG, STATUS_CFG, EN_STATUS_CFG } from "../../_shared/displayConfig";
 import { BRANCHES } from "../../_shared/filterOps";
+import {
+  filterApprovablePurchaseIds,
+  hasUnavailablePurchaseMatch,
+} from "../../purchaseApprovalGuards";
 import type { PageProps, Op, Filters, PageId, OpStatus } from "../../_shared/types";
 
 // ── Rich purchase records for Accountant module ─────────────────────────────
@@ -57,13 +66,13 @@ export const PURCHASE_DETAIL = { default: PUR_RECORDS[0] ? { supplier: PUR_RECOR
 
 // ── Shared purchase reconciliation table (used in both AccPurchases and ProcNewOrders)
 export function PurItemsTable({ items, verifiedMap, onToggleVerify }: { items: PurItem[]; verifiedMap?: Record<string, boolean>; onToggleVerify?: (key: string) => void }) {
-  const { t } = useLang();
+  const { t, dir } = useLang();
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[750px] border border-gray-100 rounded-xl overflow-hidden text-xs" dir="rtl">
+      <table className="w-full min-w-[750px] border border-gray-100 rounded-xl overflow-hidden text-xs" dir={dir}>
       <thead className="bg-gray-100">
         <tr>
-          <th className="px-3 py-2 text-right">{t("الصنف", "Item")}</th>
+          <th className="px-3 py-2 text-start">{t("الصنف", "Item")}</th>
           <th className="px-3 py-2 text-center">{t("الوحدة", "Unit")}</th>
           <th className="px-3 py-2 text-center">{t("سعر الوحدة", "Unit Price")}</th>
           <th className="px-3 py-2 text-center bg-sky-50/80 text-sky-700">{t("سعر تاريخي", "Hist. Price")}</th>
@@ -141,6 +150,7 @@ export function PurItemsTable({ items, verifiedMap, onToggleVerify }: { items: P
 export function PurchaseLinesPanel({ rec, t, onAttach, demoRender }: {
   rec: any; t: (ar: string, en: string) => string; onAttach: () => void; demoRender: () => ReactNode;
 }) {
+  const { dir } = useLang();
   const patchMut = usePatchPurchaseLine();
   // Lines from the grouped /company/me/purchases endpoint carry lastArrivalPrice
   // + documented; only fetch the op detail when the card didn't provide them.
@@ -186,15 +196,15 @@ export function PurchaseLinesPanel({ rec, t, onAttach, demoRender }: {
           <RotateCcw size={13} className="flex-shrink-0" /> {t("نسخة معدّلة من عملية مرفوضة سابقة.", "Revised copy of a previously rejected operation.")}
         </div>
       )}
-      <div className="flex items-center gap-4 mt-3 p-3 bg-white rounded-xl border border-blue-100 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-3 p-3 bg-white rounded-xl border border-blue-100">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold text-gray-700">{t("المورد:", "Supplier:")} <span className="text-blue-700">{supplierName ?? "—"}</span></p>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs font-bold text-gray-700 break-words">{t("المورد:", "Supplier:")} <span className="text-blue-700">{supplierName ?? "—"}</span></p>
+          <p className="text-xs text-gray-500 mt-0.5 break-words">
             {rec.invNum ? <>{t("رقم الفاتورة:", "Invoice #:")} <span className="font-mono font-semibold text-purple-600">{rec.invNum}</span> · </> : null}
             {t("الفرع:", "Branch:")} {rec.branch} · {t("إجمالي الفاتورة:", "Invoice Total:")} <span className="font-bold text-gray-700">{fmtAmt(rec.amount)} {t("ر.س", "SAR")}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button onClick={onAttach} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-semibold transition-all">
             <Paperclip size={11} /> {t("المرفقات", "Attachments")}{rec.attachmentsCount ? ` (${rec.attachmentsCount})` : ""}
           </button>
@@ -204,9 +214,9 @@ export function PurchaseLinesPanel({ rec, t, onAttach, demoRender }: {
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full border border-gray-100 rounded-xl overflow-hidden text-xs" dir="rtl">
+        <table className="w-full border border-gray-100 rounded-xl overflow-hidden text-xs" dir={dir}>
           <thead className="bg-gray-100"><tr>
-            <th className="px-3 py-2 text-right font-semibold text-gray-600">{t("اسم الصنف", "Item")}</th>
+            <th className="px-3 py-2 text-start font-semibold text-gray-600">{t("اسم الصنف", "Item")}</th>
             <th className="px-3 py-2 text-center font-semibold text-gray-600">{t("الوحدة", "Unit")}</th>
             <th className="px-3 py-2 text-center font-semibold text-gray-600">{t("سعر الوحدة", "Unit Price")}</th>
             <th className="px-3 py-2 text-center font-semibold text-blue-700">{t("آخر سعر وصول", "Last Arrival")}</th>
@@ -254,9 +264,12 @@ export function PurchaseLinesPanel({ rec, t, onAttach, demoRender }: {
       <p className="text-[10px] text-gray-500 text-left">
         {t("إجمالي الفاتورة:", "Invoice Total:")} <span className="font-bold">{fmtAmt(rec.amount)} {t("ر.س", "SAR")}</span> · {t("موثّق", "Documented")} {documentedCount}/{lines.length}
       </p>
+      {rec.actionsNode}
     </div>
   );
 }
+
+export { hasUnavailablePurchaseMatch };
 
 // ════════════════════════════════════════════════════════════
 // ACCOUNTANT PURCHASES — Dual-Lens Professional View
@@ -264,8 +277,11 @@ export function PurchaseLinesPanel({ rec, t, onAttach, demoRender }: {
 export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, rejectOp, bulkApprove }: PageProps) {
   const { t, lang, dir } = useLang();
   const en = lang === "en";
+  const qc = useQueryClient();
   const exportOpsMut = useExportOperations();
   const exportPurMut = useExportAccountantPurchases();
+  const approveMut = useApproveOperation();
+  const bulkApproveMut = useBulkApprove();
   const bulkDocMut = useBulkDocumentPurchases();
   // T06 live surfaces (company-surface handlers, shared with the accountant platform).
   const { data: purchasesList } = usePurchasesList({ pageSize: 100 });
@@ -281,9 +297,15 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [verifiedRows, setVerifiedRows] = useState<Record<string, boolean>>({});
-  const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
+  const [inFlightId, setInFlightId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [priceNotice, setPriceNotice] = useState<string | null>(null);
   const [editingRecId, setEditingRecId] = useState<string | null>(null);
-  const [purAttachModal, setPurAttachModal] = useState<{ recId: string; invNum: string; idx: number; total: number } | null>(null);
+  const [purAttachModal, setPurAttachModal] = useState<{ recId: string; invNum: string; idx: number; attachments: OperationAttachment[] } | null>(null);
+  const [rejectModal, setRejectModal] = useState<{ recId: string; invNum: string } | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectError, setRejectError] = useState<string | null>(null);
+  const [rejectBusy, setRejectBusy] = useState(false);
 
   // Grouped purchase cards (GET /company/me/purchases) — supplier/branch cards
   // that already nest invoices WITH lines (lastArrivalPrice, documented, match).
@@ -300,9 +322,10 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
       invNum: inv?.invoiceNumber ?? inv?.publicId ?? "—",
       date: inv?.date ?? "—",
       status: inv?.status ?? "pending",
-      match: inv?.match ?? "exact",
+      match: inv?.match ?? null,
       amount: typeof inv?.totalHalalas === "number" ? inv.totalHalalas / 100 : (inv?.totalSar ?? 0),
-      attachmentsCount: inv?.attachmentsCount ?? 0,
+      attachments: Array.isArray(inv?.attachments) ? inv.attachments : [],
+      attachmentsCount: inv?.attachmentsCount ?? (Array.isArray(inv?.attachments) ? inv.attachments.length : 0),
       documentedCaption: inv?.documentedCaption,
       lines: Array.isArray(inv?.lines) ? inv.lines : [],
       items: (Array.isArray(inv?.lines) ? inv.lines : []).map((l: any) => ({ name: l?.item ?? "" })),
@@ -322,16 +345,139 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
     return true;
   });
 
-  const effectiveFiltered = filtered.map(r => approvedIds.has(r.id) ? { ...r, status: "approved" as const } : r);
+  // Status reflects confirmed server state only; never flip pending -> approved optimistically (PUR-F09).
+  const effectiveFiltered = filtered;
   const pending = effectiveFiltered.filter(r => r.status === "pending");
+  const approvableIds = filterApprovablePurchaseIds(pending as any[]);
+  const approvablePending = pending.filter((r: any) => approvableIds.includes(r.id));
   const totalVal = effectiveFiltered.reduce((s, r) => s + r.amount, 0);
   const diffCount = effectiveFiltered.filter(r => r.match === "diff").length;
   const hasFilters = filterSupplier !== ALL || filterBranch !== ALL || filterStatus !== ALL || filterMatch !== ALL || search;
 
-  const approveRecord = (id: string) => setApprovedIds(p => new Set([...p, id]));
-  // «موافقة جماعية» = bulk-document the pending invoices (real POST) + optimistic flip.
-  const approveAll = () => { const ids = pending.map(r => r.id).filter(Boolean); if (ids.length) bulkDocMut.mutate(ids); setApprovedIds(p => new Set([...p, ...pending.map(r => r.id)])); };
+  const approveRecord = async (rec: any) => {
+    if (!rec?.id || inFlightId) return;
+    if (hasUnavailablePurchaseMatch(rec)) {
+      setActionError(t("مطابقة غير متاحة — لا يمكن اعتماد الفاتورة قبل توفر بيانات ودليل المطابقة.", "Match unavailable — cannot approve invoice before match data and evidence are available."));
+      return;
+    }
+    setActionError(null);
+    setInFlightId(rec.id);
+    try {
+      await approveMut.mutateAsync({ id: rec.id });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["accountant", "purchases"] }),
+        qc.invalidateQueries({ queryKey: ["platform", "accountant", "purchases"] }),
+        qc.invalidateQueries({ queryKey: ["operations"] }),
+        qc.invalidateQueries({ queryKey: queryKeys.accDashboard }),
+      ]);
+    } catch (err: any) {
+      setActionError(err?.response?.data?.message || err?.message || t("فشل اعتماد الفاتورة على الخادم. بقيت الفاتورة معلقة.", "Server approval failed. Invoice remains pending."));
+    } finally {
+      setInFlightId(null);
+    }
+  };
+
+  // «موافقة جماعية» = real financial bulk approval endpoint (POST /operations/bulk-approve);
+  // bulk documentation remains a separate action (documentAll).
+  const approveAll = async () => {
+    if (inFlightId || approvablePending.length === 0) return;
+    setActionError(null);
+    setInFlightId("__bulk__");
+    try {
+      const ids = approvablePending.map((r: any) => r.id);
+      const res = await bulkApproveMut.mutateAsync({ operationIds: ids });
+      const failedCount = Array.isArray(res?.failed) ? res.failed.length : 0;
+      const approvedCount = Array.isArray(res?.approved) ? res.approved.length : 0;
+      if (failedCount > 0) {
+        setActionError(
+          t(
+            `تم اعتماد ${approvedCount} عملية وفشلت ${failedCount} وبقيت معلقة.`,
+            `Approved ${approvedCount} operation(s); ${failedCount} failed and remain pending.`,
+          ),
+        );
+      }
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["accountant", "purchases"] }),
+        qc.invalidateQueries({ queryKey: ["platform", "accountant", "purchases"] }),
+        qc.invalidateQueries({ queryKey: ["operations"] }),
+        qc.invalidateQueries({ queryKey: queryKeys.accDashboard }),
+      ]);
+    } catch (err: any) {
+      setActionError(err?.response?.data?.message || err?.message || t("فشل الاعتماد الجماعي على الخادم. بقيت الفواتير معلقة.", "Server bulk approval failed. Invoices remain pending."));
+    } finally {
+      setInFlightId(null);
+    }
+  };
+
+  const documentAll = async () => {
+    if (inFlightId || pending.length === 0) return;
+    setActionError(null);
+    setInFlightId("__bulk_doc__");
+    try {
+      await bulkDocMut.mutateAsync(pending.map((r: any) => r.id).filter(Boolean));
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["accountant", "purchases"] }),
+        qc.invalidateQueries({ queryKey: ["platform", "accountant", "purchases"] }),
+      ]);
+    } catch (err: any) {
+      setActionError(err?.response?.data?.message || err?.message || t("فشل التوثيق الجماعي على الخادم.", "Server bulk documentation failed."));
+    } finally {
+      setInFlightId(null);
+    }
+  };
+
+  const submitReject = async () => {
+    if (!rejectModal || rejectBusy || !rejectReason.trim()) return;
+    setRejectBusy(true);
+    setRejectError(null);
+    try {
+      await Promise.resolve(rejectOp(rejectModal.recId, rejectReason.trim()));
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["platform", "accountant", "purchases"] }),
+        qc.invalidateQueries({ queryKey: queryKeys.operations() }),
+      ]);
+      setRejectModal(null);
+      setRejectReason("");
+    } catch (err: any) {
+      setRejectError(err?.response?.data?.message || err?.message || t("فشل رفض الفاتورة على الخادم.", "Server rejection failed."));
+    } finally {
+      setRejectBusy(false);
+    }
+  };
   const toggleVerify = (recId: string, key: string) => setVerifiedRows(p => ({ ...p, [recId + "-" + key]: !p[recId + "-" + key] }));
+
+  const renderMatchBadge = (rec: any) => {
+    if (hasUnavailablePurchaseMatch(rec)) {
+      return <Badge className="bg-amber-50 text-amber-800 border border-amber-200 text-[10px]">{t("مطابقة غير متاحة", "Match unavailable")}</Badge>;
+    }
+    const matchKey: "exact" | "diff" | "review" | null =
+      rec.match === "exact" || rec.match === "diff" || rec.match === "review" ? rec.match : null;
+    const cfg = matchKey ? MATCH_CFG[matchKey] : { cls: "bg-gray-100 text-gray-600 border-gray-200", label: String(rec.match) };
+    return <Badge className={`${cfg.cls} border text-[10px]`}>{en ? (rec.match === "exact" ? "Exact" : "Diff") : cfg.label}</Badge>;
+  };
+
+  const renderRecordActions = (rec: any, recStatus: string) => {
+    if (recStatus !== "pending") return null;
+    const matchBlocked = hasUnavailablePurchaseMatch(rec);
+    const busy = inFlightId === rec.id || inFlightId === "__bulk__";
+    return (
+      <div className="space-y-2 pt-2">
+        {matchBlocked && (
+          <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+            {t("مطابقة غير متاحة — يلزم توفر بنود/دليل الفاتورة قبل الموافقة.", "Match unavailable — invoice lines or supporting evidence required before approval.")}
+          </p>
+        )}
+        <div className="flex gap-2 flex-wrap">
+          <Btn size="sm" variant="success" disabled={matchBlocked || busy} onClick={() => void approveRecord(rec)}>
+            <ThumbsUp size={12} /> {t("موافقة على الفاتورة", "Approve Invoice")}
+          </Btn>
+          <Btn size="sm" variant="danger" disabled={busy} onClick={() => { setRejectError(null); setRejectReason(""); setRejectModal({ recId: rec.id, invNum: rec.invNum }); }}>
+            <ThumbsDown size={12} /> {t("رفض", "Reject")}
+          </Btn>
+        </div>
+      </div>
+    );
+  };
 
   // Supplier groups for supplier-mode
   const supplierGroups = SUPPLIER_LIST.map(sup => {
@@ -376,9 +522,9 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
           </div>
           {/* Attachment + edit controls */}
           <div className="flex gap-2">
-            <button onClick={() => setPurAttachModal({ recId: rec.id, invNum: rec.invNum, idx: 0, total: rec.items.length })}
+            <button onClick={() => setPurAttachModal({ recId: rec.id, invNum: rec.invNum, idx: 0, attachments: Array.isArray((rec as any).attachments) ? (rec as any).attachments : [] })}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-xs font-semibold transition-all">
-              <Paperclip size={11} /> {t("المرفقات", "Attachments")} ({rec.items.length})
+              <Paperclip size={11} /> {t("المرفقات", "Attachments")} ({(rec as any).attachmentsCount ?? (Array.isArray((rec as any).attachments) ? (rec as any).attachments.length : 0)})
             </button>
             <button onClick={() => setEditingRecId(isEditing ? null : rec.id)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 text-xs font-semibold transition-all">
@@ -462,13 +608,12 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
           </div>
         )}
         {recStatus === "pending" && (
-          <div className="flex gap-2 pt-1 flex-wrap">
-            <Btn size="sm" variant="success" onClick={() => approveRecord(rec.id)}><ThumbsUp size={12} /> {t("موافقة على الفاتورة", "Approve Invoice")}</Btn>
-            <Btn size="sm" variant="danger"><ThumbsDown size={12} /> {t("رفض", "Reject")}</Btn>
+          <div className="space-y-2 pt-1">
+            {renderRecordActions(rec, recStatus)}
             {rec.items.some(r => r.price > r.histPrice) && (
-              <button onClick={() => alert(en
-                ? `Sending price adjustment request to supplier: ${rec.supplier}\nItems with price differences:\n${rec.items.filter(r => r.price > r.histPrice).map(r => `• ${r.name}: Current ${r.price} SAR / Last ${r.histPrice} SAR`).join("\n")}`
-                : `جارٍ إرسال طلب تعديل للمورد: ${rec.supplier}\nالأصناف ذات فروق السعر:\n${rec.items.filter(r => r.price > r.histPrice).map(r => `• ${r.name}: السعر الحالي ${r.price} ر.س / آخر سعر ${r.histPrice} ر.س`).join("\n")}`)}
+              <button onClick={() => setPriceNotice(en
+                ? `Price variance note prepared for ${rec.supplier}: ${rec.items.filter(r => r.price > r.histPrice).map(r => `${r.name} (${r.price} vs ${r.histPrice} SAR)`).join(", ")}`
+                : `تم تجهيز ملاحظة فرق السعر للمورد ${rec.supplier}: ${rec.items.filter(r => r.price > r.histPrice).map(r => `${r.name} (${r.price} مقابل ${r.histPrice} ر.س)`).join("، ")}`)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 border border-sky-200 text-xs font-semibold hover:bg-sky-100 transition-all">
                 <Send size={11} /> {t("طلب تعديل من المورد", "Request Price Adjustment")}
               </button>
@@ -482,13 +627,36 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
   return (
     <div className="space-y-5" dir={dir}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-800">{t("موديول المشتريات", "Purchases Module")}</h2>
           <p className="text-gray-400 text-sm mt-0.5">{t("مطابقة الفواتير بالمنتجات والموردين — عرض حسب المورد أو حسب الفرع", "Match invoices to items and suppliers — view by supplier or by branch")}</p>
         </div>
-        {pending.length > 0 && <Btn variant="success" size="sm" onClick={approveAll}><CheckCircle2 size={12} /> {t("موافقة جماعية", "Bulk Approve")} ({pending.length})</Btn>}
+        <div className="flex flex-wrap gap-2">
+          {pending.length > 0 && (
+            <Btn size="sm" disabled={!!inFlightId} onClick={() => void documentAll()}>
+              <CheckSquare size={12} /> {t("توثيق جماعي للبنود", "Bulk Document Lines")} ({pending.length})
+            </Btn>
+          )}
+          {approvablePending.length > 0 && (
+            <Btn variant="success" size="sm" disabled={!!inFlightId} onClick={() => void approveAll()}>
+              <CheckCircle2 size={12} /> {t("موافقة جماعية", "Bulk Approve")} ({approvablePending.length})
+            </Btn>
+          )}
+        </div>
       </div>
+      {actionError && (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 flex items-center justify-between gap-2">
+          <span>{actionError}</span>
+          <button type="button" onClick={() => setActionError(null)} className="text-red-500 hover:text-red-700"><X size={14} /></button>
+        </div>
+      )}
+      {priceNotice && (
+        <div role="status" className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-800 flex items-center justify-between gap-2">
+          <span>{priceNotice}</span>
+          <button type="button" onClick={() => setPriceNotice(null)} className="text-sky-600 hover:text-sky-800"><X size={14} /></button>
+        </div>
+      )}
 
       {/* KPI cards — real GET /company/me/purchases → meta.kpis (2026-08-09) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -519,7 +687,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
 
       {/* Filter bar */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-        <div className="grid grid-cols-3 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("العلامة التجارية / البراند", "Brand")}</label>
             <select className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
@@ -541,7 +709,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
             </select>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-3 mb-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
           <div>
             <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الحالة", "Status")}</label>
             <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2">
@@ -689,7 +857,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span className="font-semibold text-sm text-gray-800">{rec.branch}</span>
                                     <span className="font-mono text-xs text-purple-600">{rec.invNum}</span>
-                                    <Badge className={`${MATCH_CFG[rec.match].cls} border text-[10px]`}>{en ? (rec.match === "exact" ? "Exact" : "Diff") : MATCH_CFG[rec.match].label}</Badge>
+                                    {renderMatchBadge(rec)}
                                     <Badge className={`${STATUS_CFG[recStatus].cls} text-[10px]`}>{en ? (EN_STATUS_CFG[recStatus] || STATUS_CFG[recStatus].label) : STATUS_CFG[recStatus].label}</Badge>
                                   </div>
                                   <p className="text-[11px] text-gray-400 mt-0.5">{rec.items.length} {t("أصناف", "items")} · {rec.date}</p>
@@ -697,7 +865,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                                 <span className="font-mono font-bold text-gray-800">{fmtAmt(rec.amount)} {t("ر.س", "SAR")}</span>
                                 {expandedId === rec.id ? <ChevronUp size={13} className="text-gray-400" /> : <ChevronDown size={13} className="text-gray-400" />}
                               </div>
-                              {expandedId === rec.id && <PurchaseLinesPanel rec={rec} t={t} onAttach={() => setPurAttachModal({ recId: rec.id, invNum: rec.invNum, idx: 0, total: (rec.items?.length ?? 0) })} demoRender={() => renderItemsPanel(rec)} />}
+                              {expandedId === rec.id && <PurchaseLinesPanel rec={{ ...rec, actionsNode: renderRecordActions(rec, recStatus) }} t={t} onAttach={() => setPurAttachModal({ recId: rec.id, invNum: rec.invNum, idx: 0, attachments: Array.isArray((rec as any).attachments) ? (rec as any).attachments : [] })} demoRender={() => renderItemsPanel(rec)} />}
                             </div>
                           );
                         })}
@@ -753,7 +921,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span className="font-semibold text-sm text-gray-800">{rec.supplier}</span>
                                     <span className="font-mono text-xs text-purple-600">{rec.invNum}</span>
-                                    <Badge className={`${MATCH_CFG[rec.match].cls} border text-[10px]`}>{en ? (rec.match === "exact" ? "Exact" : "Diff") : MATCH_CFG[rec.match].label}</Badge>
+                                    {renderMatchBadge(rec)}
                                     <Badge className={`${STATUS_CFG[recStatus].cls} text-[10px]`}>{en ? (EN_STATUS_CFG[recStatus] || STATUS_CFG[recStatus].label) : STATUS_CFG[recStatus].label}</Badge>
                                   </div>
                                   <p className="text-[11px] text-gray-400 mt-0.5">{rec.items.length} {t("أصناف", "items")} · {rec.date} · {rec.items.map(i => i.name).join("، ")}</p>
@@ -761,7 +929,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                                 <span className="font-mono font-bold text-gray-800">{fmtAmt(rec.amount)} {t("ر.س", "SAR")}</span>
                                 {expandedId === rec.id ? <ChevronUp size={13} className="text-gray-400" /> : <ChevronDown size={13} className="text-gray-400" />}
                               </div>
-                              {expandedId === rec.id && <PurchaseLinesPanel rec={rec} t={t} onAttach={() => setPurAttachModal({ recId: rec.id, invNum: rec.invNum, idx: 0, total: (rec.items?.length ?? 0) })} demoRender={() => renderItemsPanel(rec)} />}
+                              {expandedId === rec.id && <PurchaseLinesPanel rec={{ ...rec, actionsNode: renderRecordActions(rec, recStatus) }} t={t} onAttach={() => setPurAttachModal({ recId: rec.id, invNum: rec.invNum, idx: 0, attachments: Array.isArray((rec as any).attachments) ? (rec as any).attachments : [] })} demoRender={() => renderItemsPanel(rec)} />}
                             </div>
                           );
                         })}
@@ -772,59 +940,145 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
               )
       }
 
-      {/* Attachment viewer modal for purchases */}
+      {/* Real Attachment viewer modal for purchases (CORRECTION-05) */}
       {purAttachModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-6" onClick={() => setPurAttachModal(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()} dir={dir}>
-            <div className="px-5 py-4 bg-gradient-to-l from-blue-600 to-blue-700 text-white flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-base">{t("مرفقات الفاتورة —", "Invoice Attachments —")} {purAttachModal.invNum}</h3>
-                <p className="text-blue-200 text-xs mt-0.5">{t("مرفق", "Attachment")} {purAttachModal.idx + 1} {t("من", "of")} {purAttachModal.total}</p>
-              </div>
-              <button onClick={() => setPurAttachModal(null)} className="text-blue-200 hover:text-white"><X size={18} /></button>
+        <PurchaseAttachmentModal
+          modal={purAttachModal}
+          onClose={() => setPurAttachModal(null)}
+          onIdxChange={idx => setPurAttachModal(p => p ? { ...p, idx } : p)}
+          onVerify={idx => toggleVerify(purAttachModal.recId, `attach-${idx}`)}
+        />
+      )}
+
+      {/* Server-confirmed Reject dialog for purchases */}
+      {rejectModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !rejectBusy && setRejectModal(null)}>
+          <div role="dialog" aria-modal="true" className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()} dir={dir}>
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-gray-800 text-sm">{t("رفض فاتورة المشتريات —", "Reject Purchase Invoice —")} {rejectModal.invNum}</h3>
+              <button type="button" disabled={rejectBusy} onClick={() => setRejectModal(null)} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
             </div>
-            <div className="p-5">
-              <div className="bg-gray-100 rounded-xl h-52 flex flex-col items-center justify-center border-2 border-dashed border-gray-300">
-                <Paperclip size={36} className="text-gray-300 mb-3" />
-                <p className="text-sm font-semibold text-gray-600">
-                  {en
-                    ? ["Original supplier invoice", "Receipt photo", "Recipient signature", "Delivery note", "Quality certificate"][purAttachModal.idx % 5]
-                    : ["فاتورة المورد الأصلية", "صورة إيصال الاستلام", "توقيع المستلم", "كشف التسليم", "شهادة الجودة"][purAttachModal.idx % 5]}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">purchase_{purAttachModal.invNum}_p{purAttachModal.idx + 1}.pdf</p>
-                <button className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-all">
-                  <Eye size={14} /> {t("عرض الملف الكامل", "View Full File")}
-                </button>
+            <div className="p-5 space-y-3">
+              <label className="block text-xs font-semibold text-gray-700">{t("سبب الرفض", "Rejection Reason")} <span className="text-red-500">*</span></label>
+              <textarea
+                rows={3}
+                disabled={rejectBusy}
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                placeholder={t("أدخل سبب الرفض الواضح...", "Enter clear rejection reason...")}
+                className="w-full rounded-lg border border-gray-200 p-2.5 text-xs outline-none focus:border-red-400"
+              />
+              {rejectError && <p role="alert" className="text-xs text-red-600">{rejectError}</p>}
+              <div className="flex justify-end gap-2 pt-2 flex-wrap">
+                <Btn size="sm" disabled={rejectBusy} onClick={() => setRejectModal(null)}>{t("إلغاء", "Cancel")}</Btn>
+                <Btn size="sm" variant="danger" disabled={rejectBusy || !rejectReason.trim()} onClick={() => void submitReject()}>
+                  <ThumbsDown size={12} /> {t("تأكيد الرفض", "Confirm Rejection")}
+                </Btn>
               </div>
-              <div className="flex items-center justify-between mt-4">
-                <button disabled={purAttachModal.idx === 0}
-                  onClick={() => setPurAttachModal(p => p ? { ...p, idx: p.idx - 1 } : p)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                  <ChevronRight size={14} /> {t("السابق", "Prev")}
-                </button>
-                <div className="flex gap-1.5">
-                  {Array.from({ length: purAttachModal.total }, (_, i) => (
-                    <button key={i} onClick={() => setPurAttachModal(p => p ? { ...p, idx: i } : p)}
-                      className={`w-2.5 h-2.5 rounded-full transition-all ${i === purAttachModal.idx ? "bg-blue-600" : "bg-gray-300"}`} />
-                  ))}
-                </div>
-                <button disabled={purAttachModal.idx === purAttachModal.total - 1}
-                  onClick={() => setPurAttachModal(p => p ? { ...p, idx: p.idx + 1 } : p)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                  {t("التالي", "Next")} <ChevronLeft size={14} />
-                </button>
-              </div>
-            </div>
-            <div className="px-5 pb-4 flex gap-2 justify-end border-t border-gray-100 pt-3">
-              <Btn size="sm"><Download size={12} /> {t("تحميل", "Download")}</Btn>
-              <Btn size="sm" variant="success" onClick={() => {
-                toggleVerify(purAttachModal.recId, `attach-${purAttachModal.idx}`);
-                setPurAttachModal(null);
-              }}><CheckSquare size={12} /> {t("تم التحقق من المرفق", "Attachment Verified")}</Btn>
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function PurchaseAttachmentModal({
+  modal,
+  onClose,
+  onIdxChange,
+  onVerify,
+}: {
+  modal: { recId: string; invNum: string; idx: number; attachments: OperationAttachment[] };
+  onClose: () => void;
+  onIdxChange: (idx: number) => void;
+  onVerify: (idx: number) => void;
+}) {
+  const { t, dir } = useLang();
+  const { data: opDetail } = useOperation(modal.recId);
+  const liveAttachments: OperationAttachment[] = Array.isArray((opDetail as any)?.purchases?.attachments) && (opDetail as any).purchases.attachments.length > 0
+    ? ((opDetail as any).purchases.attachments as OperationAttachment[])
+    : Array.isArray((opDetail as any)?.attachments) && (opDetail as any).attachments.length > 0
+      ? ((opDetail as any).attachments as OperationAttachment[])
+      : modal.attachments;
+  const total = liveAttachments.length;
+  const safeIdx = total > 0 ? Math.min(modal.idx, total - 1) : 0;
+  const current = liveAttachments[safeIdx] as (OperationAttachment & { url?: string; fileName?: string }) | undefined;
+  const resolvedUrl = resolveAssetUrl(current?.publicUrl || current?.url);
+  const fileName = current?.filename || current?.fileName || "";
+  const isImage = Boolean(resolvedUrl && (/^image\//i.test(current?.mimeType ?? "") || isImageFile(fileName)));
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 sm:p-6" onClick={onClose}>
+      <div role="dialog" aria-modal="true" className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto" onClick={e => e.stopPropagation()} dir={dir}>
+        <div className="px-5 py-4 bg-gradient-to-l from-blue-600 to-blue-700 text-white flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-base">{t("مرفقات الفاتورة —", "Invoice Attachments —")} {modal.invNum}</h3>
+            <p className="text-blue-200 text-xs mt-0.5">
+              {total > 0 ? `${t("مرفق", "Attachment")} ${safeIdx + 1} ${t("من", "of")} ${total}` : t("لا توجد مرفقات", "No attachments")}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="text-blue-200 hover:text-white"><X size={18} /></button>
+        </div>
+        <div className="p-5">
+          {!current ? (
+            <div className="bg-gray-50 rounded-xl h-48 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 text-center px-4">
+              <Paperclip size={32} className="text-gray-300 mb-2" />
+              <p className="text-sm font-semibold text-gray-600">{t("لا توجد مرفقات مرفوعة لهذه الفاتورة", "No uploaded attachments for this invoice")}</p>
+              <p className="text-xs text-gray-400 mt-1">{t("مطابقة غير متاحة — بانتظار رفع دليل التوثيق.", "Match unavailable — awaiting supporting document upload.")}</p>
+            </div>
+          ) : (
+            <>
+              <div className="bg-gray-100 rounded-xl min-h-52 p-4 flex flex-col items-center justify-center border border-gray-200">
+                {isImage ? (
+                  <img src={resolvedUrl} alt={current.label || fileName} className="max-h-48 rounded-lg object-contain mb-3" />
+                ) : (
+                  <Paperclip size={36} className="text-blue-400 mb-3" />
+                )}
+                <p className="text-sm font-semibold text-gray-700 break-words text-center">{current.label || fileName}</p>
+                <p className="text-xs text-gray-500 mt-1 break-all">{fileName}</p>
+                {resolvedUrl && (
+                  <a href={resolvedUrl} target="_blank" rel="noopener noreferrer"
+                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-all">
+                    <Eye size={14} /> {t("عرض الملف الكامل", "View Full File")}
+                  </a>
+                )}
+              </div>
+              {total > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <button type="button" disabled={safeIdx === 0}
+                    onClick={() => onIdxChange(safeIdx - 1)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                    <ChevronRight size={14} /> {t("السابق", "Prev")}
+                  </button>
+                  <div className="flex gap-1.5">
+                    {liveAttachments.map((att: OperationAttachment, i: number) => (
+                      <button type="button" key={att.id || i} onClick={() => onIdxChange(i)}
+                        className={`w-2.5 h-2.5 rounded-full transition-all ${i === safeIdx ? "bg-blue-600" : "bg-gray-300"}`} />
+                    ))}
+                  </div>
+                  <button type="button" disabled={safeIdx === total - 1}
+                    onClick={() => onIdxChange(safeIdx + 1)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                    {t("التالي", "Next")} <ChevronLeft size={14} />
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        <div className="px-5 pb-4 flex gap-2 justify-end border-t border-gray-100 pt-3 flex-wrap">
+          {resolvedUrl && current && (
+            <a href={resolvedUrl} download={current.filename} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50">
+              <Download size={12} /> {t("تحميل", "Download")}
+            </a>
+          )}
+          <Btn size="sm" variant="success" disabled={!current} onClick={() => {
+            onVerify(safeIdx);
+            onClose();
+          }}><CheckSquare size={12} /> {t("تم التحقق من المرفق", "Attachment Verified")}</Btn>
+        </div>
+      </div>
     </div>
   );
 }

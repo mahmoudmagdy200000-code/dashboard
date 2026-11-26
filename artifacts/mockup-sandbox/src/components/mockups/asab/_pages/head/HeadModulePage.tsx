@@ -181,7 +181,11 @@ export function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-sm text-gray-800 break-words">{op.branch}</span>
                       <span className="text-xs font-mono text-gray-400 break-all">{op.id}</span>
-                      <Badge className={`${MATCH_CFG[op.match].cls} border text-[10px]`}>{en ? (op.match === "exact" ? "Exact" : "Diff") : MATCH_CFG[op.match].label}</Badge>
+                      <Badge className={`${(MATCH_CFG[op.match]?.cls ?? "bg-amber-50 text-amber-800 border-amber-200")} border text-[10px]`}>
+                        {en
+                          ? (op.match === "exact" ? "Exact" : op.match === "review" ? "Needs Review" : op.match === "diff" ? "Diff" : "Match unavailable")
+                          : (MATCH_CFG[op.match]?.label ?? "مطابقة غير متاحة")}
+                      </Badge>
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">{t("راجعه:", "Reviewed by:")} <span className="text-purple-600 font-medium">{accountant}</span> · <span>⏰ {op.timeAgo}</span></p>
                   </div>
