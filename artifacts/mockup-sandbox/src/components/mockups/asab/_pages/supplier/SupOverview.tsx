@@ -13,7 +13,7 @@ import { Badge } from "../../components/Badge";
 export function SupOverview({ navigate }: PageProps) {
   const query = useSupplierOverview();
   const apiOverview = query.data;
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { user } = useAuth();
   const kpis = (apiOverview as any)?.kpis ?? {};
   const newOrders = kpis.newOrders ?? null;
@@ -31,7 +31,7 @@ export function SupOverview({ navigate }: PageProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard label={t("طلبات جديدة", "New Orders")} value={newOrders == null ? "—" : String(newOrders)} sub={t("تنتظر ردك", "awaiting your response")} icon={<ShoppingCart size={18} className="text-red-600" />} accent="red" />
         <KpiCard label={t("مقبولة هذا الشهر", "Accepted This Month")} value={accepted == null ? "—" : String(accepted)} sub={t("هذا الشهر", "this month")} icon={<CheckCircle2 size={18} className="text-emerald-600" />} accent="emerald" />
-        <KpiCard label={t("إجمالي مبيعاتي", "Total Sales")} value={`${fmtAmt(salesSar)} ${t("ر.س", "SAR")}`} sub={trendPct != null ? `${trendPct >= 0 ? "▲" : "▼"} ${Math.abs(trendPct)}% ${t("عن الشهر السابق", "vs last month")}` : t("هذا الشهر", "this month")} icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
+        <KpiCard label={t("إجمالي مبيعاتي", "Total Sales")} value={`${fmtAmt(salesSar, lang)} ${t("ر.س", "SAR")}`} sub={trendPct != null ? `${trendPct >= 0 ? "▲" : "▼"} ${Math.abs(trendPct)}% ${t("عن الشهر السابق", "vs last month")}` : t("هذا الشهر", "this month")} icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
         <KpiCard label={t("أصناف نشطة", "Active Items")} value={`${activeItems}/${totalItems}`} sub={t("من كتالوجك", "of your catalog")} icon={<Package size={18} className="text-blue-600" />} accent="blue" />
       </div>
       <Card title={`${t("آخر الطلبات", "Recent Orders")} — ${recent.length}`} actions={<button onClick={() => navigate?.("sup-new")} className="text-xs text-purple-600 font-semibold hover:underline">{t("عرض الطلبات الجديدة", "View new orders")}</button>}>
@@ -42,7 +42,7 @@ export function SupOverview({ navigate }: PageProps) {
               <div className="flex items-center gap-2"><p className="font-semibold text-sm text-gray-800 truncate">{o.from ?? "—"}</p>{o.publicId && <span className="font-mono text-[10px] text-gray-400">{o.publicId}</span>}</div>
               <p className="text-xs text-gray-400 mt-1 truncate">{o.itemsText ?? "—"}{o.deliveryDate ? ` · ${t("التسليم:", "Delivery:")} ${String(o.deliveryDate).slice(0, 10)}` : ""}</p>
             </div>
-            <span className="font-mono font-bold text-gray-800 flex-shrink-0">{fmtAmt(Number.isSafeInteger(o.total) ? o.total / 100 : null)} {t("ر.س", "SAR")}</span>
+            <span className="font-mono font-bold text-gray-800 flex-shrink-0">{fmtAmt(Number.isSafeInteger(o.total) ? o.total / 100 : null, lang)} {t("ر.س", "SAR")}</span>
             <Badge className={`${statusChip(o.statusKey)} flex-shrink-0`}>{o.statusLabel ?? o.statusKey ?? o.status}</Badge>
           </div>
         ))}

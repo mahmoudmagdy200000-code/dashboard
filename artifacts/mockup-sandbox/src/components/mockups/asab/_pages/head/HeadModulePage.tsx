@@ -10,7 +10,12 @@ import {
   RotateCcw,
   XCircle,
 } from "lucide-react";
-import { useExportHeadOperations } from "../../../../../api/queries";
+import {
+  useExportHeadOperations,
+  usePurchaseReturns,
+  useFinalApprovePurchaseReturn,
+  useReturnForReviewPurchaseReturn,
+} from "../../../../../api/queries";
 import { useLang } from "../../_shared/LangContext";
 import { displayDigits } from "../../_shared/displayDigits";
 import { fmtAmt } from "../../_shared/formatters";
@@ -102,6 +107,7 @@ export function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops
       )}
 
       {moduleKey !== "assets" && <HeadModuleRecords key={moduleKey} moduleKey={mk} />}
+      {moduleKey === "purchases" && <HeadPurchaseReturnsPanel />}
 
       {hasApprovalQueue && <>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4" dir={dir}>
@@ -212,6 +218,82 @@ export function HeadModulePage({ moduleKey, navigate, setModal, setDetailId, ops
         </div>
       </>}
       {moduleKey === "shifts" && <HeadShiftHistory />}
+    </div>
+  );
+}
+
+function HeadPurchaseReturnsPanel() {
+  const { t, lang, dir } = useLang();
+  const { data: returnsLive = [] } = usePurchaseReturns();
+  const finalApproveMut = useFinalApprovePurchaseReturn();
+  const returnForReviewMut = useReturnForReviewPurchaseReturn();
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden" dir={dir}>
+      <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
+        <h3 className="font-bold text-gray-900 text-sm">{t("مرتجعات المشتريات (اعتماد رئيس الحسابات)", "Purchase Returns (Head Accountant Approval)")}</h3>
+        <span className="text-xs text-gray-400">{returnsLive.length}</span>
+      </div>
+      {returnsLive.length === 0 ? (
+        <div className="py-6 text-center text-xs text-gray-400">{t("لا توجد مرتجعات مشتريات", "No purchase returns")}</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <div className="min-w-[680px]">
+            <div className="grid grid-cols-6 px-4 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-500">
+              <span>{t("رقم المرتجع", "Return #")}</span>
+              <span>{t("الفرع", "Branch")}</span>
+              <span className="text-center">{t("التاريخ", "Date")}</span>
+              <span className="text-center">{t("المراجعة المالية", "Financial Review")}</span>
+              <span className="text-center">{t("المبلغ", "Amount")}</span>
+              <span className="text-end">{t("الإجراءات", "Actions")}</span>
+            </div>
+            {returnsLive.map((r) => {
+              const finStatus = r.financialStatus ?? "pending_review";
+              const isReviewed = finStatus === "reviewed_by_accountant";
+              const isApproved = finStatus === "approved_by_head";
+              return (
+                <div key={r.id} className="grid grid-cols-6 px-4 py-3 border-b border-gray-50 last:border-0 text-xs items-center">
+                  <span className="font-mono font-semibold text-gray-700">{r.returnNumber}</span>
+                  <span className="text-gray-600 truncate">{r.branchName ?? "—"}</span>
+                  <span className="text-center text-gray-500">{r.returnDate}</span>
+                  <span className="text-center">
+                    {isApproved ? (
+                      <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px]">✓ {t("معتمد ماليًا", "Approved")}</Badge>
+                    ) : isReviewed ? (
+                      <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-[10px]">✓ {t("تمت المراجعة", "Reviewed")}</Badge>
+                    ) : (
+                      <Badge className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px]">⏳ {t("بانتظار مراجعة المحاسب", "Pending Accountant Review")}</Badge>
+                    )}
+                  </span>
+                  <span className="text-center font-mono font-bold text-gray-800">{fmtAmt(r.totalReturnAmountHalalas / 100, lang)} {t("ر.س", "SAR")}</span>
+                  <div className="flex gap-1.5 justify-end flex-wrap">
+                    {isReviewed && !isApproved && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => finalApproveMut.mutate({ id: r.id })}
+                          disabled={finalApproveMut.isPending}
+                          className="px-2.5 py-1 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 disabled:opacity-50"
+                        >
+                          {t("اعتماد نهائي", "Final Approve")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => returnForReviewMut.mutate({ id: r.id })}
+                          disabled={returnForReviewMut.isPending}
+                          className="px-2.5 py-1 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 disabled:opacity-50"
+                        >
+                          {t("إرجاع للمراجعة", "Return for Review")}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

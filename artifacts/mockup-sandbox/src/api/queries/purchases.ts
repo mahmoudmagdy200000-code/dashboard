@@ -14,6 +14,7 @@ import type {
   Supplier,
 } from "../types/company";
 import { getErrorMessage } from "../errors";
+import { getSiteLang } from "../../auth/siteLang";
 import {
   queryKeys,
   type OperationsFilter,
@@ -21,6 +22,8 @@ import {
   type SuppliersFilter,
 } from "./keys";
 import { useOperation } from "./operations";
+
+const tr = (ar: string, en: string) => (getSiteLang() === "en" ? en : ar);
 
 // ─── Purchases list + KPI header (T06 §1) ────────────────────────────────────
 // Shared pipeline list scoped to purchases; carries `data[].purchaseRow` and
@@ -114,9 +117,9 @@ export function useBulkDocumentPurchases() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["accountant", "purchases"] });
       qc.invalidateQueries({ queryKey: ["operations"] });
-      toast.success("تم التوثيق الجماعي");
+      toast.success(tr("تم التوثيق الجماعي", "Bulk documentation completed"));
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e) => toast.error(getErrorMessage(e, getSiteLang())),
   });
 }
 
@@ -131,7 +134,7 @@ export function useExportAccountantPurchases() {
         format: fmt,
       });
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e) => toast.error(getErrorMessage(e, getSiteLang())),
   });
 }
 
@@ -159,9 +162,9 @@ export function useDocumentOperation() {
       qc.invalidateQueries({ queryKey: queryKeys.operation(op.id) });
       qc.invalidateQueries({ queryKey: ["operations"] });
       qc.invalidateQueries({ queryKey: queryKeys.operationAudit(op.id) });
-      toast.success("تم توثيق أمر الشراء");
+      toast.success(tr("تم توثيق أمر الشراء", "Purchase order documented"));
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e) => toast.error(getErrorMessage(e, getSiteLang())),
   });
 }
 
@@ -190,9 +193,9 @@ export function usePatchPurchaseLine() {
       qc.invalidateQueries({ queryKey: queryKeys.operationAudit(data.operationId) });
       qc.invalidateQueries({ queryKey: ["operations"] });
       qc.invalidateQueries({ queryKey: ["accountant", "purchases"] });
-      toast.success("تم تحديث السطر");
+      toast.success(tr("تم تحديث السطر", "Line updated"));
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e) => toast.error(getErrorMessage(e, getSiteLang())),
   });
 }
 
@@ -234,10 +237,10 @@ export function useReviewPurchaseReturn() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchases", "returns"] });
-      toast.success("تمت المراجعة المالية للمرتجع بنجاح");
+      toast.success(tr("تمت المراجعة المالية للمرتجع بنجاح", "Return financial review completed"));
     },
     onError: (err) => {
-      toast.error(getErrorMessage(err, "ar") || "فشلت المراجعة المالية للمرتجع");
+      toast.error(getErrorMessage(err, getSiteLang()) || tr("فشلت المراجعة المالية للمرتجع", "Return financial review failed"));
     },
   });
 }
@@ -252,10 +255,10 @@ export function useFinalApprovePurchaseReturn() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchases", "returns"] });
-      toast.success("تم الاعتماد المالي النهائي للمرتجع بنجاح");
+      toast.success(tr("تم الاعتماد المالي النهائي للمرتجع بنجاح", "Return final financial approval completed"));
     },
     onError: (err) => {
-      toast.error(getErrorMessage(err, "ar") || "فشل الاعتماد المالي للمرتجع");
+      toast.error(getErrorMessage(err, getSiteLang()) || tr("فشل الاعتماد المالي للمرتجع", "Return final approval failed"));
     },
   });
 }
@@ -270,10 +273,10 @@ export function useReturnForReviewPurchaseReturn() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchases", "returns"] });
-      toast.info("تمت إعادة المرتجع للمراجعة");
+      toast.info(tr("تمت إعادة المرتجع للمراجعة", "Return sent back for review"));
     },
     onError: (err) => {
-      toast.error(getErrorMessage(err, "ar") || "فشلت إعادة المرتجع للمراجعة");
+      toast.error(getErrorMessage(err, getSiteLang()) || tr("فشلت إعادة المرتجع للمراجعة", "Failed to return for review"));
     },
   });
 }

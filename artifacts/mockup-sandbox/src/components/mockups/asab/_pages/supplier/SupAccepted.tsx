@@ -27,7 +27,7 @@ export function SupAccepted({ }: PageProps) {
   const [status, setStatus] = useState<"accepted" | "delivered">("accepted");
   const query = useSupplierOrders({ status, page, pageSize: 20 });
   const apiAccepted = query.data;
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const mutationLock = useRef(false);
   const exportSupOrdersMut = useExportSupplierOrders();
   const prepareMut = usePrepareSupplierOrder();
@@ -46,7 +46,7 @@ export function SupAccepted({ }: PageProps) {
       <p className="text-sm text-gray-500">{t("إقرار المورد بالتسليم ليس تأكيد استلام الفرع أو تسوية مالية.", "A supplier delivery declaration is not branch receipt or financial settlement.")}</p>
       <SupplierPagination meta={query.data?.meta} page={page} setPage={setPage} busy={query.isFetching} />
       <div className="flex flex-wrap gap-3 items-center justify-between">
-        <div><h2 className="text-xl font-bold text-gray-800">{status === "accepted" ? t("الطلبات المقبولة", "Accepted Orders") : t("سجل إقرارات التسليم", "Delivery declaration history")}</h2><p className="text-gray-400 text-sm mt-0.5">{orders.length} {t("طلب", "orders")} · {t("إجمالي الصفحة:", "Page total:")} {fmtAmt(totalRunning !== null && Number.isSafeInteger(totalRunning) ? totalRunning / 100 : null)} {t("ر.س", "SAR")}</p></div>
+        <div><h2 className="text-xl font-bold text-gray-800">{status === "accepted" ? t("الطلبات المقبولة", "Accepted Orders") : t("سجل إقرارات التسليم", "Delivery declaration history")}</h2><p className="text-gray-400 text-sm mt-0.5">{orders.length} {t("طلب", "orders")} · {t("إجمالي الصفحة:", "Page total:")} {fmtAmt(totalRunning !== null && Number.isSafeInteger(totalRunning) ? totalRunning / 100 : null, lang)} {t("ر.س", "SAR")}</p></div>
         <button onClick={() => exportSupOrdersMut.mutate({ status, format: "xlsx" })} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><FileText size={11} /> Excel</button>
       </div>
       {orders.length === 0 && <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-10 text-center text-sm text-gray-400">{t("لا توجد طلبات في هذه الصفحة", "No orders on this page")}</div>}
@@ -64,7 +64,7 @@ export function SupAccepted({ }: PageProps) {
                 <p className="text-xs font-semibold text-gray-700">{o.deliveryDate ? String(o.deliveryDate).slice(0, 10) : "—"}</p>
               </div>
               <Badge className={`${statusChip(o.statusKey)} flex-shrink-0`}>{o.statusLabel ?? o.statusKey ?? o.status}</Badge>
-              <span className="font-mono font-bold text-gray-800 flex-shrink-0">{fmtAmt(Number.isSafeInteger(o.total) ? o.total / 100 : null)} {t("ر.س", "SAR")}</span>
+              <span className="font-mono font-bold text-gray-800 flex-shrink-0">{fmtAmt(Number.isSafeInteger(o.total) ? o.total / 100 : null, lang)} {t("ر.س", "SAR")}</span>
               {canDeclareSupplierDelivery(status, o.statusKey) && (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {o.status === "confirmed" && (
@@ -84,7 +84,7 @@ export function SupAccepted({ }: PageProps) {
           ))}
           <div className="px-5 py-3 bg-gray-50/80 border-t border-gray-100 flex justify-between items-center">
             <span className="text-sm font-semibold text-gray-600">{t("إجمالي الصفحة", "Page total")}</span>
-            <span className="font-mono font-black text-purple-700 text-lg">{fmtAmt(totalRunning !== null && Number.isSafeInteger(totalRunning) ? totalRunning / 100 : null)} {t("ر.س", "SAR")}</span>
+            <span className="font-mono font-black text-purple-700 text-lg">{fmtAmt(totalRunning !== null && Number.isSafeInteger(totalRunning) ? totalRunning / 100 : null, lang)} {t("ر.س", "SAR")}</span>
           </div>
         </Card>
       )}

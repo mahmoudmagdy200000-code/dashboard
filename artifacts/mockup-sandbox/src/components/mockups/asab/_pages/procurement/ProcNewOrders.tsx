@@ -27,7 +27,7 @@ import { KpiCard } from "../../components/KpiCard";
 import { Badge } from "../../components/Badge";
 
 export function ProcNewOrders({ role }: PageProps) {
-  const { t, dir } = useLang();
+  const { t, lang, dir } = useLang();
   // DEC-01 (PUR-01): Procurement Manager (asab.role:procurement) is authorized to approve,
   // partial-approve, or reject purchase orders. All other roles fail closed.
   const canApproveFinancial = role === "procurement";
@@ -118,7 +118,7 @@ export function ProcNewOrders({ role }: PageProps) {
           <div>
             <label htmlFor="proc-new-branch-filter" className="text-[11px] font-semibold text-gray-500 block mb-1">{t("الفرع", "Branch")}</label>
             <select id="proc-new-branch-filter" value={filterBranch} onChange={e => setFilterBranch(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2">
-              {branchList.map(c => <option key={c}>{c}</option>)}
+              {branchList.map(c => <option key={c} value={c}>{c === "الكل" ? t("الكل", "All") : c}</option>)}
             </select>
           </div>
           <div>
@@ -175,7 +175,7 @@ export function ProcNewOrders({ role }: PageProps) {
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-gray-800 text-sm">{groupKey}</span>
                   <Badge className="bg-blue-50 text-blue-700 text-[10px]">{groupOrders.length} {t("طلب", "orders")}</Badge>
-                  <span className="font-mono font-bold text-gray-600 text-sm">{fmtAmt(groupTotal)} {t("ر.س", "SAR")}</span>
+                  <span className="font-mono font-bold text-gray-600 text-sm">{fmtAmt(groupTotal, lang)} {t("ر.س", "SAR")}</span>
                 </div>
                 {groupOrders.length > 1 && (
                   <span title={!canApproveFinancial ? t("الاعتماد المالي لأوامر الشراء مقيد لحين التحقق من عقد التخويل المعتمد (PUR-01 · APPROVAL_REQUIRED)", "Purchase financial approval is gated pending verification of the authorized contract (PUR-01 · APPROVAL_REQUIRED)") : undefined}>
@@ -209,7 +209,7 @@ export function ProcNewOrders({ role }: PageProps) {
                         </span>
                         {isOpen ? <ChevronUp size={13} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={13} className="text-gray-400 flex-shrink-0" />}
                       </button>
-                      <span className="font-mono font-bold text-gray-800 text-sm">{fmtAmt(r.total)} {t("ر.س", "SAR")}</span>
+                      <span className="font-mono font-bold text-gray-800 text-sm">{fmtAmt(r.total, lang)} {t("ر.س", "SAR")}</span>
                       <div className="flex gap-1.5 flex-shrink-0">
                         <span title={!canApproveFinancial ? t("الاعتماد المالي لأوامر الشراء مقيد لحين التحقق من عقد التخويل المعتمد (PUR-01 · APPROVAL_REQUIRED)", "Purchase financial approval is gated pending verification of the authorized contract (PUR-01 · APPROVAL_REQUIRED)") : undefined}>
                           <Btn size="sm" variant="success" disabled={!canApproveFinancial || approveMut.isPending} onClick={() => { if (canApproveFinancial) approveOne(r.id); }}>
@@ -258,7 +258,7 @@ export function ProcNewOrders({ role }: PageProps) {
                                       <span className={`font-bold ${qtyStatus === "over" ? "text-orange-600" : qtyStatus === "under" ? "text-blue-600" : qtyStatus === "ok" ? "text-emerald-600" : "text-gray-400"}`}>{recommended ?? "—"}</span>
                                     </td>
                                     <td className="px-3 py-2 text-center font-mono text-gray-500 bg-sky-50/20">{it.remainingBalance ?? "—"}</td>
-                                    <td className="px-3 py-2 text-center font-mono font-semibold text-gray-800">{fmtAmt(it.unitPrice ?? 0)} {t("ر.س", "SAR")}</td>
+                                    <td className="px-3 py-2 text-center font-mono font-semibold text-gray-800">{fmtAmt(it.unitPrice ?? 0, lang)} {t("ر.س", "SAR")}</td>
                                     <td className="px-3 py-2 text-center">
                                       {qtyStatus === "na"
                                         ? <span className="text-gray-300">—</span>

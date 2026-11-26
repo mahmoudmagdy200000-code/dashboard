@@ -14,7 +14,7 @@ export function SupRejected({ }: PageProps) {
   const [page, setPage] = useState(1);
   const query = useSupplierOrders({ status: "rejected", page, pageSize: 20 });
   const apiRejected = query.data;
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const orders = (apiRejected?.data ?? []) as any[];
 
   if (query.isPending || query.isError) return <SupplierQueryState query={query} />;
@@ -36,7 +36,7 @@ export function SupRejected({ }: PageProps) {
                 <p className="text-xs text-gray-400 mt-0.5 truncate">{o.itemsText ?? "—"}{o.orderDate ? ` · ${String(o.orderDate).slice(0, 10)}` : ""}</p>
               </div>
               <Badge className="bg-red-50 text-red-700 flex-shrink-0">{o.statusLabel ?? t("مرفوض", "Rejected")}</Badge>
-              <span className="font-mono font-bold text-gray-800 flex-shrink-0">{fmtAmt(Number.isSafeInteger(o.total) ? o.total / 100 : null)} {t("ر.س", "SAR")}</span>
+              <span className="font-mono font-bold text-gray-800 flex-shrink-0">{fmtAmt(Number.isSafeInteger(o.total) ? o.total / 100 : null, lang)} {t("ر.س", "SAR")}</span>
             </div>
           ))}
         </Card>

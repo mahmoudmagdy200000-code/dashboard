@@ -6,7 +6,10 @@ import {
 import { toast } from "sonner";
 import { api, downloadBlob } from "../client";
 import { getErrorMessage } from "../errors";
+import { getSiteLang } from "../../auth/siteLang";
 import { queryKeys } from "./keys";
+
+const tr = (ar: string, en: string) => (getSiteLang() === "en" ? en : ar);
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 export interface Attachment {
@@ -126,9 +129,9 @@ export function useVerifyAttachment() {
     },
     onSuccess: (_d, id) => {
       qc.invalidateQueries({ queryKey: queryKeys.attachment(id) });
-      toast.success("تم التحقق من المرفق");
+      toast.success(tr("تم التحقق من المرفق", "Attachment verified"));
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e) => toast.error(getErrorMessage(e, getSiteLang())),
   });
 }
 
@@ -140,8 +143,8 @@ export function useDeleteAttachment() {
     },
     onSuccess: (_d, id) => {
       qc.invalidateQueries({ queryKey: queryKeys.attachment(id) });
-      toast.success("تم حذف المرفق");
+      toast.success(tr("تم حذف المرفق", "Attachment deleted"));
     },
-    onError: (e) => toast.error(getErrorMessage(e, "ar")),
+    onError: (e) => toast.error(getErrorMessage(e, getSiteLang())),
   });
 }

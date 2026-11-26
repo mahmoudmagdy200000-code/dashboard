@@ -18,7 +18,7 @@ import { Btn } from "../../components/Btn";
 
 export function ProcSuppliers({ }: PageProps) {
   const { data: apiSuppliers } = useProcurementSuppliersPlatform();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { data: catLookup } = useLookup("supplier-categories");
   const exportSuppliersMut = useExportSuppliers();
   const createSupplierMut = useCreateSupplier();
@@ -35,7 +35,7 @@ export function ProcSuppliers({ }: PageProps) {
   const categories = (((catLookup as any)?.data ?? catLookup ?? []) as any[]);
   const catLabel = (c: any) => c.labelAr ?? c.label ?? c.name ?? c.value ?? c.key ?? "";
   const catValue = (c: any) => c.value ?? c.key ?? c.id ?? catLabel(c);
-  const starsOf = (sup: any) => { const a = sup.ratingAvg; return a != null ? a / 10 : (sup.rating ?? 0); };
+  const starsOf = (sup: any) => { const a = sup.ratingAvg; if (a != null) return a / 10; const r = sup.rating ?? 0; return r > 5 ? r / 10 : r; };
   const isActiveOf = (sup: any) => sup.isActive ?? (sup.status === "نشط" || sup.status === "active" || sup.status === undefined);
   const contactOf = (sup: any) => sup.contactName ?? sup.contact ?? sup.contactPhone ?? "";
 
@@ -75,7 +75,7 @@ export function ProcSuppliers({ }: PageProps) {
       {supKpis && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <KpiCard label={t("موردون نشطون", "Active Suppliers")} value={String(supKpis.activeSuppliers ?? 0)} sub="" icon={<Truck size={18} className="text-emerald-600" />} accent="emerald" />
-          <KpiCard label={t("إجمالي المشتريات", "Total Purchases")} value={`${fmtAmt(supKpis.totalPurchases ?? 0)} ${t("ر.س", "SAR")}`} sub="" icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
+          <KpiCard label={t("إجمالي المشتريات", "Total Purchases")} value={`${fmtAmt(supKpis.totalPurchases ?? 0, lang)} ${t("ر.س", "SAR")}`} sub="" icon={<TrendingUp size={18} className="text-purple-600" />} accent="purple" />
           <KpiCard label={t("متوسط التقييم", "Avg Rating")} value={`${(supKpis.avgRating ?? 0).toFixed(1)} ★`} sub={t("من 5", "of 5")} icon={<Star size={18} className="text-amber-600" />} accent="amber" />
         </div>
       )}

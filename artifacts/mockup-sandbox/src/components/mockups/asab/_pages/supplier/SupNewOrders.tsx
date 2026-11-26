@@ -21,7 +21,7 @@ export function SupNewOrders({ }: PageProps) {
   const [page, setPage] = useState(1);
   const query = useSupplierOrders({ status: "pending", page, pageSize: 20 });
   const apiOrders = query.data;
-  const { t, dir } = useLang();
+  const { t, lang, dir } = useLang();
   const mutationLock = useRef(false);
   const returnFocus = useRef<HTMLElement | null>(null);
   const acceptMut = useAcceptSupplierOrder();
@@ -70,7 +70,7 @@ export function SupNewOrders({ }: PageProps) {
               <p className="text-sm text-gray-700">{order.itemsText ?? t("تفاصيل غير متوفرة", "Details unavailable")}</p>
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
                 <span className="text-sm text-gray-500">{t("موعد التسليم:", "Delivery:")} <strong className="text-gray-800">{order.deliveryDate ? String(order.deliveryDate).slice(0, 10) : "—"}</strong>{order.orderDate && <span className="text-xs text-gray-400"> · {t("بتاريخ", "ordered")} {String(order.orderDate).slice(0, 10)}</span>}</span>
-                <span className="font-mono font-bold text-lg text-purple-700">{fmtAmt(Number.isSafeInteger(order.total) ? order.total / 100 : null)} {t("ر.س", "SAR")}</span>
+                <span className="font-mono font-bold text-lg text-purple-700">{fmtAmt(Number.isSafeInteger(order.total) ? order.total / 100 : null, lang)} {t("ر.س", "SAR")}</span>
               </div>
             </div>
           </Card>

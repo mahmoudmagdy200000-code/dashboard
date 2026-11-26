@@ -25,7 +25,7 @@ import { Btn } from "../../components/Btn";
 export function SupItems({ }: PageProps) {
   const query = useSupplierItems();
   const apiItems = query.data;
-  const { t, dir } = useLang();
+  const { t, lang, dir } = useLang();
   const mutationLock = useRef(false);
   const returnFocus = useRef<HTMLElement | null>(null);
   const [formError, setFormError] = useState("");
@@ -148,7 +148,7 @@ export function SupItems({ }: PageProps) {
                   <td className="px-4 py-3 text-center text-gray-600">{item.unit ?? "—"}</td>
                   <td className="px-4 py-3 text-center font-mono">{item.minQty ?? "—"}</td>
                   <td className="px-4 py-3 text-center font-mono">{item.maxQty ?? "—"}</td>
-                  <td className="px-4 py-3 text-center font-mono font-bold text-purple-700">{p != null ? fmtAmt(p) : "—"}</td>
+                  <td className="px-4 py-3 text-center font-mono font-bold text-purple-700">{p != null ? fmtAmt(p, lang) : "—"}</td>
                   <td className="px-4 py-3 text-center text-gray-500 text-xs">{item.leadTimeDays != null ? `${item.leadTimeDays} ${t("يوم", "d")}` : "—"}</td>
                   <td className="px-4 py-3 text-center">
                     <Badge className={av ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}>{av ? t("نشط", "Active") : t("موقوف", "Inactive")}</Badge>
