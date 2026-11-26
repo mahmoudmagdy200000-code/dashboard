@@ -70,7 +70,6 @@ export function ProcSuppliers({ }: PageProps) {
         <div><h2 className="text-xl font-bold text-gray-800">{t("الموردون", "Suppliers")}</h2><p className="text-gray-400 text-sm mt-0.5">{suppliers.length} {t("مورد", "suppliers")}</p></div>
         <div className="flex gap-2 flex-wrap">
           <button onClick={() => exportSuppliersMut.mutate("xlsx")} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold hover:bg-emerald-100"><FileText size={11} /> Excel</button>
-          <Btn variant="primary" onClick={() => setShowAdd(true)}><Plus size={13} /> {t("إضافة مورد", "Add Supplier")}</Btn>
         </div>
       </div>
       {supKpis && (
