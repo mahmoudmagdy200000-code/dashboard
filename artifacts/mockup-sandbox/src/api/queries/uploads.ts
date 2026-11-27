@@ -54,17 +54,26 @@ export function useDirectUpload() {
   return useMutation({
     mutationFn: async ({
       file,
+      ownerType,
+      ownerId,
+      label,
       refType,
       refId,
     }: {
       file: File;
+      ownerType?: string;
+      ownerId?: string;
+      label?: string;
       refType?: string;
       refId?: string;
     }) => {
       const fd = new FormData();
       fd.append("file", file);
-      if (refType) fd.append("refType", refType);
-      if (refId) fd.append("refId", refId);
+      const resolvedType = ownerType ?? refType;
+      const resolvedId = ownerId ?? refId;
+      if (resolvedType) fd.append("ownerType", resolvedType);
+      if (resolvedId) fd.append("ownerId", resolvedId);
+      if (label) fd.append("label", label);
       const res = await api.post<Attachment>("/uploads/direct", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });

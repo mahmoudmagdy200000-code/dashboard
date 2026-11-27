@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, useRef, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
@@ -47,7 +47,7 @@ import {
 } from "../../../../../api/queries";
 import { useAccountantInventoryBrands } from "../../../../../api/queries/platform/accountant";
 import { useInventoryBranches } from "../../../../../api/queries/inventory";
-import { useVerifyAttachment } from "../../../../../api/queries/uploads";
+import { useDirectUpload, useVerifyAttachment } from "../../../../../api/queries/uploads";
 import { queryKeys } from "../../../../../api/queries/keys";
 import type { OperationAttachment } from "../../../../../api/types/company";
 import { Card } from "../../components/Card";
@@ -306,7 +306,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
   const returnForReviewMut = useReturnForReviewPurchaseReturn();
 
   const [showAddSupplier, setShowAddSupplier] = useState(false);
-  const [supplierForm, setSupplierForm] = useState({ name: "", category: "", contactName: "", phone: "", email: "" });
+  const [supplierForm, setSupplierForm] = useState({ name: "", category: "", contactName: "", phone: "", email: "", isExternal: false });
   const purSummary = purchasesList?.meta?.summary?.purchases;
   const ALL = "الكل";
   const [viewMode, setViewMode] = useState<"supplier" | "branch" | "suppliers" | "returns">("supplier");
@@ -361,6 +361,8 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
       amount: typeof inv?.totalHalalas === "number" ? inv.totalHalalas / 100 : (inv?.totalSar ?? 0),
       attachments: Array.isArray(inv?.attachments) ? inv.attachments : [],
       attachmentsCount: inv?.attachmentsCount ?? (Array.isArray(inv?.attachments) ? inv.attachments.length : 0),
+      documentType: inv?.documentType ?? null,
+      hasInvoice: Boolean(inv?.hasInvoice),
       documentedCaption: inv?.documentedCaption,
       lines: Array.isArray(inv?.lines) ? inv.lines : [],
       items: (Array.isArray(inv?.lines) ? inv.lines : []).map((l: any) => ({ name: l?.item ?? "" })),
@@ -492,7 +494,19 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
   };
   const toggleVerify = (recId: string, key: string) => setVerifiedRows(p => ({ ...p, [recId + "-" + key]: !p[recId + "-" + key] }));
 
+  const isMissingInvoiceDoc = (rec: any): boolean => {
+    const dt = rec?.documentType;
+    if ((dt === "delivery_note" || dt === "receipt_without_document") && !rec?.hasInvoice) return true;
+    return false;
+  };
+
   const renderMatchBadge = (rec: any) => {
+    if (rec?.documentType === "delivery_note" && !rec?.hasInvoice) {
+      return <Badge className="bg-amber-50 text-amber-800 border border-amber-200 text-[10px]">{t("سند تسليم · بانتظار الفاتورة", "Delivery Note · Awaiting Invoice")}</Badge>;
+    }
+    if (rec?.documentType === "receipt_without_document" && !rec?.hasInvoice) {
+      return <Badge className="bg-red-50 text-red-700 border border-red-200 text-[10px]">{t("استلام مؤقت بدون مستند", "Temporary Receipt · No Document")}</Badge>;
+    }
     if (hasUnavailablePurchaseMatch(rec)) {
       return <Badge className="bg-amber-50 text-amber-800 border border-amber-200 text-[10px]">{t("مطابقة غير متاحة", "Match unavailable")}</Badge>;
     }
@@ -505,16 +519,19 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
   const renderRecordActions = (rec: any, recStatus: string) => {
     if (recStatus !== "pending") return null;
     const matchBlocked = hasUnavailablePurchaseMatch(rec);
+    const docBlocked = isMissingInvoiceDoc(rec);
     const busy = inFlightId === rec.id || inFlightId === "__bulk__";
     return (
       <div className="space-y-2 pt-2">
-        {matchBlocked && (
+        {(matchBlocked || docBlocked) && (
           <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
-            {t("مطابقة غير متاحة — يلزم توفر بنود/دليل الفاتورة قبل الموافقة.", "Match unavailable — invoice lines or supporting evidence required before approval.")}
+            {docBlocked
+              ? t("لا يمكن الاعتماد قبل رفع الفاتورة الضريبية من نافذة المرفقات.", "Cannot approve before uploading the tax invoice via Attachments.")
+              : t("مطابقة غير متاحة — يلزم توفر بنود/دليل الفاتورة قبل الموافقة.", "Match unavailable — invoice lines or supporting evidence required before approval.")}
           </p>
         )}
         <div className="flex gap-2 flex-wrap">
-          <Btn size="sm" variant="success" disabled={matchBlocked || busy} onClick={() => void approveRecord(rec)}>
+          <Btn size="sm" variant="success" disabled={matchBlocked || docBlocked || busy} onClick={() => void approveRecord(rec)}>
             <ThumbsUp size={12} /> {t("موافقة على الفاتورة", "Approve Invoice")}
           </Btn>
           <Btn size="sm" variant="danger" disabled={busy} onClick={() => { setRejectError(null); setRejectReason(""); setRejectModal({ recId: rec.id, invNum: rec.invNum }); }}>
@@ -1138,6 +1155,15 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                 <label className="text-[11px] font-semibold text-gray-500 block mb-1">{t("البريد الإلكتروني", "Email")}</label>
                 <input value={supplierForm.email} onChange={e => setSupplierForm(v => ({ ...v, email: e.target.value }))} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-purple-300" />
               </div>
+              <label className="flex items-center gap-2 text-xs text-gray-700 pt-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={supplierForm.isExternal}
+                  onChange={e => setSupplierForm(v => ({ ...v, isExternal: e.target.checked }))}
+                  className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                />
+                <span>{t("مورد خارجي (بدون بوابة إلكترونية)", "External Supplier (no portal login)")}</span>
+              </label>
             </div>
             <div className="flex gap-2 justify-end mt-5">
               <Btn onClick={() => setShowAddSupplier(false)}>{t("إلغاء", "Cancel")}</Btn>
@@ -1145,7 +1171,7 @@ export function AccPurchases({ navigate, setModal, setDetailId, ops, approveOp, 
                 createSupplierMut.mutate(supplierForm, {
                   onSuccess: () => {
                     setShowAddSupplier(false);
-                    setSupplierForm({ name: "", category: "", contactName: "", phone: "", email: "" });
+                    setSupplierForm({ name: "", category: "", contactName: "", phone: "", email: "", isExternal: false });
                   }
                 });
               }}>
@@ -1171,8 +1197,11 @@ function PurchaseAttachmentModal({
   onVerify: (idx: number) => void;
 }) {
   const { t, dir } = useLang();
+  const qc = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { data: opDetail } = useOperation(modal.recId);
   const verifyMut = useVerifyAttachment();
+  const uploadMut = useDirectUpload();
   const liveAttachments: OperationAttachment[] = Array.isArray((opDetail as any)?.purchases?.attachments) && (opDetail as any).purchases.attachments.length > 0
     ? ((opDetail as any).purchases.attachments as OperationAttachment[])
     : Array.isArray((opDetail as any)?.attachments) && (opDetail as any).attachments.length > 0
@@ -1245,6 +1274,37 @@ function PurchaseAttachmentModal({
           )}
         </div>
         <div className="px-5 pb-4 flex gap-2 justify-end border-t border-gray-100 pt-3 flex-wrap">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (!file) return;
+              await uploadMut.mutateAsync({
+                file,
+                ownerType: "operation",
+                ownerId: modal.recId,
+                label: "invoice",
+              });
+              await Promise.all([
+                qc.invalidateQueries({ queryKey: ["accountant", "purchases"] }),
+                qc.invalidateQueries({ queryKey: ["platform", "accountant", "purchases"] }),
+                qc.invalidateQueries({ queryKey: ["operations", modal.recId] }),
+                qc.invalidateQueries({ queryKey: ["operations", modal.recId, "attachments"] }),
+              ]);
+            }}
+          />
+          <Btn
+            size="sm"
+            variant="primary"
+            disabled={uploadMut.isPending}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Plus size={12} /> {uploadMut.isPending ? t("جارٍ الرفع...", "Uploading...") : t("رفع فاتورة / مرفق", "Upload Invoice / Attachment")}
+          </Btn>
           {resolvedUrl && current && (
             <a href={resolvedUrl} download={current.filename} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50">
               <Download size={12} /> {t("تحميل", "Download")}

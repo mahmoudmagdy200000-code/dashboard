@@ -55,8 +55,8 @@ export function SupAccepted({ }: PageProps) {
           {orders.map((o, i) => (
             <div key={o.id ?? i} className="px-5 py-4 flex flex-wrap items-center gap-4 border-b border-gray-100 last:border-0 hover:bg-gray-50">
               <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0"><CheckCircle2 size={16} className="text-emerald-600" /></div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2"><span className="font-semibold text-sm text-gray-800 truncate">{o.from ?? "—"}</span>{o.publicId && <span className="font-mono text-xs text-gray-400">{o.publicId}</span>}</div>
+              <div className="flex-1 min-w-[200px]">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5"><span className="font-semibold text-sm text-gray-800 truncate">{o.from ?? "—"}</span>{o.publicId && <span className="font-mono text-xs text-gray-400 flex-shrink-0">{o.publicId}</span>}</div>
                 <p className="text-xs text-gray-400 mt-0.5 truncate">{o.itemsText ?? "—"}</p>
               </div>
               <div className="text-center flex-shrink-0">

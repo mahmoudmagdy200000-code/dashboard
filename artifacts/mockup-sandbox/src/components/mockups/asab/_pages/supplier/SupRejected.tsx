@@ -8,8 +8,7 @@ import type { PageProps } from "../../_shared/types";
 import { Card } from "../../components/Card";
 import { Badge } from "../../components/Badge";
 
-// T13 §2 — GET orders?status=rejected. The order row does not carry the
-// rejection reason back, so we render the summary + amount only.
+// T13 §2 — GET orders?status=rejected. Includes rejectionReason when returned by backend.
 export function SupRejected({ }: PageProps) {
   const [page, setPage] = useState(1);
   const query = useSupplierOrders({ status: "rejected", page, pageSize: 20 });
@@ -34,6 +33,7 @@ export function SupRejected({ }: PageProps) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2"><span className="font-semibold text-sm text-gray-800 truncate">{o.from ?? "—"}</span>{o.publicId && <span className="font-mono text-xs text-gray-400">{o.publicId}</span>}</div>
                 <p className="text-xs text-gray-400 mt-0.5 truncate">{o.itemsText ?? "—"}{o.orderDate ? ` · ${String(o.orderDate).slice(0, 10)}` : ""}</p>
+                {o.rejectionReason && <p className="text-xs text-red-600 mt-1 break-words">{t("السبب:", "Reason:")} {o.rejectionReason}</p>}
               </div>
               <Badge className="bg-red-50 text-red-700 flex-shrink-0">{o.statusLabel ?? t("مرفوض", "Rejected")}</Badge>
               <span className="font-mono font-bold text-gray-800 flex-shrink-0">{fmtAmt(Number.isSafeInteger(o.total) ? o.total / 100 : null, lang)} {t("ر.س", "SAR")}</span>
