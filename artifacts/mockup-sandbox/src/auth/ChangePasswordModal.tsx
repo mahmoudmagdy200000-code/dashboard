@@ -8,9 +8,10 @@ import { getErrorMessage } from "../api/errors";
 interface Props {
   open: boolean;
   onClose: () => void;
+  required?: boolean;
 }
 
-export function ChangePasswordModal({ open, onClose }: Props) {
+export function ChangePasswordModal({ open, onClose, required = false }: Props) {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -47,8 +48,8 @@ export function ChangePasswordModal({ open, onClose }: Props) {
   }
 
   return (
-    <div
-      onClick={onClose}
+      <div
+      onClick={required ? undefined : onClose}
       style={{
         position: "fixed",
         inset: 0,
@@ -85,7 +86,7 @@ export function ChangePasswordModal({ open, onClose }: Props) {
           <div style={{ fontSize: 16, fontWeight: 700, color: "#1e293b" }}>
             تغيير كلمة المرور
           </div>
-          <button
+          {!required && <button
             type="button"
             onClick={onClose}
             style={{
@@ -97,7 +98,7 @@ export function ChangePasswordModal({ open, onClose }: Props) {
             }}
           >
             <X size={18} />
-          </button>
+          </button>}
         </div>
 
         <label style={labelStyle}>كلمة المرور الحالية</label>
@@ -151,7 +152,7 @@ export function ChangePasswordModal({ open, onClose }: Props) {
           >
             {mut.isPending ? "جاري الحفظ..." : "حفظ"}
           </button>
-          <button
+          {!required && <button
             type="button"
             onClick={onClose}
             style={{
@@ -167,7 +168,7 @@ export function ChangePasswordModal({ open, onClose }: Props) {
             }}
           >
             إلغاء
-          </button>
+          </button>}
         </div>
       </form>
     </div>

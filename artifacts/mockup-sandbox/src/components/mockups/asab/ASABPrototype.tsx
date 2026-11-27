@@ -1014,13 +1014,16 @@ const ALL_MODULES = ["المبيعات", "المصروفات", "المشتريا
 const planKey = (label: string): string =>
   (({ "فضي": "silver", "ذهبي": "gold", "بلاتيني": "platinum" }) as Record<string, string>)[label] ?? label;
 
-function AddUserModal({ onAdd, onClose }: { onAdd: (user: AdminUserData) => void; onClose: () => void }) {
+function AddUserModal({ onAdd, onClose }: { onAdd: (user: AdminUserData & { credentialMode: "manual" | "email"; password?: string; passwordConfirmation?: string }) => void; onClose: () => void }) {
   const { t, dir, lang } = useLang();
   const en = lang === "en";
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [credentialMode, setCredentialMode] = useState<"manual" | "email">("email");
+  const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [temporaryPasswordConfirmation, setTemporaryPasswordConfirmation] = useState("");
   const [role, setRole] = useState("محاسب");
   const [reportsTo, setReportsTo] = useState("");
   const [selBrands, setSelBrands] = useState<string[]>([]);
@@ -1239,6 +1242,21 @@ function AddUserModal({ onAdd, onClose }: { onAdd: (user: AdminUserData) => void
           </>}
 
           {step === 2 && <>
+            <div className="space-y-2 rounded-xl border border-violet-100 bg-violet-50/50 p-4">
+              <p className="text-xs font-bold text-gray-700">{t("بيانات الدخول المؤقتة", "Temporary credentials")}</p>
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg bg-white p-3">
+                <input type="radio" name="create-credential-mode" checked={credentialMode === "manual"} onChange={() => setCredentialMode("manual")} />
+                <span><strong className="block text-xs">{t("تعيين كلمة مرور مؤقتة يدوياً", "Set a temporary password manually")}</strong><span className="text-[11px] text-gray-500">{t("سيُطلب تغييرها عند أول دخول.", "The user must change it at first sign-in.")}</span></span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg bg-white p-3">
+                <input type="radio" name="create-credential-mode" checked={credentialMode === "email"} onChange={() => setCredentialMode("email")} />
+                <span><strong className="block text-xs">{t("إنشاء كلمة مرور وإرسالها بالبريد", "Generate a password and email it")}</strong><span className="text-[11px] text-gray-500">{t("لن تظهر كلمة المرور في لوحة التحكم.", "The password will not be shown in the Dashboard.")}</span></span>
+              </label>
+              {credentialMode === "manual" && <div className="grid gap-2 sm:grid-cols-2">
+                <input type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={temporaryPassword} onChange={e => setTemporaryPassword(e.target.value)} aria-label={t("كلمة المرور المؤقتة", "Temporary password")} placeholder={t("كلمة المرور المؤقتة", "Temporary password")} className="w-full rounded-lg border px-3 py-2 text-sm" />
+                <input type="password" autoComplete="new-password" minLength={8} maxLength={128} required value={temporaryPasswordConfirmation} onChange={e => setTemporaryPasswordConfirmation(e.target.value)} aria-label={t("تأكيد كلمة المرور", "Confirm password")} placeholder={t("تأكيد كلمة المرور", "Confirm password")} className="w-full rounded-lg border px-3 py-2 text-sm" />
+              </div>}
+            </div>
             {/* Only accountants and head accountants pick modules. Branch managers,
                 suppliers, procurement managers and admins work from their own surfaces
                 (mobile app / supplier & procurement portals / full admin access), so
@@ -1315,8 +1333,14 @@ function AddUserModal({ onAdd, onClose }: { onAdd: (user: AdminUserData) => void
             </button>
             : <button onClick={() => {
               if (!name.trim()) return;
+              if (credentialMode === "manual" && (temporaryPassword.length < 8 || temporaryPassword !== temporaryPasswordConfirmation)) {
+                window.alert(temporaryPassword.length < 8 ? t("كلمة المرور يجب أن تكون 8 خانات على الأقل", "Password must be at least 8 characters") : t("كلمتا المرور غير متطابقتين", "Passwords do not match"));
+                return;
+              }
               onAdd({
                 name, email, phone, role,
+                credentialMode,
+                ...(credentialMode === "manual" ? { password: temporaryPassword, passwordConfirmation: temporaryPasswordConfirmation } : {}),
                 // Scopeless roles must send no scope at all — a stray array would
                 // narrow an account that is meant to be unrestricted.
                 brands: isScopeless ? [] : selBrands,
@@ -1910,23 +1934,25 @@ function AppShell({ state, ops, period, setPeriod, approveOp, rejectOp, finalApp
       {state.modal === "add-user" && (
         <AddUserModal
           onAdd={u => {
-            const roleKey = ({ "محاسب": "accountant", "رئيس حسابات": "head", "مدير فرع": "branch", "مدير مشتريات": "procurement", "مورد": "supplier", "أدمن": "admin" } as Record<string, string>)[u.role] ?? u.role;
+            const { credentialMode, password, passwordConfirmation, ...userDetails } = u;
+            const roleKey = ({ "محاسب": "accountant", "رئيس حسابات": "head", "مدير فرع": "branch", "مدير مشتريات": "procurement", "مورد": "supplier", "أدمن": "admin" } as Record<string, string>)[userDetails.role] ?? userDetails.role;
             // Drop empty scope arrays and `scope` itself — the backend derives scope,
             // and `restaurants` is now `prohibited` on this endpoint (422).
-            const { restaurants: _r, scope: _s, ...rest } = u as any;
-            const body: any = { ...rest, role: roleKey };
+            const { restaurants: _r, scope: _s, ...rest } = userDetails as any;
+            const body: any = {
+              ...rest,
+              role: roleKey,
+              credentialMode,
+              ...(credentialMode === "manual" ? { password, passwordConfirmation } : {}),
+            };
             if (!body.brands?.length) delete body.brands;
             if (!body.branches?.length) delete body.branches;
             if (!body.companyId) delete body.companyId;
             if (!body.reportsTo) delete body.reportsTo;
             createAdminUserMut.mutate(body, {
               onSuccess: (created: any) => {
-                setAdminUsers(prev => [...prev, created ? { ...u, ...created } : u]);
+                setAdminUsers(prev => [...prev, created ? { ...userDetails, ...created } : userDetails]);
                 setModal(null);
-                // Passwords are emailed by default now; false = the user got nothing.
-                if (created?.emailSent === false) {
-                  toast.warning("تم إنشاء المستخدم، لكن لم يصل بريد كلمة المرور — استخدم «إعادة تعيين كلمة المرور».");
-                }
               },
             });
           }}

@@ -31,6 +31,7 @@ export interface User {
   restaurantIds?: string[];
   branchIds?: string[];
   avatar?: string;
+  mustChangePassword?: boolean;
 }
 
 export interface LoginResponse {

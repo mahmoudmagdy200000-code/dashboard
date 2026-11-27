@@ -667,17 +667,26 @@ export function useCreateAdminUser() {
       supplierId?: string;
       scope?: "all" | "brand" | "restaurant" | "branch";
       status?: "active" | "inactive";
+      credentialMode?: "manual" | "email";
+      password?: string;
+      passwordConfirmation?: string;
       sendLoginEmail?: boolean;
     }) => {
-      const res = await api.post<AdminUserRow & { emailSent?: boolean }>(
+      const res = await api.post<AdminUserRow & { credentialMode?: "manual" | "email"; emailSent?: boolean | null }>(
         "/admin/users",
         body,
       );
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
       qc.invalidateQueries({ queryKey: ["platform", "admin", "users"] });
-      toast.success("تم إنشاء المستخدم");
+      if (created?.emailSent === false) {
+        toast.warning("تم إنشاء المستخدم، لكن تعذر إرسال بريد كلمة المرور.");
+      } else if (created?.credentialMode === "manual") {
+        toast.success("تم إنشاء المستخدم؛ سيُطلب منه تغيير كلمة المرور عند أول دخول.");
+      } else {
+        toast.success("تم إنشاء المستخدم وإرسال كلمة المرور بالبريد.");
+      }
     },
     onError: (e) => toast.error(getErrorMessage(e, "ar")),
   });
@@ -750,20 +759,31 @@ export function useDeleteAdminUser() {
 
 export function useResetAdminUserPassword() {
   return useMutation({
-    mutationFn: async ({ id, sendEmail = true }: { id: string; sendEmail?: boolean }) => {
-      const res = await api.post<{ ok: boolean; emailSent: boolean }>(
+    mutationFn: async (input: {
+      id: string;
+      mode: "manual" | "email";
+      password?: string;
+      passwordConfirmation?: string;
+    }) => {
+      const { id, ...body } = input;
+      const res = await api.post<{ ok: boolean; mode: "manual" | "email"; emailSent: boolean | null }>(
         `/admin/users/${id}/reset-password`,
-        { sendEmail },
+        body,
       );
       return res.data;
     },
-    // The temp password is emailed, never returned — confirm via emailSent.
-    onSuccess: (d) =>
+    // Manual mode never attempts email; email mode reports transport outcome.
+    onSuccess: (d) => {
+      if (d?.emailSent === false) {
+        toast.warning("تم إعادة تعيين كلمة المرور، لكن تعذر إرسال البريد الإلكتروني للمستخدم.");
+        return;
+      }
       toast.success(
-        d?.emailSent
+        d?.mode === "email"
           ? "تم إرسال كلمة مرور جديدة إلى بريد المستخدم"
-          : "تم إعادة تعيين كلمة المرور",
-      ),
+          : "تم تعيين كلمة المرور المؤقتة؛ سيُطلب من المستخدم تغييرها عند الدخول",
+      );
+    },
     onError: (e) => toast.error(getErrorMessage(e, "ar")),
   });
 }
@@ -771,18 +791,28 @@ export function useResetAdminUserPassword() {
 export function useResetCompanyAdminPassword() {
   return useMutation({
     mutationFn: async ({ id, notify = true }: { id: string; notify?: boolean }) => {
-      const res = await api.post<{ ok: boolean; emailedTo: string; resetAt: string }>(
+      const res = await api.post<{
+        ok: boolean;
+        emailedTo: string;
+        emailSent?: boolean;
+        resetAt: string;
+      }>(
         `/admin/companies/${id}/admin/reset-password`,
         { notify },
       );
       return res.data;
     },
-    onSuccess: (d) =>
+    onSuccess: (d) => {
+      if (d?.emailSent === false) {
+        toast.warning("تم إعادة تعيين كلمة مرور أدمن الشركة، لكن تعذر إرسال البريد الإلكتروني.");
+        return;
+      }
       toast.success(
         d?.emailedTo
           ? `تم إرسال كلمة المرور إلى ${d.emailedTo}`
           : "تم إعادة تعيين كلمة مرور أدمن الشركة",
-      ),
+      );
+    },
     onError: (e) => toast.error(getErrorMessage(e, "ar")),
   });
 }
