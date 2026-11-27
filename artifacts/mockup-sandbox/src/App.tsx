@@ -13,6 +13,7 @@ import { OnboardingWizard } from "./auth/OnboardingWizard";
 import { InvitationAcceptPage } from "./auth/InvitationAcceptPage";
 import { SubscriptionExpiredBanner } from "./components/shared/SubscriptionExpiredBanner";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ChangePasswordModal } from "./auth/ChangePasswordModal";
 
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 
@@ -339,6 +340,10 @@ function App() {
   if (!user) {
     // Pre-login entry: choose dashboard → choose role → login.
     return <EntryFlow />;
+  }
+
+  if (user.mustChangePassword) {
+    return <ChangePasswordModal open required onClose={() => void logout()} />;
   }
 
   const previewPath = getPreviewPath();

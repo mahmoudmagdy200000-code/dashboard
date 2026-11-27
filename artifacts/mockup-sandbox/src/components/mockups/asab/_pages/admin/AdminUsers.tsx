@@ -109,6 +109,10 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
   };
   const importFileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
+  const [resetTarget, setResetTarget] = useState<AdminUserData | null>(null);
+  const [resetMode, setResetMode] = useState<"manual" | "email">("email");
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetPasswordConfirmation, setResetPasswordConfirmation] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [brandFilter, setBrandFilter] = useState("");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
@@ -265,6 +269,11 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
   });
   const deleteUserMut = useDeleteAdminUser();
   const resetPwdMut = useResetAdminUserPassword();
+  const closeResetPasswordModal = () => {
+    setResetTarget(null);
+    setResetPassword("");
+    setResetPasswordConfirmation("");
+  };
   const deleteUser = (email: string) => {
     const target = users.find(u => u.email === email);
     // Deleting a dashboard user now also revokes their mobile app access and
@@ -902,7 +911,7 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
                         )}
                         <div className="flex gap-2 pt-2 border-t border-gray-200">
                           <Btn size="sm" onClick={(e) => { e.stopPropagation(); navigate?.("admin-permissions"); }}><Edit2 size={12} /> {t("تعديل الصلاحيات", "Edit Permissions")}</Btn>
-                          <Btn size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); if (u.id && window.confirm(t("إعادة تعيين كلمة مرور هذا المستخدم؟ سيتم إرسال كلمة مرور جديدة بالبريد.", "Reset this user's password? A new password will be emailed."))) resetPwdMut.mutate({ id: u.id }); }}>{t("إعادة تعيين كلمة المرور", "Reset Password")}</Btn>
+                          <Btn size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); if (u.id) { setResetTarget(u); setResetMode("email"); setResetPassword(""); setResetPasswordConfirmation(""); } }}>{t("إعادة تعيين كلمة المرور", "Reset Password")}</Btn>
                         </div>
                       </div>
                     )}
@@ -913,6 +922,48 @@ export function AdminUsers({ navigate, setModal, ops, approveOp, rejectOp, final
           }
         </Card>
       </>)}
+      {resetTarget && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-4" onClick={() => { if (!resetPwdMut.isPending) closeResetPasswordModal(); }}>
+          <form className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()} onSubmit={e => {
+            e.preventDefault();
+            if (!resetTarget.id) return;
+            if (resetMode === "manual" && resetPassword !== resetPasswordConfirmation) {
+              window.alert(t("كلمتا المرور غير متطابقتين", "Passwords do not match"));
+              return;
+            }
+            resetPwdMut.mutate({
+              id: resetTarget.id,
+              mode: resetMode,
+              ...(resetMode === "manual" ? { password: resetPassword, passwordConfirmation: resetPasswordConfirmation } : {}),
+            }, { onSuccess: closeResetPasswordModal });
+          }}>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">{t("إعادة تعيين كلمة المرور", "Reset Password")}</h3>
+              <p className="mt-1 text-sm text-gray-500">{resetTarget.email}</p>
+            </div>
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3">
+              <input type="radio" name="reset-mode" checked={resetMode === "manual"} onChange={() => setResetMode("manual")} />
+              <span><strong className="block text-sm">{t("تعيين كلمة مرور مؤقتة يدوياً", "Set a temporary password manually")}</strong><span className="text-xs text-gray-500">{t("سيُطلب من المستخدم تغييرها عند أول دخول.", "The user must change it at first sign-in.")}</span></span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3">
+              <input type="radio" name="reset-mode" checked={resetMode === "email"} onChange={() => setResetMode("email")} />
+              <span><strong className="block text-sm">{t("إنشاء وإرسال كلمة مرور مؤقتة بالبريد", "Generate and email a temporary password")}</strong><span className="text-xs text-gray-500">{t("لن تظهر كلمة المرور في لوحة التحكم.", "The password will not be shown in the Dashboard.")}</span></span>
+            </label>
+            {resetMode === "manual" && <>
+              <label className="block text-sm font-semibold">{t("كلمة المرور المؤقتة", "Temporary password")}
+                <input type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={resetPassword} onChange={e => setResetPassword(e.target.value)} className="mt-1 w-full rounded-lg border px-3 py-2 font-normal" />
+              </label>
+              <label className="block text-sm font-semibold">{t("تأكيد كلمة المرور", "Confirm password")}
+                <input type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={resetPasswordConfirmation} onChange={e => setResetPasswordConfirmation(e.target.value)} className="mt-1 w-full rounded-lg border px-3 py-2 font-normal" />
+              </label>
+            </>}
+            <div className="flex justify-end gap-2 border-t pt-3">
+              <button type="button" disabled={resetPwdMut.isPending} onClick={closeResetPasswordModal} className="rounded-lg border px-4 py-2 text-sm">{t("إلغاء", "Cancel")}</button>
+              <button type="submit" disabled={resetPwdMut.isPending} className="rounded-lg bg-violet-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{resetPwdMut.isPending ? t("جارٍ الحفظ...", "Saving...") : t("تأكيد إعادة التعيين", "Confirm reset")}</button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
